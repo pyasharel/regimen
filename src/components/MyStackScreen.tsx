@@ -1,40 +1,110 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Compound {
+  id: string;
+  name: string;
+  intended_dose: number;
+  dose_unit: string;
+  calculated_iu: number | null;
+  schedule_type: string;
+  time_of_day: string[];
+  start_date: string;
+  is_active: boolean;
+  created_at: string;
+}
 
 export const MyStackScreen = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [compounds, setCompounds] = useState<Compound[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - will be replaced with real data later
-  const activeCompounds = [
-    {
-      id: 1,
-      name: "BPC-157",
-      dose: "250 mcg",
-      iu: "25 IU",
-      schedule: "Morning, Evening",
-      frequency: "Daily",
-      activeDays: 23,
-    },
-    {
-      id: 2,
-      name: "TB-500",
-      dose: "5 mg",
-      iu: "50 IU",
-      schedule: "Morning",
-      frequency: "Weekdays",
-      activeDays: 15,
-    },
-  ];
+  useEffect(() => {
+    loadCompounds();
+  }, []);
 
-  const completedCompounds = [
-    {
-      id: 3,
-      name: "Semaglutide",
-      dose: "0.5 mg",
-      completedDate: "2024-01-15",
-    },
-  ];
+  const loadCompounds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('compounds')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCompounds(data || []);
+    } catch (error) {
+      console.error('Error loading compounds:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markComplete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('compounds')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Compound completed",
+        description: "Moved to completed section"
+      });
+
+      loadCompounds();
+    } catch (error) {
+      console.error('Error marking complete:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update compound",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteCompound = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this compound?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('compounds')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Compound deleted",
+        description: "Successfully removed from your stack"
+      });
+
+      loadCompounds();
+    } catch (error) {
+      console.error('Error deleting compound:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete compound",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const activeCompounds = compounds.filter(c => c.is_active);
+  const completedCompounds = compounds.filter(c => !c.is_active);
+
+  const getDaysActive = (startDate: string) => {
+    const start = new Date(startDate);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
@@ -62,10 +132,12 @@ export const MyStackScreen = () => {
                     <div>
                       <h3 className="text-lg font-bold">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {compound.dose} • {compound.iu} • {compound.schedule}
+                        {compound.intended_dose} {compound.dose_unit}
+                        {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
+                        {' • '}{compound.time_of_day.join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {compound.frequency} • Active for {compound.activeDays} days
+                        {compound.schedule_type} • Active for {getDaysActive(compound.start_date)} days
                       </p>
                     </div>
                   </div>
@@ -96,10 +168,10 @@ export const MyStackScreen = () => {
                     <div>
                       <h3 className="font-bold">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {compound.dose}
+                        {compound.intended_dose} {compound.dose_unit}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Completed on {new Date(compound.completedDate).toLocaleDateString()}
+                        Completed
                       </p>
                     </div>
                   </div>

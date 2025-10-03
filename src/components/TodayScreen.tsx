@@ -1,111 +1,232 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, Settings, Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Plus, Settings, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Dose {
+  id: string;
+  compound_id: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  dose_amount: number;
+  dose_unit: string;
+  calculated_iu: number | null;
+  taken: boolean;
+  compound_name?: string;
+}
 
 export const TodayScreen = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [doses, setDoses] = useState<Dose[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Generate week dates
-  const getWeekDates = () => {
-    const week = [];
-    const start = new Date(selectedDate);
-    start.setDate(start.getDate() - start.getDay()); // Start from Sunday
+  // Generate week days
+  const getWeekDays = () => {
+    const days = [];
+    const today = new Date(selectedDate);
+    const dayOfWeek = today.getDay();
+    const diff = today.getDate() - dayOfWeek;
     
     for (let i = 0; i < 7; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
-      week.push(date);
+      const date = new Date(today.setDate(diff + i));
+      days.push(date);
     }
-    return week;
+    return days;
   };
 
-  const weekDates = getWeekDates();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const weekDays = getWeekDays();
 
-  const isToday = (date: Date) => {
-    const compareDate = new Date(date);
-    compareDate.setHours(0, 0, 0, 0);
-    return compareDate.getTime() === today.getTime();
+  useEffect(() => {
+    loadDoses();
+  }, [selectedDate]);
+
+  const loadDoses = async () => {
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      
+      const { data: dosesData, error } = await supabase
+        .from('doses')
+        .select(`
+          *,
+          compounds (name)
+        `)
+        .eq('scheduled_date', dateStr)
+        .order('scheduled_time');
+
+      if (error) throw error;
+
+      const formattedDoses = dosesData?.map(d => ({
+        ...d,
+        compound_name: d.compounds?.name
+      })) || [];
+
+      setDoses(formattedDoses);
+    } catch (error) {
+      console.error('Error loading doses:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const navigateWeek = (direction: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + (direction * 7));
-    setSelectedDate(newDate);
+  const toggleDose = async (doseId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('doses')
+        .update({
+          taken: !currentStatus,
+          taken_at: !currentStatus ? new Date().toISOString() : null
+        })
+        .eq('id', doseId);
+
+      if (error) throw error;
+
+      // Update local state
+      setDoses(doses.map(d =>
+        d.id === doseId
+          ? { ...d, taken: !currentStatus }
+          : d
+      ));
+
+      toast({
+        title: !currentStatus ? "Dose marked as taken" : "Dose unmarked",
+        description: "Your progress has been updated"
+      });
+    } catch (error) {
+      console.error('Error toggling dose:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update dose",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const formatTime = (time: string) => {
+    if (time === 'Morning') return '8:00 AM';
+    if (time === 'Afternoon') return '2:00 PM';
+    if (time === 'Evening') return '6:00 PM';
+    return time;
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border px-4 py-4">
-        <button onClick={() => navigate("/settings")} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <Settings className="h-5 w-5" />
-        </button>
-        <h1 className="text-xl font-bold">Regimen</h1>
-        <button className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <Bell className="h-5 w-5" />
-        </button>
+      <header className="border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/settings')}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+          <h1 className="text-xl font-bold">Regimen</h1>
+          <button className="rounded-lg p-2 hover:bg-muted transition-colors">
+            <Bell className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Calendar Week View */}
-      <div className="border-b border-border bg-card p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <button onClick={() => navigateWeek(-1)} className="rounded-lg p-2 hover:bg-muted transition-colors">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h2 className="font-semibold">
-            {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h2>
-          <button onClick={() => navigateWeek(1)} className="rounded-lg p-2 hover:bg-muted transition-colors">
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates.map((date, index) => {
-            const isTodayDate = isToday(date);
+      <div className="border-b border-border px-4 py-4">
+        <div className="flex justify-between gap-2">
+          {weekDays.map((day, index) => {
+            const isToday = day.toDateString() === new Date().toDateString();
+            const isSelected = day.toDateString() === selectedDate.toDateString();
+            
             return (
               <button
                 key={index}
-                className={`flex flex-col items-center rounded-xl p-2 transition-all ${
-                  isTodayDate
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                    : "hover:bg-muted"
+                onClick={() => setSelectedDate(day)}
+                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
+                  isSelected
+                    ? 'bg-primary text-primary-foreground'
+                    : isToday
+                    ? 'bg-surface'
+                    : 'hover:bg-muted'
                 }`}
               >
                 <span className="text-xs font-medium">
-                  {date.toLocaleDateString('en-US', { weekday: 'short' })[0]}
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                 </span>
-                <span className={`mt-1 text-lg font-bold ${isTodayDate ? "" : "text-muted-foreground"}`}>
-                  {date.getDate()}
-                </span>
-                {/* Dose indicator bars - placeholder */}
-                <div className="mt-2 flex gap-0.5">
-                  <div className="h-0.5 w-2 rounded-full bg-primary/60" />
-                  <div className="h-0.5 w-2 rounded-full bg-primary/40" />
-                </div>
+                <span className="text-lg font-bold">{day.getDate()}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Empty State */}
-      <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-          <Plus className="h-10 w-10 text-muted-foreground" />
-        </div>
-        <h2 className="mb-2 text-2xl font-bold">No doses scheduled for today</h2>
-        <p className="mb-8 max-w-sm text-muted-foreground">
-          Start tracking your health optimization journey by adding your first compound
-        </p>
-        <Button onClick={() => navigate("/add-compound")} size="lg" className="shadow-xl shadow-primary/20">
-          <Plus className="mr-2 h-5 w-5" />
-          Add First Compound
-        </Button>
+      {/* Doses */}
+      <div className="flex-1 space-y-4 p-4">
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Loading doses...
+          </div>
+        ) : doses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center mb-4">
+              <Plus className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-bold mb-2">No doses scheduled</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Add your first compound to get started
+            </p>
+            <button
+              onClick={() => navigate('/add-compound')}
+              className="rounded-full bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+            >
+              Add First Compound
+            </button>
+          </div>
+        ) : (
+          doses.map((dose) => (
+            <div
+              key={dose.id}
+              className={`overflow-hidden rounded-2xl border border-border shadow-lg transition-all animate-fade-in ${
+                dose.taken
+                  ? 'bg-muted opacity-75'
+                  : 'bg-primary'
+              }`}
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
+                      {dose.compound_name}
+                    </h3>
+                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
+                      {dose.dose_amount} {dose.dose_unit}
+                      {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                      {' • '}{formatTime(dose.scheduled_time)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleDose(dose.id, dose.taken)}
+                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                      dose.taken
+                        ? 'bg-success border-success'
+                        : 'border-primary-foreground/40 hover:border-primary-foreground'
+                    }`}
+                  >
+                    {dose.taken && (
+                      <svg
+                        className="h-full w-full text-white"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* FAB Button */}

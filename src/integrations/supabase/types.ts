@@ -14,7 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      compounds: {
+        Row: {
+          bac_water_volume: number | null
+          calculated_iu: number | null
+          created_at: string | null
+          cycle_weeks_off: number | null
+          cycle_weeks_on: number | null
+          dose_unit: string
+          end_date: string | null
+          has_cycles: boolean | null
+          has_titration: boolean | null
+          id: string
+          intended_dose: number
+          is_active: boolean | null
+          name: string
+          schedule_days: string[] | null
+          schedule_type: string
+          start_date: string
+          time_of_day: string[]
+          titration_config: Json | null
+          user_id: string | null
+          vial_size: number | null
+          vial_unit: string | null
+        }
+        Insert: {
+          bac_water_volume?: number | null
+          calculated_iu?: number | null
+          created_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_unit: string
+          end_date?: string | null
+          has_cycles?: boolean | null
+          has_titration?: boolean | null
+          id?: string
+          intended_dose: number
+          is_active?: boolean | null
+          name: string
+          schedule_days?: string[] | null
+          schedule_type: string
+          start_date?: string
+          time_of_day: string[]
+          titration_config?: Json | null
+          user_id?: string | null
+          vial_size?: number | null
+          vial_unit?: string | null
+        }
+        Update: {
+          bac_water_volume?: number | null
+          calculated_iu?: number | null
+          created_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_unit?: string
+          end_date?: string | null
+          has_cycles?: boolean | null
+          has_titration?: boolean | null
+          id?: string
+          intended_dose?: number
+          is_active?: boolean | null
+          name?: string
+          schedule_days?: string[] | null
+          schedule_type?: string
+          start_date?: string
+          time_of_day?: string[]
+          titration_config?: Json | null
+          user_id?: string | null
+          vial_size?: number | null
+          vial_unit?: string | null
+        }
+        Relationships: []
+      }
+      doses: {
+        Row: {
+          calculated_iu: number | null
+          compound_id: string | null
+          created_at: string | null
+          dose_amount: number
+          dose_unit: string
+          id: string
+          scheduled_date: string
+          scheduled_time: string
+          skipped: boolean | null
+          taken: boolean | null
+          taken_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          calculated_iu?: number | null
+          compound_id?: string | null
+          created_at?: string | null
+          dose_amount: number
+          dose_unit: string
+          id?: string
+          scheduled_date: string
+          scheduled_time: string
+          skipped?: boolean | null
+          taken?: boolean | null
+          taken_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          calculated_iu?: number | null
+          compound_id?: string | null
+          created_at?: string | null
+          dose_amount?: number
+          dose_unit?: string
+          id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          skipped?: boolean | null
+          taken?: boolean | null
+          taken_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doses_compound_id_fkey"
+            columns: ["compound_id"]
+            isOneToOne: false
+            referencedRelation: "compounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      progress_entries: {
+        Row: {
+          ai_analysis: Json | null
+          category: string
+          created_at: string | null
+          entry_date: string
+          id: string
+          metrics: Json | null
+          notes: string | null
+          photo_url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          category: string
+          created_at?: string | null
+          entry_date?: string
+          id?: string
+          metrics?: Json | null
+          notes?: string | null
+          photo_url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          category?: string
+          created_at?: string | null
+          entry_date?: string
+          id?: string
+          metrics?: Json | null
+          notes?: string | null
+          photo_url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

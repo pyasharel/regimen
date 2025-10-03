@@ -1,10 +1,11 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const COMMON_PEPTIDES = [
   "BPC-157", "TB-500", "Semaglutide", "Tirzepatide", "Retatrutide",
@@ -12,183 +13,195 @@ const COMMON_PEPTIDES = [
   "GHK-Cu", "Melanotan II", "PT-141", "DSIP", "Selank", "Semax"
 ];
 
-const VIAL_SIZES = [5, 10, 15, 20];
-const BAC_WATER_SIZES = [1, 2, 3, 5];
-
 export const AddCompoundScreen = () => {
   const navigate = useNavigate();
-  const [compoundName, setCompoundName] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [nickname, setNickname] = useState("");
-  const [vialSize, setVialSize] = useState<number>(10);
-  const [vialUnit, setVialUnit] = useState<"mg" | "mcg">("mg");
-  const [bacWater, setBacWater] = useState<number>(2);
-  const [dose, setDose] = useState<string>("");
-  const [doseUnit, setDoseUnit] = useState<"mg" | "mcg">("mcg");
-  const [frequency, setFrequency] = useState<string>("daily");
-  const [timeOfDay, setTimeOfDay] = useState<string>("morning");
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
 
+  // Basic info
+  const [name, setName] = useState("");
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+
+  // Dose calculator (optional)
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [vialSize, setVialSize] = useState("");
+  const [vialUnit, setVialUnit] = useState("mg");
+  const [bacWater, setBacWater] = useState("");
+  const [intendedDose, setIntendedDose] = useState("");
+  const [doseUnit, setDoseUnit] = useState("mcg");
+
+  // Schedule
+  const [frequency, setFrequency] = useState("Daily");
+  const [timeOfDay, setTimeOfDay] = useState("Morning");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Calculate IU
   const calculateIU = () => {
-    if (!dose || !vialSize || !bacWater) return null;
-    
-    const vialMcg = vialUnit === "mg" ? vialSize * 1000 : vialSize;
-    const doseMcg = doseUnit === "mg" ? parseFloat(dose) * 1000 : parseFloat(dose);
-    const concentration = vialMcg / bacWater;
+    if (!vialSize || !bacWater || !intendedDose) return null;
+
+    const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
+    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
+    const concentration = vialMcg / parseFloat(bacWater);
     const volumeML = doseMcg / concentration;
-    const iu = volumeML * 100;
-    
-    return iu.toFixed(1);
+    return (volumeML * 100).toFixed(1);
   };
 
-  const calculatedIU = calculateIU();
+  const calculatedIU = showCalculator ? calculateIU() : null;
 
   const getWarning = () => {
     if (!calculatedIU) return null;
     const iu = parseFloat(calculatedIU);
-    
     if (iu < 2) return "⚠️ Very small dose - consider using less BAC water";
     if (iu > 100) return "⚠️ Exceeds syringe capacity";
-    if (iu >= 50) return "⚠️ Large dose - please double-check your calculation";
+    if (iu > 50) return "⚠️ Large dose - please double-check";
     return null;
   };
 
-  const warning = getWarning();
-
-  const handleSave = () => {
-    if (!compoundName || !dose) {
-      toast.error("Please fill in required fields");
-      return;
-    }
-    
-    toast.success("Compound added successfully!");
-    navigate("/today");
-  };
-
-  const filteredPeptides = COMMON_PEPTIDES.filter(p => 
-    p.toLowerCase().includes(compoundName.toLowerCase())
+  const filteredPeptides = COMMON_PEPTIDES.filter(p =>
+    p.toLowerCase().includes(name.toLowerCase())
   );
 
+  const handleSave = async () => {
+    if (!name || !intendedDose) {
+      toast({
+        title: "Missing fields",
+        description: "Please enter compound name and dose",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Insert compound
+      const { data: compound, error: compoundError } = await supabase
+        .from('compounds')
+        .insert({
+          name,
+          vial_size: vialSize ? parseFloat(vialSize) : null,
+          vial_unit: vialUnit,
+          bac_water_volume: bacWater ? parseFloat(bacWater) : null,
+          intended_dose: parseFloat(intendedDose),
+          dose_unit: doseUnit,
+          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+          schedule_type: frequency,
+          time_of_day: [timeOfDay],
+          start_date: startDate
+        })
+        .select()
+        .single();
+
+      if (compoundError) throw compoundError;
+
+      // Generate doses for next 30 days
+      const doses = [];
+      const start = new Date(startDate);
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(start);
+        date.setDate(date.getDate() + i);
+        
+        // Check if should generate based on frequency
+        if (frequency === 'Weekdays' && (date.getDay() === 0 || date.getDay() === 6)) {
+          continue;
+        }
+
+        doses.push({
+          compound_id: compound.id,
+          scheduled_date: date.toISOString().split('T')[0],
+          scheduled_time: timeOfDay,
+          dose_amount: parseFloat(intendedDose),
+          dose_unit: doseUnit,
+          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+        });
+      }
+
+      const { error: dosesError } = await supabase
+        .from('doses')
+        .insert(doses);
+
+      if (dosesError) throw dosesError;
+
+      toast({
+        title: "Compound added!",
+        description: `${name} has been added to your stack`
+      });
+
+      navigate('/today');
+    } catch (error) {
+      console.error('Error saving compound:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save compound",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4">
-        <button onClick={() => navigate("/today")} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <X className="h-5 w-5" />
-        </button>
-        <h1 className="text-xl font-bold">Add Compound</h1>
-        <div className="w-9" /> {/* Spacer */}
+      <header className="border-b border-border px-4 py-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-xl font-bold">Add Compound</h1>
+        </div>
       </header>
 
-      <div className="mx-auto max-w-2xl space-y-6 p-6">
+      <div className="flex-1 space-y-6 p-4">
         {/* Basic Info */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Basic Information</h2>
-          
-          <div className="space-y-2">
-            <Label htmlFor="compound">Compound Name *</Label>
-            <div className="relative">
-              <Input
-                id="compound"
-                value={compoundName}
-                onChange={(e) => {
-                  setCompoundName(e.target.value);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Type to search..."
-                className="bg-input border-border"
-              />
-              {showSuggestions && compoundName && filteredPeptides.length > 0 && (
-                <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-popover shadow-xl max-h-48 overflow-auto">
-                  {filteredPeptides.map((peptide) => (
-                    <button
-                      key={peptide}
-                      onClick={() => {
-                        setCompoundName(peptide);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-muted transition-colors"
-                    >
-                      {peptide}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="nickname">Nickname (Optional)</Label>
+        <div className="space-y-4">
+          <div className="space-y-2 relative">
+            <Label htmlFor="name">Compound Name *</Label>
             <Input
-              id="nickname"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="e.g., Morning BPC"
-              className="bg-input border-border"
+              id="name"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setShowAutocomplete(e.target.value.length > 0);
+              }}
+              onFocus={() => setShowAutocomplete(name.length > 0)}
+              placeholder="e.g., BPC-157"
             />
-          </div>
-        </section>
-
-        {/* Dose Calculator */}
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-6">
-          <h2 className="text-lg font-semibold">Dose Calculator</h2>
-          
-          {/* Vial Size */}
-          <div className="space-y-2">
-            <Label>Vial Size</Label>
-            <div className="flex gap-2">
-              {VIAL_SIZES.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setVialSize(size)}
-                  className={`flex-1 rounded-xl px-4 py-2 font-medium transition-all ${
-                    vialSize === size
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {size}mg
-                </button>
-              ))}
-            </div>
+            {showAutocomplete && filteredPeptides.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredPeptides.map((peptide) => (
+                  <button
+                    key={peptide}
+                    onClick={() => {
+                      setName(peptide);
+                      setShowAutocomplete(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-muted transition-colors"
+                  >
+                    {peptide}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* BAC Water */}
           <div className="space-y-2">
-            <Label>BAC Water Volume</Label>
-            <div className="flex gap-2">
-              {BAC_WATER_SIZES.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setBacWater(size)}
-                  className={`flex-1 rounded-xl px-4 py-2 font-medium transition-all ${
-                    bacWater === size
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {size}ml
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Intended Dose */}
-          <div className="space-y-2">
-            <Label htmlFor="dose">Intended Dose *</Label>
+            <Label htmlFor="intendedDose">Intended Dose *</Label>
             <div className="flex gap-2">
               <Input
-                id="dose"
+                id="intendedDose"
                 type="number"
-                value={dose}
-                onChange={(e) => setDose(e.target.value)}
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
                 placeholder="250"
-                className="flex-1 bg-input border-border"
+                className="flex-1"
               />
               <select
                 value={doseUnit}
-                onChange={(e) => setDoseUnit(e.target.value as "mg" | "mcg")}
-                className="rounded-xl border border-border bg-input px-4 py-2"
+                onChange={(e) => setDoseUnit(e.target.value)}
+                className="bg-surface border-border rounded-lg border px-3 text-sm min-w-[80px]"
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
@@ -196,87 +209,147 @@ export const AddCompoundScreen = () => {
             </div>
           </div>
 
-          {/* Calculation Result */}
-          {calculatedIU && (
-            <div className="rounded-xl border-2 border-secondary bg-muted p-4">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-primary">{calculatedIU} IU</div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  on a 100 IU insulin syringe
+          {/* Optional Dose Calculator */}
+          <button
+            onClick={() => setShowCalculator(!showCalculator)}
+            className="text-sm text-primary hover:underline"
+          >
+            {showCalculator ? '- Hide' : '+ Show'} Dose Calculator
+          </button>
+
+          {showCalculator && (
+            <div className="space-y-4 p-4 bg-surface rounded-lg">
+              <div className="space-y-2">
+                <Label>Vial Size</Label>
+                <div className="flex gap-2">
+                  {[5, 10, 15, 20].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setVialSize(size.toString())}
+                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                        vialSize === size.toString()
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border hover:bg-muted'
+                      }`}
+                    >
+                      {size}mg
+                    </button>
+                  ))}
                 </div>
+                <Input
+                  type="number"
+                  value={vialSize}
+                  onChange={(e) => setVialSize(e.target.value)}
+                  placeholder="Custom"
+                />
               </div>
-              {warning && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  <span>{warning}</span>
+
+              <div className="space-y-2">
+                <Label>BAC Water Volume</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 5].map((vol) => (
+                    <button
+                      key={vol}
+                      onClick={() => setBacWater(vol.toString())}
+                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                        bacWater === vol.toString()
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border hover:bg-muted'
+                      }`}
+                    >
+                      {vol}ml
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  value={bacWater}
+                  onChange={(e) => setBacWater(e.target.value)}
+                  placeholder="Custom"
+                />
+              </div>
+
+              {calculatedIU && (
+                <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-primary">{calculatedIU} IU</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    on a 100 IU insulin syringe
+                  </div>
+                  {getWarning() && (
+                    <div className="flex items-center gap-2 mt-3 text-sm text-warning">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>{getWarning()}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-        </section>
+        </div>
 
         {/* Schedule */}
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Schedule</h2>
-          
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold">Schedule</h2>
+
           <div className="space-y-2">
             <Label>Frequency</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: "daily", label: "Daily" },
-                { value: "weekdays", label: "Weekdays" },
-                { value: "as-needed", label: "As Needed" },
-                { value: "custom", label: "Every X Days 🔒", premium: true },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => !option.premium && setFrequency(option.value)}
-                  disabled={option.premium}
-                  className={`rounded-xl px-4 py-3 font-medium transition-all ${
-                    frequency === option.value
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : option.premium
-                      ? "bg-muted/50 text-muted-foreground cursor-not-allowed"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {option.label}
-                </button>
+            <div className="space-y-2">
+              {['Daily', 'Weekdays', 'As Needed'].map((freq) => (
+                <label key={freq} className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="frequency"
+                    checked={frequency === freq}
+                    onChange={() => setFrequency(freq)}
+                    className="h-4 w-4"
+                  />
+                  <span>{freq}</span>
+                </label>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Time of Day</Label>
-            <div className="rounded-xl border border-border bg-muted/50 p-4">
-              <div className="flex items-center gap-3">
-                <input
-                  type="radio"
-                  id="morning"
-                  checked={timeOfDay === "morning"}
-                  onChange={() => setTimeOfDay("morning")}
-                  className="h-4 w-4 accent-primary"
-                />
-                <Label htmlFor="morning" className="cursor-pointer">
-                  Morning (8:00 AM)
-                </Label>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Upgrade for custom times 🔒
-              </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTimeOfDay('Morning')}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                  timeOfDay === 'Morning'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card border border-border hover:bg-muted'
+                }`}
+              >
+                Morning
+              </button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Upgrade for custom times 🔒
+            </p>
           </div>
-        </section>
 
-        {/* Save Buttons */}
-        <div className="space-y-3 pt-4">
-          <Button onClick={handleSave} className="w-full" size="lg">
-            Save Compound
-          </Button>
-          <Button onClick={handleSave} variant="secondary" className="w-full" size="lg">
-            Save & Add Another
-          </Button>
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Start Date</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full"
+          size="lg"
+        >
+          {saving ? 'Saving...' : 'Save Compound'}
+        </Button>
       </div>
     </div>
   );
