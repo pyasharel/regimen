@@ -28,14 +28,20 @@ export const TodayScreen = () => {
   // Generate week days
   const getWeekDays = () => {
     const days = [];
-    const today = new Date(selectedDate);
-    const dayOfWeek = today.getDay();
-    const diff = today.getDate() - dayOfWeek;
+    const current = new Date(selectedDate);
+    const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
     
+    // Get the start of the week (Sunday)
+    const startOfWeek = new Date(current);
+    startOfWeek.setDate(current.getDate() - dayOfWeek);
+    
+    // Generate all 7 days of the week
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today.setDate(diff + i));
-      days.push(date);
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
     }
+    
     return days;
   };
 
