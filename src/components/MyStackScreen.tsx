@@ -1,9 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EditCompoundDialog } from "./EditCompoundDialog";
 
 interface Compound {
   id: string;
@@ -23,6 +30,8 @@ export const MyStackScreen = () => {
   const { toast } = useToast();
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingCompound, setEditingCompound] = useState<Compound | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadCompounds();
@@ -106,6 +115,11 @@ export const MyStackScreen = () => {
     return diff;
   };
 
+  const handleEdit = (compound: Compound) => {
+    setEditingCompound(compound);
+    setEditDialogOpen(true);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
@@ -141,9 +155,30 @@ export const MyStackScreen = () => {
                       </p>
                     </div>
                   </div>
-                  <button className="rounded-lg p-2 hover:bg-muted transition-colors">
-                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="rounded-lg p-2 hover:bg-muted transition-colors">
+                        <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(compound)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => markComplete(compound.id)}>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark Complete
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => deleteCompound(compound.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
@@ -210,6 +245,14 @@ export const MyStackScreen = () => {
           </button>
         ))}
       </nav>
+
+      {/* Edit Dialog */}
+      <EditCompoundDialog
+        compound={editingCompound}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={loadCompounds}
+      />
     </div>
   );
 };

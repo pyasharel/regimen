@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, Bell } from "lucide-react";
+import { Plus, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
 
 interface Dose {
   id: string;
@@ -22,6 +23,7 @@ export const TodayScreen = () => {
   const [doses, setDoses] = useState<Dose[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
 
   // Generate week days
   const getWeekDays = () => {
@@ -126,7 +128,7 @@ export const TodayScreen = () => {
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="w-10" /> {/* Spacer for alignment */}
+          <div className="w-10" /> {/* Spacer */}
           <h1 className="text-xl font-bold">Regimen</h1>
           <button 
             onClick={() => navigate('/notifications')}
@@ -137,71 +139,100 @@ export const TodayScreen = () => {
         </div>
       </header>
 
-      {/* Calendar Week View */}
+      {/* Calendar Section */}
       <div className="border-b border-border px-4 py-6 space-y-4">
-        {/* Month/Year Display with Navigation */}
+        {/* Month/Year Display with View Toggle */}
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => changeWeek('prev')}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold">
               {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
-            <button
-              onClick={goToToday}
-              className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              Today
-            </button>
           </div>
           
           <button
-            onClick={() => changeWeek('next')}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
+            onClick={() => setViewMode(viewMode === 'week' ? 'month' : 'week')}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-surface hover:bg-muted transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <CalendarIcon className="w-3.5 h-3.5" />
+            {viewMode === 'week' ? 'Month' : 'Week'}
           </button>
         </div>
 
-        {/* Week Days */}
-        <div className="flex justify-between gap-2">
-          {weekDays.map((day, index) => {
-            const isToday = day.toDateString() === new Date().toDateString();
-            const isSelected = day.toDateString() === selectedDate.toDateString();
-            
-            return (
+        {viewMode === 'week' ? (
+          <>
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between">
               <button
-                key={index}
-                onClick={() => setSelectedDate(day)}
-                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors relative ${
-                  isSelected
-                    ? 'bg-primary text-primary-foreground'
-                    : isToday
-                    ? 'bg-surface ring-2 ring-primary/40'
-                    : 'hover:bg-muted'
-                }`}
+                onClick={() => changeWeek('prev')}
+                className="rounded-lg p-2 hover:bg-muted transition-colors"
               >
-                {isToday && !isSelected && (
-                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
-                )}
-                <span className="text-xs font-medium">
-                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
-                </span>
-                <span className="text-lg font-bold">{day.getDate()}</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </button>
-            );
-          })}
-        </div>
+              
+              <div className="flex justify-between gap-2 flex-1 px-4">
+                {weekDays.map((day, index) => {
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  const isSelected = day.toDateString() === selectedDate.toDateString();
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedDate(day)}
+                      className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors relative ${
+                        isSelected && isToday
+                          ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
+                          : isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : isToday
+                          ? 'bg-surface ring-2 ring-primary/40'
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      {isToday && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                      <span className="text-xs font-medium">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
+                      </span>
+                      <span className="text-lg font-bold">{day.getDate()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => changeWeek('next')}
+                className="rounded-lg p-2 hover:bg-muted transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              className="rounded-lg border border-border"
+            />
+          </div>
+        )}
       </div>
+
+      {/* Today Button - Fixed position when not on today */}
+      {selectedDate.toDateString() !== new Date().toDateString() && (
+        <button
+          onClick={goToToday}
+          className="fixed top-20 right-4 z-10 px-4 py-2 text-sm font-medium rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-opacity"
+        >
+          Today
+        </button>
+      )}
 
       {/* Doses */}
       <div className="flex-1 space-y-4 p-4">
