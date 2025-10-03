@@ -25,20 +25,15 @@ export const TodayScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
 
-  // Generate week days
+  // Generate week days centered on selected date
   const getWeekDays = () => {
     const days = [];
     const current = new Date(selectedDate);
-    const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
     
-    // Get the start of the week (Sunday)
-    const startOfWeek = new Date(current);
-    startOfWeek.setDate(current.getDate() - dayOfWeek);
-    
-    // Generate all 7 days of the week
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
+    // Generate 3 days before, the selected day, and 3 days after
+    for (let i = -3; i <= 3; i++) {
+      const day = new Date(current);
+      day.setDate(current.getDate() + i);
       days.push(day);
     }
     
@@ -153,6 +148,14 @@ export const TodayScreen = () => {
             <h2 className="text-lg font-semibold">
               {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
+            {selectedDate.toDateString() !== new Date().toDateString() && (
+              <button
+                onClick={goToToday}
+                className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                Today
+              </button>
+            )}
           </div>
           
           <button
@@ -229,16 +232,6 @@ export const TodayScreen = () => {
           </div>
         )}
       </div>
-
-      {/* Today Button - Fixed position when not on today */}
-      {selectedDate.toDateString() !== new Date().toDateString() && (
-        <button
-          onClick={goToToday}
-          className="fixed top-20 right-4 z-10 px-4 py-2 text-sm font-medium rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90 transition-opacity"
-        >
-          Today
-        </button>
-      )}
 
       {/* Doses */}
       <div className="flex-1 space-y-4 p-4">
