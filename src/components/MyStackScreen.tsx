@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditCompoundDialog } from "./EditCompoundDialog";
 
 interface Compound {
   id: string;
@@ -30,8 +29,6 @@ export const MyStackScreen = () => {
   const { toast } = useToast();
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingCompound, setEditingCompound] = useState<Compound | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadCompounds();
@@ -116,8 +113,8 @@ export const MyStackScreen = () => {
   };
 
   const handleEdit = (compound: Compound) => {
-    setEditingCompound(compound);
-    setEditDialogOpen(true);
+    // Navigate to add-compound screen with compound data as state
+    navigate('/add-compound', { state: { editingCompound: compound } });
   };
 
   return (
@@ -245,14 +242,6 @@ export const MyStackScreen = () => {
           </button>
         ))}
       </nav>
-
-      {/* Edit Dialog */}
-      <EditCompoundDialog
-        compound={editingCompound}
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
-        onSuccess={loadCompounds}
-      />
     </div>
   );
 };

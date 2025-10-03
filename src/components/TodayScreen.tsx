@@ -24,6 +24,7 @@ export const TodayScreen = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [hasCompounds, setHasCompounds] = useState(false);
 
   // Generate week days centered on selected date
   const getWeekDays = () => {
@@ -44,7 +45,22 @@ export const TodayScreen = () => {
 
   useEffect(() => {
     loadDoses();
+    checkCompounds();
   }, [selectedDate]);
+
+  const checkCompounds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('compounds')
+        .select('id')
+        .limit(1);
+      
+      if (error) throw error;
+      setHasCompounds((data?.length || 0) > 0);
+    } catch (error) {
+      console.error('Error checking compounds:', error);
+    }
+  };
 
   const loadDoses = async () => {
     try {
@@ -240,21 +256,27 @@ export const TodayScreen = () => {
             Loading doses...
           </div>
         ) : doses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center mb-4">
-              <Plus className="h-8 w-8 text-muted-foreground" />
+          hasCompounds ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No doses scheduled for this date
             </div>
-            <h3 className="text-lg font-bold mb-2">No doses scheduled</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Add your first compound to get started
-            </p>
-            <button
-              onClick={() => navigate('/add-compound')}
-              className="rounded-full bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-            >
-              Add First Compound
-            </button>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center mb-4">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">No doses scheduled</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Add your first compound to get started
+              </p>
+              <button
+                onClick={() => navigate('/add-compound')}
+                className="rounded-full bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+              >
+                Add First Compound
+              </button>
+            </div>
+          )
         ) : (
           doses.map((dose) => (
             <div

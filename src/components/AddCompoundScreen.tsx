@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,8 +15,13 @@ const COMMON_PEPTIDES = [
 
 export const AddCompoundScreen = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  
+  // Check if we're editing an existing compound
+  const editingCompound = location.state?.editingCompound;
+  const isEditing = !!editingCompound;
 
   // Basic info
   const [name, setName] = useState("");
@@ -34,6 +39,24 @@ export const AddCompoundScreen = () => {
   const [frequency, setFrequency] = useState("Daily");
   const [timeOfDay, setTimeOfDay] = useState("Morning");
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Load existing compound data if editing
+  useEffect(() => {
+    if (editingCompound) {
+      setName(editingCompound.name);
+      setIntendedDose(editingCompound.intended_dose.toString());
+      setDoseUnit(editingCompound.dose_unit);
+      setFrequency(editingCompound.schedule_type);
+      setTimeOfDay(editingCompound.time_of_day[0] || "Morning");
+      setStartDate(editingCompound.start_date);
+      if (editingCompound.vial_size) {
+        setShowCalculator(true);
+        setVialSize(editingCompound.vial_size.toString());
+        setVialUnit(editingCompound.vial_unit || "mg");
+        setBacWater(editingCompound.bac_water_volume?.toString() || "");
+      }
+    }
+  }, []);
 
   // Calculate IU
   const calculateIU = () => {
@@ -73,58 +96,98 @@ export const AddCompoundScreen = () => {
 
     setSaving(true);
     try {
-      // Insert compound
-      const { data: compound, error: compoundError } = await supabase
-        .from('compounds')
-        .insert({
-          name,
-          vial_size: vialSize ? parseFloat(vialSize) : null,
-          vial_unit: vialUnit,
-          bac_water_volume: bacWater ? parseFloat(bacWater) : null,
-          intended_dose: parseFloat(intendedDose),
-          dose_unit: doseUnit,
-          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
-          schedule_type: frequency,
-          time_of_day: [timeOfDay],
-          start_date: startDate
-        })
-        .select()
-        .single();
+      if (isEditing) {
+        // Update existing compound
+        const { error: updateError } = await supabase
+          .from('compounds')
+          .update({
+            name,
+            vial_size: vialSize ? parseFloat(vialSize) : null,
+            vial_unit: vialUnit,
+            bac_water_volume: bacWater ? parseFloat(bacWater) : null,
+            intended_dose: parseFloat(intendedDose),
+            dose_unit: doseUnit,
+            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            schedule_type: frequency,
+            time_of_day: [timeOfDay],
+            start_date: startDate
+          })
+          .eq('id', editingCompound.id);
 
-      if (compoundError) throw compoundError;
+        if (updateError) throw updateError;
 
-      // Generate doses for next 30 days
-      const doses = [];
-      const start = new Date(startDate);
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(start);
-        date.setDate(date.getDate() + i);
-        
-        // Check if should generate based on frequency
-        if (frequency === 'Weekdays' && (date.getDay() === 0 || date.getDay() === 6)) {
-          continue;
+        // Update existing doses
+        const { error: dosesUpdateError } = await supabase
+          .from('doses')
+          .update({
+            dose_amount: parseFloat(intendedDose),
+            dose_unit: doseUnit,
+            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            scheduled_time: timeOfDay
+          })
+          .eq('compound_id', editingCompound.id)
+          .gte('scheduled_date', new Date().toISOString().split('T')[0]); // Only update future doses
+
+        if (dosesUpdateError) throw dosesUpdateError;
+
+        toast({
+          title: "Compound updated!",
+          description: `${name} has been updated`
+        });
+      } else {
+        // Insert new compound
+        const { data: compound, error: compoundError } = await supabase
+          .from('compounds')
+          .insert({
+            name,
+            vial_size: vialSize ? parseFloat(vialSize) : null,
+            vial_unit: vialUnit,
+            bac_water_volume: bacWater ? parseFloat(bacWater) : null,
+            intended_dose: parseFloat(intendedDose),
+            dose_unit: doseUnit,
+            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            schedule_type: frequency,
+            time_of_day: [timeOfDay],
+            start_date: startDate
+          })
+          .select()
+          .single();
+
+        if (compoundError) throw compoundError;
+
+        // Generate doses for next 30 days
+        const doses = [];
+        const start = new Date(startDate);
+        for (let i = 0; i < 30; i++) {
+          const date = new Date(start);
+          date.setDate(date.getDate() + i);
+          
+          // Check if should generate based on frequency
+          if (frequency === 'Weekdays' && (date.getDay() === 0 || date.getDay() === 6)) {
+            continue;
+          }
+
+          doses.push({
+            compound_id: compound.id,
+            scheduled_date: date.toISOString().split('T')[0],
+            scheduled_time: timeOfDay,
+            dose_amount: parseFloat(intendedDose),
+            dose_unit: doseUnit,
+            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+          });
         }
 
-        doses.push({
-          compound_id: compound.id,
-          scheduled_date: date.toISOString().split('T')[0],
-          scheduled_time: timeOfDay,
-          dose_amount: parseFloat(intendedDose),
-          dose_unit: doseUnit,
-          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+        const { error: dosesError } = await supabase
+          .from('doses')
+          .insert(doses);
+
+        if (dosesError) throw dosesError;
+
+        toast({
+          title: "Compound added!",
+          description: `${name} has been added to your stack`
         });
       }
-
-      const { error: dosesError } = await supabase
-        .from('doses')
-        .insert(doses);
-
-      if (dosesError) throw dosesError;
-
-      toast({
-        title: "Compound added!",
-        description: `${name} has been added to your stack`
-      });
 
       navigate('/today');
     } catch (error) {
@@ -150,7 +213,7 @@ export const AddCompoundScreen = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-xl font-bold">Add Compound</h1>
+          <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
         </div>
       </header>
 
@@ -348,7 +411,7 @@ export const AddCompoundScreen = () => {
           className="w-full"
           size="lg"
         >
-          {saving ? 'Saving...' : 'Save Compound'}
+          {saving ? 'Saving...' : isEditing ? 'Update Compound' : 'Save Compound'}
         </Button>
       </div>
     </div>
