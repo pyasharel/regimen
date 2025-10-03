@@ -111,26 +111,68 @@ export const TodayScreen = () => {
     return time;
   };
 
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const changeWeek = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+    setSelectedDate(newDate);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/settings')}
+          <div className="w-10" /> {/* Spacer for alignment */}
+          <h1 className="text-xl font-bold">Regimen</h1>
+          <button 
+            onClick={() => navigate('/notifications')}
             className="rounded-lg p-2 hover:bg-muted transition-colors"
           >
-            <Settings className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold">Regimen</h1>
-          <button className="rounded-lg p-2 hover:bg-muted transition-colors">
             <Bell className="h-5 w-5" />
           </button>
         </div>
       </header>
 
       {/* Calendar Week View */}
-      <div className="border-b border-border px-4 py-4">
+      <div className="border-b border-border px-4 py-6 space-y-4">
+        {/* Month/Year Display with Navigation */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => changeWeek('prev')}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">
+              {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button
+              onClick={goToToday}
+              className="px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              Today
+            </button>
+          </div>
+          
+          <button
+            onClick={() => changeWeek('next')}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Week Days */}
         <div className="flex justify-between gap-2">
           {weekDays.map((day, index) => {
             const isToday = day.toDateString() === new Date().toDateString();
@@ -140,14 +182,17 @@ export const TodayScreen = () => {
               <button
                 key={index}
                 onClick={() => setSelectedDate(day)}
-                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors ${
+                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors relative ${
                   isSelected
                     ? 'bg-primary text-primary-foreground'
                     : isToday
-                    ? 'bg-surface'
+                    ? 'bg-surface ring-2 ring-primary/40'
                     : 'hover:bg-muted'
                 }`}
               >
+                {isToday && !isSelected && (
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
+                )}
                 <span className="text-xs font-medium">
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                 </span>
