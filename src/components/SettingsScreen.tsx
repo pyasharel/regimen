@@ -1,9 +1,21 @@
 import { useNavigate } from "react-router-dom";
-import { X, Sparkles, User, Bell, Palette, BarChart3, Download, HelpCircle } from "lucide-react";
+import { X, Sparkles, User, Bell, Palette, BarChart3, Download, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Failed to sign out");
+    } else {
+      toast.success("Signed out successfully");
+      navigate("/auth");
+    }
+  };
 
   const settingsSections = [
     {
@@ -115,7 +127,12 @@ export const SettingsScreen = () => {
         </div>
 
         {/* Sign Out Button */}
-        <Button variant="ghost" className="w-full text-primary hover:text-primary/80">
+        <Button 
+          onClick={handleSignOut}
+          variant="ghost" 
+          className="w-full text-destructive hover:text-destructive/80 gap-2"
+        >
+          <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
       </div>

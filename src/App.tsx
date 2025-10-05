@@ -9,6 +9,8 @@ import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,12 +22,13 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
-          <Route path="/" element={<Onboarding />} />
-          <Route path="/today" element={<TodayScreen />} />
-          <Route path="/add-compound" element={<AddCompoundScreen />} />
-          <Route path="/stack" element={<MyStackScreen />} />
-          <Route path="/progress" element={<ProgressScreen />} />
-          <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
+          <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
+          <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

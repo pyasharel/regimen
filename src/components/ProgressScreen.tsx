@@ -46,19 +46,13 @@ export const ProgressScreen = () => {
   const fetchEntries = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('progress_entries')
         .select('*')
+        .eq('user_id', user.id)
         .order('entry_date', { ascending: false });
-
-      if (user) {
-        query = query.eq('user_id', user.id);
-      } else {
-        query = query.is('user_id', null);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       setEntries(data || []);
@@ -77,6 +71,7 @@ export const ProgressScreen = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
       const formattedDate = format(entryDate, 'yyyy-MM-dd');
       const weightValue = parseFloat(weight);
@@ -115,11 +110,11 @@ export const ProgressScreen = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
       
       const today = format(new Date(), 'yyyy-MM-dd');
       const fileExt = photoFile.name.split('.').pop();
-      const userId = user?.id || 'anonymous';
-      const filePath = `${userId}/${today}.${fileExt}`;
+      const filePath = `${user.id}/${today}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
@@ -130,7 +125,7 @@ export const ProgressScreen = () => {
       const { error: dbError } = await supabase
         .from('progress_entries')
         .upsert({
-          user_id: user?.id || null,
+          user_id: user.id,
           entry_date: today,
           category: 'general',
           photo_url: filePath,
