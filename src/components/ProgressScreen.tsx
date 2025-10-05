@@ -1,236 +1,406 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { 
-  TrendingDown, 
-  Calendar, 
-  Plus, 
-  Camera,
-  Sparkles,
-  Lock
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Camera, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+
+type ProgressEntry = {
+  id: string;
+  entry_date: string;
+  metrics: any;
+  photo_url: string | null;
+  notes: string | null;
+};
+
+type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
 
 export const ProgressScreen = () => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState("weight-loss");
-  const [dateRange, setDateRange] = useState("30");
+  const [entries, setEntries] = useState<ProgressEntry[]>([]);
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>("3M");
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [weight, setWeight] = useState("");
+  const [notes, setNotes] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Mock data
-  const weightData = {
-    start: 185,
-    current: 178,
-    change: -7,
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
+  const fetchEntries = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('progress_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('entry_date', { ascending: false });
+
+      if (error) throw error;
+      setEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+      toast.error('Failed to load progress entries');
+    }
   };
 
-  const categories = [
-    { id: "logs", label: "Logs" },
-    { id: "journal", label: "Journal" },
-    { id: "weight-loss", label: "Weight Loss" },
-    { id: "muscle-recovery", label: "Muscle & Recovery" },
-    { id: "energy", label: "Energy" },
-    { id: "sleep", label: "Sleep" },
-  ];
+  const handleLogWeight = async () => {
+    if (!weight) {
+      toast.error('Please enter your weight');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      
+      const { error } = await supabase
+        .from('progress_entries')
+        .upsert({
+          user_id: user.id,
+          entry_date: today,
+          category: 'general',
+          metrics: { weight: parseFloat(weight) },
+          notes: notes || null,
+        }, {
+          onConflict: 'user_id,entry_date'
+        });
+
+      if (error) throw error;
+
+      toast.success('Weight logged successfully!');
+      setShowLogModal(false);
+      setWeight('');
+      setNotes('');
+      fetchEntries();
+    } catch (error) {
+      console.error('Error logging weight:', error);
+      toast.error('Failed to log weight');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!photoFile) {
+      toast.error('Please select a photo');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const fileExt = photoFile.name.split('.').pop();
+      const filePath = `${user.id}/${today}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('progress-photos')
+        .upload(filePath, photoFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from('progress_entries')
+        .upsert({
+          user_id: user.id,
+          entry_date: today,
+          category: 'general',
+          photo_url: filePath,
+        }, {
+          onConflict: 'user_id,entry_date'
+        });
+
+      if (dbError) throw dbError;
+
+      toast.success('Photo uploaded successfully!');
+      setShowPhotoModal(false);
+      setPhotoFile(null);
+      fetchEntries();
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFilteredEntries = () => {
+    const now = new Date();
+    const cutoffDate = new Date(now);
+    
+    switch (timeFrame) {
+      case "1M":
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case "3M":
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case "6M":
+        cutoffDate.setMonth(now.getMonth() - 6);
+        break;
+      case "1Y":
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case "All":
+        return entries;
+    }
+    
+    return entries.filter(e => new Date(e.entry_date) >= cutoffDate);
+  };
+
+  const weightEntries = getFilteredEntries().filter(e => e.metrics?.weight);
+  const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
+  const currentWeight = entries[0]?.metrics?.weight;
+
+  const getPhotoUrl = (photoPath: string) => {
+    const { data } = supabase.storage
+      .from('progress-photos')
+      .getPublicUrl(photoPath);
+    return data.publicUrl;
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-20">
-      {/* Header */}
-      <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Progress</h1>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="bg-surface border-border rounded-lg border px-3 py-1.5 text-sm"
-            >
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="90">Last 90 Days</option>
-              <option value="365">Last Year</option>
-            </select>
-          </div>
+    <div className="min-h-screen bg-background pb-24">
+      <div className="p-6 space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-4xl font-bold text-foreground">Progress</h1>
         </div>
-      </header>
 
-      {/* Category Tabs */}
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
-              className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeCategory === category.id
-                  ? "bg-secondary text-white"
-                  : "bg-surface text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 space-y-4 p-4">
-        {activeCategory === "weight-loss" && (
-          <>
-            {/* Weight Stats Card */}
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingDown className="h-5 w-5 text-success" />
-                <h2 className="text-lg font-bold">Weight Tracking</h2>
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Start</p>
-                  <p className="text-lg font-bold">{weightData.start} lbs</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Current</p>
-                  <p className="text-lg font-bold">{weightData.current} lbs</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Change</p>
-                  <p className="text-lg font-bold text-success">
-                    {weightData.change} lbs
-                  </p>
-                </div>
-              </div>
-
-              {/* Chart Placeholder */}
-              <div className="h-[120px] bg-surface rounded-lg mb-4 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Chart visualization</p>
-              </div>
-
-              <Button variant="outline" className="w-full" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Weight Entry
-              </Button>
-            </Card>
-
-            {/* Photo Progress Card (Premium) */}
-            <Card className="p-4 bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/20">
-              <div className="flex items-center gap-2 mb-3">
-                <Camera className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-bold">Photo Progress</h2>
-                <Lock className="h-4 w-4 text-primary ml-auto" />
-              </div>
-
-              <p className="text-sm text-muted-foreground mb-4">
-                Track visual changes with AI-powered analysis
-              </p>
-
-              {/* Photo Timeline Placeholder */}
-              <div className="flex gap-2 overflow-x-auto mb-4">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-20 h-20 bg-surface rounded-lg flex-shrink-0 flex items-center justify-center"
-                  >
-                    <Camera className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                ))}
-                <button className="w-20 h-20 bg-primary/20 border-2 border-dashed border-primary rounded-lg flex-shrink-0 flex items-center justify-center">
-                  <Plus className="h-6 w-6 text-primary" />
-                </button>
-              </div>
-
-              {/* Compare Section */}
-              <div className="bg-secondary/20 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="h-4 w-4 text-secondary" />
-                  <h3 className="font-semibold text-sm">Compare Any Two Dates</h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Select Before
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs">
-                    Select After
-                  </Button>
-                </div>
-
-                <div className="bg-surface/50 rounded-lg p-3 text-xs">
-                  <p className="font-semibold mb-2">AI Analysis (Beta)</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• Body fat: 18% → 15% (-3%)</li>
-                    <li>• Muscle: Improved in arms, shoulders</li>
-                    <li>• Change: Noticeable lean muscle gain</li>
-                    <li>• Confidence: 85%</li>
-                  </ul>
-                </div>
-              </div>
-
-              <Button className="w-full" size="sm">
-                Unlock Premium
-              </Button>
-            </Card>
-
-            {/* Journal Section */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Journal</h2>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Note
-                </Button>
-              </div>
-
-              {/* Journal Entries */}
-              <div className="space-y-3">
-                {[
-                  { date: "Mar 15, 2025", note: "Feeling great, energy levels high" },
-                  { date: "Mar 10, 2025", note: "Noticed visible changes in midsection" },
-                ].map((entry, i) => (
-                  <div key={i} className="border-l-2 border-primary pl-3 py-1">
-                    <p className="text-xs text-muted-foreground mb-1">{entry.date}</p>
-                    <p className="text-sm">{entry.note}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </>
-        )}
-
-        {activeCategory !== "weight-loss" && (
-          <Card className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">
-              {categories.find((c) => c.id === activeCategory)?.label} tracking coming soon
-            </p>
-            <Button variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Entry
+        {/* Weight Progress Section */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
+            <Button onClick={() => setShowLogModal(true)} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Log Weight
             </Button>
+          </div>
+
+          {/* Current Weight Display */}
+          {currentWeight && (
+            <div className="flex items-baseline gap-6">
+              <div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-bold text-foreground">{currentWeight}</span>
+                  <span className="text-xl text-muted-foreground">lbs</span>
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Current</div>
+              </div>
+            </div>
+          )}
+
+          {/* Timeframe Selector */}
+          <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
+            {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeFrame(tf)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  timeFrame === tf
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          {/* Graph Container */}
+          <Card className="p-4 h-52 bg-muted/30 relative">
+            {weightEntries.length > 0 ? (
+              <svg width="100%" height="100%" className="absolute inset-0">
+                {/* Simple line graph */}
+                {weightEntries.map((entry, i) => {
+                  if (i === weightEntries.length - 1) return null;
+                  const x1 = (i / (weightEntries.length - 1)) * 100;
+                  const x2 = ((i + 1) / (weightEntries.length - 1)) * 100;
+                  const y1 = 80 - ((entry.metrics?.weight || 0) / 250) * 60;
+                  const y2 = 80 - ((weightEntries[i + 1].metrics?.weight || 0) / 250) * 60;
+                  
+                  return (
+                    <line
+                      key={entry.id}
+                      x1={`${x1}%`}
+                      y1={`${y1}%`}
+                      x2={`${x2}%`}
+                      y2={`${y2}%`}
+                      stroke="hsl(var(--primary))"
+                      strokeWidth="3"
+                    />
+                  );
+                })}
+                {weightEntries.map((entry, i) => {
+                  const x = (i / (weightEntries.length - 1)) * 100;
+                  const y = 80 - ((entry.metrics?.weight || 0) / 250) * 60;
+                  
+                  return (
+                    <circle
+                      key={entry.id}
+                      cx={`${x}%`}
+                      cy={`${y}%`}
+                      r="4"
+                      fill="hsl(var(--primary))"
+                    />
+                  );
+                })}
+              </svg>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                No weight data yet. Start logging to see your progress!
+              </div>
+            )}
           </Card>
-        )}
+        </div>
+
+        {/* Visual Progress Section */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+            <Button onClick={() => setShowPhotoModal(true)} size="sm">
+              <Camera className="w-4 h-4 mr-2" />
+              Upload Photo
+            </Button>
+          </div>
+
+          {/* Photo Gallery - Horizontal Scroll */}
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {photoEntries.length > 0 ? (
+              photoEntries.map((entry) => (
+                <div key={entry.id} className="flex-shrink-0 text-center">
+                  <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={getPhotoUrl(entry.photo_url!)}
+                      alt={`Progress ${entry.entry_date}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {format(new Date(entry.entry_date), 'MMM d')}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="w-full text-center py-8 text-muted-foreground">
+                No photos yet. Upload your first progress photo!
+              </div>
+            )}
+          </div>
+
+          {photoEntries.length > 0 && (
+            <Button variant="outline" className="w-full">
+              View All Photos & Compare
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 flex h-16 items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm">
-        {[
-          { name: "Today", path: "/today", active: false },
-          { name: "My Stack", path: "/stack", active: false },
-          { name: "Progress", path: "/progress", active: true },
-          { name: "Settings", path: "/settings", active: false },
-        ].map((tab) => (
-          <button
-            key={tab.name}
-            onClick={() => navigate(tab.path)}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              tab.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <div className="h-1 w-1 rounded-full" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+        <div className="flex justify-around items-center h-20 pb-6">
+          <button onClick={() => navigate("/")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <Calendar className="w-6 h-6" />
+            <span className="text-xs">Today</span>
           </button>
-        ))}
-      </nav>
+          <button onClick={() => navigate("/add-compound")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <Plus className="w-6 h-6" />
+            <span className="text-xs">Add</span>
+          </button>
+          <button onClick={() => navigate("/my-stack")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <div className="w-6 h-6 bg-muted rounded" />
+            <span className="text-xs">Stack</span>
+          </button>
+          <button onClick={() => navigate("/progress")} className="flex flex-col items-center gap-1 text-primary">
+            <div className="w-6 h-6 bg-primary rounded" />
+            <span className="text-xs font-medium">Progress</span>
+          </button>
+          <button onClick={() => navigate("/settings")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <div className="w-6 h-6 bg-muted rounded" />
+            <span className="text-xs">Settings</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Log Weight Modal */}
+      <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Weight</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="weight">Weight (lbs)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                placeholder="185.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="How are you feeling today?"
+                rows={3}
+              />
+            </div>
+            <Button onClick={handleLogWeight} disabled={loading} className="w-full">
+              {loading ? 'Logging...' : 'Log Weight'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Photo Modal */}
+      <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Progress Photo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="photo">Select Photo</Label>
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+              />
+              {photoFile && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  Selected: {photoFile.name}
+                </div>
+              )}
+            </div>
+            <Button onClick={handleUploadPhoto} disabled={loading || !photoFile} className="w-full">
+              {loading ? 'Uploading...' : 'Upload Photo'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
