@@ -163,7 +163,7 @@ export const AddCompoundScreen = () => {
     p.toLowerCase().includes(name.toLowerCase())
   );
 
-  const generateDoses = (compoundId: string) => {
+  const generateDoses = (compoundId: string, userId: string) => {
     const doses = [];
     const start = new Date(startDate);
     
@@ -219,6 +219,7 @@ export const AddCompoundScreen = () => {
 
       doses.push({
         compound_id: compoundId,
+        user_id: userId,
         scheduled_date: date.toISOString().split('T')[0],
         scheduled_time: isPremium ? customTime : timeOfDay,
         dose_amount: currentDose,
@@ -242,6 +243,12 @@ export const AddCompoundScreen = () => {
 
     setSaving(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       if (isEditing) {
         // Update existing compound
         const { error: updateError } = await supabase
@@ -286,7 +293,7 @@ export const AddCompoundScreen = () => {
         if (deleteError) throw deleteError;
 
         // Generate new doses for next 30 days
-        const doses = generateDoses(editingCompound.id);
+        const doses = generateDoses(editingCompound.id, user.id);
         const { error: dosesUpdateError } = await supabase
           .from('doses')
           .insert(doses);
@@ -302,6 +309,7 @@ export const AddCompoundScreen = () => {
         const { data: compound, error: compoundError } = await supabase
           .from('compounds')
           .insert([{
+            user_id: user.id,
             name,
             vial_size: vialSize ? parseFloat(vialSize) : null,
             vial_unit: vialUnit,
@@ -333,7 +341,7 @@ export const AddCompoundScreen = () => {
         if (compoundError) throw compoundError;
 
         // Generate doses for next 30 days
-        const doses = generateDoses(compound.id);
+        const doses = generateDoses(compound.id, user.id);
         const { error: dosesError } = await supabase
           .from('doses')
           .insert(doses);
