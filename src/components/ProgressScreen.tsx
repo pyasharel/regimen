@@ -190,24 +190,18 @@ export const ProgressScreen = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="p-6 space-y-8">
         {/* Header with Premium Toggle */}
-        <div className="space-y-4">
+        <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-foreground">Progress</h1>
           
-          {/* Premium Feature Toggle - For Testing */}
-          <Card className="p-4 bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground">Test Premium Features</h3>
-                <p className="text-sm text-muted-foreground">Toggle to preview premium photo tracking</p>
-              </div>
-              <Switch
-                id="premium-toggle"
-                checked={isPremium}
-                onCheckedChange={setIsPremium}
-                className="data-[state=checked]:bg-primary"
-              />
-            </div>
-          </Card>
+          {/* Compact Premium Toggle - For Testing */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
+            <span className="text-xs text-muted-foreground">Premium</span>
+            <Switch
+              id="premium-toggle"
+              checked={isPremium}
+              onCheckedChange={setIsPremium}
+            />
+          </div>
         </div>
 
         {/* Weight Progress Section */}
@@ -343,29 +337,30 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <>
-              {/* Preview for Free Users */}
+              {/* Preview for Free Users - Show Mock Photo Cards */}
               <div className="relative">
-                <div className="flex gap-3 overflow-hidden pb-2">
-                  {/* Mock preview images */}
-                  {[1, 2, 3, 4, 5].map((i) => (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {/* Mock photo cards to show what it would look like */}
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className="flex-shrink-0 text-center">
-                      <div className="w-24 h-32 rounded-lg bg-muted flex items-center justify-center">
-                        <Camera className="w-8 h-8 text-muted-foreground/40" />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
+                      <Card className="w-24 h-32 bg-muted border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                        <Camera className="w-6 h-6 text-muted-foreground/30" />
+                      </Card>
+                      <div className="text-xs text-muted-foreground/60 mt-2">
                         {format(new Date(2025, 9, i), 'MMM d')}
                       </div>
                     </div>
                   ))}
                 </div>
+                
                 {/* Overlay with upgrade prompt */}
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
-                  <Camera className="w-12 h-12 text-primary mb-3" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Visual Progress Photos</h3>
-                  <p className="text-sm text-muted-foreground mb-4 text-center px-4">
-                    Track your transformation with side-by-side photo comparisons
+                <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
+                  <Camera className="w-10 h-10 text-primary mb-2" />
+                  <h3 className="text-base font-semibold text-foreground mb-1">Photo Progress Tracking</h3>
+                  <p className="text-xs text-muted-foreground mb-3 text-center px-4 max-w-xs">
+                    See your transformation with side-by-side comparisons
                   </p>
-                  <Button variant="default">
+                  <Button size="sm">
                     Unlock Premium
                   </Button>
                 </div>
