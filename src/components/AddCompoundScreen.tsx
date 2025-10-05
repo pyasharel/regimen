@@ -398,7 +398,7 @@ export const AddCompoundScreen = () => {
         </div>
       </header>
 
-      <div className="flex-1 space-y-6 p-4">
+      <div className="flex-1 space-y-6 p-4 max-w-2xl mx-auto">
         {/* Basic Info */}
         <div className="space-y-4">
           <div className="space-y-2 relative">
@@ -431,59 +431,28 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dosage *</Label>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-[2fr_1fr] gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="intendedDose">Dosage *</Label>
               <Input
                 id="intendedDose"
                 type="number"
                 value={intendedDose}
                 onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="Enter dose"
-                className="flex-1"
+                placeholder="e.g., 250"
               />
-              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
-                <button
-                  onClick={() => {
-                    if (doseUnit === 'mg' && intendedDose) {
-                      // Converting from mg to mcg - don't modify value
-                      setDoseUnit('mcg');
-                    } else if (doseUnit === 'mcg' && intendedDose) {
-                      // Converting from mcg to mg - don't modify value
-                      setDoseUnit('mg');
-                    } else {
-                      setDoseUnit('mcg');
-                    }
-                  }}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mcg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mcg
-                </button>
-                <button
-                  onClick={() => {
-                    if (doseUnit === 'mcg' && intendedDose) {
-                      // Converting from mcg to mg - don't modify value
-                      setDoseUnit('mg');
-                    } else if (doseUnit === 'mg' && intendedDose) {
-                      // Converting from mg to mcg - don't modify value
-                      setDoseUnit('mcg');
-                    } else {
-                      setDoseUnit('mg');
-                    }
-                  }}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mg
-                </button>
-              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <select
+                value={doseUnit}
+                onChange={(e) => setDoseUnit(e.target.value)}
+                className="w-full h-10 bg-background border-border rounded-lg border px-3 text-sm"
+              >
+                <option value="mcg">mcg</option>
+                <option value="mg">mg</option>
+                <option value="IU">IU</option>
+              </select>
             </div>
           </div>
 
@@ -659,27 +628,31 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Start Date</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="endDate" className="text-sm text-muted-foreground">
-              End Date <span className="font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="Leave blank for ongoing"
-            />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate" className="text-sm text-muted-foreground">
+                  End Date <span className="font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="Leave blank for ongoing"
+                  min={startDate}
+                />
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground">
               Doses auto-generate for 60 days (or until end date if sooner)
             </p>
