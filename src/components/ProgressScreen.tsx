@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type ProgressEntry = {
   id: string;
@@ -179,6 +180,16 @@ export const ProgressScreen = () => {
   const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
   const currentWeight = entries[0]?.metrics?.weight;
 
+  // Prepare chart data
+  const chartData = weightEntries
+    .slice()
+    .reverse() // Show oldest to newest
+    .map(entry => ({
+      date: format(new Date(entry.entry_date), 'MMM d'),
+      weight: Math.round(entry.metrics.weight * 10) / 10, // Round to 1 decimal
+      fullDate: entry.entry_date
+    }));
+
   const getPhotoUrl = (photoPath: string) => {
     const { data } = supabase.storage
       .from('progress-photos')
@@ -245,46 +256,52 @@ export const ProgressScreen = () => {
           </div>
 
           {/* Graph Container */}
-          <Card className="p-4 h-52 bg-muted/30 relative">
-            {weightEntries.length > 0 ? (
-              <svg width="100%" height="100%" className="absolute inset-0">
-                {/* Simple line graph */}
-                {weightEntries.map((entry, i) => {
-                  if (i === weightEntries.length - 1) return null;
-                  const x1 = (i / (weightEntries.length - 1)) * 100;
-                  const x2 = ((i + 1) / (weightEntries.length - 1)) * 100;
-                  const y1 = 80 - ((entry.metrics?.weight || 0) / 250) * 60;
-                  const y2 = 80 - ((weightEntries[i + 1].metrics?.weight || 0) / 250) * 60;
-                  
-                  return (
-                    <line
-                      key={entry.id}
-                      x1={`${x1}%`}
-                      y1={`${y1}%`}
-                      x2={`${x2}%`}
-                      y2={`${y2}%`}
-                      stroke="hsl(var(--primary))"
-                      strokeWidth="3"
-                    />
-                  );
-                })}
-                {weightEntries.map((entry, i) => {
-                  const x = (i / (weightEntries.length - 1)) * 100;
-                  const y = 80 - ((entry.metrics?.weight || 0) / 250) * 60;
-                  
-                  return (
-                    <circle
-                      key={entry.id}
-                      cx={`${x}%`}
-                      cy={`${y}%`}
-                      r="4"
-                      fill="hsl(var(--primary))"
-                    />
-                  );
-                })}
-              </svg>
+          <Card className="p-4 bg-muted/30">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={['dataMin - 5', 'dataMax + 5']}
+                    label={{ 
+                      value: 'Weight (lbs)', 
+                      angle: -90, 
+                      position: 'insideLeft',
+                      style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
+                    }}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      fontSize: '12px'
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="weight" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                 No weight data yet. Start logging to see your progress!
               </div>
             )}
