@@ -114,15 +114,10 @@ export const MyStackScreen = () => {
   };
 
   const getScheduleDisplay = (compound: Compound) => {
-    if (compound.schedule_type === 'Specific day of the week' && compound.schedule_days) {
+    if ((compound.schedule_type === 'Specific day(s)' || compound.schedule_type === 'Specific day of the week') && compound.schedule_days) {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const selectedDays = compound.schedule_days.map(d => dayNames[parseInt(d)]);
+      const selectedDays = compound.schedule_days.map(d => dayNames[typeof d === 'string' ? parseInt(d) : d]);
       return selectedDays.join(', ');
-    }
-    if (compound.schedule_type === 'Bi-weekly' && compound.schedule_days) {
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const selectedDays = compound.schedule_days.map(d => dayNames[parseInt(d)]);
-      return `Bi-weekly (${selectedDays.join(', ')})`;
     }
     return compound.schedule_type;
   };

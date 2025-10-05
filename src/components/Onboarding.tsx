@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Syringe, TrendingUp, Calendar } from "lucide-react";
@@ -25,15 +25,25 @@ export const Onboarding = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
+  // Check if user has already completed onboarding
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
+    if (hasCompletedOnboarding === 'true') {
+      navigate("/today");
+    }
+  }, [navigate]);
+
   const handleNext = () => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
+      localStorage.setItem('hasCompletedOnboarding', 'true');
       navigate("/today");
     }
   };
 
   const handleSkip = () => {
+    localStorage.setItem('hasCompletedOnboarding', 'true');
     navigate("/today");
   };
 

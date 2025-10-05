@@ -41,7 +41,6 @@ export const AddCompoundScreen = () => {
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
   const [customDays, setCustomDays] = useState<number[]>([]);
-  const [biweeklyDays, setBiweeklyDays] = useState<number[]>([]);
   const [everyXDays, setEveryXDays] = useState(3);
   const [timeOfDay, setTimeOfDay] = useState("Morning");
   const [customTime, setCustomTime] = useState("09:00");
@@ -83,11 +82,8 @@ export const AddCompoundScreen = () => {
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
       setTimeOfDay(editingCompound.time_of_day?.[0] || "Morning");
-      if (editingCompound.schedule_type === 'Specific day of the week') {
+      if (editingCompound.schedule_type === 'Specific day(s)' || editingCompound.schedule_type === 'Specific day of the week') {
         setCustomDays(editingCompound.schedule_days?.map(Number) || []);
-      }
-      if (editingCompound.schedule_type === 'Bi-weekly') {
-        setBiweeklyDays(editingCompound.schedule_days?.map(Number) || []);
       }
       setStartDate(editingCompound.start_date);
       setIsActive(editingCompound.is_active ?? true);
@@ -178,15 +174,7 @@ export const AddCompoundScreen = () => {
       const dayOfWeek = date.getDay();
       
       // Check if should generate based on frequency
-      if (frequency === 'Weekdays' && (dayOfWeek === 0 || dayOfWeek === 6)) {
-        continue;
-      }
-      
-      if (frequency === 'Bi-weekly' && !biweeklyDays.includes(dayOfWeek)) {
-        continue;
-      }
-
-      if (frequency === 'Specific day of the week' && !customDays.includes(dayOfWeek)) {
+      if (frequency === 'Specific day(s)' && !customDays.includes(dayOfWeek)) {
         continue;
       }
       
@@ -242,12 +230,11 @@ export const AddCompoundScreen = () => {
     }
 
     // Debug logging
+    const scheduleToSave = frequency === 'Specific day(s)' ? customDays : null;
     console.log('Saving compound with schedule:', {
       frequency,
       customDays,
-      biweeklyDays,
-      schedule_days: frequency === 'Bi-weekly' ? biweeklyDays : 
-                     frequency === 'Specific day of the week' ? customDays : null
+      schedule_days: scheduleToSave
     });
 
     setSaving(true);
@@ -272,8 +259,7 @@ export const AddCompoundScreen = () => {
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
             schedule_type: frequency,
             time_of_day: [isPremium ? customTime : timeOfDay],
-            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
-                          frequency === 'Specific day of the week' ? customDays.map(String) : null,
+            schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
@@ -326,10 +312,9 @@ export const AddCompoundScreen = () => {
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
-            schedule_type: frequency,
-            time_of_day: [isPremium ? customTime : timeOfDay],
-            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
-                          frequency === 'Specific day of the week' ? customDays.map(String) : null,
+          schedule_type: frequency,
+          time_of_day: [isPremium ? customTime : timeOfDay],
+          schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
@@ -491,9 +476,9 @@ export const AddCompoundScreen = () => {
           {showCalculator && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
-                <Label>Vial Size</Label>
+                <Label>Peptide Amount</Label>
                 <div className="flex gap-2">
-                  {[3, 5, 10, 20].map((size) => (
+                  {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
                       onClick={() => setVialSize(size.toString())}
@@ -568,21 +553,18 @@ export const AddCompoundScreen = () => {
               value={frequency}
               onChange={(e) => {
                 setFrequency(e.target.value);
-                if (e.target.value === 'Bi-weekly') setBiweeklyDays([]);
-                if (e.target.value === 'Specific day of the week') setCustomDays([]);
+                if (e.target.value === 'Specific day(s)') setCustomDays([]);
               }}
               className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
             >
               <option value="Daily">Daily</option>
-              <option value="Specific day of the week">Specific day of the week</option>
-              <option value="Bi-weekly">Bi-weekly</option>
-              <option value="Weekdays">Weekdays</option>
+              <option value="Specific day(s)">Specific day(s)</option>
               <option value="Every X Days">Every X Days</option>
               <option value="As Needed">As Needed</option>
             </select>
           </div>
 
-          {frequency === 'Specific day of the week' && (
+          {frequency === 'Specific day(s)' && (
             <div className="space-y-2">
               <Label>Select Days</Label>
               <div className="grid grid-cols-7 gap-2">
@@ -609,32 +591,6 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          {frequency === 'Bi-weekly' && (
-            <div className="space-y-2">
-              <Label className="text-warning">Select Two Days</Label>
-              <div className="grid grid-cols-7 gap-2">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      if (biweeklyDays.includes(idx)) {
-                        setBiweeklyDays(biweeklyDays.filter(d => d !== idx));
-                      } else if (biweeklyDays.length < 2) {
-                        setBiweeklyDays([...biweeklyDays, idx]);
-                      }
-                    }}
-                    className={`p-2 rounded-lg text-sm font-medium transition-colors ${
-                      biweeklyDays.includes(idx)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {frequency === 'Every X Days' && (
             <div className="space-y-2">
