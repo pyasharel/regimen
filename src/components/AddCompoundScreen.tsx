@@ -37,8 +37,18 @@ export const AddCompoundScreen = () => {
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
+  const [numberOfDoses, setNumberOfDoses] = useState(1);
   const [timeOfDay, setTimeOfDay] = useState("Morning");
+  const [timeOfDay2, setTimeOfDay2] = useState("Evening");
+  const [customTime, setCustomTime] = useState("09:00");
+  const [customTime2, setCustomTime2] = useState("18:00");
+  const [biweeklyDays, setBiweeklyDays] = useState<number[]>([]);
+  const [everyXDays, setEveryXDays] = useState(3);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [enableReminder, setEnableReminder] = useState(false);
+  
+  // Premium feature (for demo purposes, set to false for free users)
+  const isPremium = false;
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -47,7 +57,10 @@ export const AddCompoundScreen = () => {
       setIntendedDose(editingCompound.intended_dose.toString());
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
+      setNumberOfDoses(editingCompound.time_of_day?.length || 1);
       setTimeOfDay(editingCompound.time_of_day[0] || "Morning");
+      if (editingCompound.time_of_day[1]) setTimeOfDay2(editingCompound.time_of_day[1]);
+      if (editingCompound.schedule_days) setBiweeklyDays(editingCompound.schedule_days);
       setStartDate(editingCompound.start_date);
       if (editingCompound.vial_size) {
         setShowCalculator(true);
@@ -58,18 +71,27 @@ export const AddCompoundScreen = () => {
     }
   }, []);
 
-  // Calculate IU
+  // Calculate IU and auto-populate dose
   const calculateIU = () => {
-    if (!vialSize || !bacWater || !intendedDose) return null;
+    if (!vialSize || !bacWater) return null;
 
     const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
+    const doseMcg = intendedDose ? (doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose)) : 0;
     const concentration = vialMcg / parseFloat(bacWater);
     const volumeML = doseMcg / concentration;
-    return (volumeML * 100).toFixed(1);
+    return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
   };
 
   const calculatedIU = showCalculator ? calculateIU() : null;
+
+  // Auto-populate dose when calculator values change
+  useEffect(() => {
+    if (showCalculator && vialSize && bacWater && !intendedDose) {
+      // Auto-suggest a reasonable dose (e.g., 250mcg)
+      setIntendedDose("250");
+      setDoseUnit("mcg");
+    }
+  }, [vialSize, bacWater, showCalculator]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
@@ -83,6 +105,45 @@ export const AddCompoundScreen = () => {
   const filteredPeptides = COMMON_PEPTIDES.filter(p =>
     p.toLowerCase().includes(name.toLowerCase())
   );
+
+  const generateDoses = (compoundId: string) => {
+    const doses = [];
+    const start = new Date(startDate);
+    
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(start);
+      date.setDate(date.getDate() + i);
+      const dayOfWeek = date.getDay();
+      
+      // Check if should generate based on frequency
+      if (frequency === 'Weekdays' && (dayOfWeek === 0 || dayOfWeek === 6)) {
+        continue;
+      }
+      
+      if (frequency === 'Bi-weekly' && !biweeklyDays.includes(dayOfWeek)) {
+        continue;
+      }
+      
+      if (frequency === 'Every X Days' && i % everyXDays !== 0) {
+        continue;
+      }
+
+      // Generate dose(s) for this date
+      const timesToAdd = numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay];
+      timesToAdd.forEach(time => {
+        doses.push({
+          compound_id: compoundId,
+          scheduled_date: date.toISOString().split('T')[0],
+          scheduled_time: time,
+          dose_amount: parseFloat(intendedDose),
+          dose_unit: doseUnit,
+          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+        });
+      });
+    }
+    
+    return doses;
+  };
 
   const handleSave = async () => {
     if (!name || !intendedDose) {
@@ -109,24 +170,28 @@ export const AddCompoundScreen = () => {
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
             schedule_type: frequency,
-            time_of_day: [timeOfDay],
+            time_of_day: numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay],
+            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : null,
             start_date: startDate
           })
           .eq('id', editingCompound.id);
 
         if (updateError) throw updateError;
 
-        // Update existing doses
+        // Delete existing future doses and regenerate
+        const { error: deleteError } = await supabase
+          .from('doses')
+          .delete()
+          .eq('compound_id', editingCompound.id)
+          .gte('scheduled_date', new Date().toISOString().split('T')[0]);
+
+        if (deleteError) throw deleteError;
+
+        // Generate new doses for next 30 days
+        const doses = generateDoses(editingCompound.id);
         const { error: dosesUpdateError } = await supabase
           .from('doses')
-          .update({
-            dose_amount: parseFloat(intendedDose),
-            dose_unit: doseUnit,
-            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
-            scheduled_time: timeOfDay
-          })
-          .eq('compound_id', editingCompound.id)
-          .gte('scheduled_date', new Date().toISOString().split('T')[0]); // Only update future doses
+          .insert(doses);
 
         if (dosesUpdateError) throw dosesUpdateError;
 
@@ -138,7 +203,7 @@ export const AddCompoundScreen = () => {
         // Insert new compound
         const { data: compound, error: compoundError } = await supabase
           .from('compounds')
-          .insert({
+          .insert([{
             name,
             vial_size: vialSize ? parseFloat(vialSize) : null,
             vial_unit: vialUnit,
@@ -147,36 +212,17 @@ export const AddCompoundScreen = () => {
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
             schedule_type: frequency,
-            time_of_day: [timeOfDay],
+            time_of_day: numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay],
+            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : null,
             start_date: startDate
-          })
+          }])
           .select()
           .single();
 
         if (compoundError) throw compoundError;
 
         // Generate doses for next 30 days
-        const doses = [];
-        const start = new Date(startDate);
-        for (let i = 0; i < 30; i++) {
-          const date = new Date(start);
-          date.setDate(date.getDate() + i);
-          
-          // Check if should generate based on frequency
-          if (frequency === 'Weekdays' && (date.getDay() === 0 || date.getDay() === 6)) {
-            continue;
-          }
-
-          doses.push({
-            compound_id: compound.id,
-            scheduled_date: date.toISOString().split('T')[0],
-            scheduled_time: timeOfDay,
-            dose_amount: parseFloat(intendedDose),
-            dose_unit: doseUnit,
-            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
-          });
-        }
-
+        const doses = generateDoses(compound.id);
         const { error: dosesError } = await supabase
           .from('doses')
           .insert(doses);
@@ -248,28 +294,6 @@ export const AddCompoundScreen = () => {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Intended Dose *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="intendedDose"
-                type="number"
-                value={intendedDose}
-                onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="250"
-                className="flex-1"
-              />
-              <select
-                value={doseUnit}
-                onChange={(e) => setDoseUnit(e.target.value)}
-                className="bg-surface border-border rounded-lg border px-3 text-sm min-w-[80px]"
-              >
-                <option value="mcg">mcg</option>
-                <option value="mg">mg</option>
-              </select>
-            </div>
           </div>
 
           {/* Optional Dose Calculator */}
@@ -348,48 +372,185 @@ export const AddCompoundScreen = () => {
               )}
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dosage *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="intendedDose"
+                type="number"
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
+                placeholder=""
+                className="flex-1"
+              />
+              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
+                <button
+                  onClick={() => setDoseUnit('mcg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mcg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mcg
+                </button>
+                <button
+                  onClick={() => setDoseUnit('mg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mg
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Schedule */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold">Schedule</h2>
+        <div className="space-y-4 bg-surface rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Schedule</h2>
 
           <div className="space-y-2">
             <Label>Frequency</Label>
-            <div className="space-y-2">
-              {['Daily', 'Weekdays', 'As Needed'].map((freq) => (
-                <label key={freq} className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="frequency"
-                    checked={frequency === freq}
-                    onChange={() => setFrequency(freq)}
-                    className="h-4 w-4"
-                  />
-                  <span>{freq}</span>
-                </label>
-              ))}
-            </div>
+            <select
+              value={frequency}
+              onChange={(e) => {
+                setFrequency(e.target.value);
+                if (e.target.value === 'Bi-weekly') setBiweeklyDays([]);
+              }}
+              className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
+            >
+              <option value="Daily">Daily</option>
+              <option value="Bi-weekly">Bi-weekly</option>
+              <option value="Weekdays">Weekdays</option>
+              <option value="Every X Days">Every X Days</option>
+              <option value="As Needed">As Needed</option>
+            </select>
           </div>
 
+          {frequency === 'Bi-weekly' && (
+            <div className="space-y-2">
+              <Label>Select Days (2 days)</Label>
+              <div className="grid grid-cols-7 gap-2">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (biweeklyDays.includes(idx)) {
+                        setBiweeklyDays(biweeklyDays.filter(d => d !== idx));
+                      } else if (biweeklyDays.length < 2) {
+                        setBiweeklyDays([...biweeklyDays, idx]);
+                      }
+                    }}
+                    className={`p-2 rounded-lg text-sm font-medium transition-colors ${
+                      biweeklyDays.includes(idx)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {frequency === 'Every X Days' && (
+            <div className="space-y-2">
+              <Label>Every</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  value={everyXDays}
+                  onChange={(e) => setEveryXDays(parseInt(e.target.value) || 1)}
+                  className="w-20"
+                />
+                <span className="text-sm">days</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label>Time of Day</Label>
+            <Label>Number of Doses</Label>
             <div className="flex gap-2">
               <button
-                onClick={() => setTimeOfDay('Morning')}
+                onClick={() => setNumberOfDoses(1)}
                 className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  timeOfDay === 'Morning'
+                  numberOfDoses === 1
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-card border border-border hover:bg-muted'
                 }`}
               >
-                Morning
+                1
+              </button>
+              <button
+                onClick={() => setNumberOfDoses(2)}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                  numberOfDoses === 2
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card border border-border hover:bg-muted'
+                }`}
+              >
+                2
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Upgrade for custom times 🔒
-            </p>
           </div>
+
+          <div className="space-y-2">
+            <Label>{numberOfDoses === 2 ? 'First Dose Time' : 'Time'}</Label>
+            {isPremium ? (
+              <Input
+                type="time"
+                value={customTime}
+                onChange={(e) => setCustomTime(e.target.value)}
+                className="w-full"
+              />
+            ) : (
+              <div className="space-y-2">
+                <select
+                  value={timeOfDay}
+                  onChange={(e) => setTimeOfDay(e.target.value)}
+                  className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
+                >
+                  <option value="Morning">Morning</option>
+                  <option value="Afternoon">Afternoon</option>
+                  <option value="Evening">Evening</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Upgrade for custom times 🔒
+                </p>
+              </div>
+            )}
+          </div>
+
+          {numberOfDoses === 2 && (
+            <div className="space-y-2">
+              <Label>Second Dose Time</Label>
+              {isPremium ? (
+                <Input
+                  type="time"
+                  value={customTime2}
+                  onChange={(e) => setCustomTime2(e.target.value)}
+                  className="w-full"
+                />
+              ) : (
+                <select
+                  value={timeOfDay2}
+                  onChange={(e) => setTimeOfDay2(e.target.value)}
+                  className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
+                >
+                  <option value="Morning">Morning</option>
+                  <option value="Afternoon">Afternoon</option>
+                  <option value="Evening">Evening</option>
+                </select>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="startDate">Start Date</Label>
@@ -400,6 +561,31 @@ export const AddCompoundScreen = () => {
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
+
+          {/* Premium Reminder Toggle */}
+          {!isPremium && (
+            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border opacity-60">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
+                <span className="text-xs text-muted-foreground">🔒 Premium</span>
+              </div>
+              <div className="w-11 h-6 bg-muted rounded-full"></div>
+            </div>
+          )}
+
+          {isPremium && (
+            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+              <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
+              <input
+                id="reminder"
+                type="checkbox"
+                checked={enableReminder}
+                onChange={(e) => setEnableReminder(e.target.checked)}
+                className="w-11 h-6"
+              />
+            </div>
+          )}
+
         </div>
       </div>
 
