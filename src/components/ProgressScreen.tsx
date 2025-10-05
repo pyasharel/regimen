@@ -190,16 +190,24 @@ export const ProgressScreen = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="p-6 space-y-8">
         {/* Header with Premium Toggle */}
-        <div className="flex justify-between items-center">
+        <div className="space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Progress</h1>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="premium-toggle" className="text-sm text-muted-foreground">Premium</Label>
-            <Switch
-              id="premium-toggle"
-              checked={isPremium}
-              onCheckedChange={setIsPremium}
-            />
-          </div>
+          
+          {/* Premium Feature Toggle - For Testing */}
+          <Card className="p-4 bg-muted/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground">Test Premium Features</h3>
+                <p className="text-sm text-muted-foreground">Toggle to preview premium photo tracking</p>
+              </div>
+              <Switch
+                id="premium-toggle"
+                checked={isPremium}
+                onCheckedChange={setIsPremium}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+          </Card>
         </div>
 
         {/* Weight Progress Section */}
