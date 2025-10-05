@@ -1,8 +1,9 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,9 +34,9 @@ export const AddCompoundScreen = () => {
 
   // IU calculator (optional)
   const [showCalculator, setShowCalculator] = useState(false);
-  const [vialSize, setVialSize] = useState("");
+  const [vialSize, setVialSize] = useState("5");
   const [vialUnit, setVialUnit] = useState("mg");
-  const [bacWater, setBacWater] = useState("");
+  const [bacWater, setBacWater] = useState("2");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -48,21 +49,30 @@ export const AddCompoundScreen = () => {
   const [enableReminder, setEnableReminder] = useState(true);
 
   // Cycle (premium)
-  const [cycleType, setCycleType] = useState("Indefinitely");
+  const [enableCycle, setEnableCycle] = useState(false);
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
 
-  // Titration (premium)
+  // Titration (premium) - array of steps
   const [enableTitration, setEnableTitration] = useState(false);
-  const [titrationWeeks, setTitrationWeeks] = useState(4);
-  const [titrationStartDose, setTitrationStartDose] = useState("");
-  const [titrationEndDose, setTitrationEndDose] = useState("");
+  const [titrationSteps, setTitrationSteps] = useState<Array<{
+    weeks: number;
+    targetDose: string;
+  }>>([{ weeks: 4, targetDose: "" }]);
 
   // Active status
   const [isActive, setIsActive] = useState(true);
   
   // Premium feature (for testing, toggle this)
   const [isPremium, setIsPremium] = useState(false);
+
+  // Auto-populate titration starting dose from main dosage
+  useEffect(() => {
+    if (enableTitration && intendedDose && titrationSteps[0].targetDose === "") {
+      // Starting dose defaults to current dosage
+      // First step is where they want to go
+    }
+  }, [enableTitration, intendedDose]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -72,7 +82,7 @@ export const AddCompoundScreen = () => {
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
       setTimeOfDay(editingCompound.time_of_day?.[0] || "Morning");
-      if (editingCompound.schedule_type === 'Custom') {
+      if (editingCompound.schedule_type === 'Specific day of the week') {
         setCustomDays(editingCompound.schedule_days?.map(Number) || []);
       }
       if (editingCompound.schedule_type === 'Bi-weekly') {
@@ -82,7 +92,7 @@ export const AddCompoundScreen = () => {
       setIsActive(editingCompound.is_active ?? true);
       
       if (editingCompound.has_cycles) {
-        setCycleType("Specific");
+        setEnableCycle(true);
         setCycleWeeksOn(editingCompound.cycle_weeks_on || 4);
         setCycleWeeksOff(editingCompound.cycle_weeks_off || 2);
       }
@@ -90,9 +100,9 @@ export const AddCompoundScreen = () => {
       if (editingCompound.has_titration && editingCompound.titration_config) {
         setEnableTitration(true);
         const config = editingCompound.titration_config as any;
-        setTitrationWeeks(config.weeks || 4);
-        setTitrationStartDose(config.start_dose?.toString() || "");
-        setTitrationEndDose(config.end_dose?.toString() || "");
+        if (config.steps && Array.isArray(config.steps)) {
+          setTitrationSteps(config.steps);
+        }
       }
       
       if (editingCompound.vial_size) {
@@ -175,16 +185,24 @@ export const AddCompoundScreen = () => {
 
       // Calculate dose based on titration
       let currentDose = parseFloat(intendedDose);
-      if (enableTitration && titrationStartDose && titrationEndDose) {
+      if (enableTitration && titrationSteps.length > 0) {
         const weekNumber = Math.floor(i / 7);
-        const totalWeeks = titrationWeeks;
-        const startDose = parseFloat(titrationStartDose);
-        const endDose = parseFloat(titrationEndDose);
+        let startDose = parseFloat(intendedDose);
+        let cumulativeWeeks = 0;
         
-        if (weekNumber < totalWeeks) {
-          currentDose = startDose + ((endDose - startDose) / totalWeeks) * weekNumber;
-        } else {
-          currentDose = endDose;
+        for (const step of titrationSteps) {
+          if (weekNumber < cumulativeWeeks + step.weeks) {
+            // We're in this step
+            const targetDose = parseFloat(step.targetDose);
+            const weeksIntoStep = weekNumber - cumulativeWeeks;
+            currentDose = startDose + ((targetDose - startDose) / step.weeks) * weeksIntoStep;
+            break;
+          } else {
+            // Move to next step
+            cumulativeWeeks += step.weeks;
+            startDose = parseFloat(step.targetDose);
+            currentDose = startDose;
+          }
         }
       }
 
@@ -228,16 +246,18 @@ export const AddCompoundScreen = () => {
             schedule_type: frequency,
             time_of_day: [isPremium ? customTime : timeOfDay],
             schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
-                          frequency === 'Custom' ? customDays.map(String) : null,
+                          frequency === 'Specific day of the week' ? customDays.map(String) : null,
             start_date: startDate,
-            has_cycles: cycleType === 'Specific',
-            cycle_weeks_on: cycleType === 'Specific' ? cycleWeeksOn : null,
-            cycle_weeks_off: cycleType === 'Specific' ? cycleWeeksOff : null,
+            has_cycles: enableCycle,
+            cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
+            cycle_weeks_off: enableCycle ? cycleWeeksOff : null,
             has_titration: enableTitration,
             titration_config: enableTitration ? {
-              weeks: titrationWeeks,
-              start_dose: parseFloat(titrationStartDose),
-              end_dose: parseFloat(titrationEndDose)
+              starting_dose: parseFloat(intendedDose),
+              steps: titrationSteps.map(step => ({
+                weeks: step.weeks,
+                targetDose: parseFloat(step.targetDose)
+              }))
             } : null,
             is_active: isActive
           })
@@ -281,16 +301,18 @@ export const AddCompoundScreen = () => {
             schedule_type: frequency,
             time_of_day: [isPremium ? customTime : timeOfDay],
             schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
-                          frequency === 'Custom' ? customDays.map(String) : null,
+                          frequency === 'Specific day of the week' ? customDays.map(String) : null,
             start_date: startDate,
-            has_cycles: cycleType === 'Specific',
-            cycle_weeks_on: cycleType === 'Specific' ? cycleWeeksOn : null,
-            cycle_weeks_off: cycleType === 'Specific' ? cycleWeeksOff : null,
+            has_cycles: enableCycle,
+            cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
+            cycle_weeks_off: enableCycle ? cycleWeeksOff : null,
             has_titration: enableTitration,
             titration_config: enableTitration ? {
-              weeks: titrationWeeks,
-              start_dose: parseFloat(titrationStartDose),
-              end_dose: parseFloat(titrationEndDose)
+              starting_dose: parseFloat(intendedDose),
+              steps: titrationSteps.map(step => ({
+                weeks: step.weeks,
+                targetDose: parseFloat(step.targetDose)
+              }))
             } : null,
             is_active: isActive
           }])
@@ -374,42 +396,6 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dosage *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="intendedDose"
-                type="number"
-                value={intendedDose}
-                onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="Enter dose"
-                className="flex-1"
-              />
-              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
-                <button
-                  onClick={() => setDoseUnit('mcg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mcg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mcg
-                </button>
-                <button
-                  onClick={() => setDoseUnit('mg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mg
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* IU Calculator */}
           <button
             onClick={() => setShowCalculator(!showCalculator)}
@@ -486,6 +472,42 @@ export const AddCompoundScreen = () => {
               )}
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dosage *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="intendedDose"
+                type="number"
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
+                placeholder="Enter dose"
+                className="flex-1"
+              />
+              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
+                <button
+                  onClick={() => setDoseUnit('mcg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mcg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mcg
+                </button>
+                <button
+                  onClick={() => setDoseUnit('mg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mg
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Schedule */}
@@ -504,7 +526,7 @@ export const AddCompoundScreen = () => {
               className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
             >
               <option value="Daily">Daily</option>
-              <option value="Custom">Custom</option>
+              <option value="Specific day of the week">Specific day of the week</option>
               <option value="Bi-weekly">Bi-weekly</option>
               <option value="Weekdays">Weekdays</option>
               <option value="Every X Days">Every X Days</option>
@@ -512,7 +534,7 @@ export const AddCompoundScreen = () => {
             </select>
           </div>
 
-          {frequency === 'Custom' && (
+          {frequency === 'Specific day of the week' && (
             <div className="space-y-2">
               <Label>Select Days</Label>
               <div className="grid grid-cols-7 gap-2">
@@ -592,7 +614,7 @@ export const AddCompoundScreen = () => {
                   onChange={(e) => setCustomTime(e.target.value)}
                   className="w-full"
                 />
-              ) : (
+               ) : (
                 <select
                   value={timeOfDay}
                   onChange={(e) => setTimeOfDay(e.target.value)}
@@ -603,9 +625,10 @@ export const AddCompoundScreen = () => {
                 </select>
               )}
               {!isPremium && (
-                <p className="text-xs text-muted-foreground">
-                  Upgrade for custom times 🔒
-                </p>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Upgrade for custom times</span>
+                </div>
               )}
             </div>
           )}
@@ -623,12 +646,10 @@ export const AddCompoundScreen = () => {
           {/* Reminder Toggle */}
           <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
             <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
-            <input
+            <Switch
               id="reminder"
-              type="checkbox"
               checked={enableReminder}
-              onChange={(e) => setEnableReminder(e.target.checked)}
-              className="w-11 h-6"
+              onCheckedChange={setEnableReminder}
             />
           </div>
         </div>
@@ -637,37 +658,25 @@ export const AddCompoundScreen = () => {
         <div className="space-y-4 bg-surface rounded-lg p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
-            {!isPremium && <span className="text-xs text-muted-foreground">🔒 Premium</span>}
+            {!isPremium && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                <span>Premium</span>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <button
-                onClick={() => !isPremium || setCycleType("Indefinitely")}
-                disabled={!isPremium}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  cycleType === "Indefinitely"
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card border border-border hover:bg-muted'
-                } ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Indefinitely
-              </button>
-              <button
-                onClick={() => !isPremium || setCycleType("Specific")}
-                disabled={!isPremium}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  cycleType === "Specific"
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card border border-border hover:bg-muted'
-                } ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Specific
-              </button>
-            </div>
+          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+            <Label htmlFor="cycle" className="mb-0">Enable Cycle</Label>
+            <Switch
+              id="cycle"
+              checked={enableCycle}
+              onCheckedChange={(checked) => !isPremium || setEnableCycle(checked)}
+              disabled={!isPremium}
+            />
           </div>
 
-          {cycleType === "Specific" && isPremium && (
+          {enableCycle && isPremium && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -697,64 +706,92 @@ export const AddCompoundScreen = () => {
         <div className="space-y-4 bg-surface rounded-lg p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
-            {!isPremium && <span className="text-xs text-muted-foreground">🔒 Premium</span>}
+            {!isPremium && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                <span>Premium</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="titration">Enable Titration</Label>
-            <input
+          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+            <Label htmlFor="titration" className="mb-0">Enable Titration</Label>
+            <Switch
               id="titration"
-              type="checkbox"
               checked={enableTitration}
-              onChange={(e) => !isPremium || setEnableTitration(e.target.checked)}
+              onCheckedChange={(checked) => !isPremium || setEnableTitration(checked)}
               disabled={!isPremium}
-              className={`w-11 h-6 ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </div>
 
           {enableTitration && isPremium && (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Starting Dose</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    value={titrationStartDose}
-                    onChange={(e) => setTitrationStartDose(e.target.value)}
-                    placeholder="e.g., 2"
-                    className="flex-1"
-                  />
-                  <span className="flex items-center text-sm text-muted-foreground">{doseUnit}</span>
-                </div>
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Starting dose: <span className="font-semibold text-foreground">{intendedDose || '0'} {doseUnit}</span>
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Target Dose</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    value={titrationEndDose}
-                    onChange={(e) => setTitrationEndDose(e.target.value)}
-                    placeholder="e.g., 10"
-                    className="flex-1"
-                  />
-                  <span className="flex items-center text-sm text-muted-foreground">{doseUnit}</span>
-                </div>
-              </div>
+              {titrationSteps.map((step, index) => (
+                <div key={index} className="space-y-3 p-3 bg-background rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Step {index + 1}</Label>
+                    {titrationSteps.length > 1 && (
+                      <button
+                        onClick={() => setTitrationSteps(titrationSteps.filter((_, i) => i !== index))}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Titration Period</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={titrationWeeks}
-                    onChange={(e) => setTitrationWeeks(parseInt(e.target.value) || 1)}
-                    className="w-20"
-                  />
-                  <span className="text-sm">weeks</span>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Titration Period</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={step.weeks}
+                        onChange={(e) => {
+                          const newSteps = [...titrationSteps];
+                          newSteps[index].weeks = parseInt(e.target.value) || 1;
+                          setTitrationSteps(newSteps);
+                        }}
+                        className="w-20"
+                      />
+                      <span className="text-sm">weeks</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Target Dose</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={step.targetDose}
+                        onChange={(e) => {
+                          const newSteps = [...titrationSteps];
+                          newSteps[index].targetDose = e.target.value;
+                          setTitrationSteps(newSteps);
+                        }}
+                        placeholder="e.g., 4"
+                        className="flex-1"
+                      />
+                      <span className="flex items-center text-sm text-muted-foreground">{doseUnit}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTitrationSteps([...titrationSteps, { weeks: 4, targetDose: "" }])}
+                className="w-full"
+              >
+                + Add Another Step
+              </Button>
             </div>
           )}
         </div>
@@ -762,12 +799,10 @@ export const AddCompoundScreen = () => {
         {/* Active Protocol */}
         <div className="flex items-center justify-between p-4 bg-surface rounded-lg">
           <Label htmlFor="active" className="mb-0 text-base">Active Protocol</Label>
-          <input
+          <Switch
             id="active"
-            type="checkbox"
             checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="w-11 h-6"
+            onCheckedChange={setIsActive}
           />
         </div>
 
@@ -775,12 +810,10 @@ export const AddCompoundScreen = () => {
         <div className="p-4 bg-warning/10 border border-warning rounded-lg">
           <div className="flex items-center justify-between">
             <Label htmlFor="premium-test" className="mb-0 text-sm">Premium Mode (Testing)</Label>
-            <input
+            <Switch
               id="premium-test"
-              type="checkbox"
               checked={isPremium}
-              onChange={(e) => setIsPremium(e.target.checked)}
-              className="w-11 h-6"
+              onCheckedChange={setIsPremium}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">Toggle to test premium features</p>
