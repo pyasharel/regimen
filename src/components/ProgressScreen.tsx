@@ -115,11 +115,11 @@ export const ProgressScreen = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
+      
       const today = format(new Date(), 'yyyy-MM-dd');
       const fileExt = photoFile.name.split('.').pop();
-      const filePath = `${user.id}/${today}.${fileExt}`;
+      const userId = user?.id || 'anonymous';
+      const filePath = `${userId}/${today}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
@@ -130,7 +130,7 @@ export const ProgressScreen = () => {
       const { error: dbError } = await supabase
         .from('progress_entries')
         .upsert({
-          user_id: user.id,
+          user_id: user?.id || null,
           entry_date: today,
           category: 'general',
           photo_url: filePath,
