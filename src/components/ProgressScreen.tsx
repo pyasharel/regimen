@@ -45,13 +45,19 @@ export const ProgressScreen = () => {
   const fetchEntries = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('progress_entries')
         .select('*')
-        .eq('user_id', user.id)
         .order('entry_date', { ascending: false });
+
+      if (user) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.is('user_id', null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setEntries(data || []);
@@ -70,7 +76,6 @@ export const ProgressScreen = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
 
       const formattedDate = format(entryDate, 'yyyy-MM-dd');
       const weightValue = parseFloat(weight);
@@ -78,13 +83,11 @@ export const ProgressScreen = () => {
       
       const { error } = await supabase
         .from('progress_entries')
-        .upsert({
-          user_id: user.id,
+        .insert({
+          user_id: user?.id || null,
           entry_date: formattedDate,
           category: 'general',
           metrics: { weight: weightInLbs, unit: weightUnit },
-        }, {
-          onConflict: 'user_id,entry_date'
         });
 
       if (error) throw error;
@@ -287,56 +290,81 @@ export const ProgressScreen = () => {
         </div>
 
         {/* Visual Progress Section - Premium Feature */}
-        {isPremium ? (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+            {isPremium && (
               <Button onClick={() => setShowPhotoModal(true)} size="sm">
                 <Camera className="w-4 h-4 mr-2" />
                 Upload Photo
               </Button>
-            </div>
-
-            {/* Photo Gallery - Horizontal Scroll */}
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {photoEntries.length > 0 ? (
-                photoEntries.map((entry) => (
-                  <div key={entry.id} className="flex-shrink-0 text-center">
-                    <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
-                      <img
-                        src={getPhotoUrl(entry.photo_url!)}
-                        alt={`Progress ${entry.entry_date}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {format(new Date(entry.entry_date), 'MMM d')}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="w-full text-center py-8 text-muted-foreground">
-                  No photos yet. Upload your first progress photo!
-                </div>
-              )}
-            </div>
-
-            {photoEntries.length > 0 && (
-              <Button variant="outline" className="w-full">
-                View All Photos & Compare
-              </Button>
             )}
           </div>
-        ) : (
-          <Card className="p-8 text-center space-y-3 border-dashed">
-            <Camera className="w-12 h-12 mx-auto text-muted-foreground" />
-            <h3 className="text-lg font-semibold text-foreground">Visual Progress Photos</h3>
-            <p className="text-sm text-muted-foreground">Track your transformation with progress photos</p>
-            <Button variant="default" className="mt-4">
-              Unlock Premium
-            </Button>
-          </Card>
-        )}
+
+          {isPremium ? (
+            <>
+              {/* Full Photo Gallery for Premium Users */}
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {photoEntries.length > 0 ? (
+                  photoEntries.map((entry) => (
+                    <div key={entry.id} className="flex-shrink-0 text-center">
+                      <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={getPhotoUrl(entry.photo_url!)}
+                          alt={`Progress ${entry.entry_date}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(entry.entry_date), 'MMM d')}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="w-full text-center py-8 text-muted-foreground">
+                    No photos yet. Upload your first progress photo!
+                  </div>
+                )}
+              </div>
+
+              {photoEntries.length > 0 && (
+                <Button variant="outline" className="w-full">
+                  View All Photos & Compare
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Preview for Free Users */}
+              <div className="relative">
+                <div className="flex gap-3 overflow-hidden pb-2">
+                  {/* Mock preview images */}
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex-shrink-0 text-center">
+                      <div className="w-24 h-32 rounded-lg bg-muted flex items-center justify-center">
+                        <Camera className="w-8 h-8 text-muted-foreground/40" />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {format(new Date(2025, 9, i), 'MMM d')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Overlay with upgrade prompt */}
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
+                  <Camera className="w-12 h-12 text-primary mb-3" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Visual Progress Photos</h3>
+                  <p className="text-sm text-muted-foreground mb-4 text-center px-4">
+                    Track your transformation with side-by-side photo comparisons
+                  </p>
+                  <Button variant="default">
+                    Unlock Premium
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Bottom Navigation */}
@@ -369,7 +397,7 @@ export const ProgressScreen = () => {
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl">Current weight today?</DialogTitle>
+            <DialogTitle className="text-xl">Weight</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
             {/* Weight Input with Unit Selector */}
