@@ -174,8 +174,11 @@ export const AddCompoundScreen = () => {
       const dayOfWeek = date.getDay();
       
       // Check if should generate based on frequency
-      if (frequency === 'Specific day(s)' && !customDays.includes(dayOfWeek)) {
-        continue;
+      if (frequency === 'Specific day(s)') {
+        // customDays contains numbers, dayOfWeek is a number
+        if (!customDays.includes(dayOfWeek)) {
+          continue;
+        }
       }
       
       if (frequency === 'Every X Days' && i % everyXDays !== 0) {
@@ -230,11 +233,10 @@ export const AddCompoundScreen = () => {
     }
 
     // Debug logging
-    const scheduleToSave = frequency === 'Specific day(s)' ? customDays : null;
     console.log('Saving compound with schedule:', {
       frequency,
       customDays,
-      schedule_days: scheduleToSave
+      schedule_days: frequency === 'Specific day(s)' ? customDays : null
     });
 
     setSaving(true);
@@ -527,9 +529,9 @@ export const AddCompoundScreen = () => {
 
               {calculatedIU && (
                 <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-primary">{calculatedIU} IU</div>
+                  <div className="text-3xl font-bold text-primary">{calculatedIU} units</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    on a 100 IU insulin syringe
+                    on a 100 unit insulin syringe
                   </div>
                   {getWarning() && (
                     <div className="flex items-center gap-2 mt-3 text-sm text-warning">
