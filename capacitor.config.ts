@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.348ffbbac09744d8bbbea7cee13c09a9',
+  appId: 'com.regimenhealthhub.app',
   appName: 'regimen-health-hub',
   webDir: 'dist',
   server: {
