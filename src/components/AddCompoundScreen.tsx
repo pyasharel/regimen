@@ -241,6 +241,15 @@ export const AddCompoundScreen = () => {
       return;
     }
 
+    // Debug logging
+    console.log('Saving compound with schedule:', {
+      frequency,
+      customDays,
+      biweeklyDays,
+      schedule_days: frequency === 'Bi-weekly' ? biweeklyDays : 
+                     frequency === 'Specific day of the week' ? customDays : null
+    });
+
     setSaving(true);
     try {
       // Get current user

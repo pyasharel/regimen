@@ -26,15 +26,19 @@ export const TodayScreen = () => {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
 
-  // Generate week days centered on selected date
+  // Generate week days - keep the current week stable
   const getWeekDays = () => {
     const days = [];
+    // Start from the beginning of the current week (Sunday)
     const current = new Date(selectedDate);
+    const dayOfWeek = current.getDay();
+    const startOfWeek = new Date(current);
+    startOfWeek.setDate(current.getDate() - dayOfWeek);
     
-    // Generate 3 days before, the selected day, and 3 days after
-    for (let i = -3; i <= 3; i++) {
-      const day = new Date(current);
-      day.setDate(current.getDate() + i);
+    // Generate 7 days starting from Sunday
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
       days.push(day);
     }
     
@@ -207,7 +211,7 @@ export const TodayScreen = () => {
                 </svg>
               </button>
               
-              <div className="flex justify-between gap-2 flex-1 px-4">
+              <div className="flex justify-between gap-1.5 flex-1 px-4">
                 {weekDays.map((day, index) => {
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isSelected = day.toDateString() === selectedDate.toDateString();
@@ -216,7 +220,7 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 transition-colors relative ${
+                      className={`flex flex-col items-center gap-1 rounded-xl px-2.5 py-2 transition-colors relative ${
                         isSelected && isToday
                           ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
                           : isSelected
@@ -226,7 +230,7 @@ export const TodayScreen = () => {
                           : 'hover:bg-muted'
                       }`}
                     >
-                      {isToday && (
+                      {isToday && !isSelected && (
                         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
                       )}
                       <span className="text-xs font-medium">
