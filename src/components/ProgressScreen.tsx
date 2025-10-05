@@ -343,10 +343,10 @@ export const ProgressScreen = () => {
                   {/* Mock photo cards to show what it would look like */}
                   {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className="flex-shrink-0 text-center">
-                      <Card className="w-24 h-32 bg-muted border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                        <Camera className="w-6 h-6 text-muted-foreground/30" />
+                      <Card className="w-24 h-32 bg-muted/50 border-2 border-dashed border-primary/30 flex items-center justify-center">
+                        <Camera className="w-8 h-8 text-primary/40" />
                       </Card>
-                      <div className="text-xs text-muted-foreground/60 mt-2">
+                      <div className="text-xs text-muted-foreground mt-2">
                         {format(new Date(2025, 9, i), 'MMM d')}
                       </div>
                     </div>
