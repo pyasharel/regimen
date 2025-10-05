@@ -882,15 +882,17 @@ export const AddCompoundScreen = () => {
       </div>
 
       {/* Save Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border flex justify-center">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full max-w-2xl"
-          size="lg"
-        >
-          {saving ? 'Saving...' : isEditing ? 'Update Compound' : 'Save Compound'}
-        </Button>
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+        <div className="p-4 max-w-2xl mx-auto">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full"
+            size="lg"
+          >
+            {saving ? 'Saving...' : isEditing ? 'Update Compound' : 'Save Compound'}
+          </Button>
+        </div>
       </div>
     </div>
   );
