@@ -399,90 +399,11 @@ export const ProgressScreen = () => {
                     );
                   })}
                 </div>
-
-                {chartData.length > 0 && (
-                  <div className="border-t border-border pt-4">
-                    <div className="text-sm font-medium text-muted-foreground mb-3">Weight Correlation</div>
-                    <ResponsiveContainer width="100%" height={150}>
-                      <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                          domain={['dataMin - 5', 'dataMax + 5']}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px'
-                          }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="weight" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
-                          dot={{ fill: 'hsl(var(--primary))', r: 3 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No medications tracked yet</p>
                 <p className="text-sm mt-1">Add your first compound to see your medication timeline</p>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Recent Doses</h2>
-          
-          <Card className="p-4 bg-muted/30">
-            {recentDoses.length > 0 ? (
-              <div className="space-y-2">
-                {recentDoses.map((dose) => (
-                  <div 
-                    key={dose.id} 
-                    className="flex justify-between items-center p-3 bg-background rounded-lg"
-                  >
-                    <div>
-                      <div className="font-medium text-foreground">
-                        {dose.compounds?.name || 'Unknown'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {dose.dose_amount} {dose.dose_unit}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-foreground">
-                        {format(new Date(dose.scheduled_date), 'MMM d')}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {dose.taken_at ? format(new Date(dose.taken_at), 'h:mm a') : dose.scheduled_time}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No doses taken yet</p>
-                <p className="text-sm mt-1">Mark doses as taken to see your log</p>
               </div>
             )}
           </Card>

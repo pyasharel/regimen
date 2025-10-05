@@ -882,11 +882,11 @@ export const AddCompoundScreen = () => {
       </div>
 
       {/* Save Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border flex justify-center">
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="w-full"
+          className="w-full max-w-2xl"
           size="lg"
         >
           {saving ? 'Saving...' : isEditing ? 'Update Compound' : 'Save Compound'}
