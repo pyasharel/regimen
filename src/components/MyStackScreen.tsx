@@ -18,6 +18,7 @@ interface Compound {
   dose_unit: string;
   calculated_iu: number | null;
   schedule_type: string;
+  schedule_days: string[] | null;
   time_of_day: string[];
   start_date: string;
   is_active: boolean;
@@ -112,6 +113,20 @@ export const MyStackScreen = () => {
     return diff;
   };
 
+  const getScheduleDisplay = (compound: Compound) => {
+    if (compound.schedule_type === 'Specific day of the week' && compound.schedule_days) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const selectedDays = compound.schedule_days.map(d => dayNames[parseInt(d)]);
+      return selectedDays.join(', ');
+    }
+    if (compound.schedule_type === 'Bi-weekly' && compound.schedule_days) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const selectedDays = compound.schedule_days.map(d => dayNames[parseInt(d)]);
+      return `Bi-weekly (${selectedDays.join(', ')})`;
+    }
+    return compound.schedule_type;
+  };
+
   const handleEdit = (compound: Compound) => {
     // Navigate to add-compound screen with compound data as state
     navigate('/add-compound', { state: { editingCompound: compound } });
@@ -148,7 +163,7 @@ export const MyStackScreen = () => {
                         {' • '}{compound.time_of_day.join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {compound.schedule_type} • Active for {getDaysActive(compound.start_date)} days
+                        {getScheduleDisplay(compound)} • Active for {getDaysActive(compound.start_date)} days
                       </p>
                     </div>
                   </div>
@@ -203,7 +218,7 @@ export const MyStackScreen = () => {
                         {compound.intended_dose} {compound.dose_unit}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Completed
+                        {getScheduleDisplay(compound)} • Completed
                       </p>
                     </div>
                   </div>

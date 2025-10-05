@@ -181,7 +181,7 @@ export const AddCompoundScreen = () => {
         continue;
       }
 
-      if (frequency === 'Custom' && !customDays.includes(dayOfWeek)) {
+      if (frequency === 'Specific day of the week' && !customDays.includes(dayOfWeek)) {
         continue;
       }
       
