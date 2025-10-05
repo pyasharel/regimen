@@ -291,7 +291,7 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Visual Progress Section - Premium Feature */}
+        {/* Visual Progress Section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
@@ -303,30 +303,24 @@ export const ProgressScreen = () => {
             )}
           </div>
 
-          {isPremium ? (
+          {photoEntries.length > 0 ? (
             <>
-              {/* Full Photo Gallery for Premium Users */}
+              {/* Photo Gallery */}
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {photoEntries.length > 0 ? (
-                  photoEntries.map((entry) => (
-                    <div key={entry.id} className="flex-shrink-0 text-center">
-                      <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
-                        <img
-                          src={getPhotoUrl(entry.photo_url!)}
-                          alt={`Progress ${entry.entry_date}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {format(new Date(entry.entry_date), 'MMM d')}
-                      </div>
+                {photoEntries.map((entry) => (
+                  <div key={entry.id} className="flex-shrink-0 text-center">
+                    <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
+                      <img
+                        src={getPhotoUrl(entry.photo_url!)}
+                        alt={`Progress ${entry.entry_date}`}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  ))
-                ) : (
-                  <div className="w-full text-center py-8 text-muted-foreground">
-                    No photos yet. Upload your first progress photo!
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {format(new Date(entry.entry_date), 'MMM d')}
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
 
               {photoEntries.length > 0 && (
@@ -337,36 +331,46 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <>
-              {/* Preview for Free Users - Show Mock Photo Cards */}
-              <div className="relative">
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {/* Mock photo cards to show what it would look like */}
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="flex-shrink-0 text-center">
-                      <Card className="w-24 h-32 bg-muted/50 border-2 border-dashed border-primary/30 flex items-center justify-center">
-                        <Camera className="w-8 h-8 text-primary/40" />
-                      </Card>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {format(new Date(2025, 9, i), 'MMM d')}
-                      </div>
+              {/* Empty State - Show Placeholder Cards for Both Free & Premium */}
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="flex-shrink-0 text-center">
+                    <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
+                      <Camera className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
+                      {!isPremium && (
+                        <div className="absolute top-1 right-1 bg-primary/90 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-sm font-medium">
+                          PRO
+                        </div>
+                      )}
+                    </Card>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {format(new Date(2025, 9, i), 'MMM d')}
                     </div>
-                  ))}
-                </div>
-                
-                {/* Overlay with upgrade prompt */}
-                <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-lg">
-                  <div className="bg-card/95 backdrop-blur-sm p-6 rounded-lg border border-border shadow-lg max-w-xs">
-                    <Camera className="w-12 h-12 text-primary mb-3 mx-auto" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2 text-center">Photo Progress Tracking</h3>
-                    <p className="text-sm text-muted-foreground mb-4 text-center">
-                      See your transformation with side-by-side comparisons
+                  </div>
+                ))}
+              </div>
+
+              {/* Call to Action */}
+              {!isPremium && (
+                <Card className="p-6 bg-muted/30 border-primary/20">
+                  <div className="text-center">
+                    <Camera className="w-10 h-10 text-primary mb-3 mx-auto" />
+                    <h3 className="text-base font-semibold text-foreground mb-2">Track Your Transformation</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Upload progress photos and compare side-by-side with Premium
                     </p>
                     <Button size="sm" className="w-full">
                       Unlock Premium
                     </Button>
                   </div>
+                </Card>
+              )}
+
+              {isPremium && (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  Click "Upload Photo" to add your first progress photo
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
