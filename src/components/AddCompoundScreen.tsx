@@ -50,6 +50,7 @@ export const AddCompoundScreen = () => {
 
   // Cycle (premium)
   const [enableCycle, setEnableCycle] = useState(false);
+  const [cycleMode, setCycleMode] = useState<'continuous' | 'one-time'>('continuous');
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
 
@@ -94,7 +95,12 @@ export const AddCompoundScreen = () => {
       if (editingCompound.has_cycles) {
         setEnableCycle(true);
         setCycleWeeksOn(editingCompound.cycle_weeks_on || 4);
-        setCycleWeeksOff(editingCompound.cycle_weeks_off || 2);
+        if (editingCompound.cycle_weeks_off) {
+          setCycleMode('continuous');
+          setCycleWeeksOff(editingCompound.cycle_weeks_off);
+        } else {
+          setCycleMode('one-time');
+        }
       }
       
       if (editingCompound.has_titration && editingCompound.titration_config) {
@@ -250,7 +256,7 @@ export const AddCompoundScreen = () => {
             start_date: startDate,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
-            cycle_weeks_off: enableCycle ? cycleWeeksOff : null,
+            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
             has_titration: enableTitration,
             titration_config: enableTitration ? {
               starting_dose: parseFloat(intendedDose),
@@ -305,7 +311,7 @@ export const AddCompoundScreen = () => {
             start_date: startDate,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
-            cycle_weeks_off: enableCycle ? cycleWeeksOff : null,
+            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
             has_titration: enableTitration,
             titration_config: enableTitration ? {
               starting_dose: parseFloat(intendedDose),
@@ -677,7 +683,30 @@ export const AddCompoundScreen = () => {
           </div>
 
           {enableCycle && isPremium && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCycleMode('continuous')}
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                    cycleMode === 'continuous'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted'
+                  }`}
+                >
+                  Continuous Cycle
+                </button>
+                <button
+                  onClick={() => setCycleMode('one-time')}
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                    cycleMode === 'one-time'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted'
+                  }`}
+                >
+                  One-Time Duration
+                </button>
+              </div>
+
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
@@ -688,16 +717,25 @@ export const AddCompoundScreen = () => {
                 />
                 <span className="text-sm">weeks on</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="1"
-                  value={cycleWeeksOff}
-                  onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
-                  className="w-20"
-                />
-                <span className="text-sm">weeks off</span>
-              </div>
+
+              {cycleMode === 'continuous' && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={cycleWeeksOff}
+                    onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
+                    className="w-20"
+                  />
+                  <span className="text-sm">weeks off</span>
+                </div>
+              )}
+
+              {cycleMode === 'one-time' && (
+                <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                  After {cycleWeeksOn} week{cycleWeeksOn !== 1 ? 's' : ''}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                </p>
+              )}
             </div>
           )}
         </div>
