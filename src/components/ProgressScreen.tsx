@@ -354,15 +354,17 @@ export const ProgressScreen = () => {
                 </div>
                 
                 {/* Overlay with upgrade prompt */}
-                <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg">
-                  <Camera className="w-10 h-10 text-primary mb-2" />
-                  <h3 className="text-base font-semibold text-foreground mb-1">Photo Progress Tracking</h3>
-                  <p className="text-xs text-muted-foreground mb-3 text-center px-4 max-w-xs">
-                    See your transformation with side-by-side comparisons
-                  </p>
-                  <Button size="sm">
-                    Unlock Premium
-                  </Button>
+                <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex flex-col items-center justify-center rounded-lg">
+                  <div className="bg-card/95 backdrop-blur-sm p-6 rounded-lg border border-border shadow-lg max-w-xs">
+                    <Camera className="w-12 h-12 text-primary mb-3 mx-auto" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2 text-center">Photo Progress Tracking</h3>
+                    <p className="text-sm text-muted-foreground mb-4 text-center">
+                      See your transformation with side-by-side comparisons
+                    </p>
+                    <Button size="sm" className="w-full">
+                      Unlock Premium
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>
