@@ -298,45 +298,28 @@ export const TodayScreen = () => {
                   : 'bg-primary border-primary shadow-lg'
               }`}
             >
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    {/* Time - Most prominent */}
-                    <div className={`text-2xl font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
-                      {formatTime(dose.scheduled_time)}
-                    </div>
-                    
-                    {/* Compound name */}
-                    <h3 className={`text-base font-semibold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/90'}`}>
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
                       {dose.compound_name}
                     </h3>
-                    
-                    {/* Dosage and IU - on separate lines for clarity */}
-                    <div className={`space-y-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
-                      <div className="font-medium">
-                        {dose.dose_amount} {dose.dose_unit}
-                      </div>
-                      {dose.calculated_iu && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs opacity-70">≈</span>
-                          <span className="font-medium">{dose.calculated_iu} IU</span>
-                          <span className="text-xs opacity-70">on syringe</span>
-                        </div>
-                      )}
-                    </div>
+                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
+                      {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
+                      {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                    </p>
                   </div>
-                  
                   <button
                     onClick={() => toggleDose(dose.id, dose.taken)}
-                    className={`h-8 w-8 rounded-full border-2 transition-all flex-shrink-0 ${
+                    className={`h-7 w-7 rounded-full border-2 transition-all ${
                       dose.taken
                         ? 'bg-success border-success'
-                        : 'border-primary-foreground/40 hover:border-primary-foreground hover:bg-primary-foreground/10'
+                        : 'border-primary-foreground/40 hover:border-primary-foreground'
                     }`}
                   >
                     {dose.taken && (
                       <svg
-                        className="h-full w-full text-white p-1"
+                        className="h-full w-full text-white"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
