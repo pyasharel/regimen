@@ -2,14 +2,18 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Camera, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Camera, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type ProgressEntry = {
   id: string;
@@ -28,9 +32,11 @@ export const ProgressScreen = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [weight, setWeight] = useState("");
-  const [notes, setNotes] = useState("");
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isPremium, setIsPremium] = useState(false); // Toggle for testing premium features
 
   useEffect(() => {
     fetchEntries();
@@ -66,16 +72,17 @@ export const ProgressScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const formattedDate = format(entryDate, 'yyyy-MM-dd');
+      const weightValue = parseFloat(weight);
+      const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
       
       const { error } = await supabase
         .from('progress_entries')
         .upsert({
           user_id: user.id,
-          entry_date: today,
+          entry_date: formattedDate,
           category: 'general',
-          metrics: { weight: parseFloat(weight) },
-          notes: notes || null,
+          metrics: { weight: weightInLbs, unit: weightUnit },
         }, {
           onConflict: 'user_id,entry_date'
         });
@@ -85,7 +92,7 @@ export const ProgressScreen = () => {
       toast.success('Weight logged successfully!');
       setShowLogModal(false);
       setWeight('');
-      setNotes('');
+      setEntryDate(new Date());
       fetchEntries();
     } catch (error) {
       console.error('Error logging weight:', error);
@@ -179,9 +186,17 @@ export const ProgressScreen = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="p-6 space-y-8">
-        {/* Header */}
-        <div>
+        {/* Header with Premium Toggle */}
+        <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-foreground">Progress</h1>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="premium-toggle" className="text-sm text-muted-foreground">Premium</Label>
+            <Switch
+              id="premium-toggle"
+              checked={isPremium}
+              onCheckedChange={setIsPremium}
+            />
+          </div>
         </div>
 
         {/* Weight Progress Section */}
@@ -271,46 +286,57 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Visual Progress Section */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
-            <Button onClick={() => setShowPhotoModal(true)} size="sm">
-              <Camera className="w-4 h-4 mr-2" />
-              Upload Photo
-            </Button>
-          </div>
+        {/* Visual Progress Section - Premium Feature */}
+        {isPremium ? (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+              <Button onClick={() => setShowPhotoModal(true)} size="sm">
+                <Camera className="w-4 h-4 mr-2" />
+                Upload Photo
+              </Button>
+            </div>
 
-          {/* Photo Gallery - Horizontal Scroll */}
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {photoEntries.length > 0 ? (
-              photoEntries.map((entry) => (
-                <div key={entry.id} className="flex-shrink-0 text-center">
-                  <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
-                    <img
-                      src={getPhotoUrl(entry.photo_url!)}
-                      alt={`Progress ${entry.entry_date}`}
-                      className="w-full h-full object-cover"
-                    />
+            {/* Photo Gallery - Horizontal Scroll */}
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {photoEntries.length > 0 ? (
+                photoEntries.map((entry) => (
+                  <div key={entry.id} className="flex-shrink-0 text-center">
+                    <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
+                      <img
+                        src={getPhotoUrl(entry.photo_url!)}
+                        alt={`Progress ${entry.entry_date}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {format(new Date(entry.entry_date), 'MMM d')}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    {format(new Date(entry.entry_date), 'MMM d')}
-                  </div>
+                ))
+              ) : (
+                <div className="w-full text-center py-8 text-muted-foreground">
+                  No photos yet. Upload your first progress photo!
                 </div>
-              ))
-            ) : (
-              <div className="w-full text-center py-8 text-muted-foreground">
-                No photos yet. Upload your first progress photo!
-              </div>
+              )}
+            </div>
+
+            {photoEntries.length > 0 && (
+              <Button variant="outline" className="w-full">
+                View All Photos & Compare
+              </Button>
             )}
           </div>
-
-          {photoEntries.length > 0 && (
-            <Button variant="outline" className="w-full">
-              View All Photos & Compare
+        ) : (
+          <Card className="p-8 text-center space-y-3 border-dashed">
+            <Camera className="w-12 h-12 mx-auto text-muted-foreground" />
+            <h3 className="text-lg font-semibold text-foreground">Visual Progress Photos</h3>
+            <p className="text-sm text-muted-foreground">Track your transformation with progress photos</p>
+            <Button variant="default" className="mt-4">
+              Unlock Premium
             </Button>
-          )}
-        </div>
+          </Card>
+        )}
       </div>
 
       {/* Bottom Navigation */}
@@ -341,34 +367,71 @@ export const ProgressScreen = () => {
 
       {/* Log Weight Modal */}
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Log Weight</DialogTitle>
+            <DialogTitle className="text-xl">Current weight today?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Weight Input with Unit Selector */}
             <div>
-              <Label htmlFor="weight">Weight (lbs)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="185.5"
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="Enter weight"
+                  className="flex-1 h-14 text-lg"
+                />
+                <Select value={weightUnit} onValueChange={(value: "lbs" | "kg") => setWeightUnit(value)}>
+                  <SelectTrigger className="w-24 h-14">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lbs">lbs</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="How are you feeling today?"
-                rows={3}
-              />
+
+            {/* Date Selector */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full h-14 justify-between text-left font-normal",
+                      !entryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <span>Entry Date</span>
+                    <span>{format(entryDate, "MMM d, yyyy")}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={entryDate}
+                    onSelect={(date) => date && setEntryDate(date)}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            <Button onClick={handleLogWeight} disabled={loading} className="w-full">
-              {loading ? 'Logging...' : 'Log Weight'}
+
+            <Button 
+              onClick={handleLogWeight} 
+              disabled={loading || !weight} 
+              className="w-full h-14 text-base"
+            >
+              {loading ? 'Logging...' : 'Log Weight Entry'}
             </Button>
           </div>
         </DialogContent>
