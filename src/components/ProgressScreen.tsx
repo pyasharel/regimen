@@ -47,7 +47,7 @@ export const ProgressScreen = () => {
   const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isPremium, setIsPremium] = useState(false); // Toggle for testing premium features
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     fetchEntries();
@@ -168,7 +168,6 @@ export const ProgressScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload to storage
       const fileName = `${user.id}/${Date.now()}-${photoFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
@@ -176,7 +175,6 @@ export const ProgressScreen = () => {
 
       if (uploadError) throw uploadError;
 
-      // Create progress entry
       const { error: entryError } = await supabase
         .from('progress_entries')
         .insert([{
@@ -228,13 +226,12 @@ export const ProgressScreen = () => {
   const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
   const currentWeight = entries[0]?.metrics?.weight;
 
-  // Prepare chart data
   const chartData = weightEntries
     .slice()
-    .reverse() // Show oldest to newest
+    .reverse()
     .map(entry => ({
       date: format(new Date(entry.entry_date), 'MMM d'),
-      weight: Math.round(entry.metrics.weight * 10) / 10, // Round to 1 decimal
+      weight: Math.round(entry.metrics.weight * 10) / 10,
       fullDate: entry.entry_date
     }));
 
@@ -248,11 +245,9 @@ export const ProgressScreen = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="p-6 space-y-8">
-        {/* Header with Premium Toggle */}
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-foreground">Progress</h1>
           
-          {/* Compact Premium Toggle - For Testing */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
             <span className="text-xs text-muted-foreground">Premium</span>
             <Switch
@@ -263,7 +258,6 @@ export const ProgressScreen = () => {
           </div>
         </div>
 
-        {/* Weight Progress Section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
@@ -273,7 +267,6 @@ export const ProgressScreen = () => {
             </Button>
           </div>
 
-          {/* Current Weight Display */}
           {currentWeight && (
             <div className="flex items-baseline gap-6">
               <div>
@@ -286,7 +279,6 @@ export const ProgressScreen = () => {
             </div>
           )}
 
-          {/* Timeframe Selector */}
           <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
               <button
@@ -303,7 +295,6 @@ export const ProgressScreen = () => {
             ))}
           </div>
 
-          {/* Graph Container */}
           <Card className="p-4 bg-muted/30">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
@@ -356,21 +347,18 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Medication Timeline Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground">Medication Timeline</h2>
           
           <Card className="p-6 bg-muted/30">
             {compounds.length > 0 ? (
               <div className="space-y-6">
-                {/* Timeline visualization */}
                 <div className="space-y-3">
                   {compounds.map((compound) => {
                     const startDate = new Date(compound.start_date);
                     const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
                     const isActive = compound.is_active && !compound.end_date;
                     
-                    // Calculate timeline position (last 6 months)
                     const now = new Date();
                     const sixMonthsAgo = new Date(now);
                     sixMonthsAgo.setMonth(now.getMonth() - 6);
@@ -412,7 +400,6 @@ export const ProgressScreen = () => {
                   })}
                 </div>
 
-                {/* Weight overlay chart */}
                 {chartData.length > 0 && (
                   <div className="border-t border-border pt-4">
                     <div className="text-sm font-medium text-muted-foreground mb-3">Weight Correlation</div>
@@ -462,7 +449,6 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Recent Doses Log Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground">Recent Doses</h2>
           
@@ -502,7 +488,6 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Visual Progress Section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
@@ -521,7 +506,6 @@ export const ProgressScreen = () => {
 
           {photoEntries.length > 0 ? (
             <>
-              {/* Photo Gallery */}
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {photoEntries.map((entry) => (
                   <div key={entry.id} className="flex-shrink-0 text-center">
@@ -547,7 +531,6 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <>
-              {/* Empty State - Show Placeholder Cards */}
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="flex-shrink-0">
@@ -563,7 +546,6 @@ export const ProgressScreen = () => {
                 ))}
               </div>
 
-              {/* Minimal Call to Action for Free Users */}
               {!isPremium && (
                 <div className="text-center py-3">
                   <Button size="sm" variant="outline" className="gap-2">
@@ -577,18 +559,17 @@ export const ProgressScreen = () => {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
         <div className="flex justify-around items-center h-20 pb-6">
-          <button onClick={() => navigate("/")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
-            <Calendar className="w-6 h-6" />
+          <button onClick={() => navigate("/today")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <CalendarIcon className="w-6 h-6" />
             <span className="text-xs">Today</span>
           </button>
           <button onClick={() => navigate("/add-compound")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
             <Plus className="w-6 h-6" />
             <span className="text-xs">Add</span>
           </button>
-          <button onClick={() => navigate("/my-stack")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => navigate("/stack")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
             <div className="w-6 h-6 bg-muted rounded" />
             <span className="text-xs">Stack</span>
           </button>
@@ -603,14 +584,12 @@ export const ProgressScreen = () => {
         </div>
       </div>
 
-      {/* Log Weight Modal */}
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl">Weight</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
-            {/* Weight Input with Unit Selector */}
             <div>
               <div className="flex gap-2">
                 <Input
@@ -633,7 +612,6 @@ export const ProgressScreen = () => {
               </div>
             </div>
 
-            {/* Date Selector */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4" />
@@ -675,7 +653,6 @@ export const ProgressScreen = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Upload Photo Modal */}
       <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
         <DialogContent>
           <DialogHeader>
