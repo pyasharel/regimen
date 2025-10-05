@@ -72,8 +72,7 @@ export const TodayScreen = () => {
           *,
           compounds (name)
         `)
-        .eq('scheduled_date', dateStr)
-        .order('scheduled_time');
+        .eq('scheduled_date', dateStr);
 
       if (error) throw error;
 
@@ -82,7 +81,19 @@ export const TodayScreen = () => {
         compound_name: d.compounds?.name
       })) || [];
 
-      setDoses(formattedDoses);
+      // Sort doses by time (convert text times to sortable format)
+      const sortedDoses = formattedDoses.sort((a, b) => {
+        const getTimeValue = (time: string) => {
+          if (time === 'Morning') return '08:00';
+          if (time === 'Afternoon') return '14:00';
+          if (time === 'Evening') return '18:00';
+          return time;
+        };
+        
+        return getTimeValue(a.scheduled_time).localeCompare(getTimeValue(b.scheduled_time));
+      });
+
+      setDoses(sortedDoses);
     } catch (error) {
       console.error('Error loading doses:', error);
     } finally {
@@ -281,35 +292,51 @@ export const TodayScreen = () => {
           doses.map((dose) => (
             <div
               key={dose.id}
-              className={`overflow-hidden rounded-2xl border border-border shadow-lg transition-all animate-fade-in ${
+              className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
                 dose.taken
-                  ? 'bg-muted opacity-75'
-                  : 'bg-primary'
+                  ? 'bg-muted/50 border-border opacity-75'
+                  : 'bg-primary border-primary shadow-lg'
               }`}
             >
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-2">
+                    {/* Time - Most prominent */}
+                    <div className={`text-2xl font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
+                      {formatTime(dose.scheduled_time)}
+                    </div>
+                    
+                    {/* Compound name */}
+                    <h3 className={`text-base font-semibold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/90'}`}>
                       {dose.compound_name}
                     </h3>
-                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
-                      {dose.dose_amount} {dose.dose_unit}
-                      {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
-                      {' • '}{formatTime(dose.scheduled_time)}
-                    </p>
+                    
+                    {/* Dosage and IU - on separate lines for clarity */}
+                    <div className={`space-y-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
+                      <div className="font-medium">
+                        {dose.dose_amount} {dose.dose_unit}
+                      </div>
+                      {dose.calculated_iu && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs opacity-70">≈</span>
+                          <span className="font-medium">{dose.calculated_iu} IU</span>
+                          <span className="text-xs opacity-70">on syringe</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  
                   <button
                     onClick={() => toggleDose(dose.id, dose.taken)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                    className={`h-8 w-8 rounded-full border-2 transition-all flex-shrink-0 ${
                       dose.taken
                         ? 'bg-success border-success'
-                        : 'border-primary-foreground/40 hover:border-primary-foreground'
+                        : 'border-primary-foreground/40 hover:border-primary-foreground hover:bg-primary-foreground/10'
                     }`}
                   >
                     {dose.taken && (
                       <svg
-                        className="h-full w-full text-white"
+                        className="h-full w-full text-white p-1"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
