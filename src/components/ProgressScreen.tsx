@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Camera, Plus, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -294,7 +294,12 @@ export const ProgressScreen = () => {
         {/* Visual Progress Section */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Track your transformation with side-by-side photo comparisons
+              </p>
+            </div>
             {isPremium && (
               <Button onClick={() => setShowPhotoModal(true)} size="sm">
                 <Camera className="w-4 h-4 mr-2" />
@@ -331,44 +336,29 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <>
-              {/* Empty State - Show Placeholder Cards for Both Free & Premium */}
+              {/* Empty State - Show Placeholder Cards */}
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="flex-shrink-0 text-center">
+                  <div key={i} className="flex-shrink-0">
                     <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
                       <Camera className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                       {!isPremium && (
-                        <div className="absolute top-1 right-1 bg-primary/90 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-sm font-medium">
-                          PRO
+                        <div className="absolute top-2 right-2">
+                          <Crown className="w-4 h-4 text-primary/70" />
                         </div>
                       )}
                     </Card>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {format(new Date(2025, 9, i), 'MMM d')}
-                    </div>
                   </div>
                 ))}
               </div>
 
-              {/* Call to Action */}
+              {/* Minimal Call to Action for Free Users */}
               {!isPremium && (
-                <Card className="p-6 bg-muted/30 border-primary/20">
-                  <div className="text-center">
-                    <Camera className="w-10 h-10 text-primary mb-3 mx-auto" />
-                    <h3 className="text-base font-semibold text-foreground mb-2">Track Your Transformation</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Upload progress photos and compare side-by-side with Premium
-                    </p>
-                    <Button size="sm" className="w-full">
-                      Unlock Premium
-                    </Button>
-                  </div>
-                </Card>
-              )}
-
-              {isPremium && (
-                <div className="text-center py-4 text-sm text-muted-foreground">
-                  Click "Upload Photo" to add your first progress photo
+                <div className="text-center py-3">
+                  <Button size="sm" variant="outline" className="gap-2">
+                    <Crown className="w-4 h-4" />
+                    Unlock Premium
+                  </Button>
                 </div>
               )}
             </>
