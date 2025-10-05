@@ -29,6 +29,7 @@ export type Database = {
           intended_dose: number
           is_active: boolean | null
           name: string
+          notes: string | null
           schedule_days: string[] | null
           schedule_type: string
           start_date: string
@@ -52,6 +53,7 @@ export type Database = {
           intended_dose: number
           is_active?: boolean | null
           name: string
+          notes?: string | null
           schedule_days?: string[] | null
           schedule_type: string
           start_date?: string
@@ -75,6 +77,7 @@ export type Database = {
           intended_dose?: number
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           schedule_days?: string[] | null
           schedule_type?: string
           start_date?: string

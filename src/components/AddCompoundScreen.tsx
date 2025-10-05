@@ -45,6 +45,8 @@ export const AddCompoundScreen = () => {
   const [timeOfDay, setTimeOfDay] = useState("Morning");
   const [customTime, setCustomTime] = useState("09:00");
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState<string>("");
+  const [notes, setNotes] = useState("");
   const [enableReminder, setEnableReminder] = useState(true);
 
   // Cycle (premium)
@@ -86,6 +88,8 @@ export const AddCompoundScreen = () => {
         setCustomDays(editingCompound.schedule_days?.map(Number) || []);
       }
       setStartDate(editingCompound.start_date);
+      setEndDate(editingCompound.end_date || "");
+      setNotes(editingCompound.notes || "");
       setIsActive(editingCompound.is_active ?? true);
       
       if (editingCompound.has_cycles) {
@@ -170,7 +174,18 @@ export const AddCompoundScreen = () => {
       return doses;
     }
     
-    for (let i = 0; i < 30; i++) {
+    // Calculate end boundary (60 days or user-specified end date, whichever is sooner)
+    const maxDays = 60;
+    let daysToGenerate = maxDays;
+    
+    if (endDate) {
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+      const end = new Date(endYear, endMonth - 1, endDay);
+      const daysDiff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1)); // +1 to include end date
+    }
+    
+    for (let i = 0; i < daysToGenerate; i++) {
       const date = new Date(start);
       date.setDate(date.getDate() + i);
       const dayOfWeek = date.getDay();
@@ -264,6 +279,8 @@ export const AddCompoundScreen = () => {
             time_of_day: [isPremium ? customTime : timeOfDay],
             schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
+            end_date: endDate || null,
+            notes: notes || null,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
@@ -319,6 +336,8 @@ export const AddCompoundScreen = () => {
           time_of_day: [isPremium ? customTime : timeOfDay],
           schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
+            end_date: endDate || null,
+            notes: notes || null,
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
@@ -647,6 +666,36 @@ export const AddCompoundScreen = () => {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="endDate" className="text-sm text-muted-foreground">
+              End Date <span className="font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="Leave blank for ongoing"
+            />
+            <p className="text-xs text-muted-foreground">
+              Doses auto-generate for 60 days (or until end date if sooner)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="text-sm text-muted-foreground">
+              Notes <span className="font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="notes"
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Lot #, vendor, reconstitution date..."
+              className="text-sm"
             />
           </div>
 
