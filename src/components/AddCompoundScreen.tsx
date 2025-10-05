@@ -27,28 +27,42 @@ export const AddCompoundScreen = () => {
   const [name, setName] = useState("");
   const [showAutocomplete, setShowAutocomplete] = useState(false);
 
-  // Dose calculator (optional)
+  // Dosage
+  const [intendedDose, setIntendedDose] = useState("");
+  const [doseUnit, setDoseUnit] = useState("mcg");
+
+  // IU calculator (optional)
   const [showCalculator, setShowCalculator] = useState(false);
   const [vialSize, setVialSize] = useState("");
   const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("");
-  const [intendedDose, setIntendedDose] = useState("");
-  const [doseUnit, setDoseUnit] = useState("mcg");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
-  const [numberOfDoses, setNumberOfDoses] = useState(1);
-  const [timeOfDay, setTimeOfDay] = useState("Morning");
-  const [timeOfDay2, setTimeOfDay2] = useState("Evening");
-  const [customTime, setCustomTime] = useState("09:00");
-  const [customTime2, setCustomTime2] = useState("18:00");
+  const [customDays, setCustomDays] = useState<number[]>([]);
   const [biweeklyDays, setBiweeklyDays] = useState<number[]>([]);
   const [everyXDays, setEveryXDays] = useState(3);
+  const [timeOfDay, setTimeOfDay] = useState("Morning");
+  const [customTime, setCustomTime] = useState("09:00");
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [enableReminder, setEnableReminder] = useState(false);
+  const [enableReminder, setEnableReminder] = useState(true);
+
+  // Cycle (premium)
+  const [cycleType, setCycleType] = useState("Indefinitely");
+  const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
+  const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
+
+  // Titration (premium)
+  const [enableTitration, setEnableTitration] = useState(false);
+  const [titrationWeeks, setTitrationWeeks] = useState(4);
+  const [titrationStartDose, setTitrationStartDose] = useState("");
+  const [titrationEndDose, setTitrationEndDose] = useState("");
+
+  // Active status
+  const [isActive, setIsActive] = useState(true);
   
-  // Premium feature (for demo purposes, set to false for free users)
-  const isPremium = false;
+  // Premium feature (for testing, toggle this)
+  const [isPremium, setIsPremium] = useState(false);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -57,11 +71,30 @@ export const AddCompoundScreen = () => {
       setIntendedDose(editingCompound.intended_dose.toString());
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
-      setNumberOfDoses(editingCompound.time_of_day?.length || 1);
-      setTimeOfDay(editingCompound.time_of_day[0] || "Morning");
-      if (editingCompound.time_of_day[1]) setTimeOfDay2(editingCompound.time_of_day[1]);
-      if (editingCompound.schedule_days) setBiweeklyDays(editingCompound.schedule_days);
+      setTimeOfDay(editingCompound.time_of_day?.[0] || "Morning");
+      if (editingCompound.schedule_type === 'Custom') {
+        setCustomDays(editingCompound.schedule_days?.map(Number) || []);
+      }
+      if (editingCompound.schedule_type === 'Bi-weekly') {
+        setBiweeklyDays(editingCompound.schedule_days?.map(Number) || []);
+      }
       setStartDate(editingCompound.start_date);
+      setIsActive(editingCompound.is_active ?? true);
+      
+      if (editingCompound.has_cycles) {
+        setCycleType("Specific");
+        setCycleWeeksOn(editingCompound.cycle_weeks_on || 4);
+        setCycleWeeksOff(editingCompound.cycle_weeks_off || 2);
+      }
+      
+      if (editingCompound.has_titration && editingCompound.titration_config) {
+        setEnableTitration(true);
+        const config = editingCompound.titration_config as any;
+        setTitrationWeeks(config.weeks || 4);
+        setTitrationStartDose(config.start_dose?.toString() || "");
+        setTitrationEndDose(config.end_dose?.toString() || "");
+      }
+      
       if (editingCompound.vial_size) {
         setShowCalculator(true);
         setVialSize(editingCompound.vial_size.toString());
@@ -86,12 +119,15 @@ export const AddCompoundScreen = () => {
 
   // Auto-populate dose when calculator values change
   useEffect(() => {
-    if (showCalculator && vialSize && bacWater && !intendedDose) {
-      // Auto-suggest a reasonable dose (e.g., 250mcg)
-      setIntendedDose("250");
+    if (showCalculator && vialSize && bacWater && calculatedIU) {
+      const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
+      const concentration = vialMcg / parseFloat(bacWater);
+      const iu = parseFloat(calculatedIU);
+      const doseMcg = (iu / 100) * concentration;
+      setIntendedDose(doseMcg.toFixed(0));
       setDoseUnit("mcg");
     }
-  }, [vialSize, bacWater, showCalculator]);
+  }, [calculatedIU]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
@@ -110,6 +146,11 @@ export const AddCompoundScreen = () => {
     const doses = [];
     const start = new Date(startDate);
     
+    // Don't generate doses for "As Needed"
+    if (frequency === 'As Needed') {
+      return doses;
+    }
+    
     for (let i = 0; i < 30; i++) {
       const date = new Date(start);
       date.setDate(date.getDate() + i);
@@ -123,22 +164,37 @@ export const AddCompoundScreen = () => {
       if (frequency === 'Bi-weekly' && !biweeklyDays.includes(dayOfWeek)) {
         continue;
       }
+
+      if (frequency === 'Custom' && !customDays.includes(dayOfWeek)) {
+        continue;
+      }
       
       if (frequency === 'Every X Days' && i % everyXDays !== 0) {
         continue;
       }
 
-      // Generate dose(s) for this date
-      const timesToAdd = numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay];
-      timesToAdd.forEach(time => {
-        doses.push({
-          compound_id: compoundId,
-          scheduled_date: date.toISOString().split('T')[0],
-          scheduled_time: time,
-          dose_amount: parseFloat(intendedDose),
-          dose_unit: doseUnit,
-          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
-        });
+      // Calculate dose based on titration
+      let currentDose = parseFloat(intendedDose);
+      if (enableTitration && titrationStartDose && titrationEndDose) {
+        const weekNumber = Math.floor(i / 7);
+        const totalWeeks = titrationWeeks;
+        const startDose = parseFloat(titrationStartDose);
+        const endDose = parseFloat(titrationEndDose);
+        
+        if (weekNumber < totalWeeks) {
+          currentDose = startDose + ((endDose - startDose) / totalWeeks) * weekNumber;
+        } else {
+          currentDose = endDose;
+        }
+      }
+
+      doses.push({
+        compound_id: compoundId,
+        scheduled_date: date.toISOString().split('T')[0],
+        scheduled_time: isPremium ? customTime : timeOfDay,
+        dose_amount: currentDose,
+        dose_unit: doseUnit,
+        calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
       });
     }
     
@@ -170,9 +226,20 @@ export const AddCompoundScreen = () => {
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
             schedule_type: frequency,
-            time_of_day: numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay],
-            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : null,
-            start_date: startDate
+            time_of_day: [isPremium ? customTime : timeOfDay],
+            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
+                          frequency === 'Custom' ? customDays.map(String) : null,
+            start_date: startDate,
+            has_cycles: cycleType === 'Specific',
+            cycle_weeks_on: cycleType === 'Specific' ? cycleWeeksOn : null,
+            cycle_weeks_off: cycleType === 'Specific' ? cycleWeeksOff : null,
+            has_titration: enableTitration,
+            titration_config: enableTitration ? {
+              weeks: titrationWeeks,
+              start_dose: parseFloat(titrationStartDose),
+              end_dose: parseFloat(titrationEndDose)
+            } : null,
+            is_active: isActive
           })
           .eq('id', editingCompound.id);
 
@@ -212,9 +279,20 @@ export const AddCompoundScreen = () => {
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
             schedule_type: frequency,
-            time_of_day: numberOfDoses === 2 ? [timeOfDay, timeOfDay2] : [timeOfDay],
-            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : null,
-            start_date: startDate
+            time_of_day: [isPremium ? customTime : timeOfDay],
+            schedule_days: frequency === 'Bi-weekly' ? biweeklyDays.map(String) : 
+                          frequency === 'Custom' ? customDays.map(String) : null,
+            start_date: startDate,
+            has_cycles: cycleType === 'Specific',
+            cycle_weeks_on: cycleType === 'Specific' ? cycleWeeksOn : null,
+            cycle_weeks_off: cycleType === 'Specific' ? cycleWeeksOff : null,
+            has_titration: enableTitration,
+            titration_config: enableTitration ? {
+              weeks: titrationWeeks,
+              start_dose: parseFloat(titrationStartDose),
+              end_dose: parseFloat(titrationEndDose)
+            } : null,
+            is_active: isActive
           }])
           .select()
           .single();
@@ -296,12 +374,48 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          {/* Optional Dose Calculator */}
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dosage *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="intendedDose"
+                type="number"
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
+                placeholder="Enter dose"
+                className="flex-1"
+              />
+              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
+                <button
+                  onClick={() => setDoseUnit('mcg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mcg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mcg
+                </button>
+                <button
+                  onClick={() => setDoseUnit('mg')}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mg
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* IU Calculator */}
           <button
             onClick={() => setShowCalculator(!showCalculator)}
             className="text-sm text-primary hover:underline"
           >
-            {showCalculator ? '- Hide' : '+ Show'} Dose Calculator
+            {showCalculator ? '- Hide' : '+ Show'} IU Calculator
           </button>
 
           {showCalculator && (
@@ -372,42 +486,6 @@ export const AddCompoundScreen = () => {
               )}
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dosage *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="intendedDose"
-                type="number"
-                value={intendedDose}
-                onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder=""
-                className="flex-1"
-              />
-              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
-                <button
-                  onClick={() => setDoseUnit('mcg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mcg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mcg
-                </button>
-                <button
-                  onClick={() => setDoseUnit('mg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mg
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Schedule */}
@@ -421,10 +499,12 @@ export const AddCompoundScreen = () => {
               onChange={(e) => {
                 setFrequency(e.target.value);
                 if (e.target.value === 'Bi-weekly') setBiweeklyDays([]);
+                if (e.target.value === 'Custom') setCustomDays([]);
               }}
               className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
             >
               <option value="Daily">Daily</option>
+              <option value="Custom">Custom</option>
               <option value="Bi-weekly">Bi-weekly</option>
               <option value="Weekdays">Weekdays</option>
               <option value="Every X Days">Every X Days</option>
@@ -432,9 +512,36 @@ export const AddCompoundScreen = () => {
             </select>
           </div>
 
+          {frequency === 'Custom' && (
+            <div className="space-y-2">
+              <Label>Select Days</Label>
+              <div className="grid grid-cols-7 gap-2">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (customDays.includes(idx)) {
+                        setCustomDays(customDays.filter(d => d !== idx));
+                      } else {
+                        setCustomDays([...customDays, idx]);
+                      }
+                    }}
+                    className={`p-2 rounded-lg text-sm font-medium transition-colors ${
+                      customDays.includes(idx)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {frequency === 'Bi-weekly' && (
             <div className="space-y-2">
-              <Label>Select Days (2 days)</Label>
+              <Label className="text-warning">Select Two Days</Label>
               <div className="grid grid-cols-7 gap-2">
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
                   <button
@@ -475,79 +582,30 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Number of Doses</Label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setNumberOfDoses(1)}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  numberOfDoses === 1
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card border border-border hover:bg-muted'
-                }`}
-              >
-                1
-              </button>
-              <button
-                onClick={() => setNumberOfDoses(2)}
-                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                  numberOfDoses === 2
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card border border-border hover:bg-muted'
-                }`}
-              >
-                2
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>{numberOfDoses === 2 ? 'First Dose Time' : 'Time'}</Label>
-            {isPremium ? (
-              <Input
-                type="time"
-                value={customTime}
-                onChange={(e) => setCustomTime(e.target.value)}
-                className="w-full"
-              />
-            ) : (
-              <div className="space-y-2">
+          {frequency !== 'As Needed' && (
+            <div className="space-y-2">
+              <Label>Time</Label>
+              {isPremium ? (
+                <Input
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="w-full"
+                />
+              ) : (
                 <select
                   value={timeOfDay}
                   onChange={(e) => setTimeOfDay(e.target.value)}
                   className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
                 >
                   <option value="Morning">Morning</option>
-                  <option value="Afternoon">Afternoon</option>
                   <option value="Evening">Evening</option>
                 </select>
+              )}
+              {!isPremium && (
                 <p className="text-xs text-muted-foreground">
                   Upgrade for custom times 🔒
                 </p>
-              </div>
-            )}
-          </div>
-
-          {numberOfDoses === 2 && (
-            <div className="space-y-2">
-              <Label>Second Dose Time</Label>
-              {isPremium ? (
-                <Input
-                  type="time"
-                  value={customTime2}
-                  onChange={(e) => setCustomTime2(e.target.value)}
-                  className="w-full"
-                />
-              ) : (
-                <select
-                  value={timeOfDay2}
-                  onChange={(e) => setTimeOfDay2(e.target.value)}
-                  className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
-                >
-                  <option value="Morning">Morning</option>
-                  <option value="Afternoon">Afternoon</option>
-                  <option value="Evening">Evening</option>
-                </select>
               )}
             </div>
           )}
@@ -562,30 +620,170 @@ export const AddCompoundScreen = () => {
             />
           </div>
 
-          {/* Premium Reminder Toggle */}
-          {!isPremium && (
-            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border opacity-60">
+          {/* Reminder Toggle */}
+          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+            <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
+            <input
+              id="reminder"
+              type="checkbox"
+              checked={enableReminder}
+              onChange={(e) => setEnableReminder(e.target.checked)}
+              className="w-11 h-6"
+            />
+          </div>
+        </div>
+
+        {/* Cycle (Premium) */}
+        <div className="space-y-4 bg-surface rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
+            {!isPremium && <span className="text-xs text-muted-foreground">🔒 Premium</span>}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => !isPremium || setCycleType("Indefinitely")}
+                disabled={!isPremium}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                  cycleType === "Indefinitely"
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card border border-border hover:bg-muted'
+                } ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Indefinitely
+              </button>
+              <button
+                onClick={() => !isPremium || setCycleType("Specific")}
+                disabled={!isPremium}
+                className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                  cycleType === "Specific"
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card border border-border hover:bg-muted'
+                } ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Specific
+              </button>
+            </div>
+          </div>
+
+          {cycleType === "Specific" && isPremium && (
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
-                <span className="text-xs text-muted-foreground">🔒 Premium</span>
+                <Input
+                  type="number"
+                  min="1"
+                  value={cycleWeeksOn}
+                  onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
+                  className="w-20"
+                />
+                <span className="text-sm">weeks on</span>
               </div>
-              <div className="w-11 h-6 bg-muted rounded-full"></div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  value={cycleWeeksOff}
+                  onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
+                  className="w-20"
+                />
+                <span className="text-sm">weeks off</span>
+              </div>
             </div>
           )}
+        </div>
 
-          {isPremium && (
-            <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-              <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
-              <input
-                id="reminder"
-                type="checkbox"
-                checked={enableReminder}
-                onChange={(e) => setEnableReminder(e.target.checked)}
-                className="w-11 h-6"
-              />
+        {/* Titration (Premium) */}
+        <div className="space-y-4 bg-surface rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
+            {!isPremium && <span className="text-xs text-muted-foreground">🔒 Premium</span>}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="titration">Enable Titration</Label>
+            <input
+              id="titration"
+              type="checkbox"
+              checked={enableTitration}
+              onChange={(e) => !isPremium || setEnableTitration(e.target.checked)}
+              disabled={!isPremium}
+              className={`w-11 h-6 ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}
+            />
+          </div>
+
+          {enableTitration && isPremium && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Starting Dose</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={titrationStartDose}
+                    onChange={(e) => setTitrationStartDose(e.target.value)}
+                    placeholder="e.g., 2"
+                    className="flex-1"
+                  />
+                  <span className="flex items-center text-sm text-muted-foreground">{doseUnit}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Target Dose</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={titrationEndDose}
+                    onChange={(e) => setTitrationEndDose(e.target.value)}
+                    placeholder="e.g., 10"
+                    className="flex-1"
+                  />
+                  <span className="flex items-center text-sm text-muted-foreground">{doseUnit}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Titration Period</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={titrationWeeks}
+                    onChange={(e) => setTitrationWeeks(parseInt(e.target.value) || 1)}
+                    className="w-20"
+                  />
+                  <span className="text-sm">weeks</span>
+                </div>
+              </div>
             </div>
           )}
+        </div>
 
+        {/* Active Protocol */}
+        <div className="flex items-center justify-between p-4 bg-surface rounded-lg">
+          <Label htmlFor="active" className="mb-0 text-base">Active Protocol</Label>
+          <input
+            id="active"
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="w-11 h-6"
+          />
+        </div>
+
+        {/* Premium Testing Toggle (Dev Only) */}
+        <div className="p-4 bg-warning/10 border border-warning rounded-lg">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="premium-test" className="mb-0 text-sm">Premium Mode (Testing)</Label>
+            <input
+              id="premium-test"
+              type="checkbox"
+              checked={isPremium}
+              onChange={(e) => setIsPremium(e.target.checked)}
+              className="w-11 h-6"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Toggle to test premium features</p>
         </div>
       </div>
 
