@@ -34,7 +34,7 @@ export const AddCompoundScreen = () => {
 
   // IU calculator (optional)
   const [showCalculator, setShowCalculator] = useState(false);
-  const [vialSize, setVialSize] = useState("5");
+  const [vialSize, setVialSize] = useState("3");
   const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("2");
 
@@ -133,17 +133,22 @@ export const AddCompoundScreen = () => {
 
   const calculatedIU = showCalculator ? calculateIU() : null;
 
-  // Auto-populate dose when calculator values change
+  // Auto-populate dose when calculator values change - but preserve unit choice
   useEffect(() => {
     if (showCalculator && vialSize && bacWater && calculatedIU) {
       const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
       const concentration = vialMcg / parseFloat(bacWater);
       const iu = parseFloat(calculatedIU);
       const doseMcg = (iu / 100) * concentration;
-      setIntendedDose(doseMcg.toFixed(0));
-      setDoseUnit("mcg");
+      
+      // Preserve the user's selected unit
+      if (doseUnit === 'mg') {
+        setIntendedDose((doseMcg / 1000).toFixed(2));
+      } else {
+        setIntendedDose(doseMcg.toFixed(0));
+      }
     }
-  }, [calculatedIU]);
+  }, [calculatedIU, vialSize, bacWater, vialUnit]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
@@ -402,6 +407,62 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dosage *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="intendedDose"
+                type="number"
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
+                placeholder="Enter dose"
+                className="flex-1"
+              />
+              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
+                <button
+                  onClick={() => {
+                    if (doseUnit === 'mg' && intendedDose) {
+                      // Converting from mg to mcg - don't modify value
+                      setDoseUnit('mcg');
+                    } else if (doseUnit === 'mcg' && intendedDose) {
+                      // Converting from mcg to mg - don't modify value
+                      setDoseUnit('mg');
+                    } else {
+                      setDoseUnit('mcg');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mcg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mcg
+                </button>
+                <button
+                  onClick={() => {
+                    if (doseUnit === 'mcg' && intendedDose) {
+                      // Converting from mcg to mg - don't modify value
+                      setDoseUnit('mg');
+                    } else if (doseUnit === 'mg' && intendedDose) {
+                      // Converting from mg to mcg - don't modify value
+                      setDoseUnit('mcg');
+                    } else {
+                      setDoseUnit('mg');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                    doseUnit === 'mg'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  mg
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* IU Calculator */}
           <button
             onClick={() => setShowCalculator(!showCalculator)}
@@ -415,7 +476,7 @@ export const AddCompoundScreen = () => {
               <div className="space-y-2">
                 <Label>Vial Size</Label>
                 <div className="flex gap-2">
-                  {[5, 10, 15, 20].map((size) => (
+                  {[3, 5, 10, 20].map((size) => (
                     <button
                       key={size}
                       onClick={() => setVialSize(size.toString())}
@@ -478,42 +539,6 @@ export const AddCompoundScreen = () => {
               )}
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dosage *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="intendedDose"
-                type="number"
-                value={intendedDose}
-                onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="Enter dose"
-                className="flex-1"
-              />
-              <div className="flex gap-1 bg-surface rounded-lg border border-border p-1">
-                <button
-                  onClick={() => setDoseUnit('mcg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mcg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mcg
-                </button>
-                <button
-                  onClick={() => setDoseUnit('mg')}
-                  className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                    doseUnit === 'mg'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  mg
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Schedule */}
