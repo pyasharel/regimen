@@ -26,9 +26,19 @@ type ProgressEntry = {
 
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
 
+type Compound = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string | null;
+  is_active: boolean;
+};
+
 export const ProgressScreen = () => {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<ProgressEntry[]>([]);
+  const [compounds, setCompounds] = useState<Compound[]>([]);
+  const [recentDoses, setRecentDoses] = useState<any[]>([]);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("3M");
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -41,6 +51,8 @@ export const ProgressScreen = () => {
 
   useEffect(() => {
     fetchEntries();
+    fetchCompounds();
+    fetchRecentDoses();
   }, []);
 
   const fetchEntries = async () => {
@@ -62,6 +74,47 @@ export const ProgressScreen = () => {
     }
   };
 
+  const fetchCompounds = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('compounds')
+        .select('id, name, start_date, end_date, is_active')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+      setCompounds(data || []);
+    } catch (error) {
+      console.error('Error fetching compounds:', error);
+    }
+  };
+
+  const fetchRecentDoses = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('doses')
+        .select(`
+          *,
+          compounds (name)
+        `)
+        .eq('user_id', user.id)
+        .eq('taken', true)
+        .order('taken_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setRecentDoses(data || []);
+    } catch (error) {
+      console.error('Error fetching recent doses:', error);
+    }
+  };
+
   const handleLogWeight = async () => {
     if (!weight) {
       toast.error('Please enter your weight');
@@ -73,25 +126,23 @@ export const ProgressScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const formattedDate = format(entryDate, 'yyyy-MM-dd');
       const weightValue = parseFloat(weight);
       const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
-      
+
       const { error } = await supabase
         .from('progress_entries')
-        .insert({
-          user_id: user?.id || null,
-          entry_date: formattedDate,
-          category: 'general',
-          metrics: { weight: weightInLbs, unit: weightUnit },
-        });
+        .insert([{
+          user_id: user.id,
+          entry_date: format(entryDate, 'yyyy-MM-dd'),
+          category: 'weight',
+          metrics: { weight: weightInLbs }
+        }]);
 
       if (error) throw error;
 
-      toast.success('Weight logged successfully!');
+      toast.success('Weight logged successfully');
       setShowLogModal(false);
-      setWeight('');
-      setEntryDate(new Date());
+      setWeight("");
       fetchEntries();
     } catch (error) {
       console.error('Error logging weight:', error);
@@ -107,35 +158,37 @@ export const ProgressScreen = () => {
       return;
     }
 
+    if (!isPremium) {
+      toast.error('Photo upload is a premium feature');
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const fileExt = photoFile.name.split('.').pop();
-      const filePath = `${user.id}/${today}.${fileExt}`;
 
+      // Upload to storage
+      const fileName = `${user.id}/${Date.now()}-${photoFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
-        .upload(filePath, photoFile, { upsert: true });
+        .upload(fileName, photoFile);
 
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabase
+      // Create progress entry
+      const { error: entryError } = await supabase
         .from('progress_entries')
-        .upsert({
+        .insert([{
           user_id: user.id,
-          entry_date: today,
-          category: 'general',
-          photo_url: filePath,
-        }, {
-          onConflict: 'user_id,entry_date'
-        });
+          entry_date: format(entryDate, 'yyyy-MM-dd'),
+          category: 'photo',
+          photo_url: fileName
+        }]);
 
-      if (dbError) throw dbError;
+      if (entryError) throw entryError;
 
-      toast.success('Photo uploaded successfully!');
+      toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
       setPhotoFile(null);
       fetchEntries();
@@ -148,6 +201,8 @@ export const ProgressScreen = () => {
   };
 
   const getFilteredEntries = () => {
+    if (timeFrame === "All") return entries;
+
     const now = new Date();
     const cutoffDate = new Date(now);
     
@@ -164,8 +219,6 @@ export const ProgressScreen = () => {
       case "1Y":
         cutoffDate.setFullYear(now.getFullYear() - 1);
         break;
-      case "All":
-        return entries;
     }
     
     return entries.filter(e => new Date(e.entry_date) >= cutoffDate);
@@ -298,6 +351,152 @@ export const ProgressScreen = () => {
             ) : (
               <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                 No weight data yet. Start logging to see your progress!
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Medication Timeline Section */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Medication Timeline</h2>
+          
+          <Card className="p-6 bg-muted/30">
+            {compounds.length > 0 ? (
+              <div className="space-y-6">
+                {/* Timeline visualization */}
+                <div className="space-y-3">
+                  {compounds.map((compound) => {
+                    const startDate = new Date(compound.start_date);
+                    const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
+                    const isActive = compound.is_active && !compound.end_date;
+                    
+                    // Calculate timeline position (last 6 months)
+                    const now = new Date();
+                    const sixMonthsAgo = new Date(now);
+                    sixMonthsAgo.setMonth(now.getMonth() - 6);
+                    
+                    const timelineStart = sixMonthsAgo;
+                    const timelineEnd = now;
+                    const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    const compoundStartDays = Math.max(0, Math.floor((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
+                    const compoundEndDays = Math.min(totalDays, Math.floor((endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
+                    
+                    const leftPercent = (compoundStartDays / totalDays) * 100;
+                    const widthPercent = ((compoundEndDays - compoundStartDays) / totalDays) * 100;
+                    
+                    return (
+                      <div key={compound.id} className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-medium text-foreground">{compound.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(startDate, 'MMM d')} - {isActive ? 'Active' : format(endDate, 'MMM d')}
+                          </span>
+                        </div>
+                        <div className="relative h-8 bg-background/50 rounded-lg overflow-hidden">
+                          <div
+                            className={`absolute h-full rounded-lg transition-all ${
+                              isActive 
+                                ? 'bg-gradient-to-r from-primary to-primary/70' 
+                                : 'bg-muted'
+                            }`}
+                            style={{
+                              left: `${leftPercent}%`,
+                              width: `${widthPercent}%`,
+                              minWidth: '2%'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Weight overlay chart */}
+                {chartData.length > 0 && (
+                  <div className="border-t border-border pt-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-3">Weight Correlation</div>
+                    <ResponsiveContainer width="100%" height={150}>
+                      <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                          domain={['dataMin - 5', 'dataMax + 5']}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="weight" 
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          dot={{ fill: 'hsl(var(--primary))', r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No medications tracked yet</p>
+                <p className="text-sm mt-1">Add your first compound to see your medication timeline</p>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Recent Doses Log Section */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Recent Doses</h2>
+          
+          <Card className="p-4 bg-muted/30">
+            {recentDoses.length > 0 ? (
+              <div className="space-y-2">
+                {recentDoses.map((dose) => (
+                  <div 
+                    key={dose.id} 
+                    className="flex justify-between items-center p-3 bg-background rounded-lg"
+                  >
+                    <div>
+                      <div className="font-medium text-foreground">
+                        {dose.compounds?.name || 'Unknown'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {dose.dose_amount} {dose.dose_unit}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-foreground">
+                        {format(new Date(dose.scheduled_date), 'MMM d')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {dose.taken_at ? format(new Date(dose.taken_at), 'h:mm a') : dose.scheduled_time}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No doses taken yet</p>
+                <p className="text-sm mt-1">Mark doses as taken to see your log</p>
               </div>
             )}
           </Card>

@@ -161,15 +161,9 @@ export const AddCompoundScreen = () => {
 
   const generateDoses = (compoundId: string, userId: string) => {
     const doses = [];
-    const start = new Date(startDate);
-    
-    console.log('generateDoses called with:', {
-      startDate,
-      frequency,
-      customDays,
-      startDateObj: start,
-      startDayOfWeek: start.getDay()
-    });
+    // Fix timezone issue: parse date in local timezone
+    const [year, month, day] = startDate.split('-').map(Number);
+    const start = new Date(year, month - 1, day);
     
     // Don't generate doses for "As Needed"
     if (frequency === 'As Needed') {
@@ -183,12 +177,9 @@ export const AddCompoundScreen = () => {
       
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
-        // customDays contains numbers, dayOfWeek is a number
-        console.log(`Day ${i}: ${date.toISOString().split('T')[0]} (day ${dayOfWeek}) - checking against customDays:`, customDays, 'includes?', customDays.includes(dayOfWeek));
         if (!customDays.includes(dayOfWeek)) {
           continue;
         }
-        console.log(`✓ Creating dose for ${date.toISOString().split('T')[0]}`);
       }
       
       if (frequency === 'Every X Days' && i % everyXDays !== 0) {
