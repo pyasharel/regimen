@@ -521,7 +521,7 @@ export const AddCompoundScreen = () => {
               onChange={(e) => {
                 setFrequency(e.target.value);
                 if (e.target.value === 'Bi-weekly') setBiweeklyDays([]);
-                if (e.target.value === 'Custom') setCustomDays([]);
+                if (e.target.value === 'Specific day of the week') setCustomDays([]);
               }}
               className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
             >
