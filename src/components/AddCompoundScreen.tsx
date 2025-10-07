@@ -312,12 +312,11 @@ export const AddCompoundScreen = () => {
 
         if (updateError) throw updateError;
 
-        // Delete existing future doses and regenerate
+        // Delete ALL existing doses for this compound and regenerate
         const { error: deleteError } = await supabase
           .from('doses')
           .delete()
-          .eq('compound_id', editingCompound.id)
-          .gte('scheduled_date', new Date().toISOString().split('T')[0]);
+          .eq('compound_id', editingCompound.id);
 
         if (deleteError) throw deleteError;
 
