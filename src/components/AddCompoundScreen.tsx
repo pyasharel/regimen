@@ -441,41 +441,40 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="intendedDose">Dosage *</Label>
-              <Input
-                id="intendedDose"
-                type="number"
-                value={intendedDose}
-                onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="e.g., 250"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dosage *</Label>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <Input
+                  id="intendedDose"
+                  type="number"
+                  value={intendedDose}
+                  onChange={(e) => setIntendedDose(e.target.value)}
+                  placeholder="e.g., 250"
+                />
+              </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setDoseUnit("mcg")}
-                  className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                  className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                     doseUnit === "mcg"
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card border border-border hover:bg-muted'
                   }`}
                 >
-                  Micrograms (mcg)
+                  mcg
                 </button>
                 <button
                   type="button"
                   onClick={() => setDoseUnit("mg")}
-                  className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                  className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                     doseUnit === "mg"
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card border border-border hover:bg-muted'
                   }`}
                 >
-                  Milligrams (mg)
+                  mg
                 </button>
               </div>
             </div>
@@ -727,9 +726,6 @@ export const AddCompoundScreen = () => {
                 </Popover>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Future doses are automatically created for the next 60 days based on your schedule settings above
-            </p>
           </div>
 
           <div className="space-y-2">
