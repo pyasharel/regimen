@@ -14,6 +14,7 @@ import { DisplaySettings } from "./components/settings/DisplaySettings";
 import { DataSettings } from "./components/settings/DataSettings";
 import { HelpSettings } from "./components/settings/HelpSettings";
 import { TermsSettings } from "./components/settings/TermsSettings";
+import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
           <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
           <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
+          <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

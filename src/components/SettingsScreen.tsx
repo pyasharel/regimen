@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Sparkles, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText } from "lucide-react";
+import { X, Sparkles, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -19,6 +19,20 @@ export const SettingsScreen = () => {
   // Test mode toggle for premium features
   const [testPremium, setTestPremium] = useState(false);
   const isPremium = testPremium; // In production, this would check actual subscription status
+
+  // Load premium status from localStorage on mount
+  useEffect(() => {
+    const savedPremium = localStorage.getItem('testPremiumMode') === 'true';
+    setTestPremium(savedPremium);
+  }, []);
+
+  const togglePremium = (checked: boolean) => {
+    setTestPremium(checked);
+    localStorage.setItem('testPremiumMode', String(checked));
+    // Trigger storage event for other components
+    window.dispatchEvent(new Event('storage'));
+    toast.success(checked ? 'Premium mode enabled' : 'Premium mode disabled');
+  };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -64,6 +78,12 @@ export const SettingsScreen = () => {
       onClick: () => navigate("/settings/terms"),
     },
     {
+      icon: Lock,
+      label: "Privacy Policy",
+      description: "How we protect your data",
+      onClick: () => navigate("/settings/privacy"),
+    },
+    {
       icon: HelpCircle,
       label: "Help & Support",
       description: "FAQ and contact support",
@@ -83,22 +103,23 @@ export const SettingsScreen = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
-        {/* Test Mode Toggle - Only in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="test-premium" className="font-semibold">Test Premium Mode</Label>
-                <p className="text-sm text-muted-foreground">Enable premium features for testing</p>
-              </div>
-              <Switch
-                id="test-premium"
-                checked={testPremium}
-                onCheckedChange={setTestPremium}
-              />
+        {/* Test Mode Toggle - For Beta Testing */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="test-premium" className="font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Test Premium Mode
+              </Label>
+              <p className="text-sm text-muted-foreground">Enable premium features for testing</p>
             </div>
+            <Switch
+              id="test-premium"
+              checked={testPremium}
+              onCheckedChange={togglePremium}
+            />
           </div>
-        )}
+        </div>
 
         {/* Premium Banner - Only show if user is NOT premium */}
         {!isPremium && (

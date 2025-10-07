@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera, Plus, Crown } from "lucide-react";
+import { Calendar as CalendarIcon, Camera, Plus, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PremiumModal } from "@/components/PremiumModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -49,11 +50,22 @@ export const ProgressScreen = () => {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   useEffect(() => {
     fetchEntries();
     fetchCompounds();
     fetchRecentDoses();
+    
+    // Check premium status from localStorage
+    const checkPremium = () => {
+      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
+      setIsPremium(premiumStatus);
+    };
+    
+    checkPremium();
+    window.addEventListener('storage', checkPremium);
+    return () => window.removeEventListener('storage', checkPremium);
   }, []);
 
   const fetchEntries = async () => {
@@ -248,15 +260,6 @@ export const ProgressScreen = () => {
       <div className="p-6 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-foreground">Progress</h1>
-          
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
-            <span className="text-xs text-muted-foreground">Premium</span>
-            <Switch
-              id="premium-toggle"
-              checked={isPremium}
-              onCheckedChange={setIsPremium}
-            />
-          </div>
         </div>
 
         <div className="space-y-4">
@@ -460,7 +463,7 @@ export const ProgressScreen = () => {
                       <Camera className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                       {!isPremium && (
                         <div className="absolute top-2 right-2">
-                          <Crown className="w-4 h-4 text-primary/70" />
+                          <Sparkles className="w-4 h-4 text-primary/70" />
                         </div>
                       )}
                     </Card>
@@ -470,8 +473,8 @@ export const ProgressScreen = () => {
 
               {!isPremium && (
                 <div className="text-center py-3">
-                  <Button size="sm" variant="outline" className="gap-2">
-                    <Crown className="w-4 h-4" />
+                  <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
+                    <Sparkles className="w-4 h-4" />
                     Unlock Premium
                   </Button>
                 </div>
@@ -578,6 +581,8 @@ export const ProgressScreen = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 };

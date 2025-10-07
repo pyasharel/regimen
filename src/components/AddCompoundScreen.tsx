@@ -73,9 +73,22 @@ export const AddCompoundScreen = () => {
   // Active status
   const [isActive, setIsActive] = useState(true);
   
-  // Premium feature (for testing, toggle this)
+  // Premium feature - check from Settings
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  // Check premium status from localStorage (set in Settings)
+  useEffect(() => {
+    const checkPremium = () => {
+      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
+      setIsPremium(premiumStatus);
+    };
+    
+    checkPremium();
+    // Listen for changes to premium status
+    window.addEventListener('storage', checkPremium);
+    return () => window.removeEventListener('storage', checkPremium);
+  }, []);
 
   // TITRATION - COMMENTED OUT FOR MVP
   // Auto-populate titration starting dose from main dosage
