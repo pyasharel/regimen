@@ -62,8 +62,8 @@ export const MyStackScreen = () => {
       if (error) throw error;
 
       toast({
-        title: "Compound completed",
-        description: "Moved to completed section"
+        title: "Compound marked inactive",
+        description: "Moved to inactive section"
       });
 
       loadCompounds();
@@ -130,7 +130,7 @@ export const MyStackScreen = () => {
   };
 
   const activeCompounds = compounds.filter(c => c.is_active);
-  const completedCompounds = compounds.filter(c => !c.is_active);
+  const inactiveCompounds = compounds.filter(c => !c.is_active);
 
   const getDaysActive = (startDate: string) => {
     const start = new Date(startDate);
@@ -201,7 +201,7 @@ export const MyStackScreen = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => markComplete(compound.id)}>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark Complete
+                        Mark Inactive
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => deleteCompound(compound.id)}
@@ -218,13 +218,13 @@ export const MyStackScreen = () => {
           ))}
         </div>
 
-        {/* Completed Compounds */}
+        {/* Inactive Compounds */}
         <div className="space-y-3 pt-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Completed ({completedCompounds.length})
+            Inactive ({inactiveCompounds.length})
           </h2>
           
-          {completedCompounds.map((compound) => (
+          {inactiveCompounds.map((compound) => (
             <div
               key={compound.id}
               className="overflow-hidden rounded-2xl border border-border bg-card/60 opacity-60"
@@ -239,7 +239,7 @@ export const MyStackScreen = () => {
                         {compound.intended_dose} {compound.dose_unit}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {getScheduleDisplay(compound)} • Completed
+                        {getScheduleDisplay(compound)} • Inactive
                       </p>
                     </div>
                   </div>

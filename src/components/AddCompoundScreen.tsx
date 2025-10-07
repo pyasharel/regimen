@@ -404,7 +404,7 @@ export const AddCompoundScreen = () => {
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/stack")}
             className="rounded-lg p-2 hover:bg-muted transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
