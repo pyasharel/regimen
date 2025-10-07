@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, Crown, Calendar as CalendarIcon } from "lucide-react";
 import { PremiumModal } from "@/components/PremiumModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,36 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const COMMON_PEPTIDES = [
-  "BPC-157", "TB-500", "Semaglutide", "Tirzepatide", "Retatrutide",
-  "CJC-1295", "Ipamorelin", "NAD+", "Epitalon", "Thymosin Beta-4",
-  "GHK-Cu", "Melanotan II", "PT-141", "DSIP", "Selank", "Semax"
+  "5-Amino-1MQ", "Anastrozole", "Aniracetam", "AOD-9604", "Apigenin", "Armodafinil",
+  "BPC-157", "BPC-157 + KPV Blend", "Berberine", "Beta-Alanine", "Bremelanotide",
+  "CagriSema", "Cerebrolysin", "CJC-1295 with DAC", "CJC-1295 without DAC",
+  "Clomiphene", "CoQ10", "Cortagen", "Creatine Monohydrate",
+  "DHEA", "Dihexa", "DSIP", "Dulaglutide",
+  "Ecdysterone", "Enclomiphene", "Epicatechin", "Epithalon", "Estradiol",
+  "Fisetin", "Follistatin", "FTPP (Adipotide)",
+  "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Glycine", "Gonadorelin", "GRF (1-29)",
+  "HCG", "Hexarelin", "HMG",
+  "Ibutamoren (MK-677)", "IGF-1 DES", "IGF-1 LR3", "Imunovir", "Inosine Pranobex",
+  "Ipamorelin", "Ipamorelin + CJC-1295 Blend", "Ipamorelin + Sermorelin Blend",
+  "Kisspeptin", "KLOW", "KPV",
+  "L-Carnitine", "L-Citrulline", "L-Theanine", "Larazotide", "Lion's Mane", "Liraglutide", "LL-37",
+  "Magnesium", "Magnesium Glycinate", "Melatonin", "Melanotan I", "Melanotan II",
+  "Metformin", "MGF", "MK-677", "MOD-GRF (1-29)", "Modafinil", "Mounjaro", "MOTS-c",
+  "NA-Selank", "NA-Semax", "NAC", "NAD+", "Nandrolone", "NMN", "Noopept",
+  "NR (Nicotinamide Riboside)",
+  "Omega-3", "Orforglipron", "Oxandrolone", "Ozempic",
+  "P21", "PEG-MGF", "Phenylpiracetam", "Pinealon", "PQQ", "Pregnenolone", "Progesterone", "PT-141",
+  "Quercetin",
+  "Rapamycin", "Resveratrol", "Retatrutide",
+  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "Spermidine",
+  "Tamoxifen", "Taurine", "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
+  "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
+  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity", "Turkesterone",
+  "Victoza", "Vitamin B Complex", "Vitamin B12 (Methylcobalamin)", "Vitamin C", "Vitamin D3",
+  "Vitamin K2 (MK-4)", "Vitamin K2 (MK-7)",
+  "Wegovy", "Wolverine Stack",
+  "YK-11",
+  "Zepbound", "Zinc"
 ];
 
 export const AddCompoundScreen = () => {
@@ -475,29 +502,21 @@ export const AddCompoundScreen = () => {
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDoseUnit("mcg")}
-                  className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                    doseUnit === "mcg"
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted'
-                  }`}
-                >
-                  mcg
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDoseUnit("mg")}
-                  className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                    doseUnit === "mg"
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted'
-                  }`}
-                >
-                  mg
-                </button>
+              <div className="grid grid-cols-3 gap-2">
+                {["mcg", "mg", "IU", "tablet", "pill", "drop", "spray"].map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => setDoseUnit(unit)}
+                    className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      doseUnit === unit
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    {unit}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -699,7 +718,7 @@ export const AddCompoundScreen = () => {
                   onClick={() => setShowPremiumModal(true)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
-                  <Sparkles className="h-3 w-3" />
+                  <Crown className="h-3 w-3" />
                   <span className="underline">Upgrade for custom times</span>
                 </button>
               )}
@@ -813,10 +832,14 @@ export const AddCompoundScreen = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
               {!isPremium && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Premium</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPremiumModal(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
+                  <Crown className="h-3 w-3" />
+                  <span className="underline">Premium</span>
+                </button>
               )}
             </div>
             <p className="text-xs text-muted-foreground">Advanced: Automatically pause and resume this compound on a schedule</p>
@@ -896,10 +919,14 @@ export const AddCompoundScreen = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
               {!isPremium && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Premium</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPremiumModal(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
+                  <Crown className="h-3 w-3" />
+                  <span className="underline">Premium</span>
+                </button>
               )}
             </div>
             <p className="text-xs text-muted-foreground">Advanced: Gradually increase dosage over time</p>
@@ -998,18 +1025,6 @@ export const AddCompoundScreen = () => {
           />
         </div>
 
-        {/* Premium Testing Toggle (Dev Only) */}
-        <div className="p-4 bg-warning/10 border border-warning rounded-lg">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="premium-test" className="mb-0 text-sm">Premium Mode (Testing)</Label>
-            <Switch
-              id="premium-test"
-              checked={isPremium}
-              onCheckedChange={setIsPremium}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">Toggle to test premium features</p>
-        </div>
       </div>
 
       {/* Save Button */}

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera, Plus, Sparkles } from "lucide-react";
+import { Calendar as CalendarIcon, Camera, Plus, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -463,7 +463,7 @@ export const ProgressScreen = () => {
                       <Camera className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                       {!isPremium && (
                         <div className="absolute top-2 right-2">
-                          <Sparkles className="w-4 h-4 text-primary/70" />
+                          <Crown className="w-4 h-4 text-primary/70" />
                         </div>
                       )}
                     </Card>
@@ -474,7 +474,7 @@ export const ProgressScreen = () => {
               {!isPremium && (
                 <div className="text-center py-3">
                   <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
-                    <Sparkles className="w-4 h-4" />
+                    <Crown className="w-4 h-4" />
                     Unlock Premium
                   </Button>
                 </div>
