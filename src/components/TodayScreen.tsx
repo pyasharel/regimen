@@ -176,11 +176,11 @@ export const TodayScreen = () => {
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-center gap-2">
-          <h1 className="text-xl font-bold">Regimen</h1>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+            REGIMEN
+          </h1>
           {isPremium && (
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary">
-              <Crown className="h-3.5 w-3.5 text-white" />
-            </div>
+            <Crown className="h-5 w-5 text-primary" />
           )}
         </div>
       </header>
