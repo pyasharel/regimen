@@ -63,12 +63,12 @@ export const AddCompoundScreen = () => {
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
 
-  // Titration (premium) - array of steps
-  const [enableTitration, setEnableTitration] = useState(false);
-  const [titrationSteps, setTitrationSteps] = useState<Array<{
-    weeks: number;
-    targetDose: string;
-  }>>([{ weeks: 4, targetDose: "" }]);
+  // Titration (premium) - COMMENTED OUT FOR MVP - Can be re-enabled later
+  // const [enableTitration, setEnableTitration] = useState(false);
+  // const [titrationSteps, setTitrationSteps] = useState<Array<{
+  //   weeks: number;
+  //   targetDose: string;
+  // }>>([{ weeks: 4, targetDose: "" }]);
 
   // Active status
   const [isActive, setIsActive] = useState(true);
@@ -77,13 +77,14 @@ export const AddCompoundScreen = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
+  // TITRATION - COMMENTED OUT FOR MVP
   // Auto-populate titration starting dose from main dosage
-  useEffect(() => {
-    if (enableTitration && intendedDose && titrationSteps[0].targetDose === "") {
-      // Starting dose defaults to current dosage
-      // First step is where they want to go
-    }
-  }, [enableTitration, intendedDose]);
+  // useEffect(() => {
+  //   if (enableTitration && intendedDose && titrationSteps[0].targetDose === "") {
+  //     // Starting dose defaults to current dosage
+  //     // First step is where they want to go
+  //   }
+  // }, [enableTitration, intendedDose]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -112,13 +113,14 @@ export const AddCompoundScreen = () => {
         }
       }
       
-      if (editingCompound.has_titration && editingCompound.titration_config) {
-        setEnableTitration(true);
-        const config = editingCompound.titration_config as any;
-        if (config.steps && Array.isArray(config.steps)) {
-          setTitrationSteps(config.steps);
-        }
-      }
+      // TITRATION - COMMENTED OUT FOR MVP
+      // if (editingCompound.has_titration && editingCompound.titration_config) {
+      //   setEnableTitration(true);
+      //   const config = editingCompound.titration_config as any;
+      //   if (config.steps && Array.isArray(config.steps)) {
+      //     setTitrationSteps(config.steps);
+      //   }
+      // }
       
       if (editingCompound.vial_size) {
         setShowCalculator(true);
@@ -218,25 +220,26 @@ export const AddCompoundScreen = () => {
         continue;
       }
 
+      // TITRATION - COMMENTED OUT FOR MVP
       // Calculate dose based on titration
       let currentDose = parseFloat(intendedDose);
-      if (enableTitration && titrationSteps.length > 0) {
-        const weekNumber = Math.floor(i / 7);
-        let cumulativeWeeks = 0;
-        
-        // Find which titration step we're in
-        for (const step of titrationSteps) {
-          if (weekNumber < cumulativeWeeks + step.weeks) {
-            // We're still in this step, stay at previous target dose
-            // Don't change currentDose - it stays at starting dose or previous step's target
-            break;
-          } else {
-            // We've completed this step, move to its target dose
-            cumulativeWeeks += step.weeks;
-            currentDose = parseFloat(step.targetDose);
-          }
-        }
-      }
+      // if (enableTitration && titrationSteps.length > 0) {
+      //   const weekNumber = Math.floor(i / 7);
+      //   let cumulativeWeeks = 0;
+      //   
+      //   // Find which titration step we're in
+      //   for (const step of titrationSteps) {
+      //     if (weekNumber < cumulativeWeeks + step.weeks) {
+      //       // We're still in this step, stay at previous target dose
+      //       // Don't change currentDose - it stays at starting dose or previous step's target
+      //       break;
+      //     } else {
+      //       // We've completed this step, move to its target dose
+      //       cumulativeWeeks += step.weeks;
+      //       currentDose = parseFloat(step.targetDose);
+      //     }
+      //   }
+      // }
 
       doses.push({
         compound_id: compoundId,
@@ -298,14 +301,15 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
-            has_titration: enableTitration,
-            titration_config: enableTitration ? {
-              starting_dose: parseFloat(intendedDose),
-              steps: titrationSteps.map(step => ({
-                weeks: step.weeks,
-                targetDose: parseFloat(step.targetDose)
-              }))
-            } : null,
+            // TITRATION - COMMENTED OUT FOR MVP
+            // has_titration: enableTitration,
+            // titration_config: enableTitration ? {
+            //   starting_dose: parseFloat(intendedDose),
+            //   steps: titrationSteps.map(step => ({
+            //     weeks: step.weeks,
+            //     targetDose: parseFloat(step.targetDose)
+            //   }))
+            // } : null,
             is_active: isActive
           })
           .eq('id', editingCompound.id);
@@ -354,14 +358,15 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
-            has_titration: enableTitration,
-            titration_config: enableTitration ? {
-              starting_dose: parseFloat(intendedDose),
-              steps: titrationSteps.map(step => ({
-                weeks: step.weeks,
-                targetDose: parseFloat(step.targetDose)
-              }))
-            } : null,
+            // TITRATION - COMMENTED OUT FOR MVP
+            // has_titration: enableTitration,
+            // titration_config: enableTitration ? {
+            //   starting_dose: parseFloat(intendedDose),
+            //   steps: titrationSteps.map(step => ({
+            //     weeks: step.weeks,
+            //     targetDose: parseFloat(step.targetDose)
+            //   }))
+            // } : null,
             is_active: isActive
           }])
           .select()
@@ -887,7 +892,8 @@ export const AddCompoundScreen = () => {
             <p className="text-xs text-muted-foreground">Advanced: Gradually increase dosage over time</p>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+          {/* TITRATION - COMMENTED OUT FOR MVP */}
+          {/* <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
             <Label htmlFor="titration" className="mb-0">Enable Titration</Label>
             <Switch
               id="titration"
@@ -966,7 +972,7 @@ export const AddCompoundScreen = () => {
                 + Add Another Step
               </Button>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Active Protocol */}

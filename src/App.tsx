@@ -9,6 +9,10 @@ import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { AccountSettings } from "./components/settings/AccountSettings";
+import { DisplaySettings } from "./components/settings/DisplaySettings";
+import { DataSettings } from "./components/settings/DataSettings";
+import { HelpSettings } from "./components/settings/HelpSettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -29,6 +33,10 @@ const App = () => (
           <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+          <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+          <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
+          <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
+          <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -12,6 +12,9 @@ export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [showThemeDialog, setShowThemeDialog] = useState(false);
+  
+  // TODO: Replace with actual premium status check
+  const isPremium = false;
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -28,37 +31,25 @@ export const SettingsScreen = () => {
       icon: User,
       label: "Account",
       description: "Email, password, delete account",
-      onClick: () => {},
-    },
-    {
-      icon: Bell,
-      label: "Notifications",
-      description: "Manage reminders and alerts",
-      onClick: () => {},
+      onClick: () => navigate("/settings/account"),
     },
     {
       icon: Palette,
-      label: "Theme",
-      description: "Light, Dark, or System",
-      onClick: () => setShowThemeDialog(true),
-    },
-    {
-      icon: BarChart3,
-      label: "Tracking Categories",
-      description: "Customize what you track",
-      onClick: () => {},
+      label: "Display",
+      description: "Theme and measurement units",
+      onClick: () => navigate("/settings/display"),
     },
     {
       icon: Download,
-      label: "Export Data",
-      description: "Download your data as CSV/PDF",
-      onClick: () => {},
+      label: "Data",
+      description: "Export or clear your data",
+      onClick: () => navigate("/settings/data"),
     },
     {
       icon: HelpCircle,
       label: "Help & Support",
       description: "FAQ and contact support",
-      onClick: () => {},
+      onClick: () => navigate("/settings/help"),
     },
   ];
 
@@ -74,42 +65,40 @@ export const SettingsScreen = () => {
       </header>
 
       <div className="p-4 space-y-4">
-        {/* Premium Banner */}
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-secondary p-6 shadow-xl">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-white">Unlock Premium</h2>
-              <ul className="mt-3 space-y-2 text-sm text-white/90">
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                  Custom notification times
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                  Advanced scheduling
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                  AI photo analysis
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                  Export data
-                </li>
-              </ul>
-              <Button 
-                variant="secondary" 
-                className="mt-4 bg-white text-primary hover:bg-white/90"
-                size="sm"
-              >
-                Start 14-Day Free Trial
-              </Button>
+        {/* Premium Banner - Only show if user is NOT premium */}
+        {!isPremium && (
+          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-secondary p-6 shadow-[var(--shadow-premium)]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white">Unlock Premium</h2>
+                <ul className="mt-3 space-y-2 text-sm text-white/90">
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                    Custom notification times
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                    Advanced scheduling
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                    AI photo analysis
+                  </li>
+                </ul>
+                <Button 
+                  variant="secondary" 
+                  className="mt-4 bg-white text-primary hover:bg-white/90"
+                  size="sm"
+                >
+                  Start 14-Day Free Trial
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Settings List */}
         <div className="space-y-2">

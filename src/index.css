@@ -8,11 +8,11 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Light Theme */
-    --background: 0 0% 100%; /* #FFFFFF */
+    /* Light Theme - Enhanced */
+    --background: 0 0% 98%; /* #FAFAFA - Softer than pure white */
     --foreground: 0 0% 5.88%; /* #0F0F0F */
 
-    --card: 0 0% 98%; /* #FAFAFA */
+    --card: 0 0% 100%; /* #FFFFFF - Cards pop on softer background */
     --card-foreground: 0 0% 5.88%;
 
     --popover: 0 0% 100%;
@@ -26,7 +26,7 @@ All colors MUST be HSL.
     --secondary: 258 90% 66%; /* #8B5CF6 */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 96%; /* #F5F5F5 */
+    --muted: 0 0% 94%; /* #F0F0F0 - Slightly darker for better contrast */
     --muted-foreground: 220 9% 46%; /* #6B7280 */
 
     --accent: 258 90% 66%; /* Purple */
@@ -37,21 +37,25 @@ All colors MUST be HSL.
     --destructive: 0 85% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%; /* #E5E5E5 */
+    --border: 0 0% 88%; /* #E0E0E0 - More visible borders */
     --input: 0 0% 96%; /* #F5F5F5 */
     --ring: 6 100% 69%; /* Coral */
 
     --radius: 0.75rem; /* 12px default */
 
     /* Surface levels */
-    --surface: 0 0% 96%; /* #F5F5F5 */
+    --surface: 0 0% 94%; /* #F0F0F0 */
+    --surface-elevated: 0 0% 97%; /* #F7F7F7 - For sections that need to stand out */
     
     /* Gradients */
     --gradient-premium: linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 98%));
+    --gradient-section: linear-gradient(135deg, hsl(6 100% 97%), hsl(258 90% 97%));
     
-    /* Shadows */
-    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.15);
+    /* Shadows - More pronounced for depth */
+    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --shadow-elevated: 0 4px 20px rgba(0, 0, 0, 0.12);
+    --shadow-premium: 0 8px 32px rgba(255, 111, 97, 0.2);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
