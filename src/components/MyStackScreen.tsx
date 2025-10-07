@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw } from "lucide-react";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +72,31 @@ export const MyStackScreen = () => {
       toast({
         title: "Error",
         description: "Failed to update compound",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const reactivateCompound = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('compounds')
+        .update({ is_active: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Compound reactivated",
+        description: "Moved back to active section"
+      });
+
+      loadCompounds();
+    } catch (error) {
+      console.error('Error reactivating:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reactivate compound",
         variant: "destructive"
       });
     }
@@ -217,6 +243,30 @@ export const MyStackScreen = () => {
                       </p>
                     </div>
                   </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="rounded-lg p-2 hover:bg-muted transition-colors">
+                        <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(compound)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => reactivateCompound(compound.id)}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reactivate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => deleteCompound(compound.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
@@ -232,26 +282,7 @@ export const MyStackScreen = () => {
         <Plus className="h-6 w-6" />
       </button>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 flex h-16 items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm">
-        {[
-          { name: "Today", path: "/today", active: false },
-          { name: "My Stack", path: "/stack", active: true },
-          { name: "Progress", path: "/progress", active: false },
-          { name: "Settings", path: "/settings", active: false },
-        ].map((tab) => (
-          <button
-            key={tab.name}
-            onClick={() => navigate(tab.path)}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              tab.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <div className="h-1 w-1 rounded-full" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
-          </button>
-        ))}
-      </nav>
+      <BottomNavigation />
     </div>
   );
 };

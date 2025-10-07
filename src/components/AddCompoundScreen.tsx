@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { PremiumModal } from "@/components/PremiumModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +75,7 @@ export const AddCompoundScreen = () => {
   
   // Premium feature (for testing, toggle this)
   const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   // Auto-populate titration starting dose from main dosage
   useEffect(() => {
@@ -676,10 +678,14 @@ export const AddCompoundScreen = () => {
                 </select>
               )}
               {!isPremium && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setShowPremiumModal(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                >
                   <Sparkles className="h-3 w-3" />
-                  <span>Upgrade for custom times</span>
-                </div>
+                  <span className="underline">Upgrade for custom times</span>
+                </button>
               )}
             </div>
           )}
@@ -1002,6 +1008,8 @@ export const AddCompoundScreen = () => {
           </Button>
         </div>
       </div>
+
+      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 };

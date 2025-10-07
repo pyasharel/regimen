@@ -8,15 +8,15 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Base - Dark Theme */
-    --background: 0 0% 5.88%; /* #0F0F0F */
-    --foreground: 0 0% 100%; /* #FFFFFF */
+    /* Light Theme */
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 0 0% 5.88%; /* #0F0F0F */
 
-    --card: 0 0% 10.2%; /* #1A1A1A */
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 98%; /* #FAFAFA */
+    --card-foreground: 0 0% 5.88%;
 
-    --popover: 0 0% 10.2%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5.88%;
 
     /* Brand - Coral Primary */
     --primary: 6 100% 69%; /* #FF6F61 */
@@ -26,8 +26,8 @@ All colors MUST be HSL.
     --secondary: 258 90% 66%; /* #8B5CF6 */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 14.9%; /* #262626 */
-    --muted-foreground: 220 9% 64%; /* #9CA3AF */
+    --muted: 0 0% 96%; /* #F5F5F5 */
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
 
     --accent: 258 90% 66%; /* Purple */
     --accent-foreground: 0 0% 100%;
@@ -37,48 +37,63 @@ All colors MUST be HSL.
     --destructive: 0 85% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%; /* #333333 */
-    --input: 0 0% 14.9%; /* #262626 */
+    --border: 0 0% 90%; /* #E5E5E5 */
+    --input: 0 0% 96%; /* #F5F5F5 */
     --ring: 6 100% 69%; /* Coral */
 
     --radius: 0.75rem; /* 12px default */
 
     /* Surface levels */
-    --surface: 0 0% 14.9%; /* #262626 */
+    --surface: 0 0% 96%; /* #F5F5F5 */
     
     /* Gradients */
     --gradient-premium: linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%));
     
     /* Shadows */
-    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.15);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    /* Keep same values for dark mode since app is dark-first */
-    --background: 0 0% 5.88%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 10.2%;
+    /* Dark Theme */
+    --background: 0 0% 5.88%; /* #0F0F0F */
+    --foreground: 0 0% 100%; /* #FFFFFF */
+
+    --card: 0 0% 10.2%; /* #1A1A1A */
     --card-foreground: 0 0% 100%;
+
     --popover: 0 0% 10.2%;
     --popover-foreground: 0 0% 100%;
-    --primary: 6 100% 69%;
+
+    --primary: 6 100% 69%; /* #FF6F61 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 258 90% 66%;
+
+    --secondary: 258 90% 66%; /* #8B5CF6 */
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 220 9% 64%;
-    --accent: 258 90% 66%;
+
+    --muted: 0 0% 14.9%; /* #262626 */
+    --muted-foreground: 220 9% 64%; /* #9CA3AF */
+
+    --accent: 258 90% 66%; /* Purple */
     --accent-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
-    --destructive: 0 85% 60%;
+
+    --success: 142 71% 45%; /* #10B981 */
+    --destructive: 0 85% 60%; /* #EF4444 */
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 20%;
-    --input: 0 0% 14.9%;
-    --ring: 6 100% 69%;
+
+    --border: 0 0% 20%; /* #333333 */
+    --input: 0 0% 14.9%; /* #262626 */
+    --ring: 6 100% 69%; /* Coral */
+
+    /* Surface levels */
+    --surface: 0 0% 14.9%; /* #262626 */
+    
+    /* Shadows */
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 }
 

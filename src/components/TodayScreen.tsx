@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, Bell, Calendar as CalendarIcon } from "lucide-react";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -352,26 +353,7 @@ export const TodayScreen = () => {
         <Plus className="h-6 w-6" />
       </button>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 flex h-16 items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm">
-        {[
-          { name: "Today", path: "/today", active: true },
-          { name: "My Stack", path: "/stack", active: false },
-          { name: "Progress", path: "/progress", active: false },
-          { name: "Settings", path: "/settings", active: false },
-        ].map((tab) => (
-          <button
-            key={tab.name}
-            onClick={() => navigate(tab.path)}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              tab.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <div className="h-1 w-1 rounded-full" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
-          </button>
-        ))}
-      </nav>
+      <BottomNavigation />
     </div>
   );
 };

@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Sparkles, User, Bell, Palette, BarChart3, Download, HelpCircle, LogOut } from "lucide-react";
+import { X, Sparkles, User, Bell, Palette, BarChart3, Download, HelpCircle, LogOut, Moon, Sun, Laptop } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BottomNavigation } from "@/components/BottomNavigation";
+import { useTheme } from "@/components/ThemeProvider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+  const [showThemeDialog, setShowThemeDialog] = useState(false);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -34,7 +40,7 @@ export const SettingsScreen = () => {
       icon: Palette,
       label: "Theme",
       description: "Light, Dark, or System",
-      onClick: () => {},
+      onClick: () => setShowThemeDialog(true),
     },
     {
       icon: BarChart3,
@@ -137,26 +143,77 @@ export const SettingsScreen = () => {
         </Button>
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 flex h-16 items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm">
-        {[
-          { name: "Today", path: "/today", active: false },
-          { name: "My Stack", path: "/stack", active: false },
-          { name: "Progress", path: "/progress", active: false },
-          { name: "Settings", path: "/settings", active: true },
-        ].map((tab) => (
-          <button
-            key={tab.name}
-            onClick={() => navigate(tab.path)}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              tab.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <div className="h-1 w-1 rounded-full" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
-          </button>
-        ))}
-      </nav>
+      <BottomNavigation />
+
+      {/* Theme Dialog */}
+      <Dialog open={showThemeDialog} onOpenChange={setShowThemeDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Choose Theme</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 pt-4">
+            <button
+              onClick={() => {
+                setTheme("light");
+                setShowThemeDialog(false);
+              }}
+              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
+                theme === "light" ? "border-primary bg-primary/10" : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <Sun className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold">Light</div>
+                  <div className="text-xs text-muted-foreground">Bright and clean</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setTheme("dark");
+                setShowThemeDialog(false);
+              }}
+              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
+                theme === "dark" ? "border-primary bg-primary/10" : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <Moon className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold">Dark</div>
+                  <div className="text-xs text-muted-foreground">Easy on the eyes</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setTheme("system");
+                setShowThemeDialog(false);
+              }}
+              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
+                theme === "system" ? "border-primary bg-primary/10" : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <Laptop className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold">System</div>
+                  <div className="text-xs text-muted-foreground">Match device settings</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

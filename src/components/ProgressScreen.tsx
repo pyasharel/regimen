@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera, Plus, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -480,30 +481,7 @@ export const ProgressScreen = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-        <div className="flex justify-around items-center h-20 pb-6">
-          <button onClick={() => navigate("/today")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
-            <CalendarIcon className="w-6 h-6" />
-            <span className="text-xs">Today</span>
-          </button>
-          <button onClick={() => navigate("/add-compound")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
-            <Plus className="w-6 h-6" />
-            <span className="text-xs">Add</span>
-          </button>
-          <button onClick={() => navigate("/stack")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
-            <div className="w-6 h-6 bg-muted rounded" />
-            <span className="text-xs">Stack</span>
-          </button>
-          <button onClick={() => navigate("/progress")} className="flex flex-col items-center gap-1 text-primary">
-            <div className="w-6 h-6 bg-primary rounded" />
-            <span className="text-xs font-medium">Progress</span>
-          </button>
-          <button onClick={() => navigate("/settings")} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
-            <div className="w-6 h-6 bg-muted rounded" />
-            <span className="text-xs">Settings</span>
-          </button>
-        </div>
-      </div>
+      <BottomNavigation />
 
       <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
         <DialogContent className="max-w-md">
