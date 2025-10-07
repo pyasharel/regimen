@@ -222,19 +222,18 @@ export const AddCompoundScreen = () => {
       let currentDose = parseFloat(intendedDose);
       if (enableTitration && titrationSteps.length > 0) {
         const weekNumber = Math.floor(i / 7);
-        let startDose = parseFloat(intendedDose);
         let cumulativeWeeks = 0;
         
+        // Find which titration step we're in
         for (const step of titrationSteps) {
           if (weekNumber < cumulativeWeeks + step.weeks) {
-            const targetDose = parseFloat(step.targetDose);
-            const weeksIntoStep = weekNumber - cumulativeWeeks;
-            currentDose = startDose + ((targetDose - startDose) / step.weeks) * weeksIntoStep;
+            // We're still in this step, stay at previous target dose
+            // Don't change currentDose - it stays at starting dose or previous step's target
             break;
           } else {
+            // We've completed this step, move to its target dose
             cumulativeWeeks += step.weeks;
-            startDose = parseFloat(step.targetDose);
-            currentDose = startDose;
+            currentDose = parseFloat(step.targetDose);
           }
         }
       }
@@ -792,7 +791,7 @@ export const AddCompoundScreen = () => {
         </div>
 
         {/* Cycle (Premium) */}
-        <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
+        <div className="space-y-4 bg-background rounded-lg p-4 border border-border max-w-2xl">
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
