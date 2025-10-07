@@ -1,12 +1,16 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, AlertCircle, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const COMMON_PEPTIDES = [
   "BPC-157", "TB-500", "Semaglutide", "Tirzepatide", "Retatrutide",
@@ -163,9 +167,17 @@ export const AddCompoundScreen = () => {
     p.toLowerCase().includes(name.toLowerCase())
   );
 
+  // Helper to format date without timezone issues
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const generateDoses = (compoundId: string, userId: string) => {
     const doses = [];
-    // Fix timezone issue: parse date in local timezone
+    // Parse date in local timezone
     const [year, month, day] = startDate.split('-').map(Number);
     const start = new Date(year, month - 1, day);
     
@@ -182,17 +194,16 @@ export const AddCompoundScreen = () => {
       const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
       const end = new Date(endYear, endMonth - 1, endDay);
       const daysDiff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1)); // +1 to include end date
+      daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
     }
     
     for (let i = 0; i < daysToGenerate; i++) {
       const date = new Date(start);
       date.setDate(date.getDate() + i);
-      const dayOfWeek = date.getDay();
+      const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
       
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
-        // Fix: Sunday is 0, Monday is 1, etc. Match this with the day picker
         if (!customDays.includes(dayOfWeek)) {
           continue;
         }
@@ -211,13 +222,11 @@ export const AddCompoundScreen = () => {
         
         for (const step of titrationSteps) {
           if (weekNumber < cumulativeWeeks + step.weeks) {
-            // We're in this step
             const targetDose = parseFloat(step.targetDose);
             const weeksIntoStep = weekNumber - cumulativeWeeks;
             currentDose = startDose + ((targetDose - startDose) / step.weeks) * weeksIntoStep;
             break;
           } else {
-            // Move to next step
             cumulativeWeeks += step.weeks;
             startDose = parseFloat(step.targetDose);
             currentDose = startDose;
@@ -228,7 +237,7 @@ export const AddCompoundScreen = () => {
       doses.push({
         compound_id: compoundId,
         user_id: userId,
-        scheduled_date: date.toISOString().split('T')[0],
+        scheduled_date: formatDate(date),
         scheduled_time: isPremium ? customTime : timeOfDay,
         dose_amount: currentDose,
         dose_unit: doseUnit,
@@ -432,7 +441,7 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-[2fr_1fr] gap-3">
+          <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="intendedDose">Dosage *</Label>
               <Input
@@ -445,14 +454,30 @@ export const AddCompoundScreen = () => {
             </div>
             <div className="space-y-2">
               <Label>Unit</Label>
-              <select
-                value={doseUnit}
-                onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
-              >
-                <option value="mcg">mcg</option>
-                <option value="mg">mg</option>
-              </select>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDoseUnit("mcg")}
+                  className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                    doseUnit === "mcg"
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted'
+                  }`}
+                >
+                  Micrograms (mcg)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDoseUnit("mg")}
+                  className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                    doseUnit === "mg"
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted'
+                  }`}
+                >
+                  Milligrams (mg)
+                </button>
+              </div>
             </div>
           </div>
 
@@ -631,30 +656,79 @@ export const AddCompoundScreen = () => {
           <div className="space-y-3">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <Label>Start Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(new Date(startDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate ? new Date(startDate + 'T00:00:00') : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, '0');
+                          const day = String(date.getDate()).padStart(2, '0');
+                          setStartDate(`${year}-${month}-${day}`);
+                        }
+                      }}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endDate" className="text-sm text-muted-foreground">
+                <Label className="text-sm text-muted-foreground">
                   End Date <span className="font-normal">(optional)</span>
                 </Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="Leave blank for ongoing"
-                  min={startDate}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(new Date(endDate + 'T00:00:00'), "PPP") : <span>Leave blank for ongoing</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, '0');
+                          const day = String(date.getDate()).padStart(2, '0');
+                          setEndDate(`${year}-${month}-${day}`);
+                        } else {
+                          setEndDate("");
+                        }
+                      }}
+                      disabled={(date) => startDate ? date < new Date(startDate + 'T00:00:00') : false}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Doses auto-generate for 60 days (or until end date if sooner)
+              Future doses are automatically created for the next 60 days based on your schedule settings above
             </p>
           </div>
 
@@ -685,14 +759,17 @@ export const AddCompoundScreen = () => {
 
         {/* Cycle (Premium) */}
         <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
-            {!isPremium && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Sparkles className="h-3 w-3" />
-                <span>Premium</span>
-              </div>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
+              {!isPremium && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Premium</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Advanced: Automatically pause and resume this compound on a schedule</p>
           </div>
 
           <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
@@ -765,14 +842,17 @@ export const AddCompoundScreen = () => {
 
         {/* Titration (Premium) */}
         <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
-            {!isPremium && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Sparkles className="h-3 w-3" />
-                <span>Premium</span>
-              </div>
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
+              {!isPremium && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Premium</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Advanced: Gradually increase dosage over time</p>
           </div>
 
           <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
