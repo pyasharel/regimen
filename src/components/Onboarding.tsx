@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Syringe, TrendingUp, Calendar } from "lucide-react";
 
@@ -25,26 +26,34 @@ export const Onboarding = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
-  // Check if user has already completed onboarding
-  useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
-    if (hasCompletedOnboarding === 'true') {
-      navigate("/today");
-    }
-  }, [navigate]);
-
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      localStorage.setItem('hasCompletedOnboarding', 'true');
-      navigate("/today");
+      await completeOnboarding();
     }
   };
 
-  const handleSkip = () => {
-    localStorage.setItem('hasCompletedOnboarding', 'true');
-    navigate("/today");
+  const handleSkip = async () => {
+    await completeOnboarding();
+  };
+
+  const completeOnboarding = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ onboarding_completed: true })
+          .eq("user_id", user.id);
+      }
+      
+      navigate('/today');
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      navigate('/today');
+    }
   };
 
   const Slide = slides[currentSlide];

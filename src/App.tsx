@@ -17,6 +17,7 @@ import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
+import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,8 +29,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
+          <Route path="/" element={<Splash />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
           <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
           <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
