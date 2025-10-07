@@ -17,27 +17,34 @@ const COMMON_PEPTIDES = [
   // Peptides
   "AOD-9604",
   "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide",
-  "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
+  "CagriSema", "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
   "DSIP", "Dihexa", "Dulaglutide",
   "Epithalon",
   "Follistatin", "FTPP (Adipotide)",
-  "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF (1-29)",
+  "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Gonadorelin", "GRF (1-29)",
   "HCG", "Hexarelin", "HMG",
   "Ibutamoren (MK-677)", "IGF-1 DES", "IGF-1 LR3", "Ipamorelin", 
   "Ipamorelin + CJC-1295 Blend", "Ipamorelin + Sermorelin Blend",
-  "Kisspeptin", "KPV",
+  "Kisspeptin", "KLOW", "KPV",
   "Larazotide", "Liraglutide", "LL-37",
-  "Melanotan I", "Melanotan II", "MGF", "MOD-GRF (1-29)", "MOTS-c",
+  "Melanotan I", "Melanotan II", "MGF", "MOD-GRF (1-29)", "Mounjaro", "MOTS-c",
   "NA-Selank", "NA-Semax",
+  "Ozempic",
   "P21", "PEG-MGF", "Pinealon", "PT-141",
   "Retatrutide",
-  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP",
+  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
-  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide",
+  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity",
+  // Bioregulators
+  "Cortagen", "Pinealon", "Thymulin",
   // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
   // Other steroids
-  "Nandrolone", "Oxandrolone"
+  "Nandrolone", "Oxandrolone",
+  // Blends and stacks
+  "Wolverine Stack",
+  // GLP-1s
+  "Victoza", "Wegovy", "Zepbound"
 ];
 
 export const AddCompoundScreen = () => {
@@ -483,27 +490,29 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dosage *</Label>
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <Input
-                  id="intendedDose"
-                  type="number"
-                  value={intendedDose}
-                  onChange={(e) => setIntendedDose(e.target.value)}
-                  placeholder="e.g., 250"
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="intendedDose">Dose Amount *</Label>
+              <Input
+                id="intendedDose"
+                type="number"
+                value={intendedDose}
+                onChange={(e) => setIntendedDose(e.target.value)}
+                placeholder="e.g., 250"
+                className="text-lg h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+            <div>
+              <Label htmlFor="unit">Unit *</Label>
               <select
+                id="unit"
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm font-medium"
+                className="w-auto min-w-[120px] h-11 bg-background border-border rounded-lg border px-3 text-sm font-medium"
               >
-                <option value="mcg">mcg (micrograms)</option>
-                <option value="mg">mg (milligrams)</option>
-                <option value="IU">IU (units)</option>
+                <option value="mcg">mcg</option>
+                <option value="mg">mg</option>
+                <option value="IU">IU</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>

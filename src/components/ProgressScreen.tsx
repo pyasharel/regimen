@@ -355,68 +355,6 @@ export const ProgressScreen = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Medication Timeline</h2>
-          
-          <Card className="p-6 bg-muted/30">
-            {compounds.length > 0 ? (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  {compounds.map((compound) => {
-                    const startDate = new Date(compound.start_date);
-                    const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
-                    const isActive = compound.is_active && !compound.end_date;
-                    
-                    const now = new Date();
-                    const sixMonthsAgo = new Date(now);
-                    sixMonthsAgo.setMonth(now.getMonth() - 6);
-                    
-                    const timelineStart = sixMonthsAgo;
-                    const timelineEnd = now;
-                    const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-                    
-                    const compoundStartDays = Math.max(0, Math.floor((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
-                    const compoundEndDays = Math.min(totalDays, Math.floor((endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
-                    
-                    const leftPercent = (compoundStartDays / totalDays) * 100;
-                    const widthPercent = ((compoundEndDays - compoundStartDays) / totalDays) * 100;
-                    
-                    return (
-                      <div key={compound.id} className="space-y-1">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="font-medium text-foreground">{compound.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(startDate, 'MMM d')} - {isActive ? 'Active' : format(endDate, 'MMM d')}
-                          </span>
-                        </div>
-                        <div className="relative h-8 bg-background/50 rounded-lg overflow-hidden">
-                          <div
-                            className={`absolute h-full rounded-lg transition-all ${
-                              isActive 
-                                ? 'bg-gradient-to-r from-primary to-primary/70' 
-                                : 'bg-muted'
-                            }`}
-                            style={{
-                              left: `${leftPercent}%`,
-                              width: `${widthPercent}%`,
-                              minWidth: '2%'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No medications tracked yet</p>
-                <p className="text-sm mt-1">Add your first compound to see your medication timeline</p>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
@@ -484,6 +422,68 @@ export const ProgressScreen = () => {
               )}
             </>
           )}
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Medication Timeline</h2>
+          
+          <Card className="p-6 bg-muted/30">
+            {compounds.length > 0 ? (
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  {compounds.map((compound) => {
+                    const startDate = new Date(compound.start_date);
+                    const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
+                    const isActive = compound.is_active && !compound.end_date;
+                    
+                    const now = new Date();
+                    const sixMonthsAgo = new Date(now);
+                    sixMonthsAgo.setMonth(now.getMonth() - 6);
+                    
+                    const timelineStart = sixMonthsAgo;
+                    const timelineEnd = now;
+                    const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    const compoundStartDays = Math.max(0, Math.floor((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
+                    const compoundEndDays = Math.min(totalDays, Math.floor((endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
+                    
+                    const leftPercent = (compoundStartDays / totalDays) * 100;
+                    const widthPercent = ((compoundEndDays - compoundStartDays) / totalDays) * 100;
+                    
+                    return (
+                      <div key={compound.id} className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-medium text-foreground">{compound.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(startDate, 'MMM d')} - {isActive ? 'Active' : format(endDate, 'MMM d')}
+                          </span>
+                        </div>
+                        <div className="relative h-8 bg-background/50 rounded-lg overflow-hidden">
+                          <div
+                            className={`absolute h-full rounded-lg transition-all ${
+                              isActive 
+                                ? 'bg-gradient-to-r from-primary to-primary/70' 
+                                : 'bg-muted'
+                            }`}
+                            style={{
+                              left: `${leftPercent}%`,
+                              width: `${widthPercent}%`,
+                              minWidth: '2%'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No medications tracked yet</p>
+                <p className="text-sm mt-1">Add your first compound to see your medication timeline</p>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
 
