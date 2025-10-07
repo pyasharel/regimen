@@ -192,6 +192,7 @@ export const AddCompoundScreen = () => {
       
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
+        // Fix: Sunday is 0, Monday is 1, etc. Match this with the day picker
         if (!customDays.includes(dayOfWeek)) {
           continue;
         }
@@ -447,11 +448,10 @@ export const AddCompoundScreen = () => {
               <select
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-full h-10 bg-background border-border rounded-lg border px-3 text-sm"
+                className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
-                <option value="IU">IU</option>
               </select>
             </div>
           </div>
@@ -535,7 +535,7 @@ export const AddCompoundScreen = () => {
         </div>
 
         {/* Schedule */}
-        <div className="space-y-4 bg-surface rounded-lg p-4">
+        <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Schedule</h2>
 
           <div className="space-y-2">
@@ -546,7 +546,7 @@ export const AddCompoundScreen = () => {
                 setFrequency(e.target.value);
                 if (e.target.value === 'Specific day(s)') setCustomDays([]);
               }}
-              className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
+              className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
             >
               <option value="Daily">Daily</option>
               <option value="Specific day(s)">Specific day(s)</option>
@@ -613,7 +613,7 @@ export const AddCompoundScreen = () => {
                 <select
                   value={timeOfDay}
                   onChange={(e) => setTimeOfDay(e.target.value)}
-                  className="w-full bg-background border-border rounded-lg border px-3 py-2 text-sm"
+                  className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
                 >
                   <option value="Morning">Morning</option>
                   <option value="Evening">Evening</option>
@@ -629,7 +629,7 @@ export const AddCompoundScreen = () => {
           )}
 
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
@@ -684,7 +684,7 @@ export const AddCompoundScreen = () => {
         </div>
 
         {/* Cycle (Premium) */}
-        <div className="space-y-4 bg-surface rounded-lg p-4">
+        <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
             {!isPremium && (
@@ -764,7 +764,7 @@ export const AddCompoundScreen = () => {
         </div>
 
         {/* Titration (Premium) */}
-        <div className="space-y-4 bg-surface rounded-lg p-4">
+        <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Titration</h2>
             {!isPremium && (
@@ -858,7 +858,7 @@ export const AddCompoundScreen = () => {
         </div>
 
         {/* Active Protocol */}
-        <div className="flex items-center justify-between p-4 bg-surface rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-background rounded-lg border border-border">
           <Label htmlFor="active" className="mb-0 text-base">Active Protocol</Label>
           <Switch
             id="active"
