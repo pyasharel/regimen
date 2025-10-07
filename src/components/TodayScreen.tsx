@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Crown } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ export const TodayScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -51,6 +52,16 @@ export const TodayScreen = () => {
   useEffect(() => {
     loadDoses();
     checkCompounds();
+    
+    // Check premium status
+    const checkPremium = () => {
+      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
+      setIsPremium(premiumStatus);
+    };
+    
+    checkPremium();
+    window.addEventListener('storage', checkPremium);
+    return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
 
   const checkCompounds = async () => {
@@ -164,8 +175,13 @@ export const TodayScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center gap-2">
           <h1 className="text-xl font-bold">Regimen</h1>
+          {isPremium && (
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary">
+              <Crown className="h-3.5 w-3.5 text-white" />
+            </div>
+          )}
         </div>
       </header>
 
