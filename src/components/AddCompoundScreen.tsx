@@ -48,7 +48,10 @@ export const AddCompoundScreen = () => {
   const [everyXDays, setEveryXDays] = useState(3);
   const [timeOfDay, setTimeOfDay] = useState("Morning");
   const [customTime, setCustomTime] = useState("09:00");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  // Set start date to today in local timezone
+  const today = new Date();
+  const localDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const [startDate, setStartDate] = useState(localDateString);
   const [endDate, setEndDate] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [enableReminder, setEnableReminder] = useState(true);
@@ -451,6 +454,7 @@ export const AddCompoundScreen = () => {
                   value={intendedDose}
                   onChange={(e) => setIntendedDose(e.target.value)}
                   placeholder="e.g., 250"
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -492,12 +496,12 @@ export const AddCompoundScreen = () => {
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount</Label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
                       onClick={() => setVialSize(size.toString())}
-                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                         vialSize === size.toString()
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card border border-border hover:bg-muted'
@@ -506,23 +510,37 @@ export const AddCompoundScreen = () => {
                       {size}mg
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('custom-vial-size') as HTMLInputElement;
+                      input?.focus();
+                    }}
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      ![5, 10, 15, 20].includes(Number(vialSize))
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    <Input
+                      id="custom-vial-size"
+                      type="number"
+                      value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
+                      onChange={(e) => setVialSize(e.target.value)}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-sm font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
+                  </button>
                 </div>
-                <Input
-                  type="number"
-                  value={vialSize}
-                  onChange={(e) => setVialSize(e.target.value)}
-                  placeholder="Custom"
-                />
               </div>
 
               <div className="space-y-2">
                 <Label>BAC Water Volume</Label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
                       onClick={() => setBacWater(vol.toString())}
-                      className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                      className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                         bacWater === vol.toString()
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card border border-border hover:bg-muted'
@@ -531,13 +549,27 @@ export const AddCompoundScreen = () => {
                       {vol}ml
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('custom-bac-water') as HTMLInputElement;
+                      input?.focus();
+                    }}
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      ![1, 2, 3, 5].includes(Number(bacWater))
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    <Input
+                      id="custom-bac-water"
+                      type="number"
+                      value={![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
+                      onChange={(e) => setBacWater(e.target.value)}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-sm font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
+                  </button>
                 </div>
-                <Input
-                  type="number"
-                  value={bacWater}
-                  onChange={(e) => setBacWater(e.target.value)}
-                  placeholder="Custom"
-                />
               </div>
 
               {calculatedIU && (
