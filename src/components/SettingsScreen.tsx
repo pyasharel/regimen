@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Crown, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock } from "lucide-react";
+import { X, Crown, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -42,6 +42,13 @@ export const SettingsScreen = () => {
       toast.success("Signed out successfully");
       navigate("/auth");
     }
+  };
+
+  const handleSendFeedback = () => {
+    const email = "feedback@regimenstack.com";
+    const subject = "Beta Feedback - Regimen App";
+    const body = "Hi there,\n\nI'd like to share feedback about the Regimen app:\n\n";
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const settingsSections = [
@@ -88,6 +95,12 @@ export const SettingsScreen = () => {
       label: "Help & Support",
       description: "FAQ and contact support",
       onClick: () => navigate("/settings/help"),
+    },
+    {
+      icon: MessageSquare,
+      label: "Send Feedback",
+      description: "Share your thoughts on the beta",
+      onClick: handleSendFeedback,
     },
   ];
 
