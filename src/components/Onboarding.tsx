@@ -8,17 +8,17 @@ const slides = [
   {
     icon: Calendar,
     title: "Welcome to Regimen",
-    description: "Take control of your health optimization journey with precision tracking",
+    description: "Track everything, reach your goals. Take the guesswork out of dosing, timing, and cycles.",
   },
   {
     icon: Syringe,
-    title: "Never Miss a Dose",
-    description: "Smart reminders and dose calculations keep you on track every single day",
+    title: "Smart Scheduling",
+    description: "Never miss a dose or wonder when to cycle off. Handles complex protocols and titration schedules.",
   },
   {
     icon: TrendingUp,
-    title: "See Your Results",
-    description: "Track progress with detailed analytics and AI-powered insights",
+    title: "Progress Insights",
+    description: "See your transformation and stay motivated. Track what matters and understand what's working.",
   },
 ];
 

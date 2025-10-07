@@ -14,36 +14,30 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const COMMON_PEPTIDES = [
-  "5-Amino-1MQ", "Anastrozole", "Aniracetam", "AOD-9604", "Apigenin", "Armodafinil",
-  "BPC-157", "BPC-157 + KPV Blend", "Berberine", "Beta-Alanine", "Bremelanotide",
-  "CagriSema", "Cerebrolysin", "CJC-1295 with DAC", "CJC-1295 without DAC",
-  "Clomiphene", "CoQ10", "Cortagen", "Creatine Monohydrate",
-  "DHEA", "Dihexa", "DSIP", "Dulaglutide",
-  "Ecdysterone", "Enclomiphene", "Epicatechin", "Epithalon", "Estradiol",
-  "Fisetin", "Follistatin", "FTPP (Adipotide)",
-  "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Glycine", "Gonadorelin", "GRF (1-29)",
+  // Peptides
+  "AOD-9604",
+  "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide",
+  "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
+  "DSIP", "Dihexa", "Dulaglutide",
+  "Epithalon",
+  "Follistatin", "FTPP (Adipotide)",
+  "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF (1-29)",
   "HCG", "Hexarelin", "HMG",
-  "Ibutamoren (MK-677)", "IGF-1 DES", "IGF-1 LR3", "Imunovir", "Inosine Pranobex",
-  "Ipamorelin", "Ipamorelin + CJC-1295 Blend", "Ipamorelin + Sermorelin Blend",
-  "Kisspeptin", "KLOW", "KPV",
-  "L-Carnitine", "L-Citrulline", "L-Theanine", "Larazotide", "Lion's Mane", "Liraglutide", "LL-37",
-  "Magnesium", "Magnesium Glycinate", "Melatonin", "Melanotan I", "Melanotan II",
-  "Metformin", "MGF", "MK-677", "MOD-GRF (1-29)", "Modafinil", "Mounjaro", "MOTS-c",
-  "NA-Selank", "NA-Semax", "NAC", "NAD+", "Nandrolone", "NMN", "Noopept",
-  "NR (Nicotinamide Riboside)",
-  "Omega-3", "Orforglipron", "Oxandrolone", "Ozempic",
-  "P21", "PEG-MGF", "Phenylpiracetam", "Pinealon", "PQQ", "Pregnenolone", "Progesterone", "PT-141",
-  "Quercetin",
-  "Rapamycin", "Resveratrol", "Retatrutide",
-  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "Spermidine",
-  "Tamoxifen", "Taurine", "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
+  "Ibutamoren (MK-677)", "IGF-1 DES", "IGF-1 LR3", "Ipamorelin", 
+  "Ipamorelin + CJC-1295 Blend", "Ipamorelin + Sermorelin Blend",
+  "Kisspeptin", "KPV",
+  "Larazotide", "Liraglutide", "LL-37",
+  "Melanotan I", "Melanotan II", "MGF", "MOD-GRF (1-29)", "MOTS-c",
+  "NA-Selank", "NA-Semax",
+  "P21", "PEG-MGF", "Pinealon", "PT-141",
+  "Retatrutide",
+  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP",
+  "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
+  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide",
+  // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity", "Turkesterone",
-  "Victoza", "Vitamin B Complex", "Vitamin B12 (Methylcobalamin)", "Vitamin C", "Vitamin D3",
-  "Vitamin K2 (MK-4)", "Vitamin K2 (MK-7)",
-  "Wegovy", "Wolverine Stack",
-  "YK-11",
-  "Zepbound", "Zinc"
+  // Other steroids
+  "Nandrolone", "Oxandrolone"
 ];
 
 export const AddCompoundScreen = () => {
@@ -502,22 +496,18 @@ export const AddCompoundScreen = () => {
                   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {["mcg", "mg", "IU", "tablet", "pill", "drop", "spray"].map((unit) => (
-                  <button
-                    key={unit}
-                    type="button"
-                    onClick={() => setDoseUnit(unit)}
-                    className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                      doseUnit === unit
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
-                  >
-                    {unit}
-                  </button>
-                ))}
-              </div>
+              <select
+                value={doseUnit}
+                onChange={(e) => setDoseUnit(e.target.value)}
+                className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm font-medium"
+              >
+                <option value="mcg">mcg (micrograms)</option>
+                <option value="mg">mg (milligrams)</option>
+                <option value="IU">IU (units)</option>
+                <option value="pill">pill</option>
+                <option value="drop">drop</option>
+                <option value="spray">spray</option>
+              </select>
             </div>
           </div>
 
