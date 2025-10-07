@@ -57,8 +57,10 @@ export const DataSettings = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `peptide-stack-data-${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `regimen-data-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast.success("Data exported successfully");
@@ -97,33 +99,33 @@ export const DataSettings = () => {
         <h1 className="text-xl font-bold">Data</h1>
       </header>
 
-      <div className="p-4 space-y-6 max-w-2xl mx-auto">
+      <div className="p-6 space-y-6 max-w-2xl mx-auto">
         {/* Export Data Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Download className="h-5 w-5" />
+        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+              <Download className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold">Export Data</h2>
-              <p className="text-sm text-muted-foreground">Download all your data as CSV</p>
+              <h2 className="text-lg font-semibold">Export Data</h2>
+              <p className="text-sm text-muted-foreground">Download all your compounds and doses as CSV</p>
             </div>
           </div>
-          <Button onClick={handleExportData} disabled={loading} className="w-full">
-            <Download className="h-4 w-4 mr-2" />
-            Export Data
+          <Button onClick={handleExportData} disabled={loading} className="w-full gap-2">
+            <Download className="h-4 w-4" />
+            {loading ? "Exporting..." : "Export Data"}
           </Button>
         </div>
 
         {/* Clear Data Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-destructive/20 bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-              <Trash2 className="h-5 w-5 text-destructive" />
+        <div className="space-y-4 p-6 rounded-xl border-2 border-destructive/20 bg-destructive/5 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
+              <Trash2 className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <h2 className="font-semibold text-destructive">Clear All Data</h2>
-              <p className="text-sm text-muted-foreground">Delete all compounds and doses</p>
+              <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
+              <p className="text-sm text-muted-foreground">Delete all compounds and doses (this cannot be undone)</p>
             </div>
           </div>
           <AlertDialog>

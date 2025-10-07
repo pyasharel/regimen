@@ -6,24 +6,16 @@ export const HelpSettings = () => {
 
   const faqItems = [
     {
-      question: "How do I add a new compound?",
+      question: "How do I add a new compound to my stack?",
       answer: "Navigate to 'My Stack' and tap the '+' button. Fill in the compound details including name, dosage, and schedule."
     },
     {
-      question: "Can I track multiple peptides at once?",
-      answer: "Yes! You can add as many compounds as you need to your stack. Each one can have its own schedule and dosage."
+      question: "Can I export my data?",
+      answer: "Yes! Go to Settings > Data > Export Data. Your data will be downloaded as a CSV file that you can open in Excel or other spreadsheet applications."
     },
     {
-      question: "How do I change my dosage schedule?",
-      answer: "Go to 'My Stack', find your compound, and tap 'Edit'. You can modify the schedule, dosage, or any other details."
-    },
-    {
-      question: "What units are supported?",
-      answer: "We support mcg (micrograms), mg (milligrams), and IU (International Units) for dosage measurements."
-    },
-    {
-      question: "How do I export my data?",
-      answer: "Go to Settings > Data > Export Data. Your data will be downloaded as a CSV file."
+      question: "Is my health data secure?",
+      answer: "Absolutely. Your data is encrypted and stored securely. We never sell your personal health information. You can delete your data at any time from Settings > Data."
     }
   ];
 
@@ -49,10 +41,10 @@ export const HelpSettings = () => {
             </div>
           </div>
           <a
-            href="mailto:support@peptidestack.com"
+            href="mailto:support@regimen.app"
             className="flex items-center justify-between w-full p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
           >
-            <span className="text-sm">support@peptidestack.com</span>
+            <span className="text-sm">support@regimen.app</span>
             <ExternalLink className="h-4 w-4 text-muted-foreground" />
           </a>
         </div>
@@ -81,7 +73,7 @@ export const HelpSettings = () => {
 
         {/* App Version */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>Peptide Stack v1.0.0</p>
+          <p>Regimen v1.0.0</p>
           <p className="mt-1">© 2025 All rights reserved</p>
         </div>
       </div>

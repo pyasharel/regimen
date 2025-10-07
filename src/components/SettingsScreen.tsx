@@ -1,20 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Sparkles, User, Bell, Palette, BarChart3, Download, HelpCircle, LogOut, Moon, Sun, Laptop } from "lucide-react";
+import { X, Sparkles, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PremiumModal } from "@/components/PremiumModal";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const [showThemeDialog, setShowThemeDialog] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   
-  // TODO: Replace with actual premium status check
-  const isPremium = false;
+  // Test mode toggle for premium features
+  const [testPremium, setTestPremium] = useState(false);
+  const isPremium = testPremium; // In production, this would check actual subscription status
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -34,16 +38,30 @@ export const SettingsScreen = () => {
       onClick: () => navigate("/settings/account"),
     },
     {
+      icon: Scale,
+      label: "Measurement Units",
+      description: weightUnit === "lbs" ? "Pounds (lbs)" : "Kilograms (kg)",
+      onClick: () => {}, // Inline toggle handled in render
+      isInline: true,
+    },
+    {
       icon: Palette,
-      label: "Display",
-      description: "Theme and measurement units",
-      onClick: () => navigate("/settings/display"),
+      label: "Theme",
+      description: theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System",
+      onClick: () => {}, // Inline selection handled in render
+      isInline: true,
     },
     {
       icon: Download,
       label: "Data",
       description: "Export or clear your data",
       onClick: () => navigate("/settings/data"),
+    },
+    {
+      icon: FileText,
+      label: "Terms of Service",
+      description: "Legal terms and conditions",
+      onClick: () => navigate("/settings/terms"),
     },
     {
       icon: HelpCircle,
@@ -64,7 +82,24 @@ export const SettingsScreen = () => {
         <div className="w-9" /> {/* Spacer */}
       </header>
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-6 max-w-2xl mx-auto">
+        {/* Test Mode Toggle - Only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="test-premium" className="font-semibold">Test Premium Mode</Label>
+                <p className="text-sm text-muted-foreground">Enable premium features for testing</p>
+              </div>
+              <Switch
+                id="test-premium"
+                checked={testPremium}
+                onCheckedChange={setTestPremium}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Premium Banner - Only show if user is NOT premium */}
         {!isPremium && (
           <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-secondary p-6 shadow-[var(--shadow-premium)]">
@@ -89,6 +124,7 @@ export const SettingsScreen = () => {
                   </li>
                 </ul>
                 <Button 
+                  onClick={() => setShowPremiumModal(true)}
                   variant="secondary" 
                   className="mt-4 bg-white text-primary hover:bg-white/90"
                   size="sm"
@@ -101,23 +137,94 @@ export const SettingsScreen = () => {
         )}
 
         {/* Settings List */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {settingsSections.map((section) => (
-            <button
-              key={section.label}
-              onClick={section.onClick}
-              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:bg-card/80 hover:shadow-lg"
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <section.icon className="h-5 w-5 text-foreground" />
+            <div key={section.label}>
+              {section.isInline && section.label === "Measurement Units" ? (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                  <div className="flex items-start gap-4 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      <section.icon className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{section.label}</h3>
+                      <p className="text-sm text-muted-foreground">Your preferred units for weight tracking</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-14">
+                    <button
+                      onClick={() => setWeightUnit("lbs")}
+                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
+                        weightUnit === "lbs" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      Pounds
+                    </button>
+                    <button
+                      onClick={() => setWeightUnit("kg")}
+                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
+                        weightUnit === "kg" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      Kilograms
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{section.label}</h3>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{section.description}</p>
+              ) : section.isInline && section.label === "Theme" ? (
+                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                  <div className="flex items-start gap-4 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      <section.icon className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{section.label}</h3>
+                      <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-14">
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
+                        theme === "light" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      Light
+                    </button>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
+                        theme === "dark" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      Dark
+                    </button>
+                    <button
+                      onClick={() => setTheme("system")}
+                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
+                        theme === "system" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      System
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </button>
+              ) : (
+                <button
+                  onClick={section.onClick}
+                  className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      <section.icon className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{section.label}</h3>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{section.description}</p>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -125,7 +232,7 @@ export const SettingsScreen = () => {
         <Button 
           onClick={handleSignOut}
           variant="ghost" 
-          className="w-full text-destructive hover:text-destructive/80 gap-2"
+          className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10 gap-2"
         >
           <LogOut className="h-4 w-4" />
           Sign Out
@@ -133,76 +240,8 @@ export const SettingsScreen = () => {
       </div>
 
       <BottomNavigation />
-
-      {/* Theme Dialog */}
-      <Dialog open={showThemeDialog} onOpenChange={setShowThemeDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Choose Theme</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 pt-4">
-            <button
-              onClick={() => {
-                setTheme("light");
-                setShowThemeDialog(false);
-              }}
-              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
-                theme === "light" ? "border-primary bg-primary/10" : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <Sun className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-semibold">Light</div>
-                  <div className="text-xs text-muted-foreground">Bright and clean</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setTheme("dark");
-                setShowThemeDialog(false);
-              }}
-              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
-                theme === "dark" ? "border-primary bg-primary/10" : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <Moon className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-semibold">Dark</div>
-                  <div className="text-xs text-muted-foreground">Easy on the eyes</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setTheme("system");
-                setShowThemeDialog(false);
-              }}
-              className={`w-full rounded-lg border p-4 text-left transition-all hover:bg-muted ${
-                theme === "system" ? "border-primary bg-primary/10" : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                  <Laptop className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-semibold">System</div>
-                  <div className="text-xs text-muted-foreground">Match device settings</div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      
+      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 };

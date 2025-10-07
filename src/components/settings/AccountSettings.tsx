@@ -91,71 +91,73 @@ export const AccountSettings = () => {
         <h1 className="text-xl font-bold">Account</h1>
       </header>
 
-      <div className="p-4 space-y-6 max-w-2xl mx-auto">
+      <div className="p-6 space-y-6 max-w-2xl mx-auto">
         {/* Email Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Mail className="h-5 w-5" />
+        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+              <Mail className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold">Email Address</h2>
-              <p className="text-sm text-muted-foreground">Update your email</p>
+              <h2 className="text-lg font-semibold">Email Address</h2>
+              <p className="text-sm text-muted-foreground">Update your email for account access</p>
             </div>
           </div>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="email">New Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">New Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                className="mt-1.5"
               />
             </div>
             <Button onClick={handleEmailUpdate} disabled={loading || !email} className="w-full">
-              Update Email
+              {loading ? "Updating..." : "Update Email"}
             </Button>
           </div>
         </div>
 
         {/* Password Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Lock className="h-5 w-5" />
+        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10">
+              <Lock className="h-6 w-6 text-secondary" />
             </div>
             <div>
-              <h2 className="font-semibold">Password</h2>
-              <p className="text-sm text-muted-foreground">Change your password</p>
+              <h2 className="text-lg font-semibold">Password</h2>
+              <p className="text-sm text-muted-foreground">Change your account password</p>
             </div>
           </div>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
               <Input
                 id="newPassword"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 6 characters"
+                className="mt-1.5"
               />
             </div>
             <Button onClick={handlePasswordUpdate} disabled={loading || !newPassword} className="w-full">
-              Update Password
+              {loading ? "Updating..." : "Update Password"}
             </Button>
           </div>
         </div>
 
         {/* Delete Account Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-destructive/20 bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-              <Trash2 className="h-5 w-5 text-destructive" />
+        <div className="space-y-4 p-6 rounded-xl border-2 border-destructive/20 bg-destructive/5 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
+              <Trash2 className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <h2 className="font-semibold text-destructive">Delete Account</h2>
+              <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
               <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
             </div>
           </div>

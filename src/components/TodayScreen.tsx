@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Bell, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -164,15 +164,8 @@ export const TodayScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="w-10" /> {/* Spacer */}
+        <div className="flex items-center justify-center">
           <h1 className="text-xl font-bold">Regimen</h1>
-          <button 
-            onClick={() => navigate('/notifications')}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
         </div>
       </header>
 
