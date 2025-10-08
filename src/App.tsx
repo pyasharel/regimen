@@ -17,6 +17,7 @@ import { HelpSettings } from "./components/settings/HelpSettings";
 import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
@@ -30,7 +31,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
-          <Route path="/" element={<Splash />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/app" element={<Splash />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
