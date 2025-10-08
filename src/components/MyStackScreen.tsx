@@ -168,16 +168,16 @@ export const MyStackScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">My Stack</h1>
+        <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
               REGIMEN
-            </h2>
+            </h1>
             {isPremium && (
               <Crown className="h-5 w-5 text-primary" />
             )}
           </div>
+          <h2 className="text-sm font-semibold text-muted-foreground">My Stack</h2>
         </div>
       </header>
 

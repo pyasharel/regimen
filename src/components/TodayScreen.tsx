@@ -236,7 +236,7 @@ export const TodayScreen = () => {
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-3xl font-bold text-foreground">{greeting.text}</h2>
-          <greeting.Icon className="h-8 w-8 text-primary animate-[bounce_3s_ease-in-out_infinite]" style={{ animationDuration: '3s' }} />
+          <greeting.Icon className="h-8 w-8 text-primary animate-[bounce_6s_ease-in-out_infinite]" style={{ animationDuration: '6s' }} />
         </div>
       </div>
 
@@ -368,7 +368,7 @@ export const TodayScreen = () => {
               className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
                 dose.taken
                   ? 'bg-card border-border'
-                  : 'bg-gradient-to-br from-primary/5 via-primary/10 to-secondary/5 border-primary/20 shadow-sm'
+                  : 'bg-gradient-to-br from-primary/10 to-primary/20 border-primary/30 shadow-sm'
               }`}
             >
               <div className="p-5">
