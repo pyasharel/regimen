@@ -1,128 +1,190 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Download, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Camera, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { format } from "date-fns";
 import logoMark from "@/assets/logo-regimen-mark.png";
+
+interface PhotoEntry {
+  id: string;
+  photo_url: string;
+  entry_date: string;
+}
 
 export default function PhotoCompareScreen() {
   const navigate = useNavigate();
-  const [selectedPhotos, setSelectedPhotos] = useState<{ before: string | null; after: string | null }>({
+  const [selectedPhotos, setSelectedPhotos] = useState<{ 
+    before: { url: string; date: string } | null; 
+    after: { url: string; date: string } | null;
+  }>({
     before: null,
     after: null,
   });
+  const [availablePhotos, setAvailablePhotos] = useState<PhotoEntry[]>([]);
+  const [showPhotoSelector, setShowPhotoSelector] = useState<'before' | 'after' | null>(null);
+  const [showShareSheet, setShowShareSheet] = useState(false);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
-  const handlePhotoSelect = (type: 'before' | 'after', event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedPhotos(prev => ({ ...prev, [type]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+  useEffect(() => {
+    fetchPhotos();
+  }, []);
+
+  const fetchPhotos = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('progress_entries')
+      .select('id, photo_url, entry_date')
+      .eq('user_id', user.id)
+      .not('photo_url', 'is', null)
+      .order('entry_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching photos:', error);
+      return;
     }
+
+    setAvailablePhotos(data || []);
   };
 
-  const handleShare = async () => {
+  const getPhotoUrl = (photoPath: string) => {
+    const { data } = supabase.storage
+      .from('progress-photos')
+      .getPublicUrl(photoPath);
+    return data.publicUrl;
+  };
+
+  const handlePhotoSelection = (photo: PhotoEntry, type: 'before' | 'after') => {
+    setSelectedPhotos(prev => ({ 
+      ...prev, 
+      [type]: { 
+        url: getPhotoUrl(photo.photo_url), 
+        date: photo.entry_date 
+      } 
+    }));
+    setShowPhotoSelector(null);
+  };
+
+  const createComparisonBlob = async (): Promise<Blob | null> => {
     if (!selectedPhotos.before || !selectedPhotos.after) {
       toast.error("Please select both before and after photos");
-      return;
+      return null;
     }
 
-    // For now, we'll use the Web Share API if available
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'My Transformation - REGIMEN',
-          text: 'Check out my progress using REGIMEN!',
-          url: 'https://regimen.app'
-        });
-        toast.success("Shared successfully!");
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-          toast.error("Sharing failed");
-        }
-      }
-    } else {
-      toast.info("Share feature not supported on this device");
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!selectedPhotos.before || !selectedPhotos.after || !comparisonRef.current) {
-      toast.error("Please select both before and after photos");
-      return;
-    }
-
-    // Create a canvas to combine the images
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return null;
 
-    // Load images
     const beforeImg = new Image();
     const afterImg = new Image();
+    beforeImg.crossOrigin = "anonymous";
+    afterImg.crossOrigin = "anonymous";
 
-    beforeImg.src = selectedPhotos.before;
-    afterImg.src = selectedPhotos.after;
+    beforeImg.src = selectedPhotos.before.url;
+    afterImg.src = selectedPhotos.after.url;
 
     await Promise.all([
       new Promise(resolve => beforeImg.onload = resolve),
       new Promise(resolve => afterImg.onload = resolve)
     ]);
 
-    // Set canvas size (side by side comparison)
     const targetHeight = 800;
     const aspectBefore = beforeImg.width / beforeImg.height;
     const aspectAfter = afterImg.width / afterImg.height;
     const widthBefore = targetHeight * aspectBefore;
     const widthAfter = targetHeight * aspectAfter;
     const padding = 40;
-    const watermarkHeight = 60;
+    const watermarkHeight = 80;
 
     canvas.width = widthBefore + widthAfter + padding * 3;
     canvas.height = targetHeight + padding * 2 + watermarkHeight;
 
-    // White background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw before image
     ctx.drawImage(beforeImg, padding, padding, widthBefore, targetHeight);
-
-    // Draw after image
     ctx.drawImage(afterImg, widthBefore + padding * 2, padding, widthAfter, targetHeight);
 
-    // Add labels
+    // Add labels with dates
     ctx.fillStyle = '#FF6F61';
-    ctx.font = 'bold 32px Inter, sans-serif';
+    ctx.font = 'bold 28px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BEFORE', padding + widthBefore / 2, padding - 10);
-    ctx.fillText('AFTER', widthBefore + padding * 2 + widthAfter / 2, padding - 10);
+    ctx.fillText('BEFORE', padding + widthBefore / 2, padding - 30);
+    ctx.fillText('AFTER', widthBefore + padding * 2 + widthAfter / 2, padding - 30);
 
-    // Add watermark at bottom
+    // Add date stamps
+    ctx.fillStyle = '#666666';
+    ctx.font = '18px Inter, sans-serif';
+    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), padding + widthBefore / 2, padding - 5);
+    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), widthBefore + padding * 2 + widthAfter / 2, padding - 5);
+
+    // Add watermark
     ctx.fillStyle = '#000000';
     ctx.globalAlpha = 0.15;
     ctx.font = 'bold 20px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('REGIMEN • regimen.app', canvas.width / 2, canvas.height - 20);
+    ctx.fillText('REGIMEN • regimen.app', canvas.width / 2, canvas.height - 30);
     ctx.globalAlpha = 1.0;
 
-    // Download
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `regimen-transformation-${Date.now()}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Comparison image downloaded!");
-      }
-    }, 'image/png');
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
   };
+
+  const handleShare = async () => {
+    setShowShareSheet(true);
+  };
+
+  const handleShareOption = async (option: 'download' | 'copy' | 'native') => {
+    const blob = await createComparisonBlob();
+    if (!blob) return;
+
+    if (option === 'download') {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `regimen-transformation-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Comparison image downloaded!");
+    } else if (option === 'copy') {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        toast.success("Image copied to clipboard!");
+      } catch (err) {
+        toast.error("Failed to copy image");
+      }
+    } else if (option === 'native') {
+      if (navigator.share) {
+        try {
+          const file = new File([blob], 'transformation.png', { type: 'image/png' });
+          await navigator.share({
+            files: [file],
+            title: 'My Transformation - REGIMEN',
+            text: 'Check out my progress using REGIMEN!',
+          });
+          toast.success("Shared successfully!");
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            toast.error("Sharing failed");
+          }
+        }
+      } else {
+        toast.info("Share feature not supported on this device");
+      }
+    }
+    
+    setShowShareSheet(false);
+  };
+
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -146,11 +208,16 @@ export default function PhotoCompareScreen() {
           <Card className="p-4">
             <h3 className="font-semibold text-center mb-3 text-foreground">Before</h3>
             {selectedPhotos.before ? (
-              <img 
-                src={selectedPhotos.before} 
-                alt="Before" 
-                className="w-full h-64 object-cover rounded-lg mb-3"
-              />
+              <div className="relative">
+                <img 
+                  src={selectedPhotos.before.url} 
+                  alt="Before" 
+                  className="w-full h-64 object-cover rounded-lg mb-3"
+                />
+                <p className="text-xs text-center text-muted-foreground mb-3">
+                  {format(new Date(selectedPhotos.before.date), 'MMM d, yyyy')}
+                </p>
+              </div>
             ) : (
               <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground">
                 No photo selected
@@ -159,27 +226,25 @@ export default function PhotoCompareScreen() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => document.getElementById('before-input')?.click()}
+              onClick={() => setShowPhotoSelector('before')}
             >
               Select Before
             </Button>
-            <input
-              id="before-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handlePhotoSelect('before', e)}
-            />
           </Card>
 
           <Card className="p-4">
             <h3 className="font-semibold text-center mb-3 text-foreground">After</h3>
             {selectedPhotos.after ? (
-              <img 
-                src={selectedPhotos.after} 
-                alt="After" 
-                className="w-full h-64 object-cover rounded-lg mb-3"
-              />
+              <div className="relative">
+                <img 
+                  src={selectedPhotos.after.url} 
+                  alt="After" 
+                  className="w-full h-64 object-cover rounded-lg mb-3"
+                />
+                <p className="text-xs text-center text-muted-foreground mb-3">
+                  {format(new Date(selectedPhotos.after.date), 'MMM d, yyyy')}
+                </p>
+              </div>
             ) : (
               <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground">
                 No photo selected
@@ -188,17 +253,10 @@ export default function PhotoCompareScreen() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => document.getElementById('after-input')?.click()}
+              onClick={() => setShowPhotoSelector('after')}
             >
               Select After
             </Button>
-            <input
-              id="after-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handlePhotoSelect('after', e)}
-            />
           </Card>
         </div>
 
@@ -209,17 +267,23 @@ export default function PhotoCompareScreen() {
             <div className="relative">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <p className="text-sm font-semibold text-primary text-center mb-2">BEFORE</p>
+                  <p className="text-sm font-semibold text-primary text-center mb-1">BEFORE</p>
+                  <p className="text-xs text-muted-foreground text-center mb-2">
+                    {format(new Date(selectedPhotos.before.date), 'MMM d, yyyy')}
+                  </p>
                   <img 
-                    src={selectedPhotos.before} 
+                    src={selectedPhotos.before.url} 
                     alt="Before comparison" 
                     className="w-full rounded-lg"
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-primary text-center mb-2">AFTER</p>
+                  <p className="text-sm font-semibold text-primary text-center mb-1">AFTER</p>
+                  <p className="text-xs text-muted-foreground text-center mb-2">
+                    {format(new Date(selectedPhotos.after.date), 'MMM d, yyyy')}
+                  </p>
                   <img 
-                    src={selectedPhotos.after} 
+                    src={selectedPhotos.after.url} 
                     alt="After comparison" 
                     className="w-full rounded-lg"
                   />
@@ -234,35 +298,88 @@ export default function PhotoCompareScreen() {
           </Card>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button
-            onClick={handleDownload}
-            disabled={!selectedPhotos.before || !selectedPhotos.after}
-            className="flex-1"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-          <Button
-            onClick={handleShare}
-            disabled={!selectedPhotos.before || !selectedPhotos.after}
-            variant="outline"
-            className="flex-1"
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        </div>
-
-        {/* Info */}
-        <Card className="p-4 bg-muted/50">
-          <p className="text-sm text-muted-foreground text-center">
-            Your transformation images will include a subtle REGIMEN watermark. 
-            Download or share your progress with pride!
-          </p>
-        </Card>
+        {/* Share Button */}
+        <Button
+          onClick={handleShare}
+          disabled={!selectedPhotos.before || !selectedPhotos.after}
+          className="w-full"
+          size="lg"
+        >
+          <Share2 className="h-5 w-5 mr-2" />
+          Share Comparison
+        </Button>
       </div>
+
+      {/* Photo Selector Dialog */}
+      <Dialog open={showPhotoSelector !== null} onOpenChange={() => setShowPhotoSelector(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Select {showPhotoSelector === 'before' ? 'Before' : 'After'} Photo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {availablePhotos.map((photo) => (
+              <Card
+                key={photo.id}
+                className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+              >
+                <img
+                  src={getPhotoUrl(photo.photo_url)}
+                  alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
+                  className="w-full h-48 object-cover rounded-t-lg"
+                />
+                <div className="p-3 text-center">
+                  <p className="text-sm font-medium">
+                    {format(new Date(photo.entry_date), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
+          {availablePhotos.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No photos available. Upload photos from the Progress screen first.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Sheet */}
+      <Sheet open={showShareSheet} onOpenChange={setShowShareSheet}>
+        <SheetContent side="bottom" className="h-auto">
+          <SheetHeader>
+            <SheetTitle>Share Comparison</SheetTitle>
+          </SheetHeader>
+          <div className="grid gap-3 mt-6 pb-6">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14"
+              onClick={() => handleShareOption('download')}
+            >
+              <Download className="h-5 w-5 mr-3" />
+              Download Image
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14"
+              onClick={() => handleShareOption('copy')}
+            >
+              <Copy className="h-5 w-5 mr-3" />
+              Copy to Clipboard
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14"
+              onClick={() => handleShareOption('native')}
+            >
+              <Share2 className="h-5 w-5 mr-3" />
+              Share to Apps
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
