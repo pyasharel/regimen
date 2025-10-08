@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users, Zap, Bell, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,6 +10,12 @@ import progressSept from "@/assets/progress-sept.jpg";
 import progressNov from "@/assets/progress-nov.jpg";
 
 const Landing = () => {
+  // Force light mode for landing page
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+  }, []);
+
   const features = [
     {
       icon: Zap,
