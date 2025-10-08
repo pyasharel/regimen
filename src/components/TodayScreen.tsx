@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Crown } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Crown, Sun, Cloud, Moon, CloudRain } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -171,6 +171,16 @@ export const TodayScreen = () => {
     setSelectedDate(newDate);
   };
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return { text: "Good morning", Icon: Sun };
+    if (hour < 17) return { text: "Good afternoon", Icon: Cloud };
+    return { text: "Good evening", Icon: Moon };
+  };
+
+  const greeting = getGreeting();
+
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
@@ -185,8 +195,16 @@ export const TodayScreen = () => {
         </div>
       </header>
 
+      {/* Greeting */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex items-center gap-3">
+          <h2 className="text-3xl font-bold text-foreground">{greeting.text}</h2>
+          <greeting.Icon className="h-8 w-8 text-primary animate-pulse" />
+        </div>
+      </div>
+
       {/* Calendar Section */}
-      <div className="border-b border-border px-4 py-6 space-y-4">
+      <div className="border-b border-border px-4 pb-6 space-y-4">
         {/* Month/Year Display with View Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -312,11 +330,11 @@ export const TodayScreen = () => {
               key={dose.id}
               className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
                 dose.taken
-                  ? 'bg-muted/50 border-border opacity-75'
-                  : 'bg-primary border-primary shadow-lg'
+                  ? 'bg-card border-border'
+                  : 'bg-gradient-to-br from-primary to-secondary border-primary/20 shadow-[0_8px_32px_rgba(255,111,97,0.25)]'
               }`}
             >
-              <div className="p-4">
+              <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>

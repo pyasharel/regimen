@@ -303,10 +303,22 @@ export const ProgressScreen = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="p-6 space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-foreground">Progress</h1>
+      {/* Header */}
+      <header className="border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Progress</h1>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+              REGIMEN
+            </h2>
+            {isPremium && (
+              <Crown className="h-5 w-5 text-primary" />
+            )}
+          </div>
         </div>
+      </header>
+
+      <div className="p-6 space-y-8">
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">

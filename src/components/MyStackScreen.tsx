@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Crown } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -31,9 +31,20 @@ export const MyStackScreen = () => {
   const { toast } = useToast();
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     loadCompounds();
+    
+    // Check premium status
+    const checkPremium = () => {
+      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
+      setIsPremium(premiumStatus);
+    };
+    
+    checkPremium();
+    window.addEventListener('storage', checkPremium);
+    return () => window.removeEventListener('storage', checkPremium);
   }, []);
 
   const loadCompounds = async () => {
@@ -157,7 +168,17 @@ export const MyStackScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <h1 className="text-xl font-bold">My Stack</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">My Stack</h1>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+              REGIMEN
+            </h2>
+            {isPremium && (
+              <Crown className="h-5 w-5 text-primary" />
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Active Compounds */}

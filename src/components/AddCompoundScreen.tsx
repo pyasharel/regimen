@@ -91,13 +91,6 @@ export const AddCompoundScreen = () => {
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
 
-  // Titration (premium) - COMMENTED OUT FOR MVP - Can be re-enabled later
-  // const [enableTitration, setEnableTitration] = useState(false);
-  // const [titrationSteps, setTitrationSteps] = useState<Array<{
-  //   weeks: number;
-  //   targetDose: string;
-  // }>>([{ weeks: 4, targetDose: "" }]);
-
   // Active status
   const [isActive, setIsActive] = useState(true);
   
@@ -117,15 +110,6 @@ export const AddCompoundScreen = () => {
     window.addEventListener('storage', checkPremium);
     return () => window.removeEventListener('storage', checkPremium);
   }, []);
-
-  // TITRATION - COMMENTED OUT FOR MVP
-  // Auto-populate titration starting dose from main dosage
-  // useEffect(() => {
-  //   if (enableTitration && intendedDose && titrationSteps[0].targetDose === "") {
-  //     // Starting dose defaults to current dosage
-  //     // First step is where they want to go
-  //   }
-  // }, [enableTitration, intendedDose]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -150,20 +134,11 @@ export const AddCompoundScreen = () => {
           setCycleMode('continuous');
           setCycleWeeksOff(editingCompound.cycle_weeks_off);
         } else {
-          setCycleMode('one-time');
-        }
+        setCycleMode('one-time');
       }
-      
-      // TITRATION - COMMENTED OUT FOR MVP
-      // if (editingCompound.has_titration && editingCompound.titration_config) {
-      //   setEnableTitration(true);
-      //   const config = editingCompound.titration_config as any;
-      //   if (config.steps && Array.isArray(config.steps)) {
-      //     setTitrationSteps(config.steps);
-      //   }
-      // }
-      
-      if (editingCompound.vial_size) {
+    }
+    
+    if (editingCompound.vial_size) {
         setShowCalculator(true);
         setVialSize(editingCompound.vial_size.toString());
         setVialUnit(editingCompound.vial_unit || "mg");
@@ -261,26 +236,7 @@ export const AddCompoundScreen = () => {
         continue;
       }
 
-      // TITRATION - COMMENTED OUT FOR MVP
-      // Calculate dose based on titration
       let currentDose = parseFloat(intendedDose);
-      // if (enableTitration && titrationSteps.length > 0) {
-      //   const weekNumber = Math.floor(i / 7);
-      //   let cumulativeWeeks = 0;
-      //   
-      //   // Find which titration step we're in
-      //   for (const step of titrationSteps) {
-      //     if (weekNumber < cumulativeWeeks + step.weeks) {
-      //       // We're still in this step, stay at previous target dose
-      //       // Don't change currentDose - it stays at starting dose or previous step's target
-      //       break;
-      //     } else {
-      //       // We've completed this step, move to its target dose
-      //       cumulativeWeeks += step.weeks;
-      //       currentDose = parseFloat(step.targetDose);
-      //     }
-      //   }
-      // }
 
       doses.push({
         compound_id: compoundId,
@@ -342,15 +298,6 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
-            // TITRATION - COMMENTED OUT FOR MVP
-            // has_titration: enableTitration,
-            // titration_config: enableTitration ? {
-            //   starting_dose: parseFloat(intendedDose),
-            //   steps: titrationSteps.map(step => ({
-            //     weeks: step.weeks,
-            //     targetDose: parseFloat(step.targetDose)
-            //   }))
-            // } : null,
             is_active: isActive
           })
           .eq('id', editingCompound.id);
@@ -399,15 +346,6 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
-            // TITRATION - COMMENTED OUT FOR MVP
-            // has_titration: enableTitration,
-            // titration_config: enableTitration ? {
-            //   starting_dose: parseFloat(intendedDose),
-            //   steps: titrationSteps.map(step => ({
-            //     weeks: step.weeks,
-            //     targetDose: parseFloat(step.targetDose)
-            //   }))
-            // } : null,
             is_active: isActive
           }])
           .select()
@@ -446,14 +384,19 @@ export const AddCompoundScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/stack")}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/stack")}
+              className="rounded-lg p-2 hover:bg-muted transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
+          </div>
+          <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+            REGIMEN
+          </h2>
         </div>
       </header>
 
@@ -461,7 +404,7 @@ export const AddCompoundScreen = () => {
         {/* Basic Info */}
         <div className="space-y-4">
           <div className="space-y-2 relative">
-            <Label htmlFor="name">Compound Name *</Label>
+            <Label htmlFor="name">Compound Name</Label>
             <Input
               id="name"
               value={name}
@@ -469,8 +412,8 @@ export const AddCompoundScreen = () => {
                 setName(e.target.value);
                 setShowAutocomplete(e.target.value.length > 0);
               }}
+              placeholder="Compound or medication name"
               onFocus={() => setShowAutocomplete(name.length > 0)}
-              placeholder="e.g., BPC-157"
             />
             {showAutocomplete && filteredPeptides.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -491,14 +434,14 @@ export const AddCompoundScreen = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dose Amount *</Label>
+            <Label htmlFor="intendedDose">Dose Amount</Label>
             <div className="flex gap-3">
               <Input
                 id="intendedDose"
                 type="number"
                 value={intendedDose}
                 onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="e.g., 250"
+                placeholder="Amount per dose"
                 className="text-lg h-12 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <select
@@ -726,7 +669,7 @@ export const AddCompoundScreen = () => {
           <div className="space-y-3">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>Start Date (optional)</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -800,15 +743,13 @@ export const AddCompoundScreen = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm text-muted-foreground">
-              Notes <span className="font-normal">(optional)</span>
-            </Label>
+            <Label htmlFor="notes">Notes (optional)</Label>
             <Input
               id="notes"
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Lot #, vendor, reconstitution date..."
+              placeholder="Optional notes about this compound"
               className="text-sm"
             />
           </div>
