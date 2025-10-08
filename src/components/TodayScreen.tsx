@@ -228,23 +228,25 @@ export const TodayScreen = () => {
   // Sound feedback function - bubble pop sound
   const playCheckSound = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // Option: Sharper bubble pop with higher frequency
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    // Bubble pop: quick frequency drop from high to low
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.08);
+    // Very high start, quick drop for sharper pop
+    oscillator.frequency.setValueAtTime(1800, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.06);
     oscillator.type = 'sine';
     
-    // Sharp attack, fast decay
-    gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
+    // Quick attack and very fast decay
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.06);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.08);
+    oscillator.stop(audioContext.currentTime + 0.06);
   };
 
   return (
