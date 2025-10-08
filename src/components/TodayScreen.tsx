@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, Calendar as CalendarIcon, Crown, Smile, Moon, Coffee } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
@@ -28,6 +28,9 @@ export const TodayScreen = () => {
   const [hasCompounds, setHasCompounds] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
+  const [showDayComplete, setShowDayComplete] = useState(false);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -149,6 +152,9 @@ export const TodayScreen = () => {
 
   const toggleDose = async (doseId: string, currentStatus: boolean) => {
     try {
+      // Don't allow toggling if animation is in progress
+      if (animatingDoses.has(doseId)) return;
+      
       // Check if sound is enabled
       const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
       
@@ -158,6 +164,11 @@ export const TodayScreen = () => {
       // Play sound if enabled and checking off (not unchecking)
       if (!currentStatus && soundEnabled) {
         playCheckSound();
+      }
+
+      // Mark as animating
+      if (!currentStatus) {
+        setAnimatingDoses(prev => new Set(prev).add(doseId));
       }
 
       const { error } = await supabase
@@ -171,11 +182,32 @@ export const TodayScreen = () => {
       if (error) throw error;
 
       // Update local state
-      setDoses(doses.map(d =>
+      const updatedDoses = doses.map(d =>
         d.id === doseId
           ? { ...d, taken: !currentStatus }
           : d
-      ));
+      );
+      setDoses(updatedDoses);
+
+      // Check if this was the last dose
+      if (!currentStatus) {
+        const allTaken = updatedDoses.every(d => d.taken);
+        if (allTaken && updatedDoses.length > 0) {
+          // Trigger last dose celebration after regular animation
+          setTimeout(() => {
+            triggerLastDoseCelebration();
+          }, 600);
+        }
+      }
+
+      // Remove from animating set after animation completes
+      setTimeout(() => {
+        setAnimatingDoses(prev => {
+          const next = new Set(prev);
+          next.delete(doseId);
+          return next;
+        });
+      }, 600);
 
       toast({
         title: !currentStatus ? "Dose marked as taken" : "Dose unmarked",
@@ -189,6 +221,55 @@ export const TodayScreen = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const triggerLastDoseCelebration = () => {
+    // Medium haptic feedback
+    if ('vibrate' in navigator) {
+      navigator.vibrate([100, 50, 100]);
+    }
+
+    // Play two-tone chime
+    const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+    if (soundEnabled) {
+      playChimeSound();
+    }
+
+    // Show celebration message
+    setShowDayComplete(true);
+    
+    // Hide after animation
+    setTimeout(() => {
+      setShowDayComplete(false);
+    }, 1500);
+  };
+
+  const playChimeSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    // First tone (ding)
+    const osc1 = audioContext.createOscillator();
+    const gain1 = audioContext.createGain();
+    osc1.connect(gain1);
+    gain1.connect(audioContext.destination);
+    osc1.frequency.value = 800;
+    osc1.type = 'sine';
+    gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    osc1.start(audioContext.currentTime);
+    osc1.stop(audioContext.currentTime + 0.2);
+
+    // Second tone (DING) - higher and slightly delayed
+    const osc2 = audioContext.createOscillator();
+    const gain2 = audioContext.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioContext.destination);
+    osc2.frequency.value = 1000;
+    osc2.type = 'sine';
+    gain2.gain.setValueAtTime(0.35, audioContext.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    osc2.start(audioContext.currentTime + 0.15);
+    osc2.stop(audioContext.currentTime + 0.4);
   };
 
   const formatTime = (time: string) => {
@@ -256,6 +337,81 @@ export const TodayScreen = () => {
         @keyframes draw-check {
           to {
             stroke-dashoffset: 0;
+          }
+        }
+        
+        @keyframes shine-sweep {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+        
+        @keyframes check-stroke {
+          0% {
+            stroke-dashoffset: 24;
+          }
+          100% {
+            stroke-dashoffset: 0;
+          }
+        }
+        
+        @keyframes ripple-expand {
+          0% {
+            transform: scale(0);
+            opacity: 0.3;
+          }
+          100% {
+            transform: scale(2.5);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes float-up-fade {
+          0% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-10px);
+            opacity: 0;
+          }
+        }
+        
+        @keyframes golden-shine {
+          0% {
+            background-position: -200% center;
+          }
+          100% {
+            background-position: 200% center;
+          }
+        }
+        
+        @keyframes day-complete-enter {
+          0% {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        
+        @keyframes progress-ring {
+          0% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 0;
           }
         }
       `}</style>
@@ -378,7 +534,27 @@ export const TodayScreen = () => {
       </div>
 
       {/* Doses */}
-      <div className="flex-1 space-y-4 p-4">
+      <div className="flex-1 space-y-4 p-4 relative">
+        {/* Day Complete Celebration */}
+        {showDayComplete && (
+          <div 
+            className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center justify-center py-4 pointer-events-none"
+            style={{
+              animation: 'day-complete-enter 0.5s ease-out'
+            }}
+          >
+            <div className="text-2xl font-bold text-primary mb-2">
+              Perfect Day! ✨
+            </div>
+            <div 
+              className="w-16 h-16 rounded-full border-4 border-primary"
+              style={{
+                animation: 'progress-ring 0.5s ease-out'
+              }}
+            />
+          </div>
+        )}
+        
         {doses.length > 0 && (
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Today's Regimen
@@ -415,12 +591,66 @@ export const TodayScreen = () => {
           doses.map((dose) => (
             <div
               key={dose.id}
-              className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
+              ref={(el) => {
+                if (el) cardRefs.current.set(dose.id, el);
+                else cardRefs.current.delete(dose.id);
+              }}
+              className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
                 dose.taken
-                  ? 'bg-card border-border'
+                  ? 'bg-card border-border opacity-85 scale-[0.98]'
                   : 'bg-primary border-primary shadow-sm'
-              }`}
+              } ${animatingDoses.has(dose.id) && dose.taken ? 'animating-dose' : ''}`}
+              style={{
+                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
             >
+              {/* Shine effect overlay */}
+              {animatingDoses.has(dose.id) && dose.taken && (
+                <>
+                  <div 
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.7) 50%, transparent 60%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shine-sweep 0.4s ease-out 0.2s'
+                    }}
+                  />
+                  {/* Ripple effect */}
+                  <div 
+                    className="absolute inset-0 pointer-events-none flex items-center justify-end pr-5"
+                  >
+                    <div 
+                      className="w-7 h-7 rounded-full"
+                      style={{
+                        background: 'rgba(255, 111, 97, 0.3)',
+                        animation: 'ripple-expand 0.35s ease-out 0.05s'
+                      }}
+                    />
+                  </div>
+                  {/* Float up celebration */}
+                  <div 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-sm font-bold text-success pointer-events-none"
+                    style={{
+                      animation: 'float-up-fade 0.3s ease-out 0.4s'
+                    }}
+                  >
+                    +1
+                  </div>
+                </>
+              )}
+              
+              {/* Golden shine for day complete */}
+              {showDayComplete && dose.taken && (
+                <div 
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'golden-shine 0.3s ease-out'
+                  }}
+                />
+              )}
+              
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -434,27 +664,44 @@ export const TodayScreen = () => {
                   </div>
                   <button
                     onClick={() => toggleDose(dose.id, dose.taken)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                    disabled={animatingDoses.has(dose.id)}
+                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 relative ${
                       dose.taken
                         ? 'bg-success border-success scale-100'
-                        : 'border-muted-foreground/40 hover:border-primary active:scale-95'
+                        : 'border-white/40 hover:border-white active:scale-95'
                     }`}
+                    style={{
+                      ...(animatingDoses.has(dose.id) && dose.taken ? {
+                        animation: 'check-stroke 0.15s ease-out'
+                      } : {})
+                    }}
                   >
                     {dose.taken && (
-                      <svg
-                        className="h-full w-full text-white animate-[draw-check_0.2s_ease-out]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeDasharray="24"
-                        strokeDashoffset="24"
-                        style={{
-                          animation: 'draw-check 0.2s ease-out forwards',
-                        }}
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                      <>
+                        <svg
+                          className="h-full w-full text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeDasharray="24"
+                          strokeDashoffset="0"
+                          style={{
+                            animation: animatingDoses.has(dose.id) ? 'check-stroke 0.2s ease-out' : 'none',
+                          }}
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        {/* Green spark at checkmark tip */}
+                        {animatingDoses.has(dose.id) && (
+                          <div 
+                            className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-[#4CAF50] pointer-events-none"
+                            style={{
+                              animation: 'float-up-fade 0.2s ease-out 0.15s'
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </button>
                 </div>
