@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import logoHorizontal from "@/assets/logo-regimen-horizontal.png";
+import logoGradient from "@/assets/logo-gradient.png";
 
 
 export default function Splash() {
@@ -23,7 +23,7 @@ export default function Splash() {
         {/* Logo/Brand */}
         <div className="flex justify-center mb-8">
           <img 
-            src={logoHorizontal} 
+            src={logoGradient} 
             alt="REGIMEN" 
             className="h-16 w-auto"
           />
