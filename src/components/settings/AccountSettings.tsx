@@ -35,17 +35,22 @@ export const AccountSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('full_name')
         .eq('user_id', user.id)
         .single();
 
+      if (error) {
+        console.error('Error loading profile:', error);
+        return;
+      }
+
       if (profile?.full_name) {
         setFullName(profile.full_name);
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('Error in loadUserProfile:', error);
     }
   };
 
@@ -60,14 +65,26 @@ export const AccountSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase
+      console.log('Updating name for user:', user.id, 'to:', fullName.trim());
+
+      const { data, error } = await supabase
         .from('profiles')
         .update({ full_name: fullName.trim() })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+
+      console.log('Update successful:', data);
       toast.success("Name updated successfully");
+      
+      // Reload to verify
+      setTimeout(() => loadUserProfile(), 500);
     } catch (error: any) {
+      console.error('Name update error:', error);
       toast.error(error.message || "Failed to update name");
     } finally {
       setLoading(false);

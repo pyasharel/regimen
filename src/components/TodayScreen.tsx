@@ -220,7 +220,7 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function
+  // Sound feedback function - whoosh sound
   const playCheckSound = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -229,14 +229,16 @@ export const TodayScreen = () => {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    oscillator.frequency.value = 800;
+    // Whoosh: sweep from high to low frequency
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.15);
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
+    oscillator.stop(audioContext.currentTime + 0.15);
   };
 
   return (
@@ -245,7 +247,7 @@ export const TodayScreen = () => {
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
-          <div className="flex items-center gap-2">
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
               REGIMEN
             </h1>
@@ -361,6 +363,12 @@ export const TodayScreen = () => {
 
       {/* Doses */}
       <div className="flex-1 space-y-4 p-4">
+        {doses.length > 0 && (
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Today's Regimen
+          </h3>
+        )}
+        
         {loading ? (
           <div className="text-center py-8 text-muted-foreground">
             Loading doses...
