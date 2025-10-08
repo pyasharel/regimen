@@ -3,8 +3,11 @@ import { Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users, Zap, Bell, Cal
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import logoGradient from "@/assets/logo-gradient.png";
-import beforeRealistic from "@/assets/before-realistic.jpg";
-import afterRealistic from "@/assets/after-realistic.jpg";
+import appToday from "@/assets/app-today.png";
+import appProgress from "@/assets/app-progress.png";
+import appAddCompound from "@/assets/app-add-compound.png";
+import progressSept from "@/assets/progress-sept.jpg";
+import progressNov from "@/assets/progress-nov.jpg";
 
 const Landing = () => {
   const features = [
@@ -149,33 +152,19 @@ const Landing = () => {
               </Button>
             </div>
             
-            {/* Hero Phone Mockups - Placeholder for actual screenshots */}
+            {/* Hero Phone Mockups with actual app screenshots */}
             <div className="relative flex justify-center lg:justify-end">
               <div className="relative w-full max-w-lg">
-                {/* Add your app screenshots here */}
-                {/* Replace these placeholder divs with: */}
-                {/* <img src={appTodayScreen} alt="..." className="w-3/5 relative z-10 rounded-3xl shadow-2xl" /> */}
-                {/* <img src={appProgressScreen} alt="..." className="w-3/5 absolute top-12 right-0 rounded-3xl shadow-2xl" /> */}
-                
-                <div className="w-3/5 relative z-10 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
-                  <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/10 to-secondary/10 rounded-[1.5rem] flex items-center justify-center">
-                    <div className="text-center p-6">
-                      <Calendar className="w-12 h-12 text-primary mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">Today's Schedule</p>
-                      <p className="text-xs text-muted-foreground mt-2">Replace with app screenshot</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="w-3/5 absolute top-12 right-0 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
-                  <div className="aspect-[9/19.5] bg-gradient-to-b from-secondary/10 to-primary/10 rounded-[1.5rem] flex items-center justify-center">
-                    <div className="text-center p-6">
-                      <TrendingUp className="w-12 h-12 text-secondary mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">Progress Tracking</p>
-                      <p className="text-xs text-muted-foreground mt-2">Replace with app screenshot</p>
-                    </div>
-                  </div>
-                </div>
+                <img 
+                  src={appToday} 
+                  alt="Regimen app showing today's medication schedule"
+                  className="w-3/5 relative z-10 rounded-[2.5rem] shadow-2xl"
+                />
+                <img 
+                  src={appProgress} 
+                  alt="Regimen app showing progress tracking"
+                  className="w-3/5 absolute top-12 right-0 rounded-[2.5rem] shadow-2xl"
+                />
               </div>
             </div>
           </div>
@@ -208,67 +197,25 @@ const Landing = () => {
                 </ul>
               </div>
               
-              <div className={`${index === 1 ? "lg:order-1" : ""}`}>
-                {/* Mockup placeholders - replace with actual app screenshots */}
-                {index === 2 ? (
-                  // Progress insights section with app mockup and carousel
-                  <div className="space-y-6">
-                    {/* App screenshot mockup showing weight progress */}
-                    <div className="flex justify-center">
-                      <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
-                        <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
-                          <div className="text-center p-6">
-                            <TrendingUp className="w-12 h-12 text-primary/40 mx-auto mb-2" />
-                            <p className="text-sm font-semibold text-foreground">-12 lbs</p>
-                            <p className="text-xs text-muted-foreground mt-1">Last 8 weeks</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Before/After Photo Carousel */}
-                    <div className="bg-card border border-border rounded-xl p-4 shadow-md">
-                      <h3 className="text-sm font-semibold text-foreground mb-3 text-center">Visual Progress</h3>
-                      <div className="flex gap-3 overflow-x-auto pb-2">
-                        <div className="flex-shrink-0 relative w-32">
-                          <img 
-                            src={beforeRealistic} 
-                            alt="Before progress photo"
-                            className="w-full aspect-[3/4] object-cover rounded-lg"
-                          />
-                          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded font-medium">
-                            Before
-                          </span>
-                        </div>
-                        <div className="flex-shrink-0 relative w-32">
-                          <img 
-                            src={afterRealistic} 
-                            alt="After progress photo"
-                            className="w-full aspect-[3/4] object-cover rounded-lg"
-                          />
-                          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded font-medium">
-                            8 weeks
-                          </span>
-                        </div>
-                        {/* Placeholder for more photos */}
-                        <div className="flex-shrink-0 w-32 aspect-[3/4] bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
-                          <p className="text-[10px] text-muted-foreground text-center px-2">More photos</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <div className={`flex justify-center ${index === 1 ? "lg:order-1" : ""}`}>
+                {index === 0 ? (
+                  <img 
+                    src={appToday} 
+                    alt="Regimen app effortless tracking"
+                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
+                  />
+                ) : index === 1 ? (
+                  <img 
+                    src={appAddCompound} 
+                    alt="Regimen app smart scheduling"
+                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
+                  />
                 ) : (
-                  // Generic phone mockup placeholder
-                  <div className="flex justify-center">
-                    <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
-                      <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
-                        <div className="text-center p-6">
-                          <feature.icon className="w-12 h-12 text-primary/40 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground">Replace with app screenshot</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <img 
+                    src={appProgress} 
+                    alt="Regimen app progress insights showing weight tracking and visual progress photos"
+                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
+                  />
                 )}
               </div>
             </div>
