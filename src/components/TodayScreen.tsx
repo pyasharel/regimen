@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
+import bubblePopSound from "@/assets/bubble-pop.mp3";
 
 interface Dose {
   id: string;
@@ -306,29 +307,11 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function - cork pop sound
+  // Sound feedback function - bubble pop sound
   const playCheckSound = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    
-    // Cork pop with frequency bounce
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Cork pop: start mid-high, quick drop with slight bounce
-    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.04);
-    oscillator.frequency.exponentialRampToValueAtTime(350, audioContext.currentTime + 0.06); // Slight bounce
-    oscillator.type = 'sine';
-    
-    // Quick pop with fast decay
-    gainNode.gain.setValueAtTime(0.35, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.08);
+    const audio = new Audio(bubblePopSound);
+    audio.volume = 0.5;
+    audio.play().catch(err => console.log('Sound play failed:', err));
   };
 
   return (
