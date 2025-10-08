@@ -3,8 +3,8 @@ import { Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users, Zap, Bell, Cal
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import logoGradient from "@/assets/logo-gradient.png";
-import progressBefore from "@/assets/progress-before.jpg";
-import progressAfter from "@/assets/progress-after.jpg";
+import beforeRealistic from "@/assets/before-realistic.jpg";
+import afterRealistic from "@/assets/after-realistic.jpg";
 
 const Landing = () => {
   const features = [
@@ -128,7 +128,7 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-background via-primary/5 to-background">
+      <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-background via-primary/3 to-background">
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left space-y-6">
@@ -208,46 +208,64 @@ const Landing = () => {
                 </ul>
               </div>
               
-              <div className={`flex justify-center ${index === 1 ? "lg:order-1" : ""}`}>
+              <div className={`${index === 1 ? "lg:order-1" : ""}`}>
                 {/* Mockup placeholders - replace with actual app screenshots */}
                 {index === 2 ? (
-                  // Progress screen with before/after photos
-                  <div className="w-full max-w-sm bg-card border-2 border-border rounded-2xl p-6 shadow-lg">
-                    <h3 className="text-sm font-semibold text-foreground mb-4">Visual Progress</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="relative">
-                        <img 
-                          src={progressBefore} 
-                          alt="Before progress photo"
-                          className="w-full aspect-[3/4] object-cover rounded-lg"
-                        />
-                        <span className="absolute bottom-2 left-2 text-xs bg-background/90 backdrop-blur-sm px-2 py-1 rounded font-medium">
-                          Before
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <img 
-                          src={progressAfter} 
-                          alt="After progress photo"
-                          className="w-full aspect-[3/4] object-cover rounded-lg"
-                        />
-                        <span className="absolute bottom-2 left-2 text-xs bg-background/90 backdrop-blur-sm px-2 py-1 rounded font-medium">
-                          After
-                        </span>
+                  // Progress insights section with app mockup and carousel
+                  <div className="space-y-6">
+                    {/* App screenshot mockup showing weight progress */}
+                    <div className="flex justify-center">
+                      <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
+                        <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
+                          <div className="text-center p-6">
+                            <TrendingUp className="w-12 h-12 text-primary/40 mx-auto mb-2" />
+                            <p className="text-sm font-semibold text-foreground">-12 lbs</p>
+                            <p className="text-xs text-muted-foreground mt-1">Last 8 weeks</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-4 p-3 bg-primary/5 rounded-lg">
-                      <p className="text-sm font-medium text-foreground">-6.2 lbs</p>
-                      <p className="text-xs text-muted-foreground">Last 4 weeks</p>
+                    
+                    {/* Before/After Photo Carousel */}
+                    <div className="bg-card border border-border rounded-xl p-4 shadow-md">
+                      <h3 className="text-sm font-semibold text-foreground mb-3 text-center">Visual Progress</h3>
+                      <div className="flex gap-3 overflow-x-auto pb-2">
+                        <div className="flex-shrink-0 relative w-32">
+                          <img 
+                            src={beforeRealistic} 
+                            alt="Before progress photo"
+                            className="w-full aspect-[3/4] object-cover rounded-lg"
+                          />
+                          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded font-medium">
+                            Before
+                          </span>
+                        </div>
+                        <div className="flex-shrink-0 relative w-32">
+                          <img 
+                            src={afterRealistic} 
+                            alt="After progress photo"
+                            className="w-full aspect-[3/4] object-cover rounded-lg"
+                          />
+                          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded font-medium">
+                            8 weeks
+                          </span>
+                        </div>
+                        {/* Placeholder for more photos */}
+                        <div className="flex-shrink-0 w-32 aspect-[3/4] bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center">
+                          <p className="text-[10px] text-muted-foreground text-center px-2">More photos</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
                   // Generic phone mockup placeholder
-                  <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
-                    <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
-                      <div className="text-center p-6">
-                        <feature.icon className="w-12 h-12 text-primary/40 mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">Replace with app screenshot</p>
+                  <div className="flex justify-center">
+                    <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
+                      <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
+                        <div className="text-center p-6">
+                          <feature.icon className="w-12 h-12 text-primary/40 mx-auto mb-2" />
+                          <p className="text-xs text-muted-foreground">Replace with app screenshot</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -259,7 +277,7 @@ const Landing = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 px-4 bg-gradient-to-b from-primary/5 via-secondary/5 to-primary/5">
+      <section className="py-20 px-4 bg-muted/20">
         <div className="container mx-auto max-w-6xl">
           <h2 className="text-4xl font-bold text-center text-foreground mb-4">
             Why people love Regimen
@@ -302,7 +320,7 @@ const Landing = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="py-20 px-4 bg-background">
         <div className="container mx-auto max-w-3xl">
           <h2 className="text-4xl font-bold text-center text-foreground mb-4">
             Frequently asked questions
