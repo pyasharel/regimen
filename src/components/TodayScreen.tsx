@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Crown, Smile, Meh, Coffee } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Crown, Smile, Moon, Coffee } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,12 +208,12 @@ export const TodayScreen = () => {
     setSelectedDate(newDate);
   };
 
-  // Get greeting based on time of day with facial expression icons
+  // Get greeting based on time of day with icons
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return { text: "Good morning", Icon: Coffee };
     if (hour < 17) return { text: "Good afternoon", Icon: Smile };
-    return { text: "Good evening", Icon: Meh };
+    return { text: "Good evening", Icon: Moon };
   };
 
   const greeting = getGreeting();
@@ -225,7 +225,7 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function - ding sound
+  // Sound feedback function - soft pop sound
   const playCheckSound = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -234,18 +234,26 @@ export const TodayScreen = () => {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    oscillator.frequency.value = 800;
+    // Pop sound: quick burst at higher frequency
+    oscillator.frequency.value = 1000;
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
+    oscillator.stop(audioContext.currentTime + 0.15);
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
+      <style>{`
+        @keyframes draw-check {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+      `}</style>
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
@@ -267,7 +275,7 @@ export const TodayScreen = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[bounce_6s_ease-in-out_infinite]" style={{ animationDuration: '6s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '4s' }} />
         </div>
       </div>
 
@@ -421,19 +429,24 @@ export const TodayScreen = () => {
                   </div>
                   <button
                     onClick={() => toggleDose(dose.id, dose.taken)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                       dose.taken
-                        ? 'bg-success border-success animate-[pulse_0.5s_ease-out]'
-                        : 'border-muted-foreground/40 hover:border-primary'
+                        ? 'bg-success border-success scale-100'
+                        : 'border-muted-foreground/40 hover:border-primary active:scale-95'
                     }`}
                   >
                     {dose.taken && (
                       <svg
-                        className="h-full w-full text-white"
+                        className="h-full w-full text-white animate-[draw-check_0.2s_ease-out]"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="3"
+                        strokeDasharray="24"
+                        strokeDashoffset="24"
+                        style={{
+                          animation: 'draw-check 0.2s ease-out forwards',
+                        }}
                       >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
