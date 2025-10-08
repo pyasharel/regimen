@@ -10,10 +10,28 @@ import progress280 from "@/assets/progress-280lbs.jpg";
 import progress262 from "@/assets/progress-262lbs.jpg";
 
 const Landing = () => {
-  // Force light mode for landing page
+  // Force light mode for landing page and prevent theme changes
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    document.documentElement.classList.add('light');
+    const root = document.documentElement;
+    
+    // Force light mode
+    root.classList.remove('dark');
+    root.classList.add('light');
+    
+    // Watch for changes and force it back to light
+    const observer = new MutationObserver(() => {
+      if (root.classList.contains('dark')) {
+        root.classList.remove('dark');
+        root.classList.add('light');
+      }
+    });
+    
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
   }, []);
 
   const features = [
