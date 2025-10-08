@@ -1,164 +1,180 @@
 import { useState } from "react";
-import { ChevronDown, Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users } from "lucide-react";
+import { Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users, Zap, Bell, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import logoGradient from "@/assets/logo-gradient.png";
+import progressBefore from "@/assets/progress-before.jpg";
+import progressAfter from "@/assets/progress-after.jpg";
 
 const Landing = () => {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const features = [
     {
-      icon: Clock,
-      title: "Effortless Tracking",
-      description: "Manage custom regimens for peptides, GLP-1s, vitamins, or any compound. Automatic dose calculations (mcg, mg, IU conversions), smart scheduling for complex protocols, and one-tap logging that remembers everything.",
+      icon: Zap,
+      title: "Effortless tracking",
+      description: "One-tap logging that remembers everything. Manage custom regimens for peptides, GLP-1s, vitamins, or any compound.",
       points: [
-        "Handle multiple compounds simultaneously",
+        "Automatic dose calculations (mcg, mg, IU)",
+        "Smart scheduling for complex protocols",
         "Track injection sites, timing, and cycles",
-        "Automatic unit conversions"
+        "Handle multiple compounds simultaneously",
       ],
-      align: "left"
+    },
+    {
+      icon: Bell,
+      title: "Smart scheduling",
+      description: "Never miss a dose or wonder when to cycle off. Intelligent reminders that adapt to your unique protocols.",
+      points: [
+        "Handles complex cycles and titration schedules",
+        "Knows when you should take breaks",
+        "Adapts to your routine and preferences",
+        "Works even when you're traveling",
+        "Customizable reminder timing",
+      ],
     },
     {
       icon: TrendingUp,
-      title: "Smart Scheduling",
-      description: "Never miss a dose or wonder when to cycle off. Handles complex cycles and titration schedules, knows when you should take breaks, and adapts to your routine and preferences.",
+      title: "Progress insights",
+      description: "See your transformation and stay motivated. Track what matters and understand what's driving your results.",
       points: [
-        "Complex cycles and titration management",
-        "Automatic cycle management",
-        "Works even when traveling"
+        "Photo progress tracking with AI analysis",
+        "Weight, measurements, and custom metrics",
+        "Understand what compounds are working",
+        "Stay motivated with visual progress",
+        "Export data for healthcare providers",
       ],
-      align: "right"
     },
-    {
-      icon: Heart,
-      title: "Progress Insights",
-      description: "Photo progress tracking with AI analysis, weight, measurements, and custom metrics. Understand what compounds are working and see your transformation visually.",
-      points: [
-        "Track body composition changes",
-        "Visual transformation timeline",
-        "Export data for healthcare providers"
-      ],
-      align: "left"
-    }
   ];
 
   const benefits = [
     {
       icon: Shield,
       title: "Reduce cognitive load",
-      description: "Stop thinking about when to take what - we handle the complexity so you can focus on results"
+      description: "Stop thinking about when to take what - we handle the complexity so you can focus on results",
     },
     {
       icon: TrendingUp,
       title: "Reach goals faster",
-      description: "Consistent tracking and smart insights help you optimize your protocol for better outcomes"
+      description: "Consistent tracking and smart insights help you optimize your protocol for better outcomes",
     },
     {
       icon: Heart,
       title: "Stay safe and on track",
-      description: "Know when to cycle off and take breaks - never take something for too long or miss important timing"
-    }
+      description: "Know when to cycle off and take breaks - never take something for too long or miss important timing",
+    },
   ];
 
   const trustBadges = [
     {
       icon: Shield,
       title: "Privacy first",
-      description: "Your health data is encrypted and never shared with third parties"
+      description: "Your health data is encrypted and never shared with third parties",
     },
     {
       icon: Wifi,
       title: "Works offline",
-      description: "Access your data anytime, anywhere, even without internet"
+      description: "Access your data anytime, anywhere, even without internet",
     },
     {
       icon: FileText,
       title: "Not medical advice",
-      description: "For tracking only - always consult your healthcare provider"
+      description: "For tracking only - always consult your healthcare provider",
     },
     {
       icon: Users,
       title: "500+ users",
-      description: "Join others already optimizing their health journey"
-    }
+      description: "Join others already optimizing their health journey",
+    },
   ];
 
   const faqs = [
     {
       question: "What kind of medications or compounds can I track with Regimen?",
-      answer: "Regimen is designed to be highly versatile. You can effortlessly track a wide range of substances, including peptides, GLP-1s, vitamins, supplements, prescription medications, and any other custom compounds you use in your health regimen. It's built for comprehensive tracking of anything that impacts your health journey."
+      answer: "Regimen is designed to be highly versatile. You can effortlessly track a wide range of substances, including peptides, GLP-1s, vitamins, supplements, prescription medications, and any other custom compounds you use in your health regimen. It's built for comprehensive tracking of anything that impacts your health journey.",
     },
     {
       question: "How does Regimen ensure my data privacy?",
-      answer: "Your privacy is our top priority. Regimen is designed with a \"privacy-first\" approach, meaning your personal health data is securely stored and never shared with third parties. We are committed to protecting your sensitive information with bank-level encryption."
+      answer: 'Your privacy is our top priority. Regimen is designed with a "privacy-first" approach, meaning your personal health data is securely stored and never shared with third parties. We are committed to protecting your sensitive information with bank-level encryption.',
     },
     {
       question: "Can I use Regimen offline?",
-      answer: "Yes! Regimen is built to work seamlessly even without an internet connection. All your critical data and tracking capabilities are available offline, ensuring you can manage your regimen anytime, anywhere."
+      answer: "Yes! Regimen is built to work seamlessly even without an internet connection. All your critical data and tracking capabilities are available offline, ensuring you can manage your regimen anytime, anywhere.",
     },
     {
       question: "Is Regimen a substitute for medical advice?",
-      answer: "No, Regimen is a tracking and management tool designed to help you organize your personal health protocols. It is not intended to provide medical advice, diagnosis, or treatment. Always consult with a qualified healthcare professional for any medical concerns or before making any decisions about your health."
+      answer: "No, Regimen is a tracking and management tool designed to help you organize your personal health protocols. It is not intended to provide medical advice, diagnosis, or treatment. Always consult with a qualified healthcare professional for any medical concerns or before making any decisions about your health.",
     },
     {
       question: "How do I get the app?",
-      answer: "Click the \"Download the app\" button to get started. Regimen is available for both iOS and Android devices."
+      answer: 'Click the "Download the app" button to get started. Regimen is available for both iOS and Android devices.',
     },
     {
       question: "What features does Regimen include?",
-      answer: "Regimen includes smart dose tracking, automatic calculations, intelligent scheduling for complex protocols, customizable compound profiles, progress insights with photo tracking, weight and measurement tracking, and the ability to export your data. We're continuously adding more features based on user feedback."
-    }
+      answer: "Regimen includes smart dose tracking, automatic calculations, intelligent scheduling for complex protocols, customizable compound profiles, progress insights with photo tracking, weight and measurement tracking, and the ability to export your data. We're continuously adding more features based on user feedback.",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <img src={logoGradient} alt="Regimen" className="h-8" />
-            <Button 
-              onClick={() => window.location.href = 'https://getregimen.app'}
-              className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-all duration-300 shadow-premium"
-            >
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <img src={logoGradient} alt="Regimen" className="h-8" />
+          <Button asChild>
+            <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
               Download the app
-            </Button>
-          </div>
+            </a>
+          </Button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 -z-10" />
-        
+      <section className="pt-32 pb-20 px-4 bg-gradient-to-b from-background via-primary/5 to-background">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-              Track everything,<br />reach your goals
-            </h1>
-            <p className="text-xl sm:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Take the guesswork out of dosing, timing, and cycles
-            </p>
-            <Button 
-              onClick={() => window.location.href = 'https://getregimen.app'}
-              size="lg"
-              className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-all duration-300 shadow-premium text-lg px-8 py-6 h-auto"
-            >
-              Get started
-            </Button>
-          </div>
-
-          {/* Hero Image Placeholder */}
-          <div className="relative mx-auto max-w-4xl mt-16 animate-slide-up">
-            <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl p-8 sm:p-12 border border-border shadow-elevated">
-              <div className="aspect-[16/9] bg-card rounded-lg flex items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <TrendingUp className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <p className="text-lg">Your intelligent companion for managing health protocols</p>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left space-y-6">
+              <h1 className="text-5xl md:text-6xl font-bold text-foreground leading-tight">
+                Track everything, reach your goals
+              </h1>
+              <p className="text-xl text-muted-foreground leading-relaxed">
+                Take the guesswork out of dosing, timing, and cycles
+              </p>
+              <Button 
+                size="lg" 
+                asChild 
+                className="shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
+                  Download the app
+                </a>
+              </Button>
+            </div>
+            
+            {/* Hero Phone Mockups - Placeholder for actual screenshots */}
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-lg">
+                {/* Add your app screenshots here */}
+                {/* Replace these placeholder divs with: */}
+                {/* <img src={appTodayScreen} alt="..." className="w-3/5 relative z-10 rounded-3xl shadow-2xl" /> */}
+                {/* <img src={appProgressScreen} alt="..." className="w-3/5 absolute top-12 right-0 rounded-3xl shadow-2xl" /> */}
+                
+                <div className="w-3/5 relative z-10 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
+                  <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/10 to-secondary/10 rounded-[1.5rem] flex items-center justify-center">
+                    <div className="text-center p-6">
+                      <Calendar className="w-12 h-12 text-primary mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Today's Schedule</p>
+                      <p className="text-xs text-muted-foreground mt-2">Replace with app screenshot</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="w-3/5 absolute top-12 right-0 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
+                  <div className="aspect-[9/19.5] bg-gradient-to-b from-secondary/10 to-primary/10 rounded-[1.5rem] flex items-center justify-center">
+                    <div className="text-center p-6">
+                      <TrendingUp className="w-12 h-12 text-secondary mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Progress Tracking</p>
+                      <p className="text-xs text-muted-foreground mt-2">Replace with app screenshot</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -167,35 +183,75 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           {features.map((feature, index) => (
             <div 
               key={index}
-              className={`flex flex-col ${feature.align === 'right' ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 mb-24 last:mb-0`}
+              className={`grid lg:grid-cols-2 gap-12 items-center ${index !== features.length - 1 ? 'mb-32' : ''}`}
             >
-              {/* Content */}
-              <div className="flex-1 animate-fade-in">
-                <feature.icon className="w-12 h-12 text-primary mb-6" strokeWidth={1.5} />
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4">{feature.title}</h2>
+              <div className={index === 1 ? "lg:order-2" : ""}>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-6">
+                  <feature.icon className="w-6 h-6" />
+                </div>
+                <h2 className="text-4xl font-bold text-foreground mb-4">{feature.title}</h2>
                 <p className="text-lg text-muted-foreground mb-6">{feature.description}</p>
                 <ul className="space-y-3">
                   {feature.points.map((point, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2.5" />
-                      <span className="text-foreground">{point}</span>
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center mt-0.5 flex-shrink-0">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      </div>
+                      <span className="text-muted-foreground">{point}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {/* Mockup Placeholder */}
-              <div className="flex-1 w-full max-w-md">
-                <div className="bg-card rounded-2xl p-8 border border-border shadow-card">
-                  <div className="aspect-[9/16] bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg flex items-center justify-center">
-                    <feature.icon className="w-16 h-16 text-primary/30" />
+              
+              <div className={`flex justify-center ${index === 1 ? "lg:order-1" : ""}`}>
+                {/* Mockup placeholders - replace with actual app screenshots */}
+                {index === 2 ? (
+                  // Progress screen with before/after photos
+                  <div className="w-full max-w-sm bg-card border-2 border-border rounded-2xl p-6 shadow-lg">
+                    <h3 className="text-sm font-semibold text-foreground mb-4">Visual Progress</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="relative">
+                        <img 
+                          src={progressBefore} 
+                          alt="Before progress photo"
+                          className="w-full aspect-[3/4] object-cover rounded-lg"
+                        />
+                        <span className="absolute bottom-2 left-2 text-xs bg-background/90 backdrop-blur-sm px-2 py-1 rounded font-medium">
+                          Before
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <img 
+                          src={progressAfter} 
+                          alt="After progress photo"
+                          className="w-full aspect-[3/4] object-cover rounded-lg"
+                        />
+                        <span className="absolute bottom-2 left-2 text-xs bg-background/90 backdrop-blur-sm px-2 py-1 rounded font-medium">
+                          After
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-primary/5 rounded-lg">
+                      <p className="text-sm font-medium text-foreground">-6.2 lbs</p>
+                      <p className="text-xs text-muted-foreground">Last 4 weeks</p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  // Generic phone mockup placeholder
+                  <div className="w-3/5 bg-card border-4 border-foreground rounded-[2.5rem] shadow-2xl p-4">
+                    <div className="aspect-[9/19.5] bg-gradient-to-b from-primary/5 to-secondary/5 rounded-[1.5rem] flex items-center justify-center">
+                      <div className="text-center p-6">
+                        <feature.icon className="w-12 h-12 text-primary/40 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">Replace with app screenshot</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -203,19 +259,24 @@ const Landing = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary/5 to-secondary/5">
+      <section className="py-20 px-4 bg-gradient-to-b from-primary/5 via-secondary/5 to-primary/5">
         <div className="container mx-auto max-w-6xl">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-16">
+          <h2 className="text-4xl font-bold text-center text-foreground mb-4">
             Why people love Regimen
           </h2>
+          <p className="text-lg text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Join hundreds of users optimizing their health protocols with precision and confidence
+          </p>
           <div className="grid md:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
+            {benefits.map((benefit, i) => (
               <div 
-                key={index}
-                className="bg-card rounded-xl p-8 border border-border shadow-card hover:shadow-elevated transition-all duration-300 hover:-translate-y-1"
+                key={i} 
+                className="p-8 bg-background border border-border rounded-xl hover:shadow-lg transition-all hover:-translate-y-1"
               >
-                <benefit.icon className="w-10 h-10 text-primary mb-4" strokeWidth={1.5} />
-                <h3 className="text-xl font-semibold mb-3">{benefit.title}</h3>
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
+                  <benefit.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">{benefit.title}</h3>
                 <p className="text-muted-foreground">{benefit.description}</p>
               </div>
             ))}
@@ -224,13 +285,15 @@ const Landing = () => {
       </section>
 
       {/* Trust Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {trustBadges.map((badge, index) => (
-              <div key={index} className="text-center">
-                <badge.icon className="w-10 h-10 text-primary mx-auto mb-4" strokeWidth={1.5} />
-                <h3 className="font-semibold mb-2">{badge.title}</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {trustBadges.map((badge, i) => (
+              <div key={i} className="p-6 text-center bg-card border border-border rounded-xl hover:shadow-md transition-shadow">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
+                  <badge.icon className="w-6 h-6" />
+                </div>
+                <h3 className="font-semibold text-foreground mb-2">{badge.title}</h3>
                 <p className="text-sm text-muted-foreground">{badge.description}</p>
               </div>
             ))}
@@ -239,66 +302,57 @@ const Landing = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-surface">
+      <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-3xl">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">
+          <h2 className="text-4xl font-bold text-center text-foreground mb-4">
             Frequently asked questions
           </h2>
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div 
-                key={index}
-                className="bg-card rounded-lg border border-border overflow-hidden"
+          <p className="text-lg text-center text-muted-foreground mb-12">
+            Everything you need to know about Regimen
+          </p>
+          <Accordion type="single" collapsible className="space-y-4">
+            {faqs.map((faq, i) => (
+              <AccordionItem 
+                key={i} 
+                value={`item-${i}`} 
+                className="bg-background border border-border rounded-lg px-6 hover:shadow-md transition-shadow"
               >
-                <button
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-muted/50 transition-colors"
-                >
-                  <span className="font-semibold pr-4">{faq.question}</span>
-                  <ChevronDown 
-                    className={`w-5 h-5 text-primary transition-transform duration-300 flex-shrink-0 ${
-                      openFaq === index ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div 
-                  className={`transition-all duration-300 overflow-hidden ${
-                    openFaq === index ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <p className="px-6 pb-4 text-muted-foreground">
-                    {faq.answer}
-                  </p>
-                </div>
-              </div>
+                <AccordionTrigger className="text-left font-semibold text-foreground hover:no-underline">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary to-secondary text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/50 to-secondary/50 -z-10" />
-        
+      <section className="py-20 px-4 bg-gradient-to-br from-primary to-secondary text-white">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to optimize your health?
           </h2>
           <p className="text-xl mb-8 opacity-90">
             Join hundreds of people taking control of their health protocols
           </p>
           <Button 
-            onClick={() => window.location.href = 'https://getregimen.app'}
+            asChild
             size="lg"
-            className="bg-white text-primary hover:bg-white/90 transition-all duration-300 shadow-elevated text-lg px-8 py-6 h-auto"
+            variant="secondary"
+            className="bg-white text-primary hover:bg-white/90 shadow-lg"
           >
-            Download the app
+            <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
+              Download the app
+            </a>
           </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-border">
+      <footer className="py-12 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <img src={logoGradient} alt="Regimen" className="h-8" />
