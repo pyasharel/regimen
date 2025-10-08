@@ -27,6 +27,7 @@ export const TodayScreen = () => {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -52,6 +53,7 @@ export const TodayScreen = () => {
   useEffect(() => {
     loadDoses();
     checkCompounds();
+    loadUserName();
     
     // Check premium status
     const checkPremium = () => {
@@ -63,6 +65,25 @@ export const TodayScreen = () => {
     window.addEventListener('storage', checkPremium);
     return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
+
+  const loadUserName = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.full_name) {
+        setUserName(profile.full_name.split(' ')[0]); // Use first name only
+      }
+    } catch (error) {
+      console.error('Error loading user name:', error);
+    }
+  };
 
   const checkCompounds = async () => {
     try {
@@ -222,20 +243,25 @@ export const TodayScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-center gap-2">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-            REGIMEN
-          </h1>
-          {isPremium && (
-            <Crown className="h-5 w-5 text-primary" />
-          )}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+              REGIMEN
+            </h1>
+            {isPremium && (
+              <Crown className="h-5 w-5 text-primary" />
+            )}
+          </div>
         </div>
       </header>
 
       {/* Greeting */}
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-3xl font-bold text-foreground">{greeting.text}</h2>
+          <h2 className="text-3xl font-bold text-foreground">
+            {greeting.text}{userName ? `, ${userName}` : ''}
+          </h2>
           <greeting.Icon className="h-8 w-8 text-primary animate-[bounce_6s_ease-in-out_infinite]" style={{ animationDuration: '6s' }} />
         </div>
       </div>
@@ -368,16 +394,16 @@ export const TodayScreen = () => {
               className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
                 dose.taken
                   ? 'bg-card border-border'
-                  : 'bg-gradient-to-br from-primary/10 to-primary/20 border-primary/30 shadow-sm'
+                  : 'bg-primary border-primary shadow-sm'
               }`}
             >
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-foreground'}`}>
+                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-white'}`}>
                       {dose.compound_name}
                     </h3>
-                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
                       {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
                       {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                     </p>

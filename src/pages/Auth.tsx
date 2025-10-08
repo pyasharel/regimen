@@ -15,6 +15,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -62,6 +63,11 @@ export default function Auth() {
       return;
     }
 
+    if (isSignUp && !fullName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
+
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
@@ -76,6 +82,9 @@ export default function Auth() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: fullName.trim()
+            }
           },
         });
 
@@ -120,6 +129,21 @@ export default function Auth() {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

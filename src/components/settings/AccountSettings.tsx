@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Trash2 } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,10 +20,59 @@ import { toast } from "sonner";
 
 export const AccountSettings = () => {
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.full_name) {
+        setFullName(profile.full_name);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const handleNameUpdate = async () => {
+    if (!fullName.trim()) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName.trim() })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success("Name updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update name");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailUpdate = async () => {
     if (!email) return;
@@ -92,6 +141,35 @@ export const AccountSettings = () => {
       </header>
 
       <div className="p-6 space-y-6 max-w-2xl mx-auto">
+        {/* Name Section */}
+        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Full Name</h2>
+              <p className="text-sm text-muted-foreground">Update your display name</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="fullName" className="text-sm font-medium">Name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="John Doe"
+                className="mt-1.5"
+              />
+            </div>
+            <Button onClick={handleNameUpdate} disabled={loading || !fullName.trim()} className="w-full">
+              {loading ? "Updating..." : "Update Name"}
+            </Button>
+          </div>
+        </div>
+
         {/* Email Section */}
         <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 mb-4">
