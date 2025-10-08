@@ -490,30 +490,29 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="intendedDose">Dose Amount *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="intendedDose">Dose Amount *</Label>
+            <div className="flex gap-3">
               <Input
                 id="intendedDose"
                 type="number"
                 value={intendedDose}
                 onChange={(e) => setIntendedDose(e.target.value)}
                 placeholder="e.g., 250"
-                className="text-lg h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="text-lg h-12 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-            </div>
-            <div>
-              <Label htmlFor="unit">Unit *</Label>
               <select
                 id="unit"
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-auto min-w-[120px] h-11 bg-background border-border rounded-lg border px-3 text-sm font-medium"
+                className="w-[120px] h-12 bg-background border-border rounded-lg border px-3 text-sm font-medium"
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
                 <option value="IU">IU</option>
+                <option value="ml">ml</option>
                 <option value="pill">pill</option>
+                <option value="capsule">capsule</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
               </select>

@@ -390,7 +390,11 @@ export const ProgressScreen = () => {
               </div>
 
               {photoEntries.length > 0 && (
-                <Button variant="outline" className="w-full">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate("/progress/compare")}
+                >
                   View All Photos & Compare
                 </Button>
               )}

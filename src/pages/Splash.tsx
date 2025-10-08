@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import logoHorizontal from "@/assets/logo-regimen-horizontal.png";
 
 
 export default function Splash() {
@@ -21,9 +22,11 @@ export default function Splash() {
       <div className="w-full max-w-md text-center space-y-8">
         {/* Logo/Brand */}
         <div className="flex justify-center mb-8">
-          <h1 className="text-6xl font-bold tracking-tight text-foreground">
-            REGIMEN
-          </h1>
+          <img 
+            src={logoHorizontal} 
+            alt="REGIMEN" 
+            className="h-16 w-auto"
+          />
         </div>
 
         {/* Tagline */}
