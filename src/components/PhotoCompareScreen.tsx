@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { format } from "date-fns";
-import logoMark from "@/assets/logo-regimen-mark.png";
+import logoGradient from "@/assets/logo-gradient.png";
 
 interface PhotoEntry {
   id: string;
@@ -126,10 +126,10 @@ export default function PhotoCompareScreen() {
 
     // Add watermark
     ctx.fillStyle = '#000000';
-    ctx.globalAlpha = 0.15;
-    ctx.font = 'bold 20px Inter, sans-serif';
+    ctx.globalAlpha = 0.3;
+    ctx.font = 'bold 22px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('REGIMEN • regimen.app', canvas.width / 2, canvas.height - 30);
+    ctx.fillText('REGIMEN • getregimen.app', canvas.width / 2, canvas.height - 30);
     ctx.globalAlpha = 1.0;
 
     return new Promise((resolve) => {
@@ -212,15 +212,15 @@ export default function PhotoCompareScreen() {
                 <img 
                   src={selectedPhotos.before.url} 
                   alt="Before" 
-                  className="w-full h-64 object-cover rounded-lg mb-3"
+                  className="w-full h-64 object-cover rounded-lg mb-2"
                 />
                 <p className="text-xs text-center text-muted-foreground mb-3">
                   {format(new Date(selectedPhotos.before.date), 'MMM d, yyyy')}
                 </p>
               </div>
             ) : (
-              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground">
-                No photo selected
+              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
+                Select a photo
               </div>
             )}
             <Button
@@ -228,7 +228,7 @@ export default function PhotoCompareScreen() {
               className="w-full"
               onClick={() => setShowPhotoSelector('before')}
             >
-              Select Before
+              {selectedPhotos.before ? 'Change Photo' : 'Select Photo'}
             </Button>
           </Card>
 
@@ -239,15 +239,15 @@ export default function PhotoCompareScreen() {
                 <img 
                   src={selectedPhotos.after.url} 
                   alt="After" 
-                  className="w-full h-64 object-cover rounded-lg mb-3"
+                  className="w-full h-64 object-cover rounded-lg mb-2"
                 />
                 <p className="text-xs text-center text-muted-foreground mb-3">
                   {format(new Date(selectedPhotos.after.date), 'MMM d, yyyy')}
                 </p>
               </div>
             ) : (
-              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground">
-                No photo selected
+              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
+                Select a photo
               </div>
             )}
             <Button
@@ -255,59 +255,27 @@ export default function PhotoCompareScreen() {
               className="w-full"
               onClick={() => setShowPhotoSelector('after')}
             >
-              Select After
+              {selectedPhotos.after ? 'Change Photo' : 'Select Photo'}
             </Button>
           </Card>
         </div>
 
-        {/* Preview Comparison */}
-        {selectedPhotos.before && selectedPhotos.after && (
-          <Card className="p-6" ref={comparisonRef}>
-            <h3 className="font-semibold mb-4 text-center">Preview</h3>
-            <div className="relative">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <p className="text-sm font-semibold text-primary text-center mb-1">BEFORE</p>
-                  <p className="text-xs text-muted-foreground text-center mb-2">
-                    {format(new Date(selectedPhotos.before.date), 'MMM d, yyyy')}
-                  </p>
-                  <img 
-                    src={selectedPhotos.before.url} 
-                    alt="Before comparison" 
-                    className="w-full rounded-lg"
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-primary text-center mb-1">AFTER</p>
-                  <p className="text-xs text-muted-foreground text-center mb-2">
-                    {format(new Date(selectedPhotos.after.date), 'MMM d, yyyy')}
-                  </p>
-                  <img 
-                    src={selectedPhotos.after.url} 
-                    alt="After comparison" 
-                    className="w-full rounded-lg"
-                  />
-                </div>
-              </div>
-              {/* Subtle watermark */}
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/40 pt-2 border-t border-border/30">
-                <img src={logoMark} alt="" className="h-4 w-4 opacity-40" />
-                <span>REGIMEN • regimen.app</span>
-              </div>
-            </div>
-          </Card>
-        )}
-
         {/* Share Button */}
-        <Button
-          onClick={handleShare}
-          disabled={!selectedPhotos.before || !selectedPhotos.after}
-          className="w-full"
-          size="lg"
-        >
-          <Share2 className="h-5 w-5 mr-2" />
-          Share Comparison
-        </Button>
+        {selectedPhotos.before && selectedPhotos.after && (
+          <div className="space-y-3">
+            <div className="text-center text-sm text-muted-foreground">
+              Ready to share your transformation
+            </div>
+            <Button
+              onClick={handleShare}
+              className="w-full"
+              size="lg"
+            >
+              <Share2 className="h-5 w-5 mr-2" />
+              Share Comparison
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Photo Selector Dialog */}
@@ -319,24 +287,31 @@ export default function PhotoCompareScreen() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            {availablePhotos.map((photo) => (
-              <Card
-                key={photo.id}
-                className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
-              >
-                <img
-                  src={getPhotoUrl(photo.photo_url)}
-                  alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
-                  className="w-full h-48 object-cover rounded-t-lg"
-                />
-                <div className="p-3 text-center">
-                  <p className="text-sm font-medium">
-                    {format(new Date(photo.entry_date), 'MMM d, yyyy')}
-                  </p>
-                </div>
-              </Card>
-            ))}
+            {availablePhotos
+              .filter(photo => {
+                // Don't show already selected photos in the picker
+                const isSelectedBefore = selectedPhotos.before?.url === getPhotoUrl(photo.photo_url);
+                const isSelectedAfter = selectedPhotos.after?.url === getPhotoUrl(photo.photo_url);
+                return !isSelectedBefore && !isSelectedAfter;
+              })
+              .map((photo) => (
+                <Card
+                  key={photo.id}
+                  className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                  onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+                >
+                  <img
+                    src={getPhotoUrl(photo.photo_url)}
+                    alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
+                    className="w-full h-48 object-cover rounded-t-lg"
+                  />
+                  <div className="p-3 text-center">
+                    <p className="text-sm font-medium">
+                      {format(new Date(photo.entry_date), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                </Card>
+              ))}
           </div>
           {availablePhotos.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">

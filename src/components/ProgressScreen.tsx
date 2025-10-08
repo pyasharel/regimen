@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera, Plus, Crown } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Crown, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +17,8 @@ import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Camera } from '@capacitor/camera';
+import { CameraResultType, CameraSource } from '@capacitor/camera';
 
 type ProgressEntry = {
   id: string;
@@ -168,26 +170,68 @@ export const ProgressScreen = () => {
     }
   };
 
-  const handleUploadPhoto = async () => {
-    if (!photoFile) {
-      toast.error('Please select a photo');
-      return;
-    }
-
+  const handleCapturePhoto = async () => {
     if (!isPremium) {
       toast.error('Photo upload is a premium feature');
       return;
     }
 
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera
+      });
+
+      if (image.dataUrl) {
+        await uploadPhotoFromDataUrl(image.dataUrl);
+      }
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      toast.error('Failed to capture photo');
+    }
+  };
+
+  const handleSelectPhoto = async () => {
+    if (!isPremium) {
+      toast.error('Photo upload is a premium feature');
+      return;
+    }
+
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Photos
+      });
+
+      if (image.dataUrl) {
+        await uploadPhotoFromDataUrl(image.dataUrl);
+      }
+    } catch (error) {
+      console.error('Error selecting photo:', error);
+      toast.error('Failed to select photo');
+    }
+  };
+
+  const uploadPhotoFromDataUrl = async (dataUrl: string) => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const fileName = `${user.id}/${Date.now()}-${photoFile.name}`;
+      // Convert data URL to blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      const fileName = `${user.id}/${Date.now()}-image.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
-        .upload(fileName, photoFile);
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg'
+        });
 
       if (uploadError) throw uploadError;
 
@@ -195,7 +239,7 @@ export const ProgressScreen = () => {
         .from('progress_entries')
         .insert([{
           user_id: user.id,
-          entry_date: format(entryDate, 'yyyy-MM-dd'),
+          entry_date: new Date().toISOString().split('T')[0],
           category: 'photo',
           photo_url: fileName
         }]);
@@ -204,7 +248,6 @@ export const ProgressScreen = () => {
 
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
-      setPhotoFile(null);
       fetchEntries();
     } catch (error) {
       console.error('Error uploading photo:', error);
@@ -364,7 +407,7 @@ export const ProgressScreen = () => {
             </div>
             {isPremium && (
               <Button onClick={() => setShowPhotoModal(true)} size="sm">
-                <Camera className="w-4 h-4 mr-2" />
+                <CameraIcon className="w-4 h-4 mr-2" />
                 Upload Photo
               </Button>
             )}
@@ -404,8 +447,8 @@ export const ProgressScreen = () => {
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="flex-shrink-0">
-                    <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
-                      <Camera className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
+                  <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
+                      <CameraIcon className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                       {!isPremium && (
                         <div className="absolute top-2 right-2">
                           <Crown className="w-4 h-4 text-primary/70" />
@@ -565,25 +608,26 @@ export const ProgressScreen = () => {
       <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Upload Progress Photo</DialogTitle>
+            <DialogTitle>Add Progress Photo</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="photo">Select Photo</Label>
-              <Input
-                id="photo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-              />
-              {photoFile && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  Selected: {photoFile.name}
-                </div>
-              )}
-            </div>
-            <Button onClick={handleUploadPhoto} disabled={loading || !photoFile} className="w-full">
-              {loading ? 'Uploading...' : 'Upload Photo'}
+          <div className="space-y-3">
+            <Button 
+              onClick={handleCapturePhoto} 
+              disabled={loading} 
+              className="w-full h-14 text-base"
+              variant="default"
+            >
+              <CameraIcon className="w-5 h-5 mr-2" />
+              {loading ? 'Processing...' : 'Snap a Photo'}
+            </Button>
+            <Button 
+              onClick={handleSelectPhoto} 
+              disabled={loading} 
+              className="w-full h-14 text-base"
+              variant="outline"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              {loading ? 'Processing...' : 'Upload from Gallery'}
             </Button>
           </div>
         </DialogContent>
