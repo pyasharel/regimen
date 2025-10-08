@@ -132,7 +132,7 @@ const Landing = () => {
     },
     {
       question: "How do I get the app?",
-      answer: 'Click the "Download the app" button to get started. Regimen is available for both iOS and Android devices.',
+      answer: 'Click the "Get started" button to create your account and start using Regimen instantly in your browser. For the best experience on mobile, you can add Regimen to your home screen.',
     },
     {
       question: "What features does Regimen include?",
@@ -149,8 +149,8 @@ const Landing = () => {
             REGIMEN
           </span>
           <Button asChild>
-            <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
-              Download the app
+            <a href="/app">
+              Get started
             </a>
           </Button>
         </div>
@@ -172,8 +172,8 @@ const Landing = () => {
                 asChild 
                 className="shadow-lg hover:shadow-xl transition-shadow"
               >
-                <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
-                  Download the app
+                <a href="/app">
+                  Get started
                 </a>
               </Button>
             </div>
@@ -345,8 +345,8 @@ const Landing = () => {
             variant="secondary"
             className="bg-white text-primary hover:bg-white/90 shadow-lg"
           >
-            <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
-              Download the app
+            <a href="/app">
+              Get started
             </a>
           </Button>
         </div>
