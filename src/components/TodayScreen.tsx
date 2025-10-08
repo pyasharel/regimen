@@ -225,28 +225,29 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function - bubble pop sound
+  // Sound feedback function - cork pop sound
   const playCheckSound = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Option: Sharper bubble pop with higher frequency
+    // Cork pop with frequency bounce
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    // Very high start, quick drop for sharper pop
-    oscillator.frequency.setValueAtTime(1800, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.06);
+    // Cork pop: start mid-high, quick drop with slight bounce
+    oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.04);
+    oscillator.frequency.exponentialRampToValueAtTime(350, audioContext.currentTime + 0.06); // Slight bounce
     oscillator.type = 'sine';
     
-    // Quick attack and very fast decay
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.06);
+    // Quick pop with fast decay
+    gainNode.gain.setValueAtTime(0.35, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.06);
+    oscillator.stop(audioContext.currentTime + 0.08);
   };
 
   return (
