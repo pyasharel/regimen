@@ -39,15 +39,18 @@ export const AccountSettings = () => {
         .from('profiles')
         .select('full_name')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error loading profile:', error);
         return;
       }
 
       if (profile?.full_name) {
         setFullName(profile.full_name);
+      } else {
+        // Profile doesn't exist, leave fullName empty for user to fill
+        setFullName("");
       }
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
@@ -67,10 +70,16 @@ export const AccountSettings = () => {
 
       console.log('Updating name for user:', user.id, 'to:', fullName.trim());
 
+      // Use upsert to handle both insert and update
       const { data, error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName.trim() })
-        .eq('user_id', user.id)
+        .upsert({ 
+          user_id: user.id, 
+          full_name: fullName.trim(),
+          onboarding_completed: true 
+        }, { 
+          onConflict: 'user_id' 
+        })
         .select();
 
       if (error) {

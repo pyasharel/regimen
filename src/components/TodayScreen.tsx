@@ -71,11 +71,16 @@ export const TodayScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('full_name')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading user name:', error);
+        return;
+      }
 
       if (profile?.full_name) {
         setUserName(profile.full_name.split(' ')[0]); // Use first name only
