@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Clock, TrendingUp, Heart, Shield, Wifi, FileText, Users, Zap, Bell, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import logoGradient from "@/assets/logo-gradient.png";
+import logoWhite from "@/assets/logo-white.png";
 import appToday from "@/assets/app-today.png";
 import appProgress from "@/assets/app-progress.png";
 import appAddCompound from "@/assets/app-add-compound.png";
-import progressSept from "@/assets/progress-sept.jpg";
-import progressNov from "@/assets/progress-nov.jpg";
+import progress280 from "@/assets/progress-280lbs.jpg";
+import progress262 from "@/assets/progress-262lbs.jpg";
 
 const Landing = () => {
   // Force light mode for landing page
@@ -127,7 +127,9 @@ const Landing = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img src={logoGradient} alt="Regimen" className="h-8" />
+          <span className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            REGIMEN
+          </span>
           <Button asChild>
             <a href="https://getregimen.app" target="_blank" rel="noopener noreferrer">
               Download the app
@@ -160,17 +162,21 @@ const Landing = () => {
             
             {/* Hero Phone Mockups with actual app screenshots */}
             <div className="relative flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-lg">
-                <img 
-                  src={appToday} 
-                  alt="Regimen app showing today's medication schedule"
-                  className="w-3/5 relative z-10 rounded-[2.5rem] shadow-2xl"
-                />
-                <img 
-                  src={appProgress} 
-                  alt="Regimen app showing progress tracking"
-                  className="w-3/5 absolute top-12 right-0 rounded-[2.5rem] shadow-2xl"
-                />
+              <div className="relative w-full max-w-md">
+                <div className="w-[45%] relative z-10">
+                  <img 
+                    src={appToday} 
+                    alt="Regimen app showing today's medication schedule"
+                    className="w-full rounded-[2rem] shadow-2xl"
+                  />
+                </div>
+                <div className="w-[45%] absolute top-16 right-0">
+                  <img 
+                    src={appProgress} 
+                    alt="Regimen app showing progress tracking"
+                    className="w-full rounded-[2rem] shadow-2xl"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -205,23 +211,29 @@ const Landing = () => {
               
               <div className={`flex justify-center ${index === 1 ? "lg:order-1" : ""}`}>
                 {index === 0 ? (
-                  <img 
-                    src={appToday} 
-                    alt="Regimen app effortless tracking"
-                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
-                  />
+                  <div className="w-[280px]">
+                    <img 
+                      src={appToday} 
+                      alt="Regimen app effortless tracking"
+                      className="w-full rounded-[2rem] shadow-2xl"
+                    />
+                  </div>
                 ) : index === 1 ? (
-                  <img 
-                    src={appAddCompound} 
-                    alt="Regimen app smart scheduling"
-                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
-                  />
+                  <div className="w-[280px]">
+                    <img 
+                      src={appAddCompound} 
+                      alt="Regimen app smart scheduling"
+                      className="w-full rounded-[2rem] shadow-2xl"
+                    />
+                  </div>
                 ) : (
-                  <img 
-                    src={appProgress} 
-                    alt="Regimen app progress insights showing weight tracking and visual progress photos"
-                    className="w-3/5 rounded-[2.5rem] shadow-2xl"
-                  />
+                  <div className="w-[280px]">
+                    <img 
+                      src={appProgress} 
+                      alt="Regimen app progress insights"
+                      className="w-full rounded-[2rem] shadow-2xl"
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -326,7 +338,9 @@ const Landing = () => {
       <footer className="py-12 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <img src={logoGradient} alt="Regimen" className="h-8" />
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              REGIMEN
+            </span>
             <div className="flex gap-6">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
                 Privacy
