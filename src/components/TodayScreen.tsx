@@ -225,7 +225,7 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function - whoosh sound
+  // Sound feedback function - ding sound
   const playCheckSound = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -234,16 +234,14 @@ export const TodayScreen = () => {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    // Whoosh: sweep from high to low frequency
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.15);
+    oscillator.frequency.value = 800;
     oscillator.type = 'sine';
     
-    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
     
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.15);
+    oscillator.stop(audioContext.currentTime + 0.1);
   };
 
   return (
@@ -266,10 +264,10 @@ export const TodayScreen = () => {
       {/* Greeting */}
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-3xl font-bold text-foreground">
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-8 w-8 text-primary animate-[bounce_6s_ease-in-out_infinite]" style={{ animationDuration: '6s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[bounce_6s_ease-in-out_infinite]" style={{ animationDuration: '6s' }} />
         </div>
       </div>
 
