@@ -191,7 +191,7 @@ export const MyStackScreen = () => {
           {activeCompounds.map((compound) => (
             <div
               key={compound.id}
-              className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg transition-all hover:shadow-xl animate-slide-up"
+              className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-muted/30 shadow-sm transition-all hover:shadow-md animate-slide-up"
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">

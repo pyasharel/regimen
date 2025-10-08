@@ -441,7 +441,7 @@ export const AddCompoundScreen = () => {
                 type="number"
                 value={intendedDose}
                 onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="Amount per dose"
+                placeholder="Enter amount"
                 className="text-lg h-12 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <select

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Crown, Sun, Cloud, Moon, CloudRain } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Crown, Smile, Meh, Coffee } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,6 +123,17 @@ export const TodayScreen = () => {
 
   const toggleDose = async (doseId: string, currentStatus: boolean) => {
     try {
+      // Check if sound is enabled
+      const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+      
+      // Trigger haptic feedback
+      triggerHaptic();
+      
+      // Play sound if enabled and checking off (not unchecking)
+      if (!currentStatus && soundEnabled) {
+        playCheckSound();
+      }
+
       const { error } = await supabase
         .from('doses')
         .update({
@@ -171,15 +182,41 @@ export const TodayScreen = () => {
     setSelectedDate(newDate);
   };
 
-  // Get greeting based on time of day
+  // Get greeting based on time of day with facial expression icons
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return { text: "Good morning", Icon: Sun };
-    if (hour < 17) return { text: "Good afternoon", Icon: Cloud };
-    return { text: "Good evening", Icon: Moon };
+    if (hour < 12) return { text: "Good morning", Icon: Coffee };
+    if (hour < 17) return { text: "Good afternoon", Icon: Smile };
+    return { text: "Good evening", Icon: Meh };
   };
 
   const greeting = getGreeting();
+
+  // Haptic feedback function
+  const triggerHaptic = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50); // Subtle 50ms vibration
+    }
+  };
+
+  // Sound feedback function
+  const playCheckSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
@@ -199,7 +236,7 @@ export const TodayScreen = () => {
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-3xl font-bold text-foreground">{greeting.text}</h2>
-          <greeting.Icon className="h-8 w-8 text-primary animate-pulse" />
+          <greeting.Icon className="h-8 w-8 text-primary animate-[bounce_3s_ease-in-out_infinite]" style={{ animationDuration: '3s' }} />
         </div>
       </div>
 
@@ -331,16 +368,16 @@ export const TodayScreen = () => {
               className={`overflow-hidden rounded-2xl border transition-all animate-fade-in ${
                 dose.taken
                   ? 'bg-card border-border'
-                  : 'bg-gradient-to-br from-primary to-secondary border-primary/20 shadow-[0_8px_32px_rgba(255,111,97,0.25)]'
+                  : 'bg-gradient-to-br from-primary/5 via-primary/10 to-secondary/5 border-primary/20 shadow-sm'
               }`}
             >
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground'}`}>
+                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-foreground'}`}>
                       {dose.compound_name}
                     </h3>
-                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-primary-foreground/80'}`}>
+                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                       {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
                       {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                     </p>
@@ -349,8 +386,8 @@ export const TodayScreen = () => {
                     onClick={() => toggleDose(dose.id, dose.taken)}
                     className={`h-7 w-7 rounded-full border-2 transition-all ${
                       dose.taken
-                        ? 'bg-success border-success'
-                        : 'border-primary-foreground/40 hover:border-primary-foreground'
+                        ? 'bg-success border-success animate-[pulse_0.5s_ease-out]'
+                        : 'border-muted-foreground/40 hover:border-primary'
                     }`}
                   >
                     {dose.taken && (

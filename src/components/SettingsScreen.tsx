@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Crown, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare } from "lucide-react";
+import { Crown, User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -15,15 +15,19 @@ export const SettingsScreen = () => {
   const { theme, setTheme } = useTheme();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [soundEnabled, setSoundEnabled] = useState(true);
   
   // Test mode toggle for premium features
   const [testPremium, setTestPremium] = useState(false);
   const isPremium = testPremium; // In production, this would check actual subscription status
 
-  // Load premium status from localStorage on mount
+  // Load settings from localStorage on mount
   useEffect(() => {
     const savedPremium = localStorage.getItem('testPremiumMode') === 'true';
     setTestPremium(savedPremium);
+    
+    const savedSound = localStorage.getItem('soundEnabled');
+    setSoundEnabled(savedSound !== 'false');
   }, []);
 
   const togglePremium = (checked: boolean) => {
@@ -44,9 +48,15 @@ export const SettingsScreen = () => {
     }
   };
 
+  const toggleSound = (checked: boolean) => {
+    setSoundEnabled(checked);
+    localStorage.setItem('soundEnabled', String(checked));
+    toast.success(checked ? 'Sound enabled' : 'Sound disabled');
+  };
+
   const handleSendFeedback = () => {
     const email = "feedback@regimenstack.com";
-    const subject = "Beta Feedback - Regimen App";
+    const subject = "Feedback & Feature Requests - Regimen App";
     const body = "Hi there,\n\nI'd like to share feedback about the Regimen app:\n\n";
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
@@ -98,21 +108,34 @@ export const SettingsScreen = () => {
     },
     {
       icon: MessageSquare,
-      label: "Send Feedback",
-      description: "Share your thoughts on the beta",
+      label: "Feedback & Feature Requests",
+      description: "Share your thoughts and ideas",
       onClick: handleSendFeedback,
+    },
+    {
+      icon: Volume2,
+      label: "Sound Effects",
+      description: soundEnabled ? "Enabled" : "Disabled",
+      onClick: () => {}, // Inline toggle handled in render
+      isInline: true,
     },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4">
-        <button onClick={() => navigate("/today")} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <X className="h-5 w-5" />
-        </button>
-        <h1 className="text-xl font-bold">Settings</h1>
-        <div className="w-9" /> {/* Spacer */}
+      <header className="border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Settings</h1>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+              REGIMEN
+            </h2>
+            {isPremium && (
+              <Crown className="h-5 w-5 text-primary" />
+            )}
+          </div>
+        </div>
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
@@ -175,71 +198,84 @@ export const SettingsScreen = () => {
           {settingsSections.map((section) => (
             <div key={section.label}>
               {section.isInline && section.label === "Measurement Units" ? (
-                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
-                  <div className="flex items-start gap-4 mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                      <section.icon className="h-5 w-5 text-foreground" />
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                        <section.icon className="h-4 w-4 text-foreground" />
+                      </div>
+                      <h3 className="font-semibold text-sm">{section.label}</h3>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{section.label}</h3>
-                      <p className="text-sm text-muted-foreground">Your preferred units for weight tracking</p>
+                    <div className="flex gap-1 bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => setWeightUnit("lbs")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          weightUnit === "lbs" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                        }`}
+                      >
+                        lbs
+                      </button>
+                      <button
+                        onClick={() => setWeightUnit("kg")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          weightUnit === "kg" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                        }`}
+                      >
+                        kg
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex gap-2 ml-14">
-                    <button
-                      onClick={() => setWeightUnit("lbs")}
-                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
-                        weightUnit === "lbs" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      Pounds
-                    </button>
-                    <button
-                      onClick={() => setWeightUnit("kg")}
-                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
-                        weightUnit === "kg" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      Kilograms
-                    </button>
                   </div>
                 </div>
               ) : section.isInline && section.label === "Theme" ? (
-                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
-                  <div className="flex items-start gap-4 mb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                      <section.icon className="h-5 w-5 text-foreground" />
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                        <section.icon className="h-4 w-4 text-foreground" />
+                      </div>
+                      <h3 className="font-semibold text-sm">{section.label}</h3>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{section.label}</h3>
-                      <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
+                    <div className="flex gap-1 bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => setTheme("light")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          theme === "light" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                        }`}
+                      >
+                        Light
+                      </button>
+                      <button
+                        onClick={() => setTheme("dark")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          theme === "dark" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                        }`}
+                      >
+                        Dark
+                      </button>
+                      <button
+                        onClick={() => setTheme("system")}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          theme === "system" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                        }`}
+                      >
+                        Auto
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-14">
-                    <button
-                      onClick={() => setTheme("light")}
-                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
-                        theme === "light" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      Light
-                    </button>
-                    <button
-                      onClick={() => setTheme("dark")}
-                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
-                        theme === "dark" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      Dark
-                    </button>
-                    <button
-                      onClick={() => setTheme("system")}
-                      className={`flex-1 rounded-lg border p-3 text-center text-sm font-medium transition-all ${
-                        theme === "system" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-                      }`}
-                    >
-                      System
-                    </button>
+                </div>
+              ) : section.isInline && section.label === "Sound Effects" ? (
+                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                        <section.icon className="h-4 w-4 text-foreground" />
+                      </div>
+                      <h3 className="font-semibold text-sm">{section.label}</h3>
+                    </div>
+                    <Switch
+                      checked={soundEnabled}
+                      onCheckedChange={toggleSound}
+                    />
                   </div>
                 </div>
               ) : (
