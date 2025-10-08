@@ -335,21 +335,6 @@ export const TodayScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       <style>{`
         @keyframes draw-check {
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        
-        @keyframes shine-sweep {
-          0% {
-            background-position: -200% center;
-          }
-          100% {
-            background-position: 200% center;
-          }
-        }
-        
-        @keyframes check-stroke {
           0% {
             stroke-dashoffset: 24;
           }
@@ -358,25 +343,15 @@ export const TodayScreen = () => {
           }
         }
         
-        @keyframes ripple-expand {
+        @keyframes checkbox-check {
           0% {
-            transform: scale(0);
-            opacity: 0.3;
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(0.85);
           }
           100% {
-            transform: scale(2.5);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes float-up-fade {
-          0% {
-            transform: translateY(0);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-10px);
-            opacity: 0;
+            transform: scale(1);
           }
         }
         
@@ -597,49 +572,16 @@ export const TodayScreen = () => {
               }}
               className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
                 dose.taken
-                  ? 'bg-card border-border opacity-85 scale-[0.98]'
+                  ? 'bg-card border-border'
                   : 'bg-primary border-primary shadow-sm'
-              } ${animatingDoses.has(dose.id) && dose.taken ? 'animating-dose' : ''}`}
+              }`}
               style={{
-                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: dose.taken ? 0.85 : 1,
+                transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              {/* Shine effect overlay */}
-              {animatingDoses.has(dose.id) && dose.taken && (
-                <>
-                  <div 
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent 40%, rgba(255,255,255,0.7) 50%, transparent 60%)',
-                      backgroundSize: '200% 100%',
-                      animation: 'shine-sweep 0.4s ease-out 0.2s'
-                    }}
-                  />
-                  {/* Ripple effect */}
-                  <div 
-                    className="absolute inset-0 pointer-events-none flex items-center justify-end pr-5"
-                  >
-                    <div 
-                      className="w-7 h-7 rounded-full"
-                      style={{
-                        background: 'rgba(255, 111, 97, 0.3)',
-                        animation: 'ripple-expand 0.35s ease-out 0.05s'
-                      }}
-                    />
-                  </div>
-                  {/* Float up celebration */}
-                  <div 
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-sm font-bold text-success pointer-events-none"
-                    style={{
-                      animation: 'float-up-fade 0.3s ease-out 0.4s'
-                    }}
-                  >
-                    +1
-                  </div>
-                </>
-              )}
-              
-              {/* Golden shine for day complete */}
+              {/* Golden shine for day complete only */}
               {showDayComplete && dose.taken && (
                 <div 
                   className="absolute inset-0 pointer-events-none"
@@ -654,10 +596,10 @@ export const TodayScreen = () => {
               <div className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className={`text-lg font-bold ${dose.taken ? 'text-muted-foreground' : 'text-white'}`}>
+                    <h3 className={`text-lg font-bold transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white'}`}>
                       {dose.compound_name}
                     </h3>
-                    <p className={`mt-1 text-sm ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
+                    <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
                       {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
                       {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                     </p>
@@ -665,43 +607,32 @@ export const TodayScreen = () => {
                   <button
                     onClick={() => toggleDose(dose.id, dose.taken)}
                     disabled={animatingDoses.has(dose.id)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 relative ${
+                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                       dose.taken
-                        ? 'bg-success border-success scale-100'
+                        ? 'bg-success border-success'
                         : 'border-white/40 hover:border-white active:scale-95'
                     }`}
                     style={{
                       ...(animatingDoses.has(dose.id) && dose.taken ? {
-                        animation: 'check-stroke 0.15s ease-out'
+                        animation: 'checkbox-check 0.2s ease-out'
                       } : {})
                     }}
                   >
                     {dose.taken && (
-                      <>
-                        <svg
-                          className="h-full w-full text-white"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeDasharray="24"
-                          strokeDashoffset="0"
-                          style={{
-                            animation: animatingDoses.has(dose.id) ? 'check-stroke 0.2s ease-out' : 'none',
-                          }}
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        {/* Green spark at checkmark tip */}
-                        {animatingDoses.has(dose.id) && (
-                          <div 
-                            className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-[#4CAF50] pointer-events-none"
-                            style={{
-                              animation: 'float-up-fade 0.2s ease-out 0.15s'
-                            }}
-                          />
-                        )}
-                      </>
+                      <svg
+                        className="h-full w-full text-white"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeDasharray="24"
+                        strokeDashoffset="0"
+                        style={{
+                          animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                        }}
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
                     )}
                   </button>
                 </div>
