@@ -188,7 +188,18 @@ export const AddCompoundScreen = () => {
 
   const filteredPeptides = COMMON_PEPTIDES.filter(p =>
     p.toLowerCase().includes(name.toLowerCase())
-  );
+  ).sort((a, b) => {
+    // Prioritize matches at the beginning of the string
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+    const searchLower = name.toLowerCase();
+    const aStartsWith = aLower.startsWith(searchLower);
+    const bStartsWith = bLower.startsWith(searchLower);
+    
+    if (aStartsWith && !bStartsWith) return -1;
+    if (!aStartsWith && bStartsWith) return 1;
+    return a.localeCompare(b);
+  });
 
   // Helper to format date without timezone issues
   const formatDate = (date: Date) => {
@@ -384,19 +395,14 @@ export const AddCompoundScreen = () => {
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/stack")}
-              className="rounded-lg p-2 hover:bg-muted transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
-          </div>
-          <h2 className="text-lg font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-            REGIMEN
-          </h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/stack")}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
         </div>
       </header>
 

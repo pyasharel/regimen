@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/bubble-pop.mp3";
 
 interface Dose {
@@ -296,9 +298,15 @@ export const TodayScreen = () => {
   const greeting = getGreeting();
 
   // Haptic feedback function
-  const triggerHaptic = () => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(50); // Subtle 50ms vibration
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(50); // Subtle 50ms vibration for web
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
     }
   };
 

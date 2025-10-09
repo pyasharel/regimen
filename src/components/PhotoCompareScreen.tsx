@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { format } from "date-fns";
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 import logoGradient from "@/assets/logo-gradient.png";
 
 interface PhotoEntry {
@@ -146,13 +149,37 @@ export default function PhotoCompareScreen() {
     if (!blob) return;
 
     if (option === 'download') {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `regimen-transformation-${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Comparison image downloaded!");
+      if (Capacitor.isNativePlatform()) {
+        // Native mobile download
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            const base64Data = (reader.result as string).split(',')[1];
+            const fileName = `regimen-transformation-${Date.now()}.png`;
+            
+            await Filesystem.writeFile({
+              path: fileName,
+              data: base64Data,
+              directory: Directory.Documents
+            });
+            
+            toast.success("Image saved to Documents folder!");
+          };
+        } catch (err) {
+          console.error('Error saving file:', err);
+          toast.error("Failed to save image");
+        }
+      } else {
+        // Web download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `regimen-transformation-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Comparison image downloaded!");
+      }
     } else if (option === 'copy') {
       try {
         await navigator.clipboard.write([
@@ -163,7 +190,39 @@ export default function PhotoCompareScreen() {
         toast.error("Failed to copy image");
       }
     } else if (option === 'native') {
-      if (navigator.share) {
+      if (Capacitor.isNativePlatform()) {
+        // Use Capacitor Share plugin for native
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            const base64Data = (reader.result as string).split(',')[1];
+            const fileName = `regimen-transformation-${Date.now()}.png`;
+            
+            // Save temporarily
+            const file = await Filesystem.writeFile({
+              path: fileName,
+              data: base64Data,
+              directory: Directory.Cache
+            });
+            
+            // Share the file
+            await Share.share({
+              title: 'My Transformation - REGIMEN',
+              text: 'Check out my progress using REGIMEN!',
+              url: file.uri,
+            });
+            
+            toast.success("Shared successfully!");
+          };
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') {
+            console.error('Share error:', err);
+            toast.error("Sharing failed");
+          }
+        }
+      } else if (navigator.share) {
+        // Web share
         try {
           const file = new File([blob], 'transformation.png', { type: 'image/png' });
           await navigator.share({
@@ -189,7 +248,7 @@ export default function PhotoCompareScreen() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-4">
+      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-4 pt-safe">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"

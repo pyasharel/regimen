@@ -417,12 +417,13 @@ export const ProgressScreen = () => {
                 Track your transformation with side-by-side photo comparisons
               </p>
             </div>
-            {isPremium && (
-              <Button onClick={() => setShowPhotoModal(true)} size="sm">
-                <CameraIcon className="w-4 h-4 mr-2" />
-                Upload Photo
-              </Button>
-            )}
+            <Button 
+              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+              size="sm"
+            >
+              <CameraIcon className="w-4 h-4 mr-2" />
+              Upload Photo
+            </Button>
           </div>
 
           {photoEntries.length > 0 ? (
