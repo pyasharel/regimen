@@ -13,7 +13,7 @@ export const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex h-16 items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50">
+    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 pb-safe" style={{ height: 'calc(4rem + env(safe-area-inset-bottom))' }}>
       {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
         const Icon = tab.icon;

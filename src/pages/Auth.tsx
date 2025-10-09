@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -118,6 +119,7 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
+          <img src={logo} alt="Regimen Logo" className="h-12 mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </h1>

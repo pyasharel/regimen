@@ -209,11 +209,6 @@ export const TodayScreen = () => {
           return next;
         });
       }, 600);
-
-      toast({
-        title: !currentStatus ? "Dose marked as taken" : "Dose unmarked",
-        description: "Your progress has been updated"
-      });
     } catch (error) {
       console.error('Error toggling dose:', error);
       toast({
