@@ -21,7 +21,8 @@ const config: CapacitorConfig = {
       presentationOptions: ["badge", "sound", "alert"],
     },
   },
-  // Uncomment below to enable hot-reload from Lovable preview
+  // Comment out server config for production native apps
+  // Uncomment only for hot-reload development from Lovable preview
   // server: {
   //   url: 'https://348ffbba-c097-44d8-bbbe-a7cee13c09a9.lovableproject.com?forceHideBadge=true',
   //   cleartext: true
