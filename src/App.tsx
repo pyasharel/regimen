@@ -31,8 +31,8 @@ const App = () => (
         <Toaster />
         <Sonner />
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/app" element={<Splash />} />
+          <Route path="/" element={<Splash />} />
+          <Route path="/landing" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />

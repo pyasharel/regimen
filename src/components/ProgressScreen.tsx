@@ -55,6 +55,9 @@ export const ProgressScreen = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   useEffect(() => {
+    // Set loading to false immediately for instant render
+    setLoading(false);
+    
     // Fetch all data in parallel for better performance
     Promise.all([
       fetchEntries(),

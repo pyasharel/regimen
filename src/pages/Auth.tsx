@@ -90,7 +90,7 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Account created! You're being logged in...");
+        // Account created - onAuthStateChange will handle navigation
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -98,7 +98,7 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Welcome back!");
+        // Signed in - onAuthStateChange will handle navigation
       }
     } catch (error: any) {
       console.error("Auth error:", error);

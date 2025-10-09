@@ -13,7 +13,7 @@ export const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 safe-bottom" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 safe-bottom" style={{ paddingTop: '0.75rem', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
       {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
         const Icon = tab.icon;
@@ -22,7 +22,7 @@ export const BottomNavigation = () => {
           <button
             key={tab.name}
             onClick={() => navigate(tab.path)}
-            className={`flex flex-col items-center gap-1 transition-colors ${
+            className={`flex flex-col items-center gap-1 py-1 transition-colors ${
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >

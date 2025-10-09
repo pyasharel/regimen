@@ -239,7 +239,7 @@ export const TodayScreen = () => {
     // Hide after animation
     setTimeout(() => {
       setShowDayComplete(false);
-    }, 1500);
+    }, 2000);
   };
 
   const playChimeSound = () => {
@@ -363,15 +363,11 @@ export const TodayScreen = () => {
         
         @keyframes progress-ring {
           0% {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.1);
+            transform: scale(1) rotate(0deg);
             opacity: 1;
           }
           100% {
-            transform: scale(1);
+            transform: scale(2.5) rotate(180deg);
             opacity: 0;
           }
         }
@@ -499,20 +495,26 @@ export const TodayScreen = () => {
         {/* Day Complete Celebration */}
         {showDayComplete && (
           <div 
-            className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center justify-center py-4 pointer-events-none"
+            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
             style={{
-              animation: 'day-complete-enter 0.5s ease-out'
+              animation: 'day-complete-enter 0.5s ease-out',
+              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)'
             }}
           >
-            <div className="text-2xl font-bold text-primary mb-2">
-              Perfect Day! ✨
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="text-6xl">🎉</div>
+                <div 
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    animation: 'progress-ring 1s ease-out infinite'
+                  }}
+                />
+              </div>
+              <div className="text-3xl font-bold text-primary">
+                Perfect Day!
+              </div>
             </div>
-            <div 
-              className="w-16 h-16 rounded-full border-4 border-primary"
-              style={{
-                animation: 'progress-ring 0.5s ease-out'
-              }}
-            />
           </div>
         )}
         
