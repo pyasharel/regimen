@@ -318,7 +318,7 @@ export const TodayScreen = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-20">
+    <div className="flex min-h-screen flex-col bg-background pb-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <style>{`
         @keyframes draw-check {
           0% {

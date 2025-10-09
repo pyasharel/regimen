@@ -165,7 +165,7 @@ export const MyStackScreen = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-20">
+    <div className="flex min-h-screen flex-col bg-background pb-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
