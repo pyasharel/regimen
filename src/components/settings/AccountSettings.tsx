@@ -22,9 +22,9 @@ export const AccountSettings = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -48,12 +48,11 @@ export const AccountSettings = () => {
 
       if (profile?.full_name) {
         setFullName(profile.full_name);
-      } else {
-        // Profile doesn't exist, leave fullName empty for user to fill
-        setFullName("");
       }
+      setProfileLoaded(true);
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
+      setProfileLoaded(true);
     }
   };
 
@@ -127,7 +126,6 @@ export const AccountSettings = () => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast.success("Password updated successfully");
-      setCurrentPassword("");
       setNewPassword("");
     } catch (error: any) {
       toast.error(error.message || "Failed to update password");
@@ -186,8 +184,9 @@ export const AccountSettings = () => {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="John Doe"
+                placeholder={profileLoaded ? "Enter your name" : "Loading..."}
                 className="mt-1.5"
+                disabled={!profileLoaded}
               />
             </div>
             <Button onClick={handleNameUpdate} disabled={loading || !fullName.trim()} className="w-full">
@@ -254,33 +253,24 @@ export const AccountSettings = () => {
           </div>
         </div>
 
-        {/* Delete Account Section */}
-        <div className="space-y-4 p-6 rounded-xl border-2 border-destructive/20 bg-destructive/5 shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
-              <Trash2 className="h-6 w-6 text-destructive" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
-              <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
-            </div>
-          </div>
+        {/* Delete Account Section - Moved to bottom with less emphasis */}
+        <div className="mt-12 pt-6 border-t border-border">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
                 Delete Account
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Delete Account?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                  This will permanently delete your account and all your data. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount}>
+                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                   Delete Account
                 </AlertDialogAction>
               </AlertDialogFooter>
