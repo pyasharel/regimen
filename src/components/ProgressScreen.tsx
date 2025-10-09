@@ -305,7 +305,7 @@ export const ProgressScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">

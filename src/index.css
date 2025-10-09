@@ -113,6 +113,23 @@ All colors MUST be HSL.
     -moz-osx-font-smoothing: grayscale;
   }
   
+  /* iOS Safe Area Support */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
   /* Typography scale */
   h1 {
     @apply text-[28px] font-bold leading-tight;

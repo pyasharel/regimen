@@ -122,7 +122,7 @@ export const SettingsScreen = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
