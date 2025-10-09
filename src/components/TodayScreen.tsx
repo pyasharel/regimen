@@ -361,6 +361,17 @@ export const TodayScreen = () => {
           }
         }
         
+        @keyframes confetti-fall {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        
         @keyframes progress-ring {
           0% {
             transform: scale(1) rotate(0deg);
@@ -494,28 +505,38 @@ export const TodayScreen = () => {
       <div className="flex-1 space-y-4 p-4 relative">
         {/* Day Complete Celebration */}
         {showDayComplete && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-            style={{
-              animation: 'day-complete-enter 0.5s ease-out',
-              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)'
-            }}
-          >
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative">
-                <div className="text-6xl">🎉</div>
-                <div 
-                  className="absolute inset-0 rounded-full"
+          <>
+            {/* Subtle confetti particles */}
+            <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full"
                   style={{
-                    animation: 'progress-ring 1s ease-out infinite'
+                    left: `${20 + Math.random() * 60}%`,
+                    top: '-10px',
+                    backgroundColor: i % 3 === 0 ? '#FF6F61' : i % 3 === 1 ? '#8B5CF6' : '#FCD34D',
+                    animation: `confetti-fall ${2 + Math.random()}s ease-in forwards`,
+                    animationDelay: `${Math.random() * 0.3}s`,
+                    opacity: 0.8
                   }}
                 />
-              </div>
-              <div className="text-3xl font-bold text-primary">
+              ))}
+            </div>
+            
+            {/* Perfect Day message */}
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+              style={{
+                animation: 'day-complete-enter 0.5s ease-out',
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%)'
+              }}
+            >
+              <div className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Perfect Day!
               </div>
             </div>
-          </div>
+          </>
         )}
         
         {doses.length > 0 && (
