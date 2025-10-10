@@ -12,12 +12,12 @@ import { format } from "date-fns";
 import { 
   ComposedChart, 
   Line, 
-  Scatter,
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
+  ReferenceArea,
   ReferenceLine,
   Legend
 } from 'recharts';
@@ -220,10 +220,9 @@ export const InsightsScreen = () => {
             </p>
           )}
           {data.photo && (
-            <p className="text-sm flex items-center gap-2">
-              <Camera className="w-3 h-3" />
-              <span>Progress photo</span>
-            </p>
+            <div className="mt-2">
+              <img src={data.photo} alt="Progress" className="w-24 h-24 object-cover rounded" />
+            </div>
           )}
           {data.dose && (
             <p className="text-sm flex items-center gap-2">
@@ -241,6 +240,23 @@ export const InsightsScreen = () => {
       );
     }
     return null;
+  };
+
+  // Custom component to render photo thumbnails
+  const PhotoMarker = ({ cx, cy, photoUrl }: any) => {
+    if (!photoUrl) return null;
+    return (
+      <image
+        x={cx - 10}
+        y={cy - 10}
+        width={20}
+        height={20}
+        href={photoUrl}
+        clipPath="circle(10px at center)"
+        opacity={0.9}
+        style={{ cursor: 'pointer' }}
+      />
+    );
   };
 
   return (
@@ -301,13 +317,13 @@ export const InsightsScreen = () => {
         {/* Unified Timeline Chart */}
         <Card className="p-4 bg-muted/30">
           {sortedData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <div className="flex flex-col items-center justify-center h-[500px] text-center">
               <p className="text-muted-foreground text-sm mb-2">No data available for selected time range</p>
               <p className="text-xs text-muted-foreground">Try selecting a longer time range or add more data</p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={sortedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+            <ResponsiveContainer width="100%" height={500}>
+              <ComposedChart data={sortedData} margin={{ top: 60, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis 
                   dataKey="date" 
@@ -332,40 +348,40 @@ export const InsightsScreen = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 
-                {/* Medication Period Bands */}
+                {/* Medication Period Horizontal Bars */}
                 {showMedicationStarts && medicationPeriods.map((med, idx) => {
                   const startFormatted = format(med.startDate, 'MMM d');
                   const endFormatted = format(med.endDate, 'MMM d');
                   
-                  // Use different opacity for each medication to distinguish overlaps
+                  // Different colors for each medication
                   const colors = [
-                    'rgba(255, 111, 97, 0.15)',   // coral
-                    'rgba(139, 92, 246, 0.15)',   // purple
-                    'rgba(59, 130, 246, 0.15)',   // blue
-                    'rgba(16, 185, 129, 0.15)',   // green
-                    'rgba(251, 146, 60, 0.15)',   // orange
+                    'hsl(15, 100%, 70%)',   // coral
+                    'hsl(260, 85%, 65%)',   // purple
+                    'hsl(215, 90%, 60%)',   // blue
+                    'hsl(160, 80%, 50%)',   // green
+                    'hsl(30, 95%, 60%)',    // orange
                   ];
                   const color = colors[idx % colors.length];
                   
                   return (
-                    <ReferenceLine
-                      key={`med-period-${idx}`}
+                    <ReferenceArea
+                      key={`med-bar-${idx}`}
                       yAxisId="weight"
-                      segment={[
-                        { x: startFormatted, y: minWeight - weightPadding },
-                        { x: endFormatted, y: maxWeight + weightPadding }
-                      ]}
-                      stroke={color.replace('0.15', '0.4')}
-                      strokeWidth={0}
+                      x1={startFormatted}
+                      x2={endFormatted}
+                      y1={maxWeight + weightPadding - (idx * 8) - 2}
+                      y2={maxWeight + weightPadding - (idx * 8) - 8}
                       fill={color}
+                      fillOpacity={0.7}
+                      stroke={color}
+                      strokeWidth={1}
                       label={{
                         value: med.name,
-                        position: 'top',
-                        fill: 'hsl(var(--foreground))',
-                        fontSize: 10,
-                        offset: 5,
+                        position: 'insideLeft',
+                        fill: 'white',
+                        fontSize: 9,
+                        fontWeight: 600,
                       }}
-                      ifOverflow="extendDomain"
                     />
                   );
                 })}
@@ -384,41 +400,21 @@ export const InsightsScreen = () => {
                   />
                 )}
 
-              {/* Photos - show as icons on the chart */}
-              {showPhotos && sortedData.filter(d => d.photo).map((dataPoint, idx) => {
-                const xPos = sortedData.indexOf(dataPoint);
-                const yPos = dataPoint.weight || (minWeight + maxWeight) / 2;
-                
-                return (
-                  <circle
-                    key={`photo-${idx}`}
-                    cx={`${(xPos / (sortedData.length - 1)) * 100}%`}
-                    cy={yPos}
-                    r={6}
-                    fill="hsl(var(--chart-2))"
-                    opacity={0.8}
-                  />
-                );
-              })}
-
-              {/* Medication Start Lines */}
-              {showMedicationStarts && medicationStarts.map((med, idx) => (
-                <ReferenceLine
-                  key={`med-${idx}`}
-                  yAxisId="weight"
-                  x={med.dateFormatted}
-                  stroke="hsl(var(--primary))"
-                  strokeDasharray="3 3"
-                  strokeWidth={2}
-                  label={{
-                    value: `Started ${med.name}`,
-                    position: 'top',
-                    fill: 'hsl(var(--foreground))',
-                    fontSize: 9,
-                    angle: -45,
-                  }}
-                />
-              ))}
+                {/* Photo Thumbnails */}
+                {showPhotos && sortedData.map((dataPoint, idx) => {
+                  if (!dataPoint.photo || !dataPoint.weight) return null;
+                  const xIndex = sortedData.indexOf(dataPoint);
+                  
+                  return (
+                    <g key={`photo-${idx}`}>
+                      <PhotoMarker 
+                        cx={xIndex} 
+                        cy={dataPoint.weight} 
+                        photoUrl={dataPoint.photo}
+                      />
+                    </g>
+                  );
+                })}
             </ComposedChart>
           </ResponsiveContainer>
           )}
@@ -475,10 +471,10 @@ export const InsightsScreen = () => {
         <Card className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
           <h3 className="text-sm font-semibold mb-2 text-foreground">💡 Key Insights</h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Vertical dashed lines show when you started new medications</li>
-            <li>• Camera icons mark progress photo entries</li>
+            <li>• Colored horizontal bars show when you're on each medication</li>
+            <li>• Photo thumbnails appear on the weight line where you took progress photos</li>
             <li>• Hover over any point to see detailed information</li>
-            <li>• Track correlations between medication starts and weight changes</li>
+            <li>• Track correlations between medication periods and weight changes</li>
           </ul>
         </Card>
       </div>
