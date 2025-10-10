@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Crown } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Crown, Activity, TrendingUp } from "lucide-react";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -32,9 +32,12 @@ export const MyStackScreen = () => {
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const [weeklyDoses, setWeeklyDoses] = useState(0);
+  const [adherenceRate, setAdherenceRate] = useState(0);
 
   useEffect(() => {
     loadCompounds();
+    loadWeeklyStats();
     
     // Check premium status
     const checkPremium = () => {
@@ -60,6 +63,34 @@ export const MyStackScreen = () => {
       console.error('Error loading compounds:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWeeklyStats = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get doses from the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+      const { data: doses, error } = await supabase
+        .from('doses')
+        .select('taken, scheduled_date')
+        .eq('user_id', user.id)
+        .gte('scheduled_date', sevenDaysAgoStr);
+
+      if (error) throw error;
+
+      const totalDoses = doses?.length || 0;
+      const takenDoses = doses?.filter(d => d.taken).length || 0;
+      
+      setWeeklyDoses(takenDoses);
+      setAdherenceRate(totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0);
+    } catch (error) {
+      console.error('Error loading weekly stats:', error);
     }
   };
 
@@ -181,8 +212,59 @@ export const MyStackScreen = () => {
         </div>
       </header>
 
+      {/* Dashboard Stats */}
+      <div className="p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          {/* Active Compounds */}
+          <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 p-4 border border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active</span>
+            </div>
+            <div className="text-3xl font-bold text-foreground">{activeCompounds.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {activeCompounds.length === 1 ? 'Compound' : 'Compounds'}
+            </div>
+          </div>
+
+          {/* Inactive Compounds */}
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-2 w-2 rounded-full bg-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Inactive</span>
+            </div>
+            <div className="text-3xl font-bold text-foreground">{inactiveCompounds.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {inactiveCompounds.length === 1 ? 'Compound' : 'Compounds'}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Weekly Doses */}
+          <div className="rounded-xl bg-card border border-border p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="h-3.5 w-3.5 text-secondary" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Week</span>
+            </div>
+            <div className="text-3xl font-bold text-foreground">{weeklyDoses}</div>
+            <div className="text-xs text-muted-foreground mt-1">Doses Taken</div>
+          </div>
+
+          {/* Adherence Rate */}
+          <div className="rounded-xl bg-gradient-to-br from-secondary/10 to-secondary/5 p-4 border border-secondary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-3.5 w-3.5 text-secondary" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Adherence</span>
+            </div>
+            <div className="text-3xl font-bold text-foreground">{adherenceRate}%</div>
+            <div className="text-xs text-muted-foreground mt-1">Last 7 Days</div>
+          </div>
+        </div>
+      </div>
+
       {/* Active Compounds */}
-      <div className="flex-1 space-y-4 p-4">
+      <div className="flex-1 space-y-4 px-4 pb-4">
         <div className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Active
