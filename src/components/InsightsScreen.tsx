@@ -348,6 +348,7 @@ export const InsightsScreen = () => {
               {showMedicationStarts && medicationStarts.map((med, idx) => (
                 <ReferenceLine
                   key={`med-${idx}`}
+                  yAxisId="weight"
                   x={med.dateFormatted}
                   stroke="hsl(var(--primary))"
                   strokeDasharray="3 3"
