@@ -1,7 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-export const requestNotificationPermissions = async () => {
+export const requestNotificationPermissions = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) {
     console.log('Notifications only available on native platforms');
     return false;

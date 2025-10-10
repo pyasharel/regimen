@@ -8,7 +8,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/bubble-pop.mp3";
-import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
+import { scheduleAllUpcomingDoses, cancelDoseNotification, requestNotificationPermissions } from "@/utils/notificationScheduler";
+import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 
 interface Dose {
   id: string;
@@ -34,6 +35,8 @@ export const TodayScreen = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const [notificationAsked, setNotificationAsked] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Generate week days - keep the current week stable
@@ -73,12 +76,30 @@ export const TodayScreen = () => {
     return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
 
-  // Schedule notifications when doses are loaded
+  // Check if we should show notification permission dialog
   useEffect(() => {
-    if (doses.length > 0) {
-      scheduleAllUpcomingDoses(doses);
+    const checkNotificationPermission = () => {
+      const hasAsked = localStorage.getItem('notificationPermissionAsked');
+      if (!hasAsked && doses.length > 0 && !notificationAsked) {
+        setShowNotificationDialog(true);
+        setNotificationAsked(true);
+      }
+    };
+    
+    checkNotificationPermission();
+  }, [doses, notificationAsked]);
+
+  const handleNotificationResponse = async (accepted: boolean) => {
+    localStorage.setItem('notificationPermissionAsked', 'true');
+    setShowNotificationDialog(false);
+    
+    if (accepted) {
+      const granted = await requestNotificationPermissions();
+      if (granted && doses.length > 0) {
+        await scheduleAllUpcomingDoses(doses);
+      }
     }
-  }, [doses]);
+  };
 
   const loadUserName = async () => {
     try {
@@ -674,6 +695,11 @@ export const TodayScreen = () => {
       </button>
 
       <BottomNavigation />
+      
+      <NotificationPermissionDialog 
+        open={showNotificationDialog}
+        onResponse={handleNotificationResponse}
+      />
     </div>
   );
 };
