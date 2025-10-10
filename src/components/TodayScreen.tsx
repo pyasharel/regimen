@@ -352,7 +352,7 @@ export const TodayScreen = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="min-h-screen bg-background" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <style>{`
         @keyframes draw-check {
           0% {
@@ -418,7 +418,7 @@ export const TodayScreen = () => {
         }
       `}</style>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 safe-top">
+      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 z-10" style={{ top: 'env(safe-area-inset-top)' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">

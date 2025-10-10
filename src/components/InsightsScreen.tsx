@@ -242,23 +242,6 @@ export const InsightsScreen = () => {
     return null;
   };
 
-  // Custom component to render photo thumbnails
-  const PhotoMarker = ({ cx, cy, photoUrl }: any) => {
-    if (!photoUrl) return null;
-    return (
-      <image
-        x={cx - 10}
-        y={cy - 10}
-        width={20}
-        height={20}
-        href={photoUrl}
-        clipPath="circle(10px at center)"
-        opacity={0.9}
-        style={{ cursor: 'pointer' }}
-      />
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
@@ -400,21 +383,48 @@ export const InsightsScreen = () => {
                   />
                 )}
 
-                {/* Photo Thumbnails */}
-                {showPhotos && sortedData.map((dataPoint, idx) => {
-                  if (!dataPoint.photo || !dataPoint.weight) return null;
-                  const xIndex = sortedData.indexOf(dataPoint);
-                  
-                  return (
-                    <g key={`photo-${idx}`}>
-                      <PhotoMarker 
-                        cx={xIndex} 
-                        cy={dataPoint.weight} 
-                        photoUrl={dataPoint.photo}
-                      />
-                    </g>
-                  );
-                })}
+                {/* Photo Thumbnails - render as custom dots */}
+                {showPhotos && (
+                  <Line 
+                    yAxisId="weight"
+                    type="monotone" 
+                    dataKey="weight"
+                    data={sortedData.filter(d => d.photo)}
+                    stroke="transparent"
+                    strokeWidth={0}
+                    dot={(props: any) => {
+                      const { cx, cy, payload } = props;
+                      if (!payload.photo) return null;
+                      return (
+                        <g>
+                          <defs>
+                            <clipPath id={`clip-photo-${cx}-${cy}`}>
+                              <circle cx={cx} cy={cy} r={12} />
+                            </clipPath>
+                          </defs>
+                          <image
+                            x={cx - 12}
+                            y={cy - 12}
+                            width={24}
+                            height={24}
+                            href={payload.photo}
+                            clipPath={`url(#clip-photo-${cx}-${cy})`}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <circle 
+                            cx={cx} 
+                            cy={cy} 
+                            r={12} 
+                            fill="none" 
+                            stroke="hsl(var(--primary))" 
+                            strokeWidth={2}
+                          />
+                        </g>
+                      );
+                    }}
+                    activeDot={false}
+                  />
+                )}
             </ComposedChart>
           </ResponsiveContainer>
           )}
@@ -467,16 +477,6 @@ export const InsightsScreen = () => {
           </div>
         </Card>
 
-        {/* Key Insights */}
-        <Card className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
-          <h3 className="text-sm font-semibold mb-2 text-foreground">💡 Key Insights</h3>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Colored horizontal bars show when you're on each medication</li>
-            <li>• Photo thumbnails appear on the weight line where you took progress photos</li>
-            <li>• Hover over any point to see detailed information</li>
-            <li>• Track correlations between medication periods and weight changes</li>
-          </ul>
-        </Card>
       </div>
 
       <BottomNavigation />
