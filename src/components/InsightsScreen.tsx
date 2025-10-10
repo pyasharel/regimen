@@ -45,6 +45,7 @@ export const InsightsScreen = () => {
   const [showPhotos, setShowPhotos] = useState(true);
   const [showDoses, setShowDoses] = useState(true);
   const [showMedicationStarts, setShowMedicationStarts] = useState(true);
+  const [timeRange, setTimeRange] = useState<7 | 30 | 90 | 365>(30); // days to show
   const [isPremium, setIsPremium] = useState(() => 
     localStorage.getItem('testPremiumMode') === 'true'
   );
@@ -166,16 +167,23 @@ export const InsightsScreen = () => {
   });
 
   // Convert to array and sort
-  const sortedData = Array.from(dataMap.values()).sort((a, b) => 
+  const allData = Array.from(dataMap.values()).sort((a, b) => 
     a.dateObj.getTime() - b.dateObj.getTime()
   );
 
-  // Get medication start dates for reference lines
-  const medicationStarts = compounds.map(c => ({
-    date: c.start_date,
-    name: c.name,
-    dateFormatted: format(new Date(c.start_date), 'MMM d'),
-  }));
+  // Filter by time range
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - timeRange);
+  const sortedData = allData.filter(d => d.dateObj >= cutoffDate);
+
+  // Get medication start dates for reference lines (also filtered by time range)
+  const medicationStarts = compounds
+    .filter(c => new Date(c.start_date) >= cutoffDate)
+    .map(c => ({
+      date: c.start_date,
+      name: c.name,
+      dateFormatted: format(new Date(c.start_date), 'MMM d'),
+    }));
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -241,6 +249,33 @@ export const InsightsScreen = () => {
           </p>
         </div>
 
+        {/* Time Range Selector */}
+        <Card className="p-4 bg-muted/30">
+          <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+            Time Range
+          </h3>
+          <div className="flex gap-2">
+            {[
+              { value: 7, label: '7 Days' },
+              { value: 30, label: '30 Days' },
+              { value: 90, label: '90 Days' },
+              { value: 365, label: 'All Time' }
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setTimeRange(option.value as 7 | 30 | 90 | 365)}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  timeRange === option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </Card>
+
         {/* Toggle Controls */}
         <Card className="p-4 bg-muted/30">
           <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
@@ -285,7 +320,13 @@ export const InsightsScreen = () => {
 
         {/* Unified Timeline Chart */}
         <Card className="p-4 bg-muted/30">
-          <ResponsiveContainer width="100%" height={400}>
+          {sortedData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[400px] text-center">
+              <p className="text-muted-foreground text-sm mb-2">No data available for selected time range</p>
+              <p className="text-xs text-muted-foreground">Try selecting a longer time range or add more data</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
             <ComposedChart data={sortedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis 
@@ -364,6 +405,7 @@ export const InsightsScreen = () => {
               ))}
             </ComposedChart>
           </ResponsiveContainer>
+          )}
         </Card>
 
         {/* Key Insights */}

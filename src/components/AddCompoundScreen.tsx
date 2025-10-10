@@ -371,11 +371,6 @@ export const AddCompoundScreen = () => {
           .insert(doses);
 
         if (dosesError) throw dosesError;
-
-        toast({
-          title: "Compound added!",
-          description: `${name} has been added to your stack`
-        });
       }
 
       navigate('/today');
