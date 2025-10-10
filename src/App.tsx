@@ -8,6 +8,7 @@ import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
+import { InsightsScreen } from "./components/InsightsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import PhotoCompareScreen from "./components/PhotoCompareScreen";
 import { AccountSettings } from "./components/settings/AccountSettings";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
           <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
+          <Route path="/progress/insights" element={<ProtectedRoute><InsightsScreen /></ProtectedRoute>} />
           <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
           <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />

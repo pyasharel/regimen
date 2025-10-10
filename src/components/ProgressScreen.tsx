@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Crown, Upload } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Crown, Upload, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -310,6 +310,15 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="p-6 space-y-8">
+        {/* Quick Action Button */}
+        <Button 
+          onClick={() => navigate('/progress/insights')}
+          variant="outline"
+          className="w-full h-12 text-sm font-medium"
+        >
+          <TrendingUp className="w-4 h-4 mr-2" />
+          View Timeline Insights
+        </Button>
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
