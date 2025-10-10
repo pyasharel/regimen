@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Crown, Upload, TrendingUp } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -303,7 +304,7 @@ export const ProgressScreen = () => {
               REGIMEN
             </h1>
             {isPremium && (
-              <Crown className="h-5 w-5 text-primary" />
+              <PremiumDiamond className="h-5 w-5 text-primary" />
             )}
           </div>
         </div>
@@ -434,7 +435,7 @@ export const ProgressScreen = () => {
               variant={isPremium ? "default" : "outline"}
               className={!isPremium ? "gap-2" : ""}
             >
-              {!isPremium && <Crown className="w-4 h-4" />}
+              {!isPremium && <PremiumDiamond className="w-4 h-4" />}
               <CameraIcon className="w-4 h-4 mr-2" />
               {isPremium ? "Upload Photo" : "Unlock"}
             </Button>
@@ -483,7 +484,7 @@ export const ProgressScreen = () => {
                   <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
                       <CameraIcon className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                       <div className="absolute top-2 right-2">
-                        <Crown className="w-4 h-4 text-primary/70" />
+                        <PremiumDiamond className="w-4 h-4 text-primary/70" />
                       </div>
                     </Card>
                   </div>
@@ -492,7 +493,7 @@ export const ProgressScreen = () => {
 
               <div className="text-center py-3">
                 <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
-                  <Crown className="w-4 h-4" />
+                  <PremiumDiamond className="w-4 h-4" />
                   Unlock Premium to Upload Photos
                 </Button>
               </div>

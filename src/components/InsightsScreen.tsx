@@ -6,7 +6,8 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Crown, Camera, Pill, Scale, ChevronLeft } from "lucide-react";
+import { Camera, Pill, Scale, ChevronLeft } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { 
@@ -256,7 +257,7 @@ export const InsightsScreen = () => {
               REGIMEN
             </h1>
             {isPremium && (
-              <Crown className="h-5 w-5 text-primary" />
+              <PremiumDiamond className="h-5 w-5 text-primary" />
             )}
           </div>
         </div>

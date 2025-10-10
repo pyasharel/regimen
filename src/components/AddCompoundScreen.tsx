@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Crown, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { PremiumModal } from "@/components/PremiumModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -658,7 +659,7 @@ export const AddCompoundScreen = () => {
                   onClick={() => setShowPremiumModal(true)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
-                  <Crown className="h-3 w-3" />
+                  <PremiumDiamond className="h-3 w-3" />
                   <span className="underline">Upgrade for custom times</span>
                 </button>
               )}
@@ -775,7 +776,7 @@ export const AddCompoundScreen = () => {
                   onClick={() => setShowPremiumModal(true)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
-                  <Crown className="h-3 w-3" />
+                  <PremiumDiamond className="h-3 w-3" />
                   <span className="underline">Premium</span>
                 </button>
               )}

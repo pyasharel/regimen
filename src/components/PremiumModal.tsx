@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Crown, Clock, Calendar, Camera, FileDown, Zap } from "lucide-react";
+import { Clock, Calendar, Camera, FileDown, Zap } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 
 interface PremiumModalProps {
   open: boolean;
@@ -42,7 +43,7 @@ export const PremiumModal = ({ open, onOpenChange }: PremiumModalProps) => {
         <DialogHeader>
           <div className="flex items-center gap-2 mb-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary">
-              <Crown className="h-5 w-5 text-white" />
+              <PremiumDiamond className="h-5 w-5 text-white" />
             </div>
             <DialogTitle className="text-2xl">Unlock Premium</DialogTitle>
           </div>

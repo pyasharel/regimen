@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Crown, Sun, Moon, Sunrise } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, Sunrise } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -426,7 +427,7 @@ export const TodayScreen = () => {
               REGIMEN
             </h1>
             {isPremium && (
-              <Crown className="h-5 w-5 text-primary" />
+              <PremiumDiamond className="h-5 w-5 text-primary" />
             )}
           </div>
         </div>

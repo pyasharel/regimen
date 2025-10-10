@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Crown, Activity, TrendingUp } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp } from "lucide-react";
+import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -206,7 +207,7 @@ export const MyStackScreen = () => {
               REGIMEN
             </h1>
             {isPremium && (
-              <Crown className="h-5 w-5 text-primary" />
+              <PremiumDiamond className="h-5 w-5 text-primary" />
             )}
           </div>
         </div>
