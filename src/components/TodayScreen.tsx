@@ -383,11 +383,6 @@ export const TodayScreen = () => {
           }
         }
       `}</style>
-      {/* TEMP TEST BANNER - BUILD VERIFICATION */}
-      <div className="bg-green-500 text-white text-center py-2 font-bold">
-        ✅ NEW BUILD LOADED - Dec 2025
-      </div>
-      
       {/* Header */}
       <header className="border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
