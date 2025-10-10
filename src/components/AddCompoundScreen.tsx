@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -642,14 +643,11 @@ export const AddCompoundScreen = () => {
             <div className="space-y-2">
               <Label>Time</Label>
               {isPremium ? (
-                <div className="w-full">
-                  <Input
-                    type="time"
-                    value={customTime}
-                    onChange={(e) => setCustomTime(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
+                <TimePicker
+                  value={customTime}
+                  onChange={setCustomTime}
+                  className="w-full"
+                />
                ) : (
                 <select
                   value={timeOfDay}
