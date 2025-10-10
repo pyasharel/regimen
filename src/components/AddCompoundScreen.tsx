@@ -181,7 +181,7 @@ export const AddCompoundScreen = () => {
   const getWarning = () => {
     if (!calculatedIU) return null;
     const iu = parseFloat(calculatedIU);
-    if (iu < 2) return "⚠️ Very small dose - consider using less BAC water";
+    if (iu < 2) return "⚠️ Very small dose - consider using more BAC water";
     if (iu > 100) return "⚠️ Exceeds syringe capacity";
     if (iu > 50) return "⚠️ Large dose - please double-check";
     return null;
