@@ -330,24 +330,22 @@ export const InsightsScreen = () => {
                 />
               )}
 
-              {/* Photos */}
-              {showPhotos && (
-                <Scatter
-                  yAxisId="weight"
-                  dataKey="weight"
-                  data={sortedData.filter(d => d.photo)}
-                  fill="hsl(var(--secondary))"
-                  shape={(props: any) => {
-                    const { cx, cy } = props;
-                    return (
-                      <g>
-                        <circle cx={cx} cy={cy} r={8} fill="hsl(var(--secondary))" opacity={0.8} />
-                        <Camera x={cx - 5} y={cy - 5} width={10} height={10} stroke="white" strokeWidth={1} />
-                      </g>
-                    );
-                  }}
-                />
-              )}
+              {/* Photos - show as icons on the chart */}
+              {showPhotos && sortedData.filter(d => d.photo).map((dataPoint, idx) => {
+                const xPos = sortedData.indexOf(dataPoint);
+                const yPos = dataPoint.weight || (minWeight + maxWeight) / 2;
+                
+                return (
+                  <circle
+                    key={`photo-${idx}`}
+                    cx={`${(xPos / (sortedData.length - 1)) * 100}%`}
+                    cy={yPos}
+                    r={6}
+                    fill="hsl(var(--chart-2))"
+                    opacity={0.8}
+                  />
+                );
+              })}
 
               {/* Medication Start Lines */}
               {showMedicationStarts && medicationStarts.map((med, idx) => (
