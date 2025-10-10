@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -53,6 +54,7 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     // Check premium status from localStorage
@@ -64,10 +66,12 @@ export const ProgressScreen = () => {
     checkPremium();
     window.addEventListener('storage', checkPremium);
     
-    // Fetch all data in parallel for better performance (no need to await)
-    fetchEntries();
-    fetchCompounds();
-    fetchRecentDoses();
+    // Fetch all data in parallel
+    Promise.all([
+      fetchEntries(),
+      fetchCompounds(),
+      fetchRecentDoses()
+    ]).finally(() => setDataLoading(false));
     
     return () => window.removeEventListener('storage', checkPremium);
   }, []);
@@ -328,7 +332,16 @@ export const ProgressScreen = () => {
             </Button>
           </div>
 
-          {currentWeight && (
+          {dataLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-48" />
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-10 w-16" />
+                ))}
+              </div>
+            </div>
+          ) : currentWeight ? (
             <div className="flex items-baseline gap-6">
               <div>
                 <div className="flex items-baseline gap-2">
@@ -338,7 +351,7 @@ export const ProgressScreen = () => {
                 <div className="text-sm text-muted-foreground mt-1">Current</div>
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
@@ -357,7 +370,9 @@ export const ProgressScreen = () => {
           </div>
 
           <Card className="p-4 bg-muted/30">
-            {chartData.length > 0 ? (
+            {dataLoading ? (
+              <Skeleton className="w-full h-[200px]" />
+            ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -428,7 +443,13 @@ export const ProgressScreen = () => {
             </Button>
           </div>
 
-          {photoEntries.length > 0 ? (
+          {dataLoading ? (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="flex-shrink-0 w-24 h-32 rounded-lg" />
+              ))}
+            </div>
+          ) : photoEntries.length > 0 ? (
             <>
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {photoEntries.map((entry) => (
