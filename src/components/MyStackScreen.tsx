@@ -213,53 +213,61 @@ export const MyStackScreen = () => {
         </div>
       </header>
 
-      {/* Dashboard Stats */}
-      <div className="p-4 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+      {/* Dashboard Stats - Single Row */}
+      <div className="p-4">
+        <div className="grid grid-cols-4 gap-2">
           {/* Active Compounds */}
-          <div className="rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 p-4 border border-primary/20">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active</span>
+          <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-3 shadow-lg shadow-primary/20">
+            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wider">Active</span>
             </div>
-            <div className="text-3xl font-bold text-foreground">{activeCompounds.length}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {activeCompounds.length === 1 ? 'Compound' : 'Compounds'}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">{activeCompounds.length}</div>
+              <div className="text-[10px] text-white/80 mt-0.5">
+                {activeCompounds.length === 1 ? 'Med' : 'Meds'}
+              </div>
             </div>
           </div>
 
           {/* Inactive Compounds */}
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Inactive</span>
+          <div className="rounded-xl bg-muted/40 border border-border/50 p-3">
+            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
             </div>
-            <div className="text-3xl font-bold text-foreground">{inactiveCompounds.length}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {inactiveCompounds.length === 1 ? 'Compound' : 'Compounds'}
+            <div className="text-center">
+              <div className="text-2xl font-bold text-muted-foreground">{inactiveCompounds.length}</div>
+              <div className="text-[10px] text-muted-foreground/80 mt-0.5">
+                {inactiveCompounds.length === 1 ? 'Med' : 'Meds'}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3">
           {/* Weekly Doses */}
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="h-3.5 w-3.5 text-secondary" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Week</span>
+          <div className="rounded-xl bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 p-3 shadow-lg shadow-secondary/20">
+            <div className="flex items-center justify-center gap-1 mb-1.5">
+              <Activity className="h-3 w-3 text-white" />
+              <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wider">Week</span>
             </div>
-            <div className="text-3xl font-bold text-foreground">{weeklyDoses}</div>
-            <div className="text-xs text-muted-foreground mt-1">Doses Taken</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">{weeklyDoses}</div>
+              <div className="text-[10px] text-white/80 mt-0.5">Doses</div>
+            </div>
           </div>
 
           {/* Adherence Rate */}
-          <div className="rounded-xl bg-gradient-to-br from-secondary/10 to-secondary/5 p-4 border border-secondary/20">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-3.5 w-3.5 text-secondary" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Adherence</span>
+          <div className="rounded-xl bg-gradient-to-br from-accent via-accent/90 to-accent/80 p-3 shadow-lg shadow-accent/20">
+            <div className="flex items-center justify-center gap-1 mb-1.5">
+              <TrendingUp className="h-3 w-3 text-white" />
+              <span className="text-[10px] font-semibold text-white/90 uppercase tracking-wider">Rate</span>
             </div>
-            <div className="text-3xl font-bold text-foreground">{adherenceRate}%</div>
-            <div className="text-xs text-muted-foreground mt-1">Last 7 Days</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">{adherenceRate}%</div>
+              <div className="text-[10px] text-white/80 mt-0.5">
+                {adherenceRate >= 80 ? 'Great!' : adherenceRate >= 60 ? 'Good' : 'Low'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -274,27 +282,27 @@ export const MyStackScreen = () => {
           {activeCompounds.map((compound) => (
             <div
               key={compound.id}
-              className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-muted/30 shadow-sm transition-all hover:shadow-md animate-slide-up"
+              className="overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent shadow-sm hover:shadow-md hover:border-primary/30 transition-all animate-slide-up"
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="mt-1 h-2 w-2 rounded-full bg-success" />
+                    <div className="mt-1 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50" />
                     <div>
-                      <h3 className="text-lg font-bold">{compound.name}</h3>
+                      <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {compound.intended_dose} {compound.dose_unit}
                         {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
                         {' • '}{compound.time_of_day.join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {getScheduleDisplay(compound)} • Active for {getDaysActive(compound.start_date)} days
+                        {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}d
                       </p>
                     </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="rounded-lg p-2 hover:bg-muted transition-colors">
+                      <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
                         <MoreVertical className="h-5 w-5 text-muted-foreground" />
                       </button>
                     </DropdownMenuTrigger>
@@ -331,26 +339,26 @@ export const MyStackScreen = () => {
           {inactiveCompounds.map((compound) => (
             <div
               key={compound.id}
-              className="overflow-hidden rounded-2xl border border-border bg-card/60 opacity-60"
+              className="overflow-hidden rounded-2xl border border-border/50 bg-muted/40 opacity-60 hover:opacity-70 transition-opacity"
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="mt-1 h-2 w-2 rounded-full bg-muted-foreground" />
+                    <div className="mt-1 h-2 w-2 rounded-full bg-muted-foreground/60" />
                     <div>
-                      <h3 className="font-bold">{compound.name}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <h3 className="font-bold text-muted-foreground">{compound.name}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground/80">
                         {compound.intended_dose} {compound.dose_unit}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground/70">
                         {getScheduleDisplay(compound)} • Inactive
                       </p>
                     </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="rounded-lg p-2 hover:bg-muted transition-colors">
-                        <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                      <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
+                        <MoreVertical className="h-5 w-5 text-muted-foreground/70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
