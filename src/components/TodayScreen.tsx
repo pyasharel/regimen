@@ -384,7 +384,7 @@ export const TodayScreen = () => {
         }
       `}</style>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4">
+      <header className="border-b border-border px-4 py-4 safe-top">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -448,7 +448,7 @@ export const TodayScreen = () => {
                 </svg>
               </button>
               
-              <div className="flex justify-between gap-1.5 flex-1 px-4">
+              <div className="flex justify-between gap-2 flex-1 px-2">
                 {weekDays.map((day, index) => {
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isSelected = day.toDateString() === selectedDate.toDateString();
@@ -457,7 +457,7 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1 rounded-xl px-2.5 py-2 transition-colors relative ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-3 py-3 min-w-[48px] transition-colors relative ${
                         isSelected && isToday
                           ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
                           : isSelected
@@ -473,7 +473,7 @@ export const TodayScreen = () => {
                       <span className="text-xs font-medium">
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                       </span>
-                      <span className="text-lg font-bold">{day.getDate()}</span>
+                      <span className="text-xl font-bold">{day.getDate()}</span>
                     </button>
                   );
                 })}
@@ -654,7 +654,8 @@ export const TodayScreen = () => {
       {/* FAB Button */}
       <button
         onClick={() => navigate("/add-compound")}
-        className="fixed bottom-24 right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
+        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
       >
         <Plus className="h-6 w-6" />
       </button>

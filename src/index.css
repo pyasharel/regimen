@@ -130,6 +130,26 @@ All colors MUST be HSL.
     padding-right: env(safe-area-inset-right);
   }
   
+  /* Hide white line indicator on iOS */
+  body {
+    overscroll-behavior: none;
+  }
+  
+  /* Prevent iOS scroll bounce */
+  html, body {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+  
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
   /* Typography scale */
   h1 {
     @apply text-[28px] font-bold leading-tight;

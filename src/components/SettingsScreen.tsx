@@ -35,7 +35,6 @@ export const SettingsScreen = () => {
     localStorage.setItem('testPremiumMode', String(checked));
     // Trigger storage event for other components
     window.dispatchEvent(new Event('storage'));
-    toast.success(checked ? 'Premium mode enabled' : 'Premium mode disabled');
   };
 
   const handleSignOut = async () => {
@@ -51,7 +50,6 @@ export const SettingsScreen = () => {
   const toggleSound = (checked: boolean) => {
     setSoundEnabled(checked);
     localStorage.setItem('soundEnabled', String(checked));
-    toast.success(checked ? 'Sound enabled' : 'Sound disabled');
   };
 
   const handleSendFeedback = () => {

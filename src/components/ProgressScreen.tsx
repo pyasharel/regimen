@@ -55,9 +55,6 @@ export const ProgressScreen = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   useEffect(() => {
-    // Set loading to false immediately for instant render
-    setLoading(false);
-    
     // Fetch all data in parallel for better performance
     Promise.all([
       fetchEntries(),
@@ -307,7 +304,7 @@ export const ProgressScreen = () => {
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4">
+      <header className="border-b border-border px-4 py-4 safe-top">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">

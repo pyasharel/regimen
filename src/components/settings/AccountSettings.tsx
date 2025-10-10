@@ -156,108 +156,84 @@ export const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4">
+    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4 safe-top">
         <button onClick={() => navigate("/settings")} className="rounded-lg p-2 hover:bg-muted transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-xl font-bold">Account</h1>
       </header>
 
-      <div className="p-6 space-y-6 max-w-2xl mx-auto">
-        {/* Name Section */}
-        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <User className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Full Name</h2>
-              <p className="text-sm text-muted-foreground">Update your display name</p>
-            </div>
+      <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Name Section - Compact */}
+        <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Full Name</h2>
           </div>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="fullName" className="text-sm font-medium">Name</Label>
-              <Input
-                id="fullName"
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder={profileLoaded ? "Enter your name" : "Loading..."}
-                className="mt-1.5"
-                disabled={!profileLoaded}
-              />
-            </div>
-            <Button onClick={handleNameUpdate} disabled={loading || !fullName.trim()} className="w-full">
-              {loading ? "Updating..." : "Update Name"}
+          <div className="flex gap-2">
+            <Input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder={profileLoaded ? "Enter your name" : "Loading..."}
+              disabled={!profileLoaded}
+              className="flex-1"
+            />
+            <Button onClick={handleNameUpdate} disabled={loading || !fullName.trim()} size="sm" className="whitespace-nowrap">
+              {loading ? "..." : "Update"}
             </Button>
           </div>
         </div>
 
-        {/* Email Section */}
-        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Mail className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Email Address</h2>
-              <p className="text-sm text-muted-foreground">Update your email for account access</p>
-            </div>
+        {/* Email Section - Compact */}
+        <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Email Address</h2>
           </div>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="email" className="text-sm font-medium">New Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-1.5"
-              />
-            </div>
-            <Button onClick={handleEmailUpdate} disabled={loading || !email} className="w-full">
-              {loading ? "Updating..." : "Update Email"}
+          <div className="flex gap-2">
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="flex-1"
+            />
+            <Button onClick={handleEmailUpdate} disabled={loading || !email} size="sm" className="whitespace-nowrap">
+              {loading ? "..." : "Update"}
             </Button>
           </div>
         </div>
 
-        {/* Password Section */}
-        <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10">
-              <Lock className="h-6 w-6 text-secondary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Password</h2>
-              <p className="text-sm text-muted-foreground">Change your account password</p>
-            </div>
+        {/* Password Section - Compact */}
+        <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-secondary" />
+            <h2 className="text-sm font-semibold">Password</h2>
           </div>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="mt-1.5"
-              />
-            </div>
-            <Button onClick={handlePasswordUpdate} disabled={loading || !newPassword} className="w-full">
-              {loading ? "Updating..." : "Update Password"}
+          <div className="flex gap-2">
+            <Input
+              id="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="flex-1"
+            />
+            <Button onClick={handlePasswordUpdate} disabled={loading || !newPassword} size="sm" className="whitespace-nowrap">
+              {loading ? "..." : "Update"}
             </Button>
           </div>
         </div>
 
-        {/* Delete Account Section - Moved to bottom with less emphasis */}
-        <div className="mt-12 pt-6 border-t border-border">
+        {/* Delete Account Section - Red and subtle */}
+        <div className="mt-8 pt-6 border-t border-border">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                 Delete Account
               </Button>
             </AlertDialogTrigger>
