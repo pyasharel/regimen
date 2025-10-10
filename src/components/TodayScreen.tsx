@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/bubble-pop.mp3";
+import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 
 interface Dose {
   id: string;
@@ -71,6 +72,13 @@ export const TodayScreen = () => {
     window.addEventListener('storage', checkPremium);
     return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
+
+  // Schedule notifications when doses are loaded
+  useEffect(() => {
+    if (doses.length > 0) {
+      scheduleAllUpcomingDoses(doses);
+    }
+  }, [doses]);
 
   const loadUserName = async () => {
     try {
@@ -183,6 +191,11 @@ export const TodayScreen = () => {
         .eq('id', doseId);
 
       if (error) throw error;
+
+      // Cancel notification when dose is marked as taken
+      if (!currentStatus) {
+        await cancelDoseNotification(doseId);
+      }
 
       // Update local state
       const updatedDoses = doses.map(d =>
