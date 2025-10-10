@@ -38,7 +38,7 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 90%; /* #E5E5E5 - More visible borders */
-    --input: 0 0% 100%; /* #FFFFFF - White input backgrounds */
+    --input: 0 0% 96%; /* #F5F5F5 - Subtle gray for input fields */
     --ring: 6 100% 69%; /* Coral */
 
     --radius: 0.75rem; /* 12px default */
@@ -89,7 +89,7 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 20%; /* #333333 */
-    --input: 0 0% 14.9%; /* #262626 */
+    --input: 0 0% 12%; /* #1F1F1F - Subtle dark gray for input fields */
     --ring: 6 100% 69%; /* Coral */
 
     /* Surface levels */

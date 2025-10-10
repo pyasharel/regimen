@@ -67,9 +67,9 @@ export const AddCompoundScreen = () => {
 
   // IU calculator (optional)
   const [showCalculator, setShowCalculator] = useState(false);
-  const [vialSize, setVialSize] = useState("3");
+  const [vialSize, setVialSize] = useState("");
   const [vialUnit, setVialUnit] = useState("mg");
-  const [bacWater, setBacWater] = useState("2");
+  const [bacWater, setBacWater] = useState("");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -418,7 +418,7 @@ export const AddCompoundScreen = () => {
                 setName(e.target.value);
                 setShowAutocomplete(e.target.value.length > 0);
               }}
-              placeholder="Compound or medication name"
+              placeholder="Compound name"
               onFocus={() => setShowAutocomplete(name.length > 0)}
             />
             {showAutocomplete && filteredPeptides.length > 0 && (
@@ -454,14 +454,13 @@ export const AddCompoundScreen = () => {
                 id="unit"
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-[120px] h-12 bg-background border-border rounded-lg border px-3 text-sm font-medium"
+                className="w-[120px] h-12 bg-input border-border rounded-lg border px-3 text-sm font-medium"
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
-                <option value="IU">IU</option>
+                <option value="iu">iu</option>
                 <option value="ml">ml</option>
                 <option value="pill">pill</option>
-                <option value="capsule">capsule</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
               </select>
@@ -586,12 +585,12 @@ export const AddCompoundScreen = () => {
                 setFrequency(e.target.value);
                 if (e.target.value === 'Specific day(s)') setCustomDays([]);
               }}
-              className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
+              className="w-full h-11 bg-input border-border rounded-lg border px-3 text-sm"
             >
               <option value="Daily">Daily</option>
-              <option value="Specific day(s)">Specific day(s)</option>
-              <option value="Every X Days">Every X Days</option>
-              <option value="As Needed">As Needed</option>
+              <option value="Specific day(s)">Specific days</option>
+              <option value="Every X Days">Every X days</option>
+              <option value="As Needed">As needed</option>
             </select>
           </div>
 
@@ -643,17 +642,19 @@ export const AddCompoundScreen = () => {
             <div className="space-y-2">
               <Label>Time</Label>
               {isPremium ? (
-                <Input
-                  type="time"
-                  value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                  className="w-full"
-                />
+                <div className="w-full">
+                  <Input
+                    type="time"
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
                ) : (
                 <select
                   value={timeOfDay}
                   onChange={(e) => setTimeOfDay(e.target.value)}
-                  className="w-full h-11 bg-background border-border rounded-lg border px-3 text-sm"
+                  className="w-full h-11 bg-input border-border rounded-lg border px-3 text-sm"
                 >
                   <option value="Morning">Morning</option>
                   <option value="Evening">Evening</option>
@@ -755,7 +756,7 @@ export const AddCompoundScreen = () => {
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes about this compound"
+              placeholder="Batch number, COA link, etc."
               className="text-sm"
             />
           </div>
