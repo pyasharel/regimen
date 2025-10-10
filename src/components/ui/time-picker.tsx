@@ -61,24 +61,27 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
           {displayTime}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex gap-0 bg-card">
+      <PopoverContent className="w-auto p-0 bg-card" align="start">
+        <div className="flex gap-0">
           {/* Hours */}
           <div className="flex flex-col border-r border-border">
-            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
               Hour
             </div>
             <ScrollArea className="h-[200px]">
-              <div className="p-1">
+              <div className="p-1 space-y-0.5">
                 {hourOptions.map((hour) => (
                   <button
                     key={hour}
-                    onClick={() => handleTimeChange(hour, selectedMinute, selectedPeriod)}
+                    onClick={() => {
+                      handleTimeChange(hour, selectedMinute, selectedPeriod);
+                      setOpen(false);
+                    }}
                     className={cn(
-                      "w-16 px-3 py-2 text-sm rounded-md transition-colors",
+                      "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
                       selectedHour === hour
                         ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-muted"
+                        : "hover:bg-muted text-foreground"
                     )}
                   >
                     {String(hour).padStart(2, '0')}
@@ -90,20 +93,23 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
 
           {/* Minutes */}
           <div className="flex flex-col border-r border-border">
-            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
               Min
             </div>
             <ScrollArea className="h-[200px]">
-              <div className="p-1">
+              <div className="p-1 space-y-0.5">
                 {minuteOptions.map((minute) => (
                   <button
                     key={minute}
-                    onClick={() => handleTimeChange(selectedHour, minute, selectedPeriod)}
+                    onClick={() => {
+                      handleTimeChange(selectedHour, minute, selectedPeriod);
+                      setOpen(false);
+                    }}
                     className={cn(
-                      "w-16 px-3 py-2 text-sm rounded-md transition-colors",
+                      "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
                       selectedMinute === minute
                         ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-muted"
+                        : "hover:bg-muted text-foreground"
                     )}
                   >
                     {String(minute).padStart(2, '0')}
@@ -115,28 +121,34 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
 
           {/* AM/PM */}
           <div className="flex flex-col">
-            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted/50 text-center border-b border-border">
               Period
             </div>
-            <div className="p-1 flex flex-col gap-1 pt-2">
+            <div className="p-1 space-y-0.5 pt-2">
               <button
-                onClick={() => handleTimeChange(selectedHour, selectedMinute, 'AM')}
+                onClick={() => {
+                  handleTimeChange(selectedHour, selectedMinute, 'AM');
+                  setOpen(false);
+                }}
                 className={cn(
-                  "w-16 px-3 py-2 text-sm rounded-md transition-colors",
+                  "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
                   selectedPeriod === 'AM'
                     ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-muted"
+                    : "hover:bg-muted text-foreground"
                 )}
               >
                 AM
               </button>
               <button
-                onClick={() => handleTimeChange(selectedHour, selectedMinute, 'PM')}
+                onClick={() => {
+                  handleTimeChange(selectedHour, selectedMinute, 'PM');
+                  setOpen(false);
+                }}
                 className={cn(
-                  "w-16 px-3 py-2 text-sm rounded-md transition-colors",
+                  "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
                   selectedPeriod === 'PM'
                     ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-muted"
+                    : "hover:bg-muted text-foreground"
                 )}
               >
                 PM

@@ -55,13 +55,6 @@ export const ProgressScreen = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   useEffect(() => {
-    // Fetch all data in parallel for better performance
-    Promise.all([
-      fetchEntries(),
-      fetchCompounds(),
-      fetchRecentDoses()
-    ]);
-    
     // Check premium status from localStorage
     const checkPremium = () => {
       const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
@@ -70,6 +63,12 @@ export const ProgressScreen = () => {
     
     checkPremium();
     window.addEventListener('storage', checkPremium);
+    
+    // Fetch all data in parallel for better performance (no need to await)
+    fetchEntries();
+    fetchCompounds();
+    fetchRecentDoses();
+    
     return () => window.removeEventListener('storage', checkPremium);
   }, []);
 
