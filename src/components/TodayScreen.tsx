@@ -352,7 +352,7 @@ export const TodayScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <style>{`
         @keyframes draw-check {
           0% {
@@ -418,7 +418,7 @@ export const TodayScreen = () => {
         }
       `}</style>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 z-10" style={{ top: 'env(safe-area-inset-top)' }}>
+      <header className="border-b border-border px-4 py-4 bg-background flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -433,7 +433,7 @@ export const TodayScreen = () => {
       </header>
 
       {/* Greeting */}
-      <div className="px-4 pt-6 pb-4">
+      <div className="px-4 pt-6 pb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
@@ -443,7 +443,7 @@ export const TodayScreen = () => {
       </div>
 
       {/* Calendar Section */}
-      <div className="border-b border-border px-4 pb-6 space-y-4">
+      <div className="border-b border-border px-4 pb-6 space-y-4 flex-shrink-0">
         {/* Month/Year Display with View Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -536,7 +536,7 @@ export const TodayScreen = () => {
       </div>
 
       {/* Doses */}
-      <div className="flex-1 space-y-4 p-4 relative">
+      <div className="flex-1 space-y-4 p-4 relative overflow-y-auto">
         {/* Day Complete Celebration */}
         {showDayComplete && (
           <>
