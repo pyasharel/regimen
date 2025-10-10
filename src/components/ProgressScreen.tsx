@@ -304,7 +304,7 @@ export const ProgressScreen = () => {
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 safe-top">
+      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -420,9 +420,12 @@ export const ProgressScreen = () => {
             <Button 
               onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
               size="sm"
+              variant={isPremium ? "default" : "outline"}
+              className={!isPremium ? "gap-2" : ""}
             >
+              {!isPremium && <Crown className="w-4 h-4" />}
               <CameraIcon className="w-4 h-4 mr-2" />
-              Upload Photo
+              {isPremium ? "Upload Photo" : "Unlock"}
             </Button>
           </div>
 
@@ -462,24 +465,20 @@ export const ProgressScreen = () => {
                   <div key={i} className="flex-shrink-0">
                   <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
                       <CameraIcon className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
-                      {!isPremium && (
-                        <div className="absolute top-2 right-2">
-                          <Crown className="w-4 h-4 text-primary/70" />
-                        </div>
-                      )}
+                      <div className="absolute top-2 right-2">
+                        <Crown className="w-4 h-4 text-primary/70" />
+                      </div>
                     </Card>
                   </div>
                 ))}
               </div>
 
-              {!isPremium && (
-                <div className="text-center py-3">
-                  <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
-                    <Crown className="w-4 h-4" />
-                    Unlock Premium
-                  </Button>
-                </div>
-              )}
+              <div className="text-center py-3">
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
+                  <Crown className="w-4 h-4" />
+                  Unlock Premium to Upload Photos
+                </Button>
+              </div>
             </>
           )}
         </div>

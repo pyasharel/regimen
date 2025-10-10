@@ -122,7 +122,7 @@ export const SettingsScreen = () => {
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4">
+      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Settings</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
