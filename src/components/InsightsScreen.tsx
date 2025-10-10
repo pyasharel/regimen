@@ -288,7 +288,7 @@ export const InsightsScreen = () => {
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   timeRange === option.value
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-background text-muted-foreground hover:bg-muted'
+                    : 'bg-background text-foreground hover:bg-muted'
                 }`}
               >
                 {option.label}
