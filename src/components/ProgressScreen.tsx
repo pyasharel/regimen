@@ -501,9 +501,11 @@ export const ProgressScreen = () => {
                   {compounds.map((compound) => {
                     const startDate = new Date(compound.start_date);
                     const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
-                    const isActive = compound.is_active && !compound.end_date;
-                    
                     const now = new Date();
+                    
+                    // Consider active if: is_active flag is true AND (no end_date OR end_date is in the future)
+                    const isActive = compound.is_active && (!compound.end_date || endDate >= now);
+                    
                     const sixMonthsAgo = new Date(now);
                     sixMonthsAgo.setMonth(now.getMonth() - 6);
                     
