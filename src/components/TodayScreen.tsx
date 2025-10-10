@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, Sunrise } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
+import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -325,7 +326,7 @@ export const TodayScreen = () => {
   // Get greeting based on time of day with icons
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 6 && hour < 12) return { text: "Good morning", Icon: Sunrise };
+    if (hour >= 6 && hour < 12) return { text: "Good morning", Icon: SunriseIcon };
     if (hour >= 12 && hour < 18) return { text: "Good afternoon", Icon: Sun };
     return { text: "Good evening", Icon: Moon };
   };
@@ -439,7 +440,7 @@ export const TodayScreen = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '8s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '4s' }} />
         </div>
       </div>
 
