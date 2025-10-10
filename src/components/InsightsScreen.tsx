@@ -128,6 +128,8 @@ export const InsightsScreen = () => {
     }
   });
 
+  console.log('Weight entries processed:', Array.from(dataMap.values()).filter(d => d.weight));
+
   // Add photo entries
   entries.forEach(entry => {
     if (entry.photo_url) {
@@ -171,10 +173,16 @@ export const InsightsScreen = () => {
     a.dateObj.getTime() - b.dateObj.getTime()
   );
 
+  console.log('All data before filtering:', allData);
+
   // Filter by time range
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - timeRange);
   const sortedData = allData.filter(d => d.dateObj >= cutoffDate);
+
+  console.log('Filtered data:', sortedData);
+  console.log('Cutoff date:', cutoffDate);
+  console.log('Time range:', timeRange);
 
   // Get medication start dates for reference lines (also filtered by time range)
   const medicationStarts = compounds
@@ -276,48 +284,6 @@ export const InsightsScreen = () => {
           </div>
         </Card>
 
-        {/* Toggle Controls */}
-        <Card className="p-4 bg-muted/30">
-          <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-            Show on Timeline
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="weight-toggle" className="text-sm cursor-pointer flex items-center gap-2">
-                <Scale className="w-4 h-4" />
-                Weight
-              </Label>
-              <Switch
-                id="weight-toggle"
-                checked={showWeight}
-                onCheckedChange={setShowWeight}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="photos-toggle" className="text-sm cursor-pointer flex items-center gap-2">
-                <Camera className="w-4 h-4" />
-                Photos
-              </Label>
-              <Switch
-                id="photos-toggle"
-                checked={showPhotos}
-                onCheckedChange={setShowPhotos}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="meds-toggle" className="text-sm cursor-pointer flex items-center gap-2">
-                <Pill className="w-4 h-4" />
-                Med Starts
-              </Label>
-              <Switch
-                id="meds-toggle"
-                checked={showMedicationStarts}
-                onCheckedChange={setShowMedicationStarts}
-              />
-            </div>
-          </div>
-        </Card>
-
         {/* Unified Timeline Chart */}
         <Card className="p-4 bg-muted/30">
           {sortedData.length === 0 ? (
@@ -327,30 +293,30 @@ export const InsightsScreen = () => {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={sortedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis 
-                dataKey="date" 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                yAxisId="weight"
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                domain={['dataMin - 5', 'dataMax + 5']}
-                label={{ 
-                  value: 'Weight (lbs)', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
-                }}
-              />
-              <Tooltip content={<CustomTooltip />} />
+              <ComposedChart data={sortedData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis 
+                  yAxisId="weight"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  domain={[(dataMin: number) => Math.floor(dataMin - 5), (dataMax: number) => Math.ceil(dataMax + 5)]}
+                  label={{ 
+                    value: 'Weight (lbs)', 
+                    angle: -90, 
+                    position: 'insideLeft',
+                    style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
+                  }}
+                />
+                <Tooltip content={<CustomTooltip />} />
               
               {/* Weight Line */}
               {showWeight && (
@@ -406,6 +372,53 @@ export const InsightsScreen = () => {
             </ComposedChart>
           </ResponsiveContainer>
           )}
+        </Card>
+
+        {/* Toggle Controls - Compact horizontal layout below chart */}
+        <Card className="p-3 bg-muted/30">
+          <div className="flex items-center justify-between gap-4">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Show:
+            </Label>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="weight-toggle"
+                  checked={showWeight}
+                  onCheckedChange={setShowWeight}
+                  className="scale-75"
+                />
+                <Label htmlFor="weight-toggle" className="text-sm cursor-pointer flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5" />
+                  Weight
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="photos-toggle"
+                  checked={showPhotos}
+                  onCheckedChange={setShowPhotos}
+                  className="scale-75"
+                />
+                <Label htmlFor="photos-toggle" className="text-sm cursor-pointer flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5" />
+                  Photos
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="meds-toggle"
+                  checked={showMedicationStarts}
+                  onCheckedChange={setShowMedicationStarts}
+                  className="scale-75"
+                />
+                <Label htmlFor="meds-toggle" className="text-sm cursor-pointer flex items-center gap-1.5">
+                  <Pill className="w-3.5 h-3.5" />
+                  Med Starts
+                </Label>
+              </div>
+            </div>
+          </div>
         </Card>
 
         {/* Key Insights */}
