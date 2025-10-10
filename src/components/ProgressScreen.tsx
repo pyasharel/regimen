@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
@@ -41,9 +42,6 @@ type Compound = {
 
 export const ProgressScreen = () => {
   const navigate = useNavigate();
-  const [entries, setEntries] = useState<ProgressEntry[]>([]);
-  const [compounds, setCompounds] = useState<Compound[]>([]);
-  const [recentDoses, setRecentDoses] = useState<any[]>([]);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("3M");
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -54,70 +52,48 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
 
-  useEffect(() => {
-    // Check premium status from localStorage
-    const checkPremium = () => {
-      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
-      setIsPremium(premiumStatus);
-    };
-    
-    checkPremium();
-    window.addEventListener('storage', checkPremium);
-    
-    // Fetch all data in parallel
-    Promise.all([
-      fetchEntries(),
-      fetchCompounds(),
-      fetchRecentDoses()
-    ]).finally(() => setDataLoading(false));
-    
-    return () => window.removeEventListener('storage', checkPremium);
-  }, []);
-
-  const fetchEntries = async () => {
-    try {
+  // Cached data fetching with React Query
+  const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
+    queryKey: ['progress-entries'],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('progress_entries')
         .select('*')
         .eq('user_id', user.id)
         .order('entry_date', { ascending: false });
-
+      
       if (error) throw error;
-      setEntries(data || []);
-    } catch (error) {
-      console.error('Error fetching entries:', error);
-      toast.error('Failed to load progress entries');
-    }
-  };
+      return data as ProgressEntry[];
+    },
+  });
 
-  const fetchCompounds = async () => {
-    try {
+  const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
+    queryKey: ['compounds-progress'],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('compounds')
         .select('id, name, start_date, end_date, is_active')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false });
-
+      
       if (error) throw error;
-      setCompounds(data || []);
-    } catch (error) {
-      console.error('Error fetching compounds:', error);
-    }
-  };
+      return data as Compound[];
+    },
+  });
 
-  const fetchRecentDoses = async () => {
-    try {
+  const { data: recentDoses = [], isLoading: dosesLoading } = useQuery({
+    queryKey: ['recent-doses'],
+    queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('doses')
         .select(`
@@ -128,13 +104,25 @@ export const ProgressScreen = () => {
         .eq('taken', true)
         .order('taken_at', { ascending: false })
         .limit(10);
-
+      
       if (error) throw error;
-      setRecentDoses(data || []);
-    } catch (error) {
-      console.error('Error fetching recent doses:', error);
-    }
-  };
+      return data || [];
+    },
+  });
+
+  const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
+
+  // Premium status check
+  useState(() => {
+    const checkPremium = () => {
+      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
+      setIsPremium(premiumStatus);
+    };
+    
+    checkPremium();
+    window.addEventListener('storage', checkPremium);
+    return () => window.removeEventListener('storage', checkPremium);
+  });
 
   const handleLogWeight = async () => {
     if (!weight) {
@@ -164,7 +152,7 @@ export const ProgressScreen = () => {
       toast.success('Weight logged successfully');
       setShowLogModal(false);
       setWeight("");
-      fetchEntries();
+      refetchEntries(); // Refetch to update cache
     } catch (error) {
       console.error('Error logging weight:', error);
       toast.error('Failed to log weight');
@@ -251,7 +239,7 @@ export const ProgressScreen = () => {
 
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
-      fetchEntries();
+      refetchEntries(); // Refetch to update cache
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Failed to upload photo');
