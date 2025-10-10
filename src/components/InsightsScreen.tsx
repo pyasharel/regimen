@@ -128,8 +128,6 @@ export const InsightsScreen = () => {
     }
   });
 
-  console.log('Weight entries processed:', Array.from(dataMap.values()).filter(d => d.weight));
-
   // Add photo entries
   entries.forEach(entry => {
     if (entry.photo_url) {
@@ -173,16 +171,16 @@ export const InsightsScreen = () => {
     a.dateObj.getTime() - b.dateObj.getTime()
   );
 
-  console.log('All data before filtering:', allData);
-
   // Filter by time range
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - timeRange);
   const sortedData = allData.filter(d => d.dateObj >= cutoffDate);
 
-  console.log('Filtered data:', sortedData);
-  console.log('Cutoff date:', cutoffDate);
-  console.log('Time range:', timeRange);
+  // Get min/max weight for proper Y-axis scaling
+  const weights = sortedData.map(d => d.weight).filter((w): w is number => w !== undefined);
+  const minWeight = weights.length > 0 ? Math.min(...weights) : 0;
+  const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
+  const weightPadding = (maxWeight - minWeight) * 0.1 || 10;
 
   // Get medication start dates for reference lines (also filtered by time range)
   const medicationStarts = compounds
@@ -308,7 +306,7 @@ export const InsightsScreen = () => {
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
-                  domain={[(dataMin: number) => Math.floor(dataMin - 5), (dataMax: number) => Math.ceil(dataMax + 5)]}
+                  domain={[minWeight - weightPadding, maxWeight + weightPadding]}
                   label={{ 
                     value: 'Weight (lbs)', 
                     angle: -90, 
