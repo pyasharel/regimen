@@ -332,10 +332,9 @@ export const AddCompoundScreen = () => {
 
         if (dosesUpdateError) throw dosesUpdateError;
 
-        toast({
-          title: "Compound updated!",
-          description: `${name} has been updated`
-        });
+        // Navigate back without showing toast
+        navigate("/my-stack");
+        return;
       } else {
         // Insert new compound
         const { data: compound, error: compoundError } = await supabase
