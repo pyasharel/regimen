@@ -477,7 +477,8 @@ export const TodayScreen = () => {
             <div className="flex items-center justify-between">
               <button
                 onClick={() => changeWeek('prev')}
-                className="rounded-lg p-2 hover:bg-muted transition-colors"
+                className="rounded-lg p-2 hover:bg-muted transition-colors flex-shrink-0"
+                aria-label="Previous week"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -517,7 +518,8 @@ export const TodayScreen = () => {
               
               <button
                 onClick={() => changeWeek('next')}
-                className="rounded-lg p-2 hover:bg-muted transition-colors"
+                className="rounded-lg p-2 hover:bg-muted transition-colors flex-shrink-0"
+                aria-label="Next week"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
