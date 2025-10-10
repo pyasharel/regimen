@@ -182,6 +182,22 @@ export const InsightsScreen = () => {
   const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
   const weightPadding = (maxWeight - minWeight) * 0.1 || 10;
 
+  // Calculate medication timeline periods
+  const medicationPeriods = compounds.map(compound => {
+    const startDate = new Date(compound.start_date);
+    const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
+    
+    return {
+      name: compound.name,
+      startDate,
+      endDate,
+      isActive: compound.is_active,
+      hasCycles: compound.has_cycles,
+      cycleWeeksOn: compound.cycle_weeks_on,
+      cycleWeeksOff: compound.cycle_weeks_off,
+    };
+  }).filter(p => p.endDate >= cutoffDate);
+
   // Get medication start dates for reference lines (also filtered by time range)
   const medicationStarts = compounds
     .filter(c => new Date(c.start_date) >= cutoffDate)
@@ -315,20 +331,58 @@ export const InsightsScreen = () => {
                   }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-              
-              {/* Weight Line */}
-              {showWeight && (
-                <Line 
-                  yAxisId="weight"
-                  type="monotone" 
-                  dataKey="weight" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--primary))', r: 5 }}
-                  activeDot={{ r: 7 }}
-                  connectNulls
-                />
-              )}
+                
+                {/* Medication Period Bands */}
+                {showMedicationStarts && medicationPeriods.map((med, idx) => {
+                  const startFormatted = format(med.startDate, 'MMM d');
+                  const endFormatted = format(med.endDate, 'MMM d');
+                  
+                  // Use different opacity for each medication to distinguish overlaps
+                  const colors = [
+                    'rgba(255, 111, 97, 0.15)',   // coral
+                    'rgba(139, 92, 246, 0.15)',   // purple
+                    'rgba(59, 130, 246, 0.15)',   // blue
+                    'rgba(16, 185, 129, 0.15)',   // green
+                    'rgba(251, 146, 60, 0.15)',   // orange
+                  ];
+                  const color = colors[idx % colors.length];
+                  
+                  return (
+                    <ReferenceLine
+                      key={`med-period-${idx}`}
+                      yAxisId="weight"
+                      segment={[
+                        { x: startFormatted, y: minWeight - weightPadding },
+                        { x: endFormatted, y: maxWeight + weightPadding }
+                      ]}
+                      stroke={color.replace('0.15', '0.4')}
+                      strokeWidth={0}
+                      fill={color}
+                      label={{
+                        value: med.name,
+                        position: 'top',
+                        fill: 'hsl(var(--foreground))',
+                        fontSize: 10,
+                        offset: 5,
+                      }}
+                      ifOverflow="extendDomain"
+                    />
+                  );
+                })}
+                
+                {/* Weight Line */}
+                {showWeight && (
+                  <Line 
+                    yAxisId="weight"
+                    type="monotone" 
+                    dataKey="weight" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', r: 5 }}
+                    activeDot={{ r: 7 }}
+                    connectNulls
+                  />
+                )}
 
               {/* Photos - show as icons on the chart */}
               {showPhotos && sortedData.filter(d => d.photo).map((dataPoint, idx) => {
@@ -357,10 +411,10 @@ export const InsightsScreen = () => {
                   strokeDasharray="3 3"
                   strokeWidth={2}
                   label={{
-                    value: med.name,
+                    value: `Started ${med.name}`,
                     position: 'top',
                     fill: 'hsl(var(--foreground))',
-                    fontSize: 10,
+                    fontSize: 9,
                     angle: -45,
                   }}
                 />
