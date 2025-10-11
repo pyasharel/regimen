@@ -1,4 +1,3 @@
-import { Award, TrendingUp, Calendar, Camera, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ProgressBadgesProps {
@@ -6,24 +5,14 @@ interface ProgressBadgesProps {
     id: string;
     name: string;
     description: string;
-    icon: 'award' | 'trending' | 'calendar' | 'camera' | 'zap';
+    illustration: string;
+    tier?: number;
     earned: boolean;
     earnedDate?: string;
   }[];
 }
 
 export const ProgressBadges = ({ badges }: ProgressBadgesProps) => {
-  const getIcon = (iconType: string) => {
-    switch (iconType) {
-      case 'award': return Award;
-      case 'trending': return TrendingUp;
-      case 'calendar': return Calendar;
-      case 'camera': return Camera;
-      case 'zap': return Zap;
-      default: return Award;
-    }
-  };
-
   const earnedBadges = badges.filter(b => b.earned);
   const lockedBadges = badges.filter(b => !b.earned);
 
@@ -42,14 +31,13 @@ export const ProgressBadges = ({ badges }: ProgressBadgesProps) => {
 
       <div className="grid grid-cols-3 gap-3">
         {earnedBadges.map((badge) => {
-          const Icon = getIcon(badge.icon);
           return (
             <div
               key={badge.id}
               className="flex flex-col items-center p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 shadow-sm"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mb-2">
-                <Icon className="h-6 w-6 text-primary" />
+              <div className="flex h-16 w-16 items-center justify-center mb-2">
+                <img src={badge.illustration} alt={badge.name} className="w-full h-full object-contain" />
               </div>
               <p className="text-xs font-medium text-center line-clamp-2">{badge.name}</p>
               {badge.earnedDate && (
@@ -62,14 +50,13 @@ export const ProgressBadges = ({ badges }: ProgressBadgesProps) => {
         })}
         
         {lockedBadges.slice(0, 3 - (earnedBadges.length % 3 || 3)).map((badge) => {
-          const Icon = getIcon(badge.icon);
           return (
             <div
               key={badge.id}
               className="flex flex-col items-center p-3 rounded-xl bg-muted/30 border border-border/50 opacity-40"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-2">
-                <Icon className="h-6 w-6 text-muted-foreground" />
+              <div className="flex h-16 w-16 items-center justify-center mb-2 grayscale opacity-50">
+                <img src={badge.illustration} alt={badge.name} className="w-full h-full object-contain" />
               </div>
               <p className="text-xs font-medium text-center text-muted-foreground line-clamp-2">{badge.name}</p>
             </div>

@@ -29,9 +29,11 @@ import { Capacitor } from '@capacitor/core';
 type ProgressEntry = {
   id: string;
   entry_date: string;
+  category: string;
   metrics: any;
   photo_url: string | null;
   notes: string | null;
+  created_at: string;
 };
 
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
@@ -42,6 +44,9 @@ type Compound = {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
+  has_cycles: boolean;
+  schedule_type: string;
+  created_at: string;
 };
 
 export const ProgressScreen = () => {
@@ -84,7 +89,7 @@ export const ProgressScreen = () => {
       
       const { data, error } = await supabase
         .from('compounds')
-        .select('id, name, start_date, end_date, is_active')
+        .select('id, name, start_date, end_date, is_active, has_cycles, schedule_type, created_at')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false });
       
@@ -139,84 +144,101 @@ export const ProgressScreen = () => {
 
   // Calculate badges based on progress
   const badges = useMemo(() => {
-    const photoEntries = entries.filter(e => e.photo_url);
-    const weightEntries = entries.filter(e => e.metrics?.weight);
-    const dosesTaken = recentDoses.filter(d => d.taken).length;
-    
-    // Get first compound start date for streak calculation
-    const firstCompound = compounds.length > 0 ? compounds[compounds.length - 1] : null;
-    const daysSinceStart = firstCompound 
-      ? differenceInDays(new Date(), new Date(firstCompound.start_date))
-      : 0;
+    const activeCompoundsCount = compounds.filter(c => c.is_active).length;
+    const totalCompoundsCount = compounds.length;
+    const manualWeightEntries = entries.filter(e => e.category === 'weight').length;
+    const photoEntries = entries.filter(e => e.photo_url).length;
+    const compoundsWithCycles = compounds.filter(c => c.has_cycles).length;
+    const compoundsWithCustomSchedule = compounds.filter(c => c.schedule_type === 'custom').length;
 
     const allBadges = [
       {
-        id: 'first-dose',
-        name: 'First Dose',
-        description: 'Took your first dose',
-        icon: 'zap' as const,
-        earned: dosesTaken >= 1,
-        earnedDate: dosesTaken >= 1 ? recentDoses.find(d => d.taken)?.taken_at : undefined
+        id: 'stack_builder_1',
+        name: 'Stack Starter',
+        description: 'Added your first compound',
+        illustration: '/src/assets/badges/stack-1.png',
+        tier: 1,
+        earned: totalCompoundsCount >= 1,
+        earnedDate: compounds[0]?.created_at,
       },
       {
-        id: 'week-streak',
-        name: '7-Day Streak',
-        description: 'Logged progress for 7 days',
-        icon: 'calendar' as const,
-        earned: daysSinceStart >= 7,
-        earnedDate: daysSinceStart >= 7 ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : undefined
+        id: 'stack_builder_3',
+        name: 'Stack Builder',
+        description: 'Tracking 3 compounds',
+        illustration: '/src/assets/badges/stack-3.png',
+        tier: 2,
+        earned: totalCompoundsCount >= 3,
       },
       {
-        id: 'month-streak',
-        name: '30-Day Streak',
-        description: 'Completed 30 days on regimen',
-        icon: 'award' as const,
-        earned: daysSinceStart >= 30,
-        earnedDate: daysSinceStart >= 30 ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
+        id: 'stack_builder_5',
+        name: 'Stack Pro',
+        description: 'Tracking 5 compounds',
+        illustration: '/src/assets/badges/stack-5.png',
+        tier: 3,
+        earned: totalCompoundsCount >= 5,
       },
       {
-        id: 'first-photo',
-        name: 'First Photo',
-        description: 'Uploaded your first progress photo',
-        icon: 'camera' as const,
-        earned: photoEntries.length >= 1,
-        earnedDate: photoEntries.length >= 1 ? photoEntries[photoEntries.length - 1]?.entry_date : undefined
+        id: 'stack_builder_10',
+        name: 'Stack Master',
+        description: 'Tracking 10 compounds',
+        illustration: '/src/assets/badges/stack-10.png',
+        tier: 4,
+        earned: totalCompoundsCount >= 10,
       },
       {
-        id: 'photo-collector',
-        name: 'Photo Collector',
-        description: 'Uploaded 5 progress photos',
-        icon: 'camera' as const,
-        earned: photoEntries.length >= 5,
-        earnedDate: photoEntries.length >= 5 ? photoEntries[4]?.entry_date : undefined
+        id: 'cycle_master',
+        name: 'Cycle Master',
+        description: 'Created your first cycle',
+        illustration: '/src/assets/badges/cycle-master.png',
+        earned: compoundsWithCycles >= 1,
       },
       {
-        id: 'weight-tracker',
-        name: 'Weight Tracker',
+        id: 'schedule_pro',
+        name: 'Schedule Pro',
+        description: 'Used custom scheduling',
+        illustration: '/src/assets/badges/schedule-pro.png',
+        earned: compoundsWithCustomSchedule >= 1,
+      },
+      {
+        id: 'photo_documenter_5',
+        name: 'Photo Documenter',
+        description: 'Logged 5 progress photos',
+        illustration: '/src/assets/badges/photo-5.png',
+        earned: photoEntries >= 5,
+      },
+      {
+        id: 'photo_documenter_20',
+        name: 'Photo Historian',
+        description: 'Logged 20 progress photos',
+        illustration: '/src/assets/badges/photo-20.png',
+        earned: photoEntries >= 20,
+      },
+      {
+        id: 'data_driven_10',
+        name: 'Data Tracker',
         description: 'Logged weight 10 times',
-        icon: 'trending' as const,
-        earned: weightEntries.length >= 10,
-        earnedDate: weightEntries.length >= 10 ? weightEntries[9]?.entry_date : undefined
+        illustration: '/src/assets/badges/weight-10.png',
+        earned: manualWeightEntries >= 10,
+      },
+      {
+        id: 'data_driven_30',
+        name: 'Data Analyst',
+        description: 'Logged weight 30 times',
+        illustration: '/src/assets/badges/weight-30.png',
+        earned: manualWeightEntries >= 30,
       },
     ];
 
-    // Save newly earned badges
+    // Save newly earned badges (no toast notifications)
     const newlyEarned = allBadges.filter(b => b.earned && !earnedBadges.includes(b.id));
     if (newlyEarned.length > 0) {
       const updatedBadges = [...earnedBadges, ...newlyEarned.map(b => b.id)];
       setEarnedBadges(updatedBadges);
       localStorage.setItem('earnedBadges', JSON.stringify(updatedBadges));
-      
-      // Show toast for new badges
-      newlyEarned.forEach(badge => {
-        toast.success(`Achievement unlocked: ${badge.name}!`, {
-          description: badge.description
-        });
-      });
     }
 
     return allBadges;
-  }, [entries, recentDoses, compounds, earnedBadges]);
+  }, [entries, compounds, earnedBadges]);
 
   const handleLogWeight = async () => {
     if (!weight) {
@@ -526,9 +548,6 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Progress Badges */}
-        <ProgressBadges badges={badges} />
-
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
@@ -682,6 +701,9 @@ export const ProgressScreen = () => {
             )}
           </Card>
         </div>
+
+        {/* Progress Badges moved to the end */}
+        <ProgressBadges badges={badges} />
       </div>
 
       <BottomNavigation />
