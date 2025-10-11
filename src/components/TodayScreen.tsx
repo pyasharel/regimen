@@ -601,11 +601,9 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
                         isSelected
                           ? 'bg-primary text-primary-foreground'
-                          : isToday
-                          ? 'ring-2 ring-primary/40'
                           : 'hover:bg-muted'
                       }`}
                     >
