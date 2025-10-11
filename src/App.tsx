@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
+import { WeeklyDigestModal } from "@/components/WeeklyDigestModal";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -26,13 +28,19 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
+const App = () => {
+  const { isOpen, weekData, closeDigest } = useWeeklyDigest();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          {weekData && (
+            <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
+          )}
+          <Routes>
           <Route path="/" element={<Splash />} />
           <Route path="/landing" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
@@ -57,6 +65,7 @@ const App = () => (
       </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
