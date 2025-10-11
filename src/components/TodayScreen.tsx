@@ -381,6 +381,17 @@ export const TodayScreen = () => {
     if (time === 'Morning') return '8:00 AM';
     if (time === 'Afternoon') return '2:00 PM';
     if (time === 'Evening') return '6:00 PM';
+    
+    // Handle 24-hour format (HH:MM) and convert to 12-hour with AM/PM
+    const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1]);
+      const minutes = timeMatch[2];
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12; // Convert 0 to 12, and keep 1-12
+      return `${hours}:${minutes} ${ampm}`;
+    }
+    
     return time;
   };
 
