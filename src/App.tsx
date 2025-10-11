@@ -12,6 +12,7 @@ import { InsightsScreen } from "./components/InsightsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import PhotoCompareScreen from "./components/PhotoCompareScreen";
 import { AccountSettings } from "./components/settings/AccountSettings";
+import { NotificationsSettings } from "./components/settings/NotificationsSettings";
 import { DisplaySettings } from "./components/settings/DisplaySettings";
 import { DataSettings } from "./components/settings/DataSettings";
 import { HelpSettings } from "./components/settings/HelpSettings";
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
           <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+          <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
           <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
           <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
           <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />

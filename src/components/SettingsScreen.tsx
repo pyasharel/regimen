@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2 } from "lucide-react";
+import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2, Bell } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -66,6 +66,12 @@ export const SettingsScreen = () => {
       label: "Account",
       description: "Email, password, delete account",
       onClick: () => navigate("/settings/account"),
+    },
+    {
+      icon: Bell,
+      label: "Notifications",
+      description: "Manage your reminders",
+      onClick: () => navigate("/settings/notifications"),
     },
     {
       icon: Scale,
