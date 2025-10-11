@@ -37,7 +37,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          {weekData && (
+          {isOpen && weekData && (
             <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
           )}
           <Routes>
