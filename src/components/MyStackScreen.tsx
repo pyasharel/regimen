@@ -32,7 +32,7 @@ export const MyStackScreen = () => {
   const { toast } = useToast();
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremium, setIsPremium] = useState(() => localStorage.getItem('testPremiumMode') === 'true');
   const [weeklyDoses, setWeeklyDoses] = useState(0);
   const [adherenceRate, setAdherenceRate] = useState(0);
 

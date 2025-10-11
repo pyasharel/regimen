@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import bubblePopSound from "@/assets/bubble-pop.mp3";
+import bubblePopSound from "@/assets/light-bubble-pop.mp3";
 import { scheduleAllUpcomingDoses, cancelDoseNotification, requestNotificationPermissions } from "@/utils/notificationScheduler";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 
@@ -34,7 +34,7 @@ export const TodayScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremium, setIsPremium] = useState(() => localStorage.getItem('testPremiumMode') === 'true');
   const [userName, setUserName] = useState<string | null>(null);
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
@@ -194,8 +194,8 @@ export const TodayScreen = () => {
       // Check if sound is enabled
       const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
       
-      // Trigger haptic feedback
-      triggerHaptic();
+      // Trigger haptic feedback with heavy impact
+      triggerHaptic('heavy');
       
       // Play sound if enabled and checking off (not unchecking)
       if (!currentStatus && soundEnabled) {
