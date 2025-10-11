@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { PremiumModal } from "@/components/PremiumModal";
+import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { requestNotificationPermissions } from "@/utils/notificationScheduler";
 
 const COMMON_PEPTIDES = [
   // Peptides
@@ -101,6 +103,7 @@ export const AddCompoundScreen = () => {
   // Premium feature - check from Settings
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
 
   // Check premium status from localStorage (set in Settings)
   useEffect(() => {
@@ -391,7 +394,18 @@ export const AddCompoundScreen = () => {
 
       // Success haptic and navigate
       triggerHaptic('medium');
-      navigate('/today');
+      
+      // Check if this is first compound and notifications haven't been configured
+      if (!isEditing) {
+        const notificationAsked = localStorage.getItem('notificationPermissionAsked');
+        if (!notificationAsked) {
+          setShowNotificationDialog(true);
+        } else {
+          navigate('/today');
+        }
+      } else {
+        navigate('/today');
+      }
     } catch (error) {
       console.error('Error saving compound:', error);
       toast({
@@ -402,6 +416,21 @@ export const AddCompoundScreen = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleNotificationResponse = async (accepted: boolean) => {
+    localStorage.setItem('notificationPermissionAsked', 'true');
+    if (accepted) {
+      const granted = await requestNotificationPermissions();
+      if (granted) {
+        toast({
+          title: "Notifications enabled",
+          description: "You'll get reminders for your doses"
+        });
+      }
+    }
+    setShowNotificationDialog(false);
+    navigate('/today');
   };
 
   return (
@@ -897,6 +926,10 @@ export const AddCompoundScreen = () => {
       </div>
 
       <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
+      <NotificationPermissionDialog 
+        open={showNotificationDialog} 
+        onResponse={handleNotificationResponse} 
+      />
     </div>
   );
 };

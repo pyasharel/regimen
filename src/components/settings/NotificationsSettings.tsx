@@ -17,9 +17,11 @@ export const NotificationsSettings = () => {
   const [photoReminders, setPhotoReminders] = useState(false);
   const [photoFrequency, setPhotoFrequency] = useState<"daily" | "weekly">("weekly");
   const [photoTime, setPhotoTime] = useState("08:00");
+  const [photoDay, setPhotoDay] = useState<string>("0"); // 0 = Sunday
   const [weightReminders, setWeightReminders] = useState(false);
   const [weightFrequency, setWeightFrequency] = useState<"daily" | "weekly">("daily");
   const [weightTime, setWeightTime] = useState("07:00");
+  const [weightDay, setWeightDay] = useState<string>("1"); // 1 = Monday
 
   useEffect(() => {
     const savedPremium = localStorage.getItem('testPremiumMode') === 'true';
@@ -29,16 +31,20 @@ export const NotificationsSettings = () => {
     const savedPhotoReminders = localStorage.getItem('photoReminders') === 'true';
     const savedPhotoFrequency = localStorage.getItem('photoFrequency') as "daily" | "weekly" || "weekly";
     const savedPhotoTime = localStorage.getItem('photoTime') || "08:00";
+    const savedPhotoDay = localStorage.getItem('photoDay') || "0";
     const savedWeightReminders = localStorage.getItem('weightReminders') === 'true';
     const savedWeightFrequency = localStorage.getItem('weightFrequency') as "daily" | "weekly" || "daily";
     const savedWeightTime = localStorage.getItem('weightTime') || "07:00";
+    const savedWeightDay = localStorage.getItem('weightDay') || "1";
     
     setPhotoReminders(savedPhotoReminders);
     setPhotoFrequency(savedPhotoFrequency);
     setPhotoTime(savedPhotoTime);
+    setPhotoDay(savedPhotoDay);
     setWeightReminders(savedWeightReminders);
     setWeightFrequency(savedWeightFrequency);
     setWeightTime(savedWeightTime);
+    setWeightDay(savedWeightDay);
   }, []);
 
   const handlePhotoRemindersToggle = (checked: boolean) => {
@@ -71,6 +77,11 @@ export const NotificationsSettings = () => {
     localStorage.setItem('photoTime', value);
   };
 
+  const handlePhotoDayChange = (value: string) => {
+    setPhotoDay(value);
+    localStorage.setItem('photoDay', value);
+  };
+
   const handleWeightFrequencyChange = (value: "daily" | "weekly") => {
     setWeightFrequency(value);
     localStorage.setItem('weightFrequency', value);
@@ -79,6 +90,11 @@ export const NotificationsSettings = () => {
   const handleWeightTimeChange = (value: string) => {
     setWeightTime(value);
     localStorage.setItem('weightTime', value);
+  };
+
+  const handleWeightDayChange = (value: string) => {
+    setWeightDay(value);
+    localStorage.setItem('weightDay', value);
   };
 
   return (
@@ -150,10 +166,30 @@ export const NotificationsSettings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly (Sundays)</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {photoFrequency === "weekly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Day of Week</Label>
+                  <Select value={photoDay} onValueChange={handlePhotoDayChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sunday</SelectItem>
+                      <SelectItem value="1">Monday</SelectItem>
+                      <SelectItem value="2">Tuesday</SelectItem>
+                      <SelectItem value="3">Wednesday</SelectItem>
+                      <SelectItem value="4">Thursday</SelectItem>
+                      <SelectItem value="5">Friday</SelectItem>
+                      <SelectItem value="6">Saturday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Time</Label>
@@ -205,10 +241,30 @@ export const NotificationsSettings = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly (Mondays)</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              {weightFrequency === "weekly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Day of Week</Label>
+                  <Select value={weightDay} onValueChange={handleWeightDayChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sunday</SelectItem>
+                      <SelectItem value="1">Monday</SelectItem>
+                      <SelectItem value="2">Tuesday</SelectItem>
+                      <SelectItem value="3">Wednesday</SelectItem>
+                      <SelectItem value="4">Thursday</SelectItem>
+                      <SelectItem value="5">Friday</SelectItem>
+                      <SelectItem value="6">Saturday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Time</Label>
@@ -229,9 +285,6 @@ export const NotificationsSettings = () => {
           )}
         </div>
 
-        <p className="text-sm text-muted-foreground text-center px-4">
-          Photo reminders help you track your transformation consistently. Weight reminders are free for everyone.
-        </p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
+import { ProgressBadges } from "@/components/ProgressBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Camera } from '@capacitor/camera';
@@ -55,6 +56,7 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
 
   // Cached data fetching with React Query
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -116,7 +118,7 @@ export const ProgressScreen = () => {
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
 
   // Premium status check
-  useState(() => {
+  useEffect(() => {
     const checkPremium = () => {
       const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
       setIsPremium(premiumStatus);
@@ -125,7 +127,96 @@ export const ProgressScreen = () => {
     checkPremium();
     window.addEventListener('storage', checkPremium);
     return () => window.removeEventListener('storage', checkPremium);
-  });
+  }, []);
+
+  // Load earned badges from localStorage
+  useEffect(() => {
+    const savedBadges = localStorage.getItem('earnedBadges');
+    if (savedBadges) {
+      setEarnedBadges(JSON.parse(savedBadges));
+    }
+  }, []);
+
+  // Calculate badges based on progress
+  const badges = useMemo(() => {
+    const photoEntries = entries.filter(e => e.photo_url);
+    const weightEntries = entries.filter(e => e.metrics?.weight);
+    const dosesTaken = recentDoses.filter(d => d.taken).length;
+    
+    // Get first compound start date for streak calculation
+    const firstCompound = compounds.length > 0 ? compounds[compounds.length - 1] : null;
+    const daysSinceStart = firstCompound 
+      ? differenceInDays(new Date(), new Date(firstCompound.start_date))
+      : 0;
+
+    const allBadges = [
+      {
+        id: 'first-dose',
+        name: 'First Dose',
+        description: 'Took your first dose',
+        icon: 'zap' as const,
+        earned: dosesTaken >= 1,
+        earnedDate: dosesTaken >= 1 ? recentDoses.find(d => d.taken)?.taken_at : undefined
+      },
+      {
+        id: 'week-streak',
+        name: '7-Day Streak',
+        description: 'Logged progress for 7 days',
+        icon: 'calendar' as const,
+        earned: daysSinceStart >= 7,
+        earnedDate: daysSinceStart >= 7 ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : undefined
+      },
+      {
+        id: 'month-streak',
+        name: '30-Day Streak',
+        description: 'Completed 30 days on regimen',
+        icon: 'award' as const,
+        earned: daysSinceStart >= 30,
+        earnedDate: daysSinceStart >= 30 ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
+      },
+      {
+        id: 'first-photo',
+        name: 'First Photo',
+        description: 'Uploaded your first progress photo',
+        icon: 'camera' as const,
+        earned: photoEntries.length >= 1,
+        earnedDate: photoEntries.length >= 1 ? photoEntries[photoEntries.length - 1]?.entry_date : undefined
+      },
+      {
+        id: 'photo-collector',
+        name: 'Photo Collector',
+        description: 'Uploaded 5 progress photos',
+        icon: 'camera' as const,
+        earned: photoEntries.length >= 5,
+        earnedDate: photoEntries.length >= 5 ? photoEntries[4]?.entry_date : undefined
+      },
+      {
+        id: 'weight-tracker',
+        name: 'Weight Tracker',
+        description: 'Logged weight 10 times',
+        icon: 'trending' as const,
+        earned: weightEntries.length >= 10,
+        earnedDate: weightEntries.length >= 10 ? weightEntries[9]?.entry_date : undefined
+      },
+    ];
+
+    // Save newly earned badges
+    const newlyEarned = allBadges.filter(b => b.earned && !earnedBadges.includes(b.id));
+    if (newlyEarned.length > 0) {
+      const updatedBadges = [...earnedBadges, ...newlyEarned.map(b => b.id)];
+      setEarnedBadges(updatedBadges);
+      localStorage.setItem('earnedBadges', JSON.stringify(updatedBadges));
+      
+      // Show toast for new badges
+      newlyEarned.forEach(badge => {
+        toast.success(`Achievement unlocked: ${badge.name}!`, {
+          description: badge.description
+        });
+      });
+    }
+
+    return allBadges;
+  }, [entries, recentDoses, compounds, earnedBadges]);
 
   const handleLogWeight = async () => {
     if (!weight) {
@@ -434,6 +525,9 @@ export const ProgressScreen = () => {
             )}
           </Card>
         </div>
+
+        {/* Progress Badges */}
+        <ProgressBadges badges={badges} />
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
