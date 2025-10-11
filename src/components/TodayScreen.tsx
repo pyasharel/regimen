@@ -229,6 +229,9 @@ export const TodayScreen = () => {
     if (animatingDoses.has(doseId)) return;
 
     try {
+      // Find the dose to check if it's an "as needed" virtual dose
+      const dose = doses.find(d => d.id === doseId);
+      if (!dose) return;
       
       // Check if sound is enabled
       const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
@@ -246,15 +249,41 @@ export const TodayScreen = () => {
         setAnimatingDoses(prev => new Set(prev).add(doseId));
       }
 
-      const { error } = await supabase
-        .from('doses')
-        .update({
-          taken: !currentStatus,
-          taken_at: !currentStatus ? new Date().toISOString() : null
-        })
-        .eq('id', doseId);
+      // For "as needed" medications, create a new dose record if checking off
+      if (dose.schedule_type === 'As Needed') {
+        if (!currentStatus) {
+          // Create a new dose record for this "as needed" medication
+          const { data: newDose, error: insertError } = await supabase
+            .from('doses')
+            .insert({
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              compound_id: dose.compound_id,
+              dose_amount: dose.dose_amount,
+              dose_unit: dose.dose_unit,
+              calculated_iu: dose.calculated_iu,
+              scheduled_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+              scheduled_date: selectedDate.toISOString().split('T')[0],
+              taken: true,
+              taken_at: new Date().toISOString()
+            })
+            .select()
+            .single();
 
-      if (error) throw error;
+          if (insertError) throw insertError;
+        }
+        // Don't allow unchecking "as needed" doses
+      } else {
+        // Regular scheduled dose - update it
+        const { error } = await supabase
+          .from('doses')
+          .update({
+            taken: !currentStatus,
+            taken_at: !currentStatus ? new Date().toISOString() : null
+          })
+          .eq('id', doseId);
+
+        if (error) throw error;
+      }
 
       // Cancel notification when dose is marked as taken
       if (!currentStatus) {
@@ -269,10 +298,11 @@ export const TodayScreen = () => {
       );
       setDoses(updatedDoses);
 
-      // Check if this was the last dose
+      // Check if this was the last dose (excluding "as needed" medications)
       if (!currentStatus) {
-        const allTaken = updatedDoses.every(d => d.taken);
-        if (allTaken && updatedDoses.length > 0) {
+        const scheduledDoses = updatedDoses.filter(d => d.schedule_type !== 'As Needed');
+        const allScheduledTaken = scheduledDoses.every(d => d.taken);
+        if (allScheduledTaken && scheduledDoses.length > 0) {
           // Trigger last dose celebration after regular animation
           setTimeout(() => {
             triggerLastDoseCelebration();
@@ -571,17 +601,14 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
                         isSelected
                           ? 'bg-primary text-primary-foreground'
                           : isToday
-                          ? 'bg-surface ring-2 ring-primary/40'
+                          ? 'ring-2 ring-primary ring-inset'
                           : 'hover:bg-muted'
                       }`}
                     >
-                      {isToday && !isSelected && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
-                      )}
                       <span className="text-xs font-medium">
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                       </span>
