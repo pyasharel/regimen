@@ -4,7 +4,7 @@ export const appVersion = '0.1.0';
 export const appBuild = '2';
 
 const config: CapacitorConfig = {
-  appId: 'com.regimenhealthhub.app',
+  appId: 'com.regimen.app',
   appName: 'Regimen',
   webDir: 'dist',
   plugins: {
