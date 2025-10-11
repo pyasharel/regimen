@@ -39,9 +39,10 @@ export const ProgressBadges = ({ badges }: ProgressBadgesProps) => {
               <div className="flex h-16 w-16 items-center justify-center mb-2">
                 <img src={badge.illustration} alt={badge.name} className="w-full h-full object-contain" />
               </div>
-              <p className="text-xs font-medium text-center line-clamp-2">{badge.name}</p>
+              <p className="text-xs font-semibold text-center line-clamp-1">{badge.name}</p>
+              <p className="text-[10px] text-muted-foreground text-center line-clamp-2">{badge.description}</p>
               {badge.earnedDate && (
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1 opacity-60">
                   {new Date(badge.earnedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
               )}
@@ -58,7 +59,8 @@ export const ProgressBadges = ({ badges }: ProgressBadgesProps) => {
               <div className="flex h-16 w-16 items-center justify-center mb-2 grayscale opacity-50">
                 <img src={badge.illustration} alt={badge.name} className="w-full h-full object-contain" />
               </div>
-              <p className="text-xs font-medium text-center text-muted-foreground line-clamp-2">{badge.name}</p>
+              <p className="text-xs font-semibold text-center text-muted-foreground line-clamp-1">{badge.name}</p>
+              <p className="text-[10px] text-muted-foreground/60 text-center line-clamp-2">{badge.description}</p>
             </div>
           );
         })}

@@ -3,6 +3,7 @@ import { Plus, Calendar as CalendarIcon, Sun, Moon } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
+import { TodayBanner } from "@/components/TodayBanner";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -575,6 +576,9 @@ export const TodayScreen = () => {
           </div>
         )}
       </div>
+
+      {/* Smart Banner */}
+      <TodayBanner />
 
       {/* Doses */}
       <div className="flex-1 space-y-4 p-4 relative overflow-y-auto">
