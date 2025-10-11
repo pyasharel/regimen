@@ -25,6 +25,7 @@ import { Camera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 
 type ProgressEntry = {
   id: string;
@@ -61,6 +62,8 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  
+  const { isEnabled: healthSyncEnabled, syncWeightFromHealth, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
   // Cached data fetching with React Query
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -153,6 +156,11 @@ export const ProgressScreen = () => {
 
       const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
 
+      // Request health permissions if not already granted
+      if (healthSyncEnabled) {
+        await requestPermission();
+      }
+
       const { error } = await supabase
         .from('progress_entries')
         .insert([{
@@ -163,6 +171,11 @@ export const ProgressScreen = () => {
         }]);
 
       if (error) throw error;
+
+      // Sync to health app if enabled
+      if (healthSyncEnabled) {
+        await saveWeightToHealth(weightInLbs);
+      }
 
       toast.success('Weight logged successfully');
       setShowLogModal(false);

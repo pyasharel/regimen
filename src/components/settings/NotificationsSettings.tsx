@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { WeeklyDigestSettings } from "@/components/WeeklyDigestSettings";
+import { HealthSyncSettings } from "@/components/settings/HealthSyncSettings";
 import { toast } from "sonner";
 
 export const NotificationsSettings = () => {
@@ -288,6 +289,11 @@ export const NotificationsSettings = () => {
 
         {/* Weekly Digest */}
         <WeeklyDigestSettings />
+
+        {/* Health Sync */}
+        <div className="border-t border-border pt-6">
+          <HealthSyncSettings />
+        </div>
 
       </div>
     </div>

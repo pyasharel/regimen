@@ -1,6 +1,6 @@
-import { X, Share2, TrendingDown, TrendingUp, Calendar } from "lucide-react";
+import { X, Share2, TrendingDown, TrendingUp, Calendar, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Share } from "@capacitor/share";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,11 +24,10 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
 
   const handleShare = async () => {
     try {
-      const adherenceRate = Math.round(
-        (weekData.compounds.reduce((acc, c) => 
-          acc + c.dailyDoses.filter(d => d.taken).length, 0) / 
-         weekData.compounds.reduce((acc, c) => acc + c.dailyDoses.length, 0)) * 100
-      );
+      const totalDoses = weekData.compounds.reduce((acc, c) => acc + c.dailyDoses.length, 0);
+      const takenDoses = weekData.compounds.reduce((acc, c) => 
+        acc + c.dailyDoses.filter(d => d.taken).length, 0);
+      const adherenceRate = totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0;
       
       await Share.share({
         title: "My Weekly Progress",
@@ -47,9 +46,31 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
     ? weekData.weightData[weekData.weightData.length - 1].weight - weekData.weightData[0].weight
     : 0;
 
+  // Organize data by day
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dailyData = daysOfWeek.map((day, dayIndex) => {
+    const compoundsForDay = weekData.compounds.map(compound => {
+      const doseForDay = compound.dailyDoses.find(d => d.day === day);
+      return {
+        name: compound.name,
+        dose: doseForDay || { day, count: 0, taken: false }
+      };
+    }).filter(c => c.dose.count > 0);
+
+    return {
+      day,
+      compounds: compoundsForDay
+    };
+  });
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md h-[90vh] p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Weekly Digest</DialogTitle>
+        <DialogDescription className="sr-only">
+          Your weekly progress summary including regimen adherence, weight tracking, and progress photos
+        </DialogDescription>
+        
         {/* Header */}
         <div className="sticky top-0 z-10 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border px-6 py-4">
           <div className="flex items-center justify-between mb-2">
@@ -71,32 +92,58 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Compounds Summary */}
+          {/* Day-by-Day Calendar */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">This Week's Regimen</h3>
-            {weekData.compounds.map((compound, idx) => (
-              <div key={idx} className="rounded-lg border border-border/50 p-4 space-y-3">
-                <p className="font-medium">{compound.name}</p>
-                <div className="grid grid-cols-7 gap-2">
-                  {compound.dailyDoses.map((dose, dIdx) => (
-                    <div key={dIdx} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground uppercase">
-                        {dose.day}
+            <div className="space-y-3">
+              {dailyData.map((dayData, idx) => (
+                <div key={idx} className="rounded-lg border border-border/50 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold text-sm uppercase text-muted-foreground">
+                      {dayData.day}
+                    </span>
+                    {dayData.compounds.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {dayData.compounds.filter(c => c.dose.taken).length}/{dayData.compounds.length} taken
                       </span>
-                      <div
-                        className={`h-8 w-8 rounded-full border-2 flex items-center justify-center text-xs ${
-                          dose.taken
-                            ? "bg-primary/10 border-primary text-primary"
-                            : "border-border/50 text-muted-foreground"
-                        }`}
-                      >
-                        {dose.count}
-                      </div>
+                    )}
+                  </div>
+                  
+                  {dayData.compounds.length > 0 ? (
+                    <div className="space-y-2">
+                      {dayData.compounds.map((compound, cIdx) => (
+                        <div 
+                          key={cIdx}
+                          className={`flex items-center justify-between p-2 rounded-md ${
+                            compound.dose.taken 
+                              ? "bg-primary/10 border border-primary/20" 
+                              : "bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Pill className={`h-4 w-4 ${
+                              compound.dose.taken ? "text-primary" : "text-muted-foreground"
+                            }`} />
+                            <span className={`text-sm ${
+                              compound.dose.taken ? "text-foreground font-medium" : "text-muted-foreground"
+                            }`}>
+                              {compound.name}
+                            </span>
+                          </div>
+                          <span className={`text-xs font-medium ${
+                            compound.dose.taken ? "text-primary" : "text-muted-foreground"
+                          }`}>
+                            {compound.dose.count}x
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No doses scheduled</p>
+                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Weight Trend */}
@@ -152,13 +199,15 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
               <h3 className="text-lg font-semibold">Progress Photos</h3>
               <div className="grid grid-cols-2 gap-3">
                 {weekData.photos.map((photo, idx) => (
-                  <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-border/50">
-                    <img
-                      src={photo.url}
-                      alt={`Progress ${photo.date}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <p className="text-xs text-muted-foreground text-center mt-1">
+                  <div key={idx} className="space-y-2">
+                    <div className="aspect-square rounded-lg overflow-hidden border border-border/50">
+                      <img
+                        src={photo.url}
+                        alt={`Progress ${photo.date}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
                       {new Date(photo.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </p>
                   </div>

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
-import { WeeklyDigestModal } from "@/components/WeeklyDigestModal";
+import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
