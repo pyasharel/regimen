@@ -108,7 +108,7 @@ export const scheduleDoseNotification = async (
           title: 'Regimen: Time for your dose',
           body: `${dose.compound_name} - ${dose.dose_amount} ${dose.dose_unit}`,
           schedule: { at: notificationDate },
-          sound: 'light_bubble_pop.mp3', // Custom sound (requires adding to native projects)
+          sound: 'light_bubble_pop_regimen.m4a', // Custom sound (requires adding to native projects)
           smallIcon: 'ic_stat_icon_config_sample',
           iconColor: '#FF6F61',
           actionTypeId: 'DOSE_ACTIONS',

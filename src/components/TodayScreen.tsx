@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import bubblePopSound from "@/assets/light-bubble-pop.mp3";
+import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification, requestNotificationPermissions } from "@/utils/notificationScheduler";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 
