@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
-import { appVersion, appBuild } from '../../capacitor.config';
+
+// Version info - update these when bumping versions in capacitor.config.ts
+const APP_VERSION = '0.1.0';
+const APP_BUILD = '2';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -135,9 +138,9 @@ export const SettingsScreen = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
+      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Settings</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -151,7 +154,7 @@ export const SettingsScreen = () => {
         </div>
       </header>
 
-      <div className="p-4 space-y-6 max-w-2xl mx-auto">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
         {/* Test Mode Toggle - For Beta Testing */}
         <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
@@ -323,7 +326,7 @@ export const SettingsScreen = () => {
 
         {/* Version Number */}
         <div className="text-center text-xs text-muted-foreground/60 mt-4">
-          Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
+          Version {APP_VERSION} {Capacitor.isNativePlatform() && `(Build ${APP_BUILD})`}
         </div>
       </div>
 

@@ -376,9 +376,9 @@ export const ProgressScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
+      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -392,7 +392,7 @@ export const ProgressScreen = () => {
         </div>
       </header>
 
-      <div className="p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-6 space-y-8">
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
