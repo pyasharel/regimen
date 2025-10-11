@@ -1,5 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+export const appVersion = '0.1.0';
+export const appBuild = '1';
+
 const config: CapacitorConfig = {
   appId: 'com.regimenhealthhub.app',
   appName: 'Regimen',

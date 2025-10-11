@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Capacitor } from '@capacitor/core';
+import { appVersion, appBuild } from '../../capacitor.config';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -321,7 +323,7 @@ export const SettingsScreen = () => {
 
         {/* Version Number */}
         <div className="text-center text-xs text-muted-foreground/60 mt-4">
-          Version 1.0.0
+          Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
         </div>
       </div>
 

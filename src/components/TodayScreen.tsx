@@ -450,7 +450,7 @@ export const TodayScreen = () => {
   // Sound feedback function - bubble pop sound
   const playCheckSound = () => {
     const audio = new Audio(bubblePopSound);
-    audio.volume = 0.5;
+    audio.volume = 1.0; // Full volume
     audio.play().catch(err => console.log('Sound play failed:', err));
   };
 
