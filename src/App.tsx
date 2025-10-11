@@ -20,6 +20,7 @@ import { DataSettings } from "./components/settings/DataSettings";
 import { HelpSettings } from "./components/settings/HelpSettings";
 import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
+import { HealthSyncSettings } from "./components/settings/HealthSyncSettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -54,6 +55,7 @@ const App = () => {
           <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
           <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
           <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
+          <Route path="/settings/health-sync" element={<ProtectedRoute><HealthSyncSettings /></ProtectedRoute>} />
           <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
           <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
           <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />

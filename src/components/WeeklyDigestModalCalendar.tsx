@@ -46,7 +46,7 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
     ? weekData.weightData[weekData.weightData.length - 1].weight - weekData.weightData[0].weight
     : 0;
 
-  // Organize data by day
+  // Organize data by day - only show taken medications
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dailyData = daysOfWeek.map((day, dayIndex) => {
     const compoundsForDay = weekData.compounds.map(compound => {
@@ -55,7 +55,7 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
         name: compound.name,
         dose: doseForDay || { day, count: 0, taken: false }
       };
-    }).filter(c => c.dose.count > 0);
+    }).filter(c => c.dose.count > 0 && c.dose.taken); // Only show taken doses
 
     return {
       day,
@@ -114,32 +114,22 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
                       {dayData.compounds.map((compound, cIdx) => (
                         <div 
                           key={cIdx}
-                          className={`flex items-center justify-between p-2 rounded-md ${
-                            compound.dose.taken 
-                              ? "bg-primary/10 border border-primary/20" 
-                              : "bg-muted/50"
-                          }`}
+                          className="flex items-center justify-between p-2 rounded-md bg-primary/10 border border-primary/20"
                         >
                           <div className="flex items-center gap-2">
-                            <Pill className={`h-4 w-4 ${
-                              compound.dose.taken ? "text-primary" : "text-muted-foreground"
-                            }`} />
-                            <span className={`text-sm ${
-                              compound.dose.taken ? "text-foreground font-medium" : "text-muted-foreground"
-                            }`}>
+                            <Pill className="h-4 w-4 text-primary" />
+                            <span className="text-sm text-foreground font-medium">
                               {compound.name}
                             </span>
                           </div>
-                          <span className={`text-xs font-medium ${
-                            compound.dose.taken ? "text-primary" : "text-muted-foreground"
-                          }`}>
+                          <span className="text-xs font-medium text-primary">
                             {compound.dose.count}x
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">No doses scheduled</p>
+                    <p className="text-sm text-muted-foreground italic">No doses taken</p>
                   )}
                 </div>
               ))}
@@ -169,25 +159,57 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
                     </span>
                   </div>
                 </div>
-                <div className="flex items-end justify-between gap-2 h-24">
-                  {weekData.weightData.map((entry, idx) => {
-                    const maxWeight = Math.max(...weekData.weightData.map(d => d.weight));
-                    const minWeight = Math.min(...weekData.weightData.map(d => d.weight));
-                    const range = maxWeight - minWeight || 1;
-                    const normalizedHeight = range > 0 ? ((entry.weight - minWeight) / range) * 80 + 20 : 50;
-                    
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                        <div
-                          className="w-full bg-primary rounded-t min-h-[8px]"
-                          style={{ height: `${normalizedHeight}%` }}
-                        />
-                        <span className="text-[10px] text-muted-foreground font-medium">
-                          {Math.round(entry.weight)}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="relative h-32">
+                  <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                    {/* Draw line graph */}
+                    {weekData.weightData.length > 1 && (() => {
+                      const maxWeight = Math.max(...weekData.weightData.map(d => d.weight));
+                      const minWeight = Math.min(...weekData.weightData.map(d => d.weight));
+                      const range = maxWeight - minWeight || 1;
+                      
+                      const points = weekData.weightData.map((entry, idx) => {
+                        const x = (idx / (weekData.weightData.length - 1)) * 100;
+                        const normalizedValue = (entry.weight - minWeight) / range;
+                        const y = 100 - (normalizedValue * 80 + 10);
+                        return `${x},${y}`;
+                      }).join(' ');
+                      
+                      return (
+                        <>
+                          <polyline
+                            points={points}
+                            fill="none"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          {weekData.weightData.map((entry, idx) => {
+                            const x = (idx / (weekData.weightData.length - 1)) * 100;
+                            const normalizedValue = (entry.weight - minWeight) / range;
+                            const y = 100 - (normalizedValue * 80 + 10);
+                            return (
+                              <circle
+                                key={idx}
+                                cx={x}
+                                cy={y}
+                                r="1.5"
+                                fill="hsl(var(--primary))"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                  {/* Weight labels */}
+                  <div className="flex justify-between mt-2">
+                    {weekData.weightData.map((entry, idx) => (
+                      <span key={idx} className="text-[10px] text-muted-foreground font-medium">
+                        {Math.round(entry.weight)}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
