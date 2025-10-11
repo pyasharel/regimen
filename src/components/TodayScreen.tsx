@@ -604,12 +604,11 @@ export const TodayScreen = () => {
                       className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
                         isSelected
                           ? 'bg-primary text-primary-foreground'
+                          : isToday
+                          ? 'ring-2 ring-primary ring-inset'
                           : 'hover:bg-muted'
                       }`}
                     >
-                      {isToday && !isSelected && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
-                      )}
                       <span className="text-xs font-medium">
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                       </span>
