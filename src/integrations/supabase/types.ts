@@ -144,7 +144,7 @@ export type Database = {
       }
       profiles: {
         Row: {
-          biggest_challenge: string | null
+          challenges: string[] | null
           created_at: string | null
           full_name: string | null
           goals: string[] | null
@@ -154,7 +154,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          biggest_challenge?: string | null
+          challenges?: string[] | null
           created_at?: string | null
           full_name?: string | null
           goals?: string[] | null
@@ -164,7 +164,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          biggest_challenge?: string | null
+          challenges?: string[] | null
           created_at?: string | null
           full_name?: string | null
           goals?: string[] | null
