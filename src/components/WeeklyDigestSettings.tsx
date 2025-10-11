@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { Eye } from "lucide-react";
 
 export const WeeklyDigestSettings = () => {
   const [enabled, setEnabled] = useState(false);
@@ -161,6 +163,18 @@ export const WeeklyDigestSettings = () => {
               </SelectContent>
             </Select>
           </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              localStorage.setItem("openWeeklyDigest", "true");
+              window.dispatchEvent(new Event("focus"));
+            }}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Preview Digest
+          </Button>
         </div>
       )}
     </div>

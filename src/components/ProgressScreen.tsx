@@ -6,7 +6,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
-import { ProgressBadges } from "@/components/ProgressBadges";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -61,7 +61,6 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
 
   // Cached data fetching with React Query
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -134,162 +133,6 @@ export const ProgressScreen = () => {
     return () => window.removeEventListener('storage', checkPremium);
   }, []);
 
-  // Load earned badges from localStorage
-  useEffect(() => {
-    const savedBadges = localStorage.getItem('earnedBadges');
-    if (savedBadges) {
-      setEarnedBadges(JSON.parse(savedBadges));
-    }
-  }, []);
-
-  // Import badge illustrations
-  const stack1 = new URL('/src/assets/badges/stack-1.png', import.meta.url).href;
-  const stack3 = new URL('/src/assets/badges/stack-3.png', import.meta.url).href;
-  const stack5 = new URL('/src/assets/badges/stack-5.png', import.meta.url).href;
-  const stack10 = new URL('/src/assets/badges/stack-10.png', import.meta.url).href;
-  const cycleMaster = new URL('/src/assets/badges/cycle-master.png', import.meta.url).href;
-  const schedulePro = new URL('/src/assets/badges/schedule-pro.png', import.meta.url).href;
-  const perfect7 = new URL('/src/assets/badges/perfect-7.png', import.meta.url).href;
-  const perfect30 = new URL('/src/assets/badges/perfect-30.png', import.meta.url).href;
-  const photo5 = new URL('/src/assets/badges/photo-5.png', import.meta.url).href;
-  const photo20 = new URL('/src/assets/badges/photo-20.png', import.meta.url).href;
-  const weight10 = new URL('/src/assets/badges/weight-10.png', import.meta.url).href;
-  const weight30 = new URL('/src/assets/badges/weight-30.png', import.meta.url).href;
-
-  // Calculate badges based on progress
-  const badges = useMemo(() => {
-    const totalCompounds = compounds.length;
-    const totalPhotos = entries.filter(e => e.category === 'photo' && e.photo_url).length;
-    const totalWeights = entries.filter(e => e.category === 'weight').length;
-    
-    // Calculate perfect days (days where all scheduled doses were taken)
-    const perfectDays = (() => {
-      const dosesByDate = new Map<string, { scheduled: number; taken: number }>();
-      recentDoses.forEach(dose => {
-        const dateKey = dose.scheduled_date;
-        if (!dosesByDate.has(dateKey)) {
-          dosesByDate.set(dateKey, { scheduled: 0, taken: 0 });
-        }
-        const day = dosesByDate.get(dateKey)!;
-        day.scheduled++;
-        if (dose.taken) day.taken++;
-      });
-      return Array.from(dosesByDate.values()).filter(day => day.scheduled > 0 && day.taken === day.scheduled).length;
-    })();
-
-    const allBadges = [
-      {
-        id: 'stack-1',
-        name: 'Getting Started',
-        description: 'First compound added',
-        illustration: stack1,
-        tier: 1,
-        earned: totalCompounds >= 1,
-        earnedDate: totalCompounds >= 1 ? compounds[0]?.created_at : undefined
-      },
-      {
-        id: 'stack-3',
-        name: 'Stack Builder',
-        description: '3 compounds tracked',
-        illustration: stack3,
-        tier: 2,
-        earned: totalCompounds >= 3,
-        earnedDate: totalCompounds >= 3 ? compounds[2]?.created_at : undefined
-      },
-      {
-        id: 'stack-5',
-        name: 'The Optimizer',
-        description: '5 compounds tracked',
-        illustration: stack5,
-        tier: 3,
-        earned: totalCompounds >= 5,
-        earnedDate: totalCompounds >= 5 ? compounds[4]?.created_at : undefined
-      },
-      {
-        id: 'stack-10',
-        name: 'Stack Master',
-        description: '10+ compounds tracked',
-        illustration: stack10,
-        tier: 4,
-        earned: totalCompounds >= 10,
-        earnedDate: totalCompounds >= 10 ? compounds[9]?.created_at : undefined
-      },
-      {
-        id: 'cycle-master',
-        name: 'Cycle Wizard',
-        description: 'First cycling protocol created',
-        illustration: cycleMaster,
-        earned: compounds.some(c => c.has_cycles),
-        earnedDate: compounds.find(c => c.has_cycles)?.created_at
-      },
-      {
-        id: 'schedule-pro',
-        name: 'Schedule Guru',
-        description: 'Custom schedule set up',
-        illustration: schedulePro,
-        earned: compounds.some(c => c.schedule_type === 'specific_days'),
-        earnedDate: compounds.find(c => c.schedule_type === 'specific_days')?.created_at
-      },
-      {
-        id: 'perfect-7',
-        name: 'On Point',
-        description: '7 perfect days',
-        illustration: perfect7,
-        earned: perfectDays >= 7,
-        earnedDate: perfectDays >= 7 ? recentDoses[0]?.created_at : undefined
-      },
-      {
-        id: 'perfect-30',
-        name: 'Locked In',
-        description: '30 perfect days',
-        illustration: perfect30,
-        earned: perfectDays >= 30,
-        earnedDate: perfectDays >= 30 ? recentDoses[0]?.created_at : undefined
-      },
-      {
-        id: 'photo-5',
-        name: 'Paparazzi',
-        description: '5 progress photos',
-        illustration: photo5,
-        earned: totalPhotos >= 5,
-        earnedDate: totalPhotos >= 5 ? entries.filter(e => e.category === 'photo' && e.photo_url)[4]?.created_at : undefined
-      },
-      {
-        id: 'photo-20',
-        name: 'Cover Model',
-        description: '20 progress photos',
-        illustration: photo20,
-        earned: totalPhotos >= 20,
-        earnedDate: totalPhotos >= 20 ? entries.filter(e => e.category === 'photo' && e.photo_url)[19]?.created_at : undefined
-      },
-      {
-        id: 'weight-10',
-        name: 'Data Nerd',
-        description: '10 weight entries',
-        illustration: weight10,
-        earned: totalWeights >= 10,
-        earnedDate: totalWeights >= 10 ? entries.filter(e => e.category === 'weight')[9]?.created_at : undefined
-      },
-      {
-        id: 'weight-30',
-        name: 'Spreadsheet Wizard',
-        description: '30 weight entries',
-        illustration: weight30,
-        earned: totalWeights >= 30,
-        earnedDate: totalWeights >= 30 ? entries.filter(e => e.category === 'weight')[29]?.created_at : undefined
-      }
-    ];
-
-    // Save newly earned badges (no toast notifications)
-    const newlyEarned = allBadges.filter(b => b.earned && !earnedBadges.includes(b.id));
-    if (newlyEarned.length > 0) {
-      const updatedBadges = [...earnedBadges, ...newlyEarned.map(b => b.id)];
-      setEarnedBadges(updatedBadges);
-      localStorage.setItem('earnedBadges', JSON.stringify(updatedBadges));
-    }
-
-    return allBadges;
-  }, [entries, compounds, earnedBadges]);
 
   const handleLogWeight = async () => {
     if (!weight) {
@@ -753,8 +596,6 @@ export const ProgressScreen = () => {
           </Card>
         </div>
 
-        {/* Progress Badges moved to the end */}
-        <ProgressBadges badges={badges} />
       </div>
 
       <BottomNavigation />
