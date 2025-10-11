@@ -195,6 +195,25 @@ export const MyStackScreen = () => {
     return Math.max(0, diff); // Ensure we never show negative days
   };
 
+  const formatTime = (time: string) => {
+    // Handle preset times
+    if (time === 'Morning') return '8:00 AM';
+    if (time === 'Afternoon') return '2:00 PM';
+    if (time === 'Evening') return '6:00 PM';
+    
+    // Handle custom time in HH:MM format (24-hour)
+    const customTimeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (customTimeMatch) {
+      let hours = parseInt(customTimeMatch[1]);
+      const minutes = customTimeMatch[2];
+      const period = hours >= 12 ? 'PM' : 'AM';
+      hours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${hours}:${minutes} ${period}`;
+    }
+    
+    return time; // Fallback to original
+  };
+
   const getScheduleDisplay = (compound: Compound) => {
     if ((compound.schedule_type === 'Specific day(s)' || compound.schedule_type === 'Specific day of the week') && compound.schedule_days) {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -324,7 +343,7 @@ export const MyStackScreen = () => {
                       <p className="mt-1 text-sm text-muted-foreground">
                         {compound.intended_dose} {compound.dose_unit}
                         {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
-                        {' • '}{compound.time_of_day.join(', ')}
+                        {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}d

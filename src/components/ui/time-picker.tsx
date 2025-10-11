@@ -75,7 +75,6 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
                     key={hour}
                     onClick={() => {
                       handleTimeChange(hour, selectedMinute, selectedPeriod);
-                      setOpen(false);
                     }}
                     className={cn(
                       "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
@@ -103,7 +102,6 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
                     key={minute}
                     onClick={() => {
                       handleTimeChange(selectedHour, minute, selectedPeriod);
-                      setOpen(false);
                     }}
                     className={cn(
                       "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
@@ -128,7 +126,6 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
               <button
                 onClick={() => {
                   handleTimeChange(selectedHour, selectedMinute, 'AM');
-                  setOpen(false);
                 }}
                 className={cn(
                   "w-14 px-2 py-1.5 text-sm rounded transition-colors block",
@@ -142,7 +139,6 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps) => {
               <button
                 onClick={() => {
                   handleTimeChange(selectedHour, selectedMinute, 'PM');
-                  setOpen(false);
                 }}
                 className={cn(
                   "w-14 px-2 py-1.5 text-sm rounded transition-colors block",

@@ -318,6 +318,11 @@ export const SettingsScreen = () => {
           <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
+
+        {/* Version Number */}
+        <div className="text-center text-xs text-muted-foreground/60 mt-4">
+          Version 1.0.0
+        </div>
       </div>
 
       <BottomNavigation />

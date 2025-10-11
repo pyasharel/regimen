@@ -378,9 +378,20 @@ export const TodayScreen = () => {
   };
 
   const formatTime = (time: string) => {
+    // Handle preset times
     if (time === 'Morning') return '8:00 AM';
     if (time === 'Afternoon') return '2:00 PM';
     if (time === 'Evening') return '6:00 PM';
+    
+    // Handle custom time in HH:MM format (24-hour)
+    const customTimeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (customTimeMatch) {
+      let hours = parseInt(customTimeMatch[1]);
+      const minutes = customTimeMatch[2];
+      const period = hours >= 12 ? 'PM' : 'AM';
+      hours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${hours}:${minutes} ${period}`;
+    }
     
     // Handle 24-hour format (HH:MM) and convert to 12-hour with AM/PM
     const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
