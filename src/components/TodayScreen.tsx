@@ -151,7 +151,8 @@ export const TodayScreen = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      const { data: dosesData, error } = await supabase
+      // Get regular scheduled doses for the selected date
+      const { data: dosesData, error: dosesError } = await supabase
         .from('doses')
         .select(`
           *,
@@ -159,13 +160,44 @@ export const TodayScreen = () => {
         `)
         .eq('scheduled_date', dateStr);
 
-      if (error) throw error;
+      if (dosesError) throw dosesError;
 
-      const formattedDoses = dosesData?.map(d => ({
-        ...d,
-        compound_name: d.compounds?.name,
-        schedule_type: d.compounds?.schedule_type
+      // Get "As Needed" compounds for this user
+      const { data: asNeededCompounds, error: compoundsError } = await supabase
+        .from('compounds')
+        .select('*')
+        .eq('schedule_type', 'As Needed')
+        .eq('is_active', true);
+
+      if (compoundsError) throw compoundsError;
+
+      // Create virtual doses for "As Needed" medications
+      const asNeededDoses = asNeededCompounds?.map(compound => ({
+        id: `as-needed-${compound.id}`,
+        compound_id: compound.id,
+        compound_name: compound.name,
+        dose_amount: compound.intended_dose,
+        dose_unit: compound.dose_unit,
+        scheduled_time: '',
+        scheduled_date: dateStr,
+        taken: false,
+        taken_at: null,
+        skipped: false,
+        schedule_type: 'As Needed',
+        calculated_iu: compound.calculated_iu,
+        user_id: compound.user_id,
+        created_at: new Date().toISOString(),
+        compounds: { name: compound.name, schedule_type: 'As Needed' }
       })) || [];
+
+      const formattedDoses = [
+        ...(dosesData?.map(d => ({
+          ...d,
+          compound_name: d.compounds?.name,
+          schedule_type: d.compounds?.schedule_type
+        })) || []),
+        ...asNeededDoses
+      ];
 
       // Sort doses by time (convert text times to sortable format)
       // Keep "As Needed" at the end
@@ -485,7 +517,7 @@ export const TodayScreen = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '10s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary" />
         </div>
       </div>
 
@@ -539,10 +571,8 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
-                        isSelected && isToday
-                          ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
-                          : isSelected
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors ${
+                        isSelected
                           ? 'bg-primary text-primary-foreground'
                           : isToday
                           ? 'bg-surface ring-2 ring-primary/40'

@@ -1,6 +1,8 @@
-# Current Medications in Database
+# Medications List
 
-This is the complete list of medications currently stored in the compounds table:
+This file contains all compounds currently available in the database.
+
+## Current Compounds (14 total)
 
 1. CJC-1295
 2. CJC-1295 with DAC
@@ -17,4 +19,6 @@ This is the complete list of medications currently stored in the compounds table
 13. Thymosin Beta-4
 14. Tirzepatide
 
-Total: 14 unique compound names
+---
+
+**Note**: This list reflects the unique compound names in the database. If you see more compounds in the app, they may be user-created custom compounds that are not part of this default list.

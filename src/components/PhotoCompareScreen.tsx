@@ -22,6 +22,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import logoGradient from "@/assets/logo-gradient.png";
+import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 
 interface PhotoEntry {
   id: string;
@@ -42,6 +43,7 @@ export default function PhotoCompareScreen() {
   const [showPhotoSelector, setShowPhotoSelector] = useState<'before' | 'after' | null>(null);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<PhotoEntry | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,6 +122,46 @@ export default function PhotoCompareScreen() {
       
       toast.success("Photo deleted successfully");
       setPhotoToDelete(null);
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error("Failed to delete photo");
+    }
+  };
+
+  const handleDeletePhotoFromPreview = async (entryId: string) => {
+    try {
+      const photoEntry = availablePhotos.find(p => p.id === entryId);
+      if (!photoEntry) return;
+
+      // Delete from storage
+      const { error: storageError } = await supabase
+        .storage
+        .from('progress-photos')
+        .remove([photoEntry.photo_url]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('progress_entries')
+        .delete()
+        .eq('id', entryId);
+
+      if (dbError) throw dbError;
+
+      // Clear from selected photos if it was selected
+      if (selectedPhotos.before?.url === getPhotoUrl(photoEntry.photo_url)) {
+        setSelectedPhotos(prev => ({ ...prev, before: null }));
+      }
+      if (selectedPhotos.after?.url === getPhotoUrl(photoEntry.photo_url)) {
+        setSelectedPhotos(prev => ({ ...prev, after: null }));
+      }
+
+      // Refresh photos list
+      await fetchPhotos();
+      
+      toast.success("Photo deleted successfully");
+      setPreviewPhoto(null);
     } catch (error) {
       console.error('Error deleting photo:', error);
       toast.error("Failed to delete photo");
@@ -355,11 +397,17 @@ export default function PhotoCompareScreen() {
             <h3 className="text-sm font-semibold text-muted-foreground">All Photos</h3>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
               {availablePhotos.map((photo) => (
-                <div key={photo.id} className="flex-shrink-0 snap-center">
+                <div 
+                  key={photo.id} 
+                  className="flex-shrink-0 snap-center cursor-pointer"
+                  onClick={() => {
+                    setPreviewPhoto(photo.id);
+                  }}
+                >
                   <img
                     src={getPhotoUrl(photo.photo_url)}
                     alt={`Progress from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
-                    className="h-32 w-32 object-cover rounded-lg border-2 border-border"
+                    className="h-32 w-32 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors"
                   />
                   <p className="text-xs text-center text-muted-foreground mt-1">
                     {format(new Date(photo.entry_date), 'MMM d')}
@@ -568,6 +616,17 @@ export default function PhotoCompareScreen() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Photo Preview Modal */}
+      {previewPhoto && (
+        <PhotoPreviewModal
+          open={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+          photoUrl={getPhotoUrl(availablePhotos.find(p => p.id === previewPhoto)?.photo_url || '')}
+          entryId={previewPhoto}
+          onDelete={handleDeletePhotoFromPreview}
+        />
+      )}
     </div>
   );
 }
