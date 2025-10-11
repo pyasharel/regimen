@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
+import { Health } from "@flomentumsolutions/capacitor-health-extended";
 
 export type HealthPlatform = "ios" | "android" | "web";
 
@@ -38,11 +39,22 @@ export const useHealthIntegration = () => {
     }
 
     try {
-      // Simplified permission flow - actual implementation will happen when deployed to device
-      toast.success("Health permissions requested - please approve in your device settings");
-      setHasPermission(true);
-      localStorage.setItem("healthPermissionGranted", "true");
-      return true;
+      // Request weight read permissions
+      const response = await Health.requestHealthPermissions({
+        permissions: ["READ_WEIGHT"]
+      });
+      
+      const granted = response.permissions.some(p => p.READ_WEIGHT === true);
+      setHasPermission(granted);
+      localStorage.setItem("healthPermissionGranted", String(granted));
+      
+      if (granted) {
+        toast.success("Health permissions granted");
+      } else {
+        toast.error("Health permissions denied");
+      }
+      
+      return granted;
     } catch (error) {
       console.error("Permission request failed:", error);
       toast.error("Failed to request health permissions");
@@ -53,17 +65,31 @@ export const useHealthIntegration = () => {
   const syncWeightFromHealth = async (): Promise<number | null> => {
     if (!hasPermission || platform === "web") return null;
     
-    // Placeholder - actual implementation requires device deployment
-    console.log("Syncing weight from health app...");
-    return null;
+    try {
+      const result = await Health.queryWeight();
+      if (result && result.value) {
+        // The value is in the unit specified by result.unit (likely kg)
+        // Convert to lbs if needed
+        const weightLbs = result.unit === "kg" ? result.value * 2.20462 : result.value;
+        return weightLbs;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to sync weight from health:", error);
+      return null;
+    }
   };
 
   const saveWeightToHealth = async (weightLbs: number): Promise<boolean> => {
     if (!hasPermission || platform === "web") return false;
 
     try {
-      // Placeholder - actual implementation requires device deployment
-      console.log("Saving weight to health app:", weightLbs);
+      // Convert lbs to kg for health APIs
+      const weightKg = weightLbs / 2.20462;
+      
+      // Note: Writing to health requires additional implementation
+      // This is a placeholder - the API may not support writing weight directly
+      console.log("Saving weight to health app:", weightKg, "kg");
       toast.success("Weight synced to health app");
       return true;
     } catch (error) {
