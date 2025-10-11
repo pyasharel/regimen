@@ -298,10 +298,11 @@ export const TodayScreen = () => {
       );
       setDoses(updatedDoses);
 
-      // Check if this was the last dose
+      // Check if this was the last dose (excluding "as needed" medications)
       if (!currentStatus) {
-        const allTaken = updatedDoses.every(d => d.taken);
-        if (allTaken && updatedDoses.length > 0) {
+        const scheduledDoses = updatedDoses.filter(d => d.schedule_type !== 'As Needed');
+        const allScheduledTaken = scheduledDoses.every(d => d.taken);
+        if (allScheduledTaken && scheduledDoses.length > 0) {
           // Trigger last dose celebration after regular animation
           setTimeout(() => {
             triggerLastDoseCelebration();
