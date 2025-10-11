@@ -2,8 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Download, Share2, Copy, Camera, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Download, Share2, Copy, Camera, Image as ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -31,6 +41,7 @@ export default function PhotoCompareScreen() {
   const [availablePhotos, setAvailablePhotos] = useState<PhotoEntry[]>([]);
   const [showPhotoSelector, setShowPhotoSelector] = useState<'before' | 'after' | null>(null);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [photoToDelete, setPhotoToDelete] = useState<PhotoEntry | null>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,6 +83,82 @@ export default function PhotoCompareScreen() {
       } 
     }));
     setShowPhotoSelector(null);
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!photoToDelete) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('progress-photos')
+        .remove([photoToDelete.photo_url]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('progress_entries')
+        .delete()
+        .eq('id', photoToDelete.id);
+
+      if (dbError) throw dbError;
+
+      // Clear from selected photos if it was selected
+      if (selectedPhotos.before?.url === getPhotoUrl(photoToDelete.photo_url)) {
+        setSelectedPhotos(prev => ({ ...prev, before: null }));
+      }
+      if (selectedPhotos.after?.url === getPhotoUrl(photoToDelete.photo_url)) {
+        setSelectedPhotos(prev => ({ ...prev, after: null }));
+      }
+
+      // Refresh photos list
+      await fetchPhotos();
+      
+      toast.success("Photo deleted successfully");
+      setPhotoToDelete(null);
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error("Failed to delete photo");
+    }
+  };
+
+  const handleDownloadPhoto = async (photoUrl: string, date: string) => {
+    try {
+      const response = await fetch(photoUrl);
+      const blob = await response.blob();
+      
+      if (Capacitor.isNativePlatform()) {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = async () => {
+          const base64Data = (reader.result as string).split(',')[1];
+          const fileName = `regimen-photo-${date}.png`;
+          
+          await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Documents
+          });
+          
+          toast.success("Photo saved to Documents!");
+        };
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `regimen-photo-${date}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Photo downloaded!");
+      }
+    } catch (error) {
+      console.error('Error downloading photo:', error);
+      toast.error("Failed to download photo");
+    }
   };
 
   const createComparisonBlob = async (): Promise<Blob | null> => {
@@ -356,18 +443,46 @@ export default function PhotoCompareScreen() {
               .map((photo) => (
                 <Card
                   key={photo.id}
-                  className="cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                  onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+                  className="relative hover:ring-2 hover:ring-primary transition-all group"
                 >
-                  <img
-                    src={getPhotoUrl(photo.photo_url)}
-                    alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
-                    className="w-full h-48 object-cover rounded-t-lg"
-                  />
-                  <div className="p-3 text-center">
-                    <p className="text-sm font-medium">
-                      {format(new Date(photo.entry_date), 'MMM d, yyyy')}
-                    </p>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+                  >
+                    <img
+                      src={getPhotoUrl(photo.photo_url)}
+                      alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
+                    <div className="p-3 text-center">
+                      <p className="text-sm font-medium">
+                        {format(new Date(photo.entry_date), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-8 w-8 shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPhoto(getPhotoUrl(photo.photo_url), photo.entry_date);
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="h-8 w-8 shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoToDelete(photo);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -414,6 +529,24 @@ export default function PhotoCompareScreen() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!photoToDelete} onOpenChange={() => setPhotoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Photo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this progress photo. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePhoto} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

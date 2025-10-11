@@ -121,7 +121,7 @@ export const Onboarding = () => {
               <div className="space-y-3">
                 <h1 className="text-4xl font-bold">Welcome to Regimen</h1>
                 <p className="text-lg text-muted-foreground max-w-sm">
-                  Track everything, reach your goals.
+                  Never miss a dose. Reach your goals.
                 </p>
               </div>
             </div>
