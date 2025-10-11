@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
 
 // Version info - update these when bumping versions in capacitor.config.ts
-const APP_VERSION = '0.1.0';
-const APP_BUILD = '2';
+const APP_VERSION = '0.1.1';
+const APP_BUILD = '3';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
