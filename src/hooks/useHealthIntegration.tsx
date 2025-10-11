@@ -100,21 +100,27 @@ export const useHealthIntegration = () => {
   };
 
   const toggleHealthSync = async (enabled: boolean): Promise<boolean> => {
-    if (enabled && !hasPermission) {
-      const granted = await requestPermission();
-      if (!granted) return false;
-    }
+    try {
+      if (enabled && !hasPermission) {
+        const granted = await requestPermission();
+        if (!granted) return false;
+      }
 
-    localStorage.setItem("healthSyncEnabled", String(enabled));
-    setIsEnabled(enabled);
-    
-    if (enabled) {
-      toast.success("Health sync enabled");
-    } else {
-      toast.success("Health sync disabled");
+      localStorage.setItem("healthSyncEnabled", String(enabled));
+      setIsEnabled(enabled);
+      
+      if (enabled) {
+        toast.success("Health sync enabled");
+      } else {
+        toast.success("Health sync disabled");
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error toggling health sync:", error);
+      toast.error("Failed to toggle health sync");
+      return false;
     }
-    
-    return true;
   };
 
   return {

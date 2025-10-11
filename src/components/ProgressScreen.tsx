@@ -26,6 +26,7 @@ import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
+import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 
 type ProgressEntry = {
   id: string;
@@ -62,6 +63,7 @@ export const ProgressScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   
   const { isEnabled: healthSyncEnabled, syncWeightFromHealth, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
@@ -81,6 +83,8 @@ export const ProgressScreen = () => {
       if (error) throw error;
       return data as ProgressEntry[];
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
   });
 
   const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
@@ -337,6 +341,40 @@ export const ProgressScreen = () => {
     return data.publicUrl;
   };
 
+  const handleDeletePhoto = async (entryId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) return;
+
+      // Delete from storage if has photo
+      if (entry.photo_url) {
+        const { error: storageError } = await supabase.storage
+          .from('progress-photos')
+          .remove([entry.photo_url]);
+        
+        if (storageError) console.error('Error deleting from storage:', storageError);
+      }
+
+      // Delete entry
+      const { error } = await supabase
+        .from('progress_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Photo deleted');
+      refetchEntries();
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error('Failed to delete photo');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
@@ -486,7 +524,10 @@ export const ProgressScreen = () => {
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {[...photoEntries].reverse().map((entry) => (
                   <div key={entry.id} className="flex-shrink-0 text-center">
-                    <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
+                    <div 
+                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => setPreviewPhoto({ url: getPhotoUrl(entry.photo_url!), id: entry.id })}
+                    >
                       <img
                         src={getPhotoUrl(entry.photo_url!)}
                         alt={`Progress ${entry.entry_date}`}
@@ -711,6 +752,13 @@ export const ProgressScreen = () => {
       </Dialog>
 
       <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
+      <PhotoPreviewModal 
+        open={!!previewPhoto}
+        onClose={() => setPreviewPhoto(null)}
+        photoUrl={previewPhoto?.url || ''}
+        entryId={previewPhoto?.id || ''}
+        onDelete={handleDeletePhoto}
+      />
     </div>
   );
 };

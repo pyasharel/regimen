@@ -24,6 +24,7 @@ interface Dose {
   calculated_iu: number | null;
   taken: boolean;
   compound_name?: string;
+  schedule_type?: string;
 }
 
 export const TodayScreen = () => {
@@ -154,7 +155,7 @@ export const TodayScreen = () => {
         .from('doses')
         .select(`
           *,
-          compounds (name)
+          compounds (name, schedule_type)
         `)
         .eq('scheduled_date', dateStr);
 
@@ -162,11 +163,17 @@ export const TodayScreen = () => {
 
       const formattedDoses = dosesData?.map(d => ({
         ...d,
-        compound_name: d.compounds?.name
+        compound_name: d.compounds?.name,
+        schedule_type: d.compounds?.schedule_type
       })) || [];
 
       // Sort doses by time (convert text times to sortable format)
+      // Keep "As Needed" at the end
       const sortedDoses = formattedDoses.sort((a, b) => {
+        // As Needed goes to the end
+        if (a.schedule_type === 'As Needed' && b.schedule_type !== 'As Needed') return 1;
+        if (b.schedule_type === 'As Needed' && a.schedule_type !== 'As Needed') return -1;
+        
         const getTimeValue = (time: string) => {
           if (time === 'Morning') return '08:00';
           if (time === 'Afternoon') return '14:00';
@@ -478,7 +485,7 @@ export const TodayScreen = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '4s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '6s' }} />
         </div>
       </div>
 
@@ -651,92 +658,168 @@ export const TodayScreen = () => {
             </div>
           )
         ) : (
-          doses.map((dose) => (
-            <div
-              key={dose.id}
-              ref={(el) => {
-                if (el) cardRefs.current.set(dose.id, el);
-                else cardRefs.current.delete(dose.id);
-              }}
-              className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
-                dose.taken
-                  ? 'bg-card border-border'
-                  : 'bg-primary border-primary shadow-sm'
-              }`}
-              style={{
-                opacity: dose.taken ? 0.85 : 1,
-                transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-            >
-              {/* Golden shine for day complete only */}
-              {showDayComplete && dose.taken && (
-                <div 
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
-                    backgroundSize: '200% 100%',
-                    animation: 'golden-shine 0.3s ease-out'
-                  }}
-                />
-              )}
-              
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className={`text-lg font-bold transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white'}`}>
-                      {dose.compound_name}
-                    </h3>
-                    <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
-                      {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
-                      {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleDose(dose.id, dose.taken)}
-                    disabled={animatingDoses.has(dose.id)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
-                      dose.taken
-                        ? 'bg-success border-success'
-                        : 'border-white/40 hover:border-white active:scale-95'
-                    }`}
+          <>
+            {/* Regular scheduled doses */}
+            {doses.filter(d => d.schedule_type !== 'As Needed').map((dose) => (
+              <div
+                key={dose.id}
+                ref={(el) => {
+                  if (el) cardRefs.current.set(dose.id, el);
+                  else cardRefs.current.delete(dose.id);
+                }}
+                className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
+                  dose.taken
+                    ? 'bg-card border-border'
+                    : 'bg-primary border-primary shadow-sm'
+                }`}
+                style={{
+                  opacity: dose.taken ? 0.85 : 1,
+                  transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                {/* Golden shine for day complete only */}
+                {showDayComplete && dose.taken && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none"
                     style={{
-                      ...(animatingDoses.has(dose.id) && dose.taken ? {
-                        animation: 'checkbox-check 0.2s ease-out'
-                      } : {})
+                      background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'golden-shine 0.3s ease-out'
                     }}
-                  >
-                    {dose.taken && (
-                      <svg
-                        className="h-full w-full text-white"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeDasharray="24"
-                        strokeDashoffset="0"
-                        style={{
-                          animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
-                        }}
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
+                  />
+                )}
+                
+                <div className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className={`text-lg font-bold transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white'}`}>
+                        {dose.compound_name}
+                      </h3>
+                      <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
+                        {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
+                        {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => toggleDose(dose.id, dose.taken)}
+                      disabled={animatingDoses.has(dose.id)}
+                      className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                        dose.taken
+                          ? 'bg-success border-success'
+                          : 'border-white/40 hover:border-white active:scale-95'
+                      }`}
+                      style={{
+                        ...(animatingDoses.has(dose.id) && dose.taken ? {
+                          animation: 'checkbox-check 0.2s ease-out'
+                        } : {})
+                      }}
+                    >
+                      {dose.taken && (
+                        <svg
+                          className="h-full w-full text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeDasharray="24"
+                          strokeDashoffset="0"
+                          style={{
+                            animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                          }}
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+
+            {/* As Needed Section */}
+            {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
+              <>
+                <div className="mt-6 mb-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground">As Needed</h4>
+                </div>
+                {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (
+                  <div
+                    key={dose.id}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(dose.id, el);
+                      else cardRefs.current.delete(dose.id);
+                    }}
+                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
+                      dose.taken
+                        ? 'bg-card border-border'
+                        : 'bg-muted/30 border-border'
+                    }`}
+                    style={{
+                      opacity: dose.taken ? 0.85 : 0.9,
+                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    <div className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className={`text-lg font-bold transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-foreground'}`}>
+                            {dose.compound_name}
+                          </h3>
+                          <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                            {dose.dose_amount} {dose.dose_unit}
+                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => toggleDose(dose.id, dose.taken)}
+                          disabled={animatingDoses.has(dose.id)}
+                          className={`h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                            dose.taken
+                              ? 'bg-success border-success'
+                              : 'border-border hover:border-primary active:scale-95'
+                          }`}
+                          style={{
+                            ...(animatingDoses.has(dose.id) && dose.taken ? {
+                              animation: 'checkbox-check 0.2s ease-out'
+                            } : {})
+                          }}
+                        >
+                          {dose.taken && (
+                            <svg
+                              className="h-full w-full text-white"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24"
+                              strokeDashoffset="0"
+                              style={{
+                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                              }}
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </>
         )}
       </div>
 
       {/* FAB Button */}
       <button
         onClick={() => navigate("/add-compound")}
-        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
+        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-2xl shadow-primary/50 transition-transform hover:scale-105 active:scale-95"
         style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
       >
-        <Plus className="h-6 w-6" />
+        <Plus className="h-6 w-6 text-white" />
       </button>
 
       <BottomNavigation />
