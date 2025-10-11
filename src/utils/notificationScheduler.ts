@@ -134,9 +134,16 @@ export const scheduleAllUpcomingDoses = async (doses: any[]) => {
     return doseDate >= now && doseDate <= sevenDaysFromNow;
   });
 
+  console.log(`Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
+
   for (const dose of upcomingDoses) {
-    await scheduleDoseNotification(dose);
+    // Ensure compound_name is available
+    const doseWithName = {
+      ...dose,
+      compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
+    };
+    await scheduleDoseNotification(doseWithName);
   }
 
-  console.log(`Scheduled ${upcomingDoses.length} notifications`);
+  console.log(`Successfully scheduled ${upcomingDoses.length} notifications`);
 };

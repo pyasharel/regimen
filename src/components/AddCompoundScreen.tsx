@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { requestNotificationPermissions } from "@/utils/notificationScheduler";
+import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 
 const COMMON_PEPTIDES = [
   // Peptides
@@ -361,6 +361,17 @@ export const AddCompoundScreen = () => {
 
         if (dosesUpdateError) throw dosesUpdateError;
 
+        // Reschedule notifications for all upcoming doses
+        const { data: allDoses } = await supabase
+          .from('doses')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('taken', false);
+        
+        if (allDoses) {
+          await scheduleAllUpcomingDoses(allDoses);
+        }
+
         // Success haptic and navigate
         triggerHaptic('medium');
         navigate("/my-stack");
@@ -401,6 +412,21 @@ export const AddCompoundScreen = () => {
           .insert(doses);
 
         if (dosesError) throw dosesError;
+        
+        // Schedule notifications for all upcoming doses
+        const { data: allDoses } = await supabase
+          .from('doses')
+          .select('*, compounds(name)')
+          .eq('user_id', user.id)
+          .eq('taken', false);
+        
+        if (allDoses) {
+          const dosesWithCompoundName = allDoses.map(dose => ({
+            ...dose,
+            compound_name: dose.compounds?.name || 'Medication'
+          }));
+          await scheduleAllUpcomingDoses(dosesWithCompoundName);
+        }
       }
 
       // Success haptic and navigate
@@ -434,6 +460,24 @@ export const AddCompoundScreen = () => {
     if (accepted) {
       const granted = await requestNotificationPermissions();
       if (granted) {
+        // Schedule notifications for all upcoming doses
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: allDoses } = await supabase
+            .from('doses')
+            .select('*, compounds(name)')
+            .eq('user_id', user.id)
+            .eq('taken', false);
+          
+          if (allDoses) {
+            const dosesWithCompoundName = allDoses.map(dose => ({
+              ...dose,
+              compound_name: dose.compounds?.name || 'Medication'
+            }));
+            await scheduleAllUpcomingDoses(dosesWithCompoundName);
+          }
+        }
+        
         toast({
           title: "Notifications enabled",
           description: "You'll get reminders for your doses"
