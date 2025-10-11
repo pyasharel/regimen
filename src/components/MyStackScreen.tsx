@@ -62,6 +62,11 @@ export const MyStackScreen = () => {
       setCompounds(data || []);
     } catch (error) {
       console.error('Error loading compounds:', error);
+      toast({
+        title: "Error loading compounds",
+        description: error instanceof Error ? error.message : "Failed to fetch your compounds",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -92,6 +97,11 @@ export const MyStackScreen = () => {
       setAdherenceRate(totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0);
     } catch (error) {
       console.error('Error loading weekly stats:', error);
+      toast({
+        title: "Error loading stats",
+        description: "Failed to fetch weekly statistics",
+        variant: "destructive"
+      });
     }
   };
 
@@ -109,12 +119,13 @@ export const MyStackScreen = () => {
         description: "Moved to inactive section"
       });
 
-      loadCompounds();
+      await loadCompounds();
+      await loadWeeklyStats();
     } catch (error) {
       console.error('Error marking complete:', error);
       toast({
         title: "Error",
-        description: "Failed to update compound",
+        description: error instanceof Error ? error.message : "Failed to update compound",
         variant: "destructive"
       });
     }
@@ -134,12 +145,13 @@ export const MyStackScreen = () => {
         description: "Moved back to active section"
       });
 
-      loadCompounds();
+      await loadCompounds();
+      await loadWeeklyStats();
     } catch (error) {
       console.error('Error reactivating:', error);
       toast({
         title: "Error",
-        description: "Failed to reactivate compound",
+        description: error instanceof Error ? error.message : "Failed to reactivate compound",
         variant: "destructive"
       });
     }
@@ -161,12 +173,13 @@ export const MyStackScreen = () => {
         description: "Successfully removed from your stack"
       });
 
-      loadCompounds();
+      await loadCompounds();
+      await loadWeeklyStats();
     } catch (error) {
       console.error('Error deleting compound:', error);
       toast({
         title: "Error",
-        description: "Failed to delete compound",
+        description: error instanceof Error ? error.message : "Failed to delete compound",
         variant: "destructive"
       });
     }
@@ -195,6 +208,35 @@ export const MyStackScreen = () => {
     // Navigate to add-compound screen with compound data as state
     navigate('/add-compound', { state: { editingCompound: compound } });
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground">My Stack</h2>
+            <div className="absolute left-1/2 -translate-x-1/2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
+          </div>
+        </header>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-32 bg-muted animate-pulse rounded-xl" />
+            <div className="h-32 bg-muted animate-pulse rounded-xl" />
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 bg-muted animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        </div>
+        <BottomNavigation />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
@@ -253,7 +295,22 @@ export const MyStackScreen = () => {
             Active
           </h2>
           
-          {activeCompounds.map((compound) => (
+          {activeCompounds.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border rounded-2xl">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Plus className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No active medications</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+                Add your first compound to start tracking your regimen
+              </p>
+              <Button onClick={() => navigate("/add-compound")}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Compound
+              </Button>
+            </div>
+          ) : (
+            activeCompounds.map((compound) => (
             <div
               key={compound.id}
               className="overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/8 to-primary/5 shadow-md hover:shadow-lg hover:border-primary/40 transition-all animate-slide-up"
@@ -301,7 +358,7 @@ export const MyStackScreen = () => {
                 </div>
               </div>
             </div>
-          ))}
+          )))}
         </div>
 
         {/* Inactive Compounds */}

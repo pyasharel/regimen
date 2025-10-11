@@ -52,7 +52,7 @@ export const InsightsScreen = () => {
   );
 
   // Fetch all data
-  const { data: entries = [] } = useQuery({
+  const { data: entries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ['progress-entries-insights'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -69,7 +69,7 @@ export const InsightsScreen = () => {
     },
   });
 
-  const { data: compounds = [] } = useQuery({
+  const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
     queryKey: ['compounds-insights'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -86,7 +86,7 @@ export const InsightsScreen = () => {
     },
   });
 
-  const { data: doses = [] } = useQuery({
+  const { data: doses = [], isLoading: dosesLoading } = useQuery({
     queryKey: ['doses-insights'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -107,6 +107,8 @@ export const InsightsScreen = () => {
       return data || [];
     },
   });
+
+  const isLoading = entriesLoading || compoundsLoading || dosesLoading;
 
   // Combine all data into unified timeline
   const timelineData: TimelineDataPoint[] = [];
@@ -242,6 +244,32 @@ export const InsightsScreen = () => {
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+        <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/progress')}>
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
+            <div className="absolute left-1/2 -translate-x-1/2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
+          </div>
+        </header>
+        <div className="p-6 space-y-6">
+          <div className="h-8 w-64 bg-muted animate-pulse rounded" />
+          <div className="h-24 bg-muted animate-pulse rounded-xl" />
+          <div className="h-96 bg-muted animate-pulse rounded-xl" />
+        </div>
+        <BottomNavigation />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>

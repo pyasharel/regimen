@@ -137,6 +137,11 @@ export const ProgressScreen = () => {
       if (!user) throw new Error('Not authenticated');
 
       const weightValue = parseFloat(weight);
+      if (isNaN(weightValue) || weightValue <= 0) {
+        toast.error('Please enter a valid weight');
+        return;
+      }
+
       const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
 
       const { error } = await supabase
@@ -153,10 +158,10 @@ export const ProgressScreen = () => {
       toast.success('Weight logged successfully');
       setShowLogModal(false);
       setWeight("");
-      refetchEntries(); // Refetch to update cache
+      refetchEntries();
     } catch (error) {
       console.error('Error logging weight:', error);
-      toast.error('Failed to log weight');
+      toast.error(error instanceof Error ? error.message : 'Failed to log weight');
     } finally {
       setLoading(false);
     }
@@ -240,10 +245,10 @@ export const ProgressScreen = () => {
 
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
-      refetchEntries(); // Refetch to update cache
+      refetchEntries();
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload photo');
     } finally {
       setLoading(false);
     }

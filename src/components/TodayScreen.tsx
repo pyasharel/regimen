@@ -185,9 +185,10 @@ export const TodayScreen = () => {
   };
 
   const toggleDose = async (doseId: string, currentStatus: boolean) => {
+    // Don't allow toggling if animation is in progress
+    if (animatingDoses.has(doseId)) return;
+
     try {
-      // Don't allow toggling if animation is in progress
-      if (animatingDoses.has(doseId)) return;
       
       // Check if sound is enabled
       const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
@@ -352,6 +353,34 @@ export const TodayScreen = () => {
     audio.volume = 0.5;
     audio.play().catch(err => console.log('Sound play failed:', err));
   };
+
+  if (loading) {
+    return (
+      <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="space-y-4 w-full max-w-md px-4">
+            <div className="h-8 w-48 bg-muted animate-pulse rounded mx-auto" />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <BottomNavigation />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
