@@ -315,10 +315,12 @@ export const TodayScreen = () => {
   };
 
   const goToToday = () => {
+    triggerHaptic('light');
     setSelectedDate(new Date());
   };
 
   const changeWeek = (direction: 'prev' | 'next') => {
+    triggerHaptic('light');
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
     setSelectedDate(newDate);
@@ -334,13 +336,19 @@ export const TodayScreen = () => {
 
   const greeting = getGreeting();
 
-  // Haptic feedback function
-  const triggerHaptic = async () => {
+  // Haptic feedback function - Medium impact for dose toggles
+  const triggerHaptic = async (intensity: 'light' | 'medium' | 'heavy' = 'medium') => {
     try {
       if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Light });
+        const style = intensity === 'light' ? ImpactStyle.Light : 
+                     intensity === 'medium' ? ImpactStyle.Medium : 
+                     ImpactStyle.Heavy;
+        await Haptics.impact({ style });
       } else if ('vibrate' in navigator) {
-        navigator.vibrate(50); // Subtle 50ms vibration for web
+        const duration = intensity === 'light' ? 30 : 
+                        intensity === 'medium' ? 50 : 
+                        100;
+        navigator.vibrate(duration);
       }
     } catch (err) {
       console.log('Haptic failed:', err);

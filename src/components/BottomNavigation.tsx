@@ -1,9 +1,23 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, Layers, TrendingUp, Settings } from "lucide-react";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
 
   const tabs = [
     { name: "Today", path: "/today", icon: Home },
@@ -11,6 +25,11 @@ export const BottomNavigation = () => {
     { name: "Progress", path: "/progress", icon: TrendingUp },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
+
+  const handleNavigation = (path: string) => {
+    triggerHaptic();
+    navigate(path);
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 pt-3" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
@@ -21,7 +40,7 @@ export const BottomNavigation = () => {
         return (
           <button
             key={tab.name}
-            onClick={() => navigate(tab.path)}
+            onClick={() => handleNavigation(tab.path)}
             className={`flex flex-col items-center gap-1 py-1 transition-colors ${
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}

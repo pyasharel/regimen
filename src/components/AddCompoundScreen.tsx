@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 const COMMON_PEPTIDES = [
   // Peptides
@@ -265,6 +267,18 @@ export const AddCompoundScreen = () => {
     return doses;
   };
 
+  const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(intensity === 'light' ? 30 : 50);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
   const handleSave = async () => {
     if (!name || !intendedDose) {
       toast({
@@ -333,7 +347,8 @@ export const AddCompoundScreen = () => {
 
         if (dosesUpdateError) throw dosesUpdateError;
 
-        // Navigate back without showing toast
+        // Success haptic and navigate
+        triggerHaptic('medium');
         navigate("/my-stack");
         return;
       } else {
@@ -374,6 +389,8 @@ export const AddCompoundScreen = () => {
         if (dosesError) throw dosesError;
       }
 
+      // Success haptic and navigate
+      triggerHaptic('medium');
       navigate('/today');
     } catch (error) {
       console.error('Error saving compound:', error);

@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Camera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 type ProgressEntry = {
   id: string;
@@ -167,11 +169,25 @@ export const ProgressScreen = () => {
     }
   };
 
+  const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(intensity === 'light' ? 30 : 50);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
   const handleCapturePhoto = async () => {
     if (!isPremium) {
       toast.error('Photo upload is a premium feature');
       return;
     }
+
+    triggerHaptic('light');
 
     try {
       const image = await Camera.getPhoto({
@@ -195,6 +211,8 @@ export const ProgressScreen = () => {
       toast.error('Photo upload is a premium feature');
       return;
     }
+
+    triggerHaptic('light');
 
     try {
       const image = await Camera.getPhoto({
@@ -243,6 +261,7 @@ export const ProgressScreen = () => {
 
       if (entryError) throw entryError;
 
+      triggerHaptic('medium'); // Success haptic
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
       refetchEntries();
