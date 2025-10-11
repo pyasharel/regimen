@@ -485,7 +485,7 @@ export const TodayScreen = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
             {greeting.text}{userName ? `, ${userName}` : ''}
           </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '6s' }} />
+          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-pulse" style={{ animationDuration: '10s' }} />
         </div>
       </div>
 

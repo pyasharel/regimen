@@ -349,6 +349,27 @@ export default function PhotoCompareScreen() {
       </div>
 
       <div className="p-4 space-y-6">
+        {/* All Photos Carousel */}
+        {availablePhotos.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">All Photos</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {availablePhotos.map((photo) => (
+                <div key={photo.id} className="flex-shrink-0 snap-center">
+                  <img
+                    src={getPhotoUrl(photo.photo_url)}
+                    alt={`Progress from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
+                    className="h-32 w-32 object-cover rounded-lg border-2 border-border"
+                  />
+                  <p className="text-xs text-center text-muted-foreground mt-1">
+                    {format(new Date(photo.entry_date), 'MMM d')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Photo Selection */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4">
