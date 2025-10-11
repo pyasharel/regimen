@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WeeklyDigestData {
   startDate: Date;
@@ -33,23 +34,51 @@ export const useWeeklyDigest = () => {
     };
   }, []);
 
-  const openDigest = () => {
-    const data = generateWeekData();
+  const openDigest = async () => {
+    const data = await generateWeekData();
     setWeekData(data);
     setIsOpen(true);
   };
 
-  const generateWeekData = (): WeeklyDigestData => {
+  const generateWeekData = async (): Promise<WeeklyDigestData> => {
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - 7);
 
-    const compounds = JSON.parse(localStorage.getItem("compounds") || "[]");
-    const entries = JSON.parse(localStorage.getItem("progressEntries") || "[]");
-    const photos = JSON.parse(localStorage.getItem("progressPhotos") || "[]");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return {
+        startDate: startOfWeek,
+        endDate: now,
+        compounds: [],
+        photos: [],
+        weightData: [],
+      };
+    }
 
-    // Get doses from the last 7 days
-    const compoundsWithDoses = compounds.map((compound: any) => {
+    // Fetch compounds
+    const { data: compounds } = await supabase
+      .from('compounds')
+      .select('*')
+      .eq('user_id', user.id);
+
+    // Fetch doses from the last 7 days
+    const { data: doses } = await supabase
+      .from('doses')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('scheduled_date', startOfWeek.toISOString().split('T')[0])
+      .lte('scheduled_date', now.toISOString().split('T')[0]);
+
+    // Fetch progress entries (photos and weight)
+    const { data: entries } = await supabase
+      .from('progress_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('entry_date', startOfWeek.toISOString().split('T')[0]);
+
+    // Map compounds with their daily doses
+    const compoundsWithDoses = (compounds || []).map((compound: any) => {
       const dailyDoses = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
@@ -57,18 +86,20 @@ export const useWeeklyDigest = () => {
         const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
         const dateStr = date.toISOString().split("T")[0];
 
-        // Check if dose was taken
-        const taken = entries.some(
-          (entry: any) =>
-            entry.compoundId === compound.id &&
-            entry.date === dateStr &&
-            entry.taken
+        // Count doses for this compound on this day
+        const dayDoses = (doses || []).filter(
+          (dose: any) =>
+            dose.compound_id === compound.id &&
+            dose.scheduled_date === dateStr
         );
+
+        const takenCount = dayDoses.filter((d: any) => d.taken).length;
+        const totalCount = dayDoses.length;
 
         dailyDoses.push({
           day: dayName,
-          count: compound.dosesPerDay || 1,
-          taken,
+          count: totalCount || 1,
+          taken: takenCount > 0,
         });
       }
 
@@ -79,25 +110,19 @@ export const useWeeklyDigest = () => {
     });
 
     // Get photos from the last 7 days
-    const recentPhotos = photos
-      .filter((photo: any) => {
-        const photoDate = new Date(photo.date);
-        return photoDate >= startOfWeek;
-      })
-      .map((photo: any) => ({
-        date: photo.date,
-        url: photo.url,
+    const recentPhotos = (entries || [])
+      .filter((entry: any) => entry.category === 'photo' && entry.photo_url)
+      .map((entry: any) => ({
+        date: entry.entry_date,
+        url: supabase.storage.from('progress-photos').getPublicUrl(entry.photo_url).data.publicUrl,
       }));
 
     // Get weight data from the last 7 days
-    const weightEntries = entries
-      .filter((entry: any) => {
-        const entryDate = new Date(entry.date);
-        return entry.weight && entryDate >= startOfWeek;
-      })
+    const weightEntries = (entries || [])
+      .filter((entry: any) => entry.category === 'weight' && entry.metrics?.weight)
       .map((entry: any) => ({
-        date: entry.date,
-        weight: entry.weight,
+        date: entry.entry_date,
+        weight: entry.metrics.weight,
       }))
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
