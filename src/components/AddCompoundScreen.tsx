@@ -125,7 +125,18 @@ export const AddCompoundScreen = () => {
       setIntendedDose(editingCompound.intended_dose.toString());
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
-      setTimeOfDay(editingCompound.time_of_day?.[0] || "Morning");
+      
+      // Load the saved time - check if it's a custom time (HH:MM format) or preset
+      const savedTime = editingCompound.time_of_day?.[0] || "Morning";
+      if (savedTime.match(/^\d{1,2}:\d{2}$/)) {
+        // It's a custom time in HH:MM format
+        setCustomTime(savedTime);
+        setTimeOfDay("Morning"); // Set a default for the preset selector
+      } else {
+        // It's a preset time
+        setTimeOfDay(savedTime);
+      }
+      
       if (editingCompound.schedule_type === 'Specific day(s)' || editingCompound.schedule_type === 'Specific day of the week') {
         setCustomDays(editingCompound.schedule_days?.map(Number) || []);
       }

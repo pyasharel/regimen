@@ -36,7 +36,21 @@ export const scheduleDoseNotification = async (
       'Evening': { hour: 18, minute: 0 },
     };
 
-    const time = timeMap[dose.scheduled_time] || { hour: 8, minute: 0 };
+    let time = timeMap[dose.scheduled_time];
+    
+    // If not a preset time, try to parse as HH:MM format (custom time)
+    if (!time) {
+      const customTimeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
+      if (customTimeMatch) {
+        time = {
+          hour: parseInt(customTimeMatch[1]),
+          minute: parseInt(customTimeMatch[2])
+        };
+      } else {
+        // Fallback to morning if we can't parse
+        time = { hour: 8, minute: 0 };
+      }
+    }
     
     // Create notification date
     const notificationDate = new Date(dose.scheduled_date);
