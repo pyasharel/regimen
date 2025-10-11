@@ -8,11 +8,12 @@ import { toast } from "sonner";
 const GOAL_OPTIONS = [
   "Weight Loss",
   "Muscle Gain",
-  "Longevity",
   "Athletic Performance",
-  "Energy & Recovery",
+  "Energy",
+  "Recovery",
+  "Longevity",
+  "Cognitive Performance",
   "Skin Improvement",
-  "Fertility",
   "Other"
 ];
 
@@ -120,7 +121,7 @@ export const Onboarding = () => {
               <div className="space-y-3">
                 <h1 className="text-4xl font-bold">Welcome to Regimen</h1>
                 <p className="text-lg text-muted-foreground max-w-sm">
-                  Track everything, reach your goals. Take the guesswork out of dosing, timing, and cycles.
+                  Track everything, reach your goals.
                 </p>
               </div>
             </div>
@@ -171,7 +172,7 @@ export const Onboarding = () => {
                     key={challenge}
                     onClick={() => toggleChallenge(challenge)}
                     className={`
-                      relative flex items-center gap-3 rounded-xl p-4 text-left font-medium transition-all
+                      w-full relative flex items-center gap-3 rounded-xl p-4 text-left font-medium transition-all
                       ${selectedChallenges.includes(challenge)
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                         : "bg-muted/50 text-foreground hover:bg-muted"

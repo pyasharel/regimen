@@ -335,16 +335,6 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="p-6 space-y-8">
-        {/* Quick Action Button */}
-        <Button 
-          onClick={() => navigate('/progress/insights')}
-          variant="outline"
-          className="w-full h-12 text-sm font-medium"
-        >
-          <TrendingUp className="w-4 h-4 mr-2" />
-          View Timeline Insights
-        </Button>
-
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
@@ -383,7 +373,7 @@ export const ProgressScreen = () => {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   timeFrame === tf
                     ? 'bg-background text-primary shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    : 'text-foreground/70 hover:text-foreground'
                 }`}
               >
                 {tf}
@@ -491,13 +481,23 @@ export const ProgressScreen = () => {
               </div>
 
               {photoEntries.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate("/progress/compare")}
-                >
-                  View All Photos & Compare
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => navigate("/progress/compare")}
+                  >
+                    View All Photos & Compare
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/progress/insights')}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    View Timeline Insights
+                  </Button>
+                </>
               )}
             </>
           ) : (

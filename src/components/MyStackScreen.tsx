@@ -273,9 +273,9 @@ export const MyStackScreen = () => {
           </div>
 
           {/* Inactive Compounds */}
-          <div className="rounded-xl bg-muted/50 border border-border/60 p-4 shadow-sm">
+          <div className="rounded-xl bg-muted border border-border p-4 shadow-sm">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-muted-foreground/60" />
+              <div className="h-2 w-2 rounded-full bg-muted-foreground" />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
             </div>
             <div className="text-center">
@@ -370,7 +370,7 @@ export const MyStackScreen = () => {
           {inactiveCompounds.map((compound) => (
             <div
               key={compound.id}
-              className="overflow-hidden rounded-2xl border border-border/60 bg-muted/50 shadow-sm opacity-70 hover:opacity-80 transition-opacity"
+              className="overflow-hidden rounded-2xl border border-border bg-muted shadow-sm opacity-80 hover:opacity-90 transition-opacity"
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">
