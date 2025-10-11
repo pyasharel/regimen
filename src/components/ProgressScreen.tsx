@@ -484,7 +484,7 @@ export const ProgressScreen = () => {
           ) : photoEntries.length > 0 ? (
             <>
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {photoEntries.map((entry) => (
+                {[...photoEntries].reverse().map((entry) => (
                   <div key={entry.id} className="flex-shrink-0 text-center">
                     <div className="w-24 h-32 rounded-lg overflow-hidden bg-muted">
                       <img

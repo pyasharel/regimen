@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { WeeklyDigestSettings } from "@/components/WeeklyDigestSettings";
 import { toast } from "sonner";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -48,7 +50,20 @@ export const NotificationsSettings = () => {
     setWeightDay(savedWeightDay);
   }, []);
 
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
   const handlePhotoRemindersToggle = (checked: boolean) => {
+    triggerHaptic();
     if (checked && !isPremium) {
       toast.error("Photo reminders are a premium feature");
       return;
@@ -61,10 +76,22 @@ export const NotificationsSettings = () => {
   };
 
   const handleWeightRemindersToggle = (checked: boolean) => {
+    triggerHaptic();
     setWeightReminders(checked);
     localStorage.setItem('weightReminders', String(checked));
     if (checked) {
       toast.success("Weight tracking reminders enabled");
+    }
+  };
+  
+  const handleDoseRemindersToggle = (checked: boolean) => {
+    triggerHaptic();
+    setDoseReminders(checked);
+    localStorage.setItem('doseReminders', String(checked));
+    if (checked) {
+      toast.success("Dose reminders enabled");
+    } else {
+      toast.success("Dose reminders disabled");
     }
   };
 
@@ -131,7 +158,7 @@ export const NotificationsSettings = () => {
             </div>
             <Switch
               checked={doseReminders}
-              onCheckedChange={setDoseReminders}
+              onCheckedChange={handleDoseRemindersToggle}
             />
           </div>
         </div>

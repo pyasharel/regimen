@@ -512,7 +512,7 @@ export const TodayScreen = () => {
         {viewMode === 'week' ? (
           <>
             {/* Week Navigation */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <button
                 onClick={() => changeWeek('prev')}
                 className="rounded-lg p-2 hover:bg-muted transition-colors flex-shrink-0"
@@ -523,7 +523,7 @@ export const TodayScreen = () => {
                 </svg>
               </button>
               
-              <div className="flex justify-between gap-2 flex-1 px-2">
+              <div className="flex justify-between gap-1.5 flex-1 overflow-hidden">
                 {weekDays.map((day, index) => {
                   const isToday = day.toDateString() === new Date().toDateString();
                   const isSelected = day.toDateString() === selectedDate.toDateString();
@@ -532,7 +532,7 @@ export const TodayScreen = () => {
                     <button
                       key={index}
                       onClick={() => setSelectedDate(day)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl px-3 py-3 min-w-[48px] transition-colors relative ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
                         isSelected && isToday
                           ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
                           : isSelected
