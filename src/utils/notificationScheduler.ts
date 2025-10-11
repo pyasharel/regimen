@@ -1,5 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from '@/integrations/supabase/client';
 
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) {
@@ -8,6 +9,34 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
   }
 
   try {
+    // Register action types for notification buttons
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: 'DOSE_ACTIONS',
+          actions: [
+            {
+              id: 'take-now',
+              title: 'Take Now',
+            },
+            {
+              id: 'remind-15',
+              title: 'Remind in 15 min',
+            },
+            {
+              id: 'remind-60',
+              title: 'Remind in 1 hour',
+            },
+            {
+              id: 'skip',
+              title: 'Skip',
+              destructive: true,
+            },
+          ],
+        },
+      ],
+    });
+
     const result = await LocalNotifications.requestPermissions();
     return result.display === 'granted';
   } catch (error) {
@@ -61,16 +90,28 @@ export const scheduleDoseNotification = async (
       return;
     }
 
+    // Get badge count for pending doses today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { data: pendingDoses } = await supabase
+      .from('doses')
+      .select('id')
+      .eq('taken', false)
+      .gte('scheduled_date', today.toISOString().split('T')[0]);
+    
+    const badgeCount = pendingDoses?.length || 0;
+
     await LocalNotifications.schedule({
       notifications: [
         {
           id: parseInt(dose.id.replace(/\D/g, '').substring(0, 9)), // Convert UUID to number
-          title: '💊 Time for your medication',
+          title: 'Regimen: Time for your dose',
           body: `${dose.compound_name} - ${dose.dose_amount} ${dose.dose_unit}`,
           schedule: { at: notificationDate },
-          sound: 'default',
+          sound: 'light_bubble_pop.mp3', // Custom sound (requires adding to native projects)
           smallIcon: 'ic_stat_icon_config_sample',
           iconColor: '#FF6F61',
+          actionTypeId: 'DOSE_ACTIONS',
           extra: {
             doseId: dose.id,
           },
