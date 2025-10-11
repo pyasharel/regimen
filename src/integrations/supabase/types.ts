@@ -144,24 +144,30 @@ export type Database = {
       }
       profiles: {
         Row: {
+          biggest_challenge: string | null
           created_at: string | null
           full_name: string | null
+          goals: string[] | null
           id: string
           onboarding_completed: boolean | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          biggest_challenge?: string | null
           created_at?: string | null
           full_name?: string | null
+          goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          biggest_challenge?: string | null
           created_at?: string | null
           full_name?: string | null
+          goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
           updated_at?: string | null
