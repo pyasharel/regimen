@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAppStateSync } from "@/hooks/useAppStateSync";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
@@ -75,6 +76,7 @@ const App = () => {
 // Wrapper component to use hooks inside BrowserRouter
 const AnalyticsWrapper = () => {
   useAnalytics();
+  useAppStateSync(); // Auto-sync notifications when app resumes
   return null;
 };
 

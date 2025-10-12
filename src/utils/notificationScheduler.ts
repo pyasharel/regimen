@@ -122,7 +122,9 @@ export const scheduleDoseNotification = async (
       ],
     });
 
-    console.log('Scheduled notification for:', dose.compound_name, 'at', notificationDate);
+    console.log('✅ Successfully scheduled notification for:', dose.compound_name, 'at', notificationDate.toLocaleString());
+    console.log('   Notification ID:', parseInt(dose.id.replace(/\D/g, '').substring(0, 9)));
+    console.log('   Time until notification:', Math.round((notificationDate.getTime() - Date.now()) / 1000 / 60), 'minutes');
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }
@@ -156,16 +158,23 @@ export const cancelAllNotifications = async () => {
 };
 
 export const scheduleAllUpcomingDoses = async (doses: any[]) => {
-  if (!Capacitor.isNativePlatform()) return;
-
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) {
-    console.log('Notification permissions not granted');
+  if (!Capacitor.isNativePlatform()) {
+    console.log('⚠️ Not on native platform - notifications disabled');
     return;
   }
 
+  console.log('🔔 Checking notification permissions...');
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) {
+    console.error('❌ Notification permissions NOT granted!');
+    console.log('Please enable notifications in iPhone Settings > Regimen > Notifications');
+    return;
+  }
+  console.log('✅ Notification permissions granted');
+
   // Cancel all existing notifications first
   await cancelAllNotifications();
+  console.log('🗑️ Cleared all existing notifications');
 
   // Schedule notifications for upcoming doses (next 7 days)
   const now = new Date();
@@ -178,16 +187,33 @@ export const scheduleAllUpcomingDoses = async (doses: any[]) => {
     return doseDate >= now && doseDate <= sevenDaysFromNow;
   });
 
-  console.log(`Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
+  console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
 
+  let successCount = 0;
   for (const dose of upcomingDoses) {
-    // Ensure compound_name is available
-    const doseWithName = {
-      ...dose,
-      compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
-    };
-    await scheduleDoseNotification(doseWithName);
+    try {
+      // Ensure compound_name is available
+      const doseWithName = {
+        ...dose,
+        compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
+      };
+      await scheduleDoseNotification(doseWithName);
+      successCount++;
+    } catch (error) {
+      console.error('❌ Failed to schedule notification for dose:', dose.id, error);
+    }
   }
 
-  console.log(`Successfully scheduled ${upcomingDoses.length} notifications`);
+  console.log(`✅ Successfully scheduled ${successCount}/${upcomingDoses.length} notifications`);
+  
+  // Log all pending notifications for verification
+  try {
+    const pending = await LocalNotifications.getPending();
+    console.log(`📋 Total pending notifications: ${pending.notifications.length}`);
+    pending.notifications.forEach(notif => {
+      console.log(`   - ID ${notif.id}: "${notif.title}" at ${notif.schedule?.at}`);
+    });
+  } catch (error) {
+    console.error('Error checking pending notifications:', error);
+  }
 };
