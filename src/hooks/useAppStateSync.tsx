@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
-import { scheduleAllUpcomingDoses } from '@/utils/notificationScheduler';
+import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/utils/notificationScheduler';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -31,7 +31,8 @@ export const useAppStateSync = () => {
             ...dose,
             compound_name: dose.compounds?.name || 'Medication'
           }));
-          await scheduleAllUpcomingDoses(dosesWithCompoundName);
+          const isPremium = localStorage.getItem('testPremiumMode') === 'true';
+          await scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
           console.log('✅ Notifications synced successfully');
         }
       } catch (error) {
@@ -51,6 +52,9 @@ export const useAppStateSync = () => {
 
     // Also sync on initial mount
     syncNotifications();
+
+    // Set up notification action handlers
+    setupNotificationActionHandlers();
 
     return () => {
       listener?.remove();

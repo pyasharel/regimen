@@ -397,7 +397,7 @@ export const AddCompoundScreen = () => {
                 ...dose,
                 compound_name: dose.compounds?.name || 'Medication'
               }));
-              scheduleAllUpcomingDoses(dosesWithCompoundName);
+              scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
             }
           });
         return;
@@ -455,7 +455,7 @@ export const AddCompoundScreen = () => {
               ...dose,
               compound_name: dose.compounds?.name || 'Medication'
             }));
-            scheduleAllUpcomingDoses(dosesWithCompoundName);
+            scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
           }
         });
     } catch (error) {

@@ -1,6 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) {
@@ -53,7 +54,8 @@ export const scheduleDoseNotification = async (
     dose_unit: string;
     scheduled_date: string;
     scheduled_time: string;
-  }
+  },
+  isPremium: boolean = false
 ) => {
   if (!Capacitor.isNativePlatform()) return;
 
@@ -114,7 +116,8 @@ export const scheduleDoseNotification = async (
           sound: 'light_bubble_pop_regimen.m4a', // Custom sound (requires adding to native projects)
           smallIcon: 'ic_stat_icon_config_sample',
           iconColor: '#FF6F61',
-          actionTypeId: 'DOSE_ACTIONS',
+          // Only add actions for premium users
+          actionTypeId: isPremium ? 'DOSE_ACTIONS' : undefined,
           extra: {
             doseId: dose.id,
           },
@@ -157,7 +160,7 @@ export const cancelAllNotifications = async () => {
   }
 };
 
-export const scheduleAllUpcomingDoses = async (doses: any[]) => {
+export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false) => {
   if (!Capacitor.isNativePlatform()) {
     console.log('⚠️ Not on native platform - notifications disabled');
     return;
@@ -188,6 +191,7 @@ export const scheduleAllUpcomingDoses = async (doses: any[]) => {
   });
 
   console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
+  console.log(`💎 Premium status: ${isPremium ? 'Yes (actions enabled)' : 'No (actions disabled)'}`);
 
   let successCount = 0;
   for (const dose of upcomingDoses) {
@@ -197,7 +201,7 @@ export const scheduleAllUpcomingDoses = async (doses: any[]) => {
         ...dose,
         compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
       };
-      await scheduleDoseNotification(doseWithName);
+      await scheduleDoseNotification(doseWithName, isPremium);
       successCount++;
     } catch (error) {
       console.error('❌ Failed to schedule notification for dose:', dose.id, error);
@@ -215,5 +219,105 @@ export const scheduleAllUpcomingDoses = async (doses: any[]) => {
     });
   } catch (error) {
     console.error('Error checking pending notifications:', error);
+  }
+};
+
+// Handle notification action responses (Premium feature)
+export const setupNotificationActionHandlers = () => {
+  if (!Capacitor.isNativePlatform()) return;
+
+  LocalNotifications.addListener('localNotificationActionPerformed', async (notification) => {
+    const doseId = notification.notification.extra?.doseId;
+    const actionId = notification.actionId;
+
+    if (!doseId) return;
+
+    console.log('🔔 Notification action:', actionId, 'for dose:', doseId);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      switch (actionId) {
+        case 'take-now':
+          // Mark dose as taken
+          await supabase
+            .from('doses')
+            .update({ taken: true, taken_at: new Date().toISOString() })
+            .eq('id', doseId);
+          
+          toast({
+            title: "Dose logged! 💊",
+            description: "Great job staying on track!",
+          });
+          break;
+
+        case 'remind-15':
+          // Reschedule for 15 minutes from now
+          await rescheduleDose(doseId, 15);
+          toast({
+            title: "Reminder set ⏰",
+            description: "We'll remind you in 15 minutes",
+          });
+          break;
+
+        case 'remind-60':
+          // Reschedule for 1 hour from now
+          await rescheduleDose(doseId, 60);
+          toast({
+            title: "Reminder set ⏰",
+            description: "We'll remind you in 1 hour",
+          });
+          break;
+
+        case 'skip':
+          // Mark as skipped (you could add a 'skipped' field to the database)
+          toast({
+            title: "Dose skipped",
+            description: "No worries, we'll remind you for the next one",
+          });
+          break;
+      }
+    } catch (error) {
+      console.error('Error handling notification action:', error);
+    }
+  });
+};
+
+// Helper function to reschedule a dose
+const rescheduleDose = async (doseId: string, minutesFromNow: number) => {
+  try {
+    // Get dose details
+    const { data: dose } = await supabase
+      .from('doses')
+      .select('*, compounds(name)')
+      .eq('id', doseId)
+      .single();
+
+    if (!dose) return;
+
+    // Cancel existing notification
+    await cancelDoseNotification(doseId);
+
+    // Create new notification time
+    const newTime = new Date();
+    newTime.setMinutes(newTime.getMinutes() + minutesFromNow);
+
+    // Schedule new notification
+    const doseWithName = {
+      id: dose.id,
+      compound_name: dose.compounds?.name || 'Medication',
+      dose_amount: dose.dose_amount,
+      dose_unit: dose.dose_unit,
+      scheduled_date: newTime.toISOString().split('T')[0],
+      scheduled_time: `${newTime.getHours()}:${newTime.getMinutes().toString().padStart(2, '0')}`,
+    };
+
+    // Check premium status from localStorage
+    const isPremium = localStorage.getItem('testPremiumMode') === 'true';
+
+    await scheduleDoseNotification(doseWithName, isPremium);
+  } catch (error) {
+    console.error('Error rescheduling dose:', error);
   }
 };
