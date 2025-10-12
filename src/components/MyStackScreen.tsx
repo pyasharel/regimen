@@ -198,7 +198,7 @@ export const MyStackScreen = () => {
     const start = new Date(startDate);
     const now = new Date();
     const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff); // Ensure we never show negative days
+    return Math.max(1, diff + 1); // +1 to show "day 1" on start day, matching cycle display
   };
 
   const formatTime = (time: string) => {
