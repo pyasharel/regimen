@@ -360,20 +360,25 @@ export const AddCompoundScreen = () => {
 
         if (dosesUpdateError) throw dosesUpdateError;
 
-        // Reschedule notifications for all upcoming doses
-        const { data: allDoses } = await supabase
-          .from('doses')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('taken', false);
-        
-        if (allDoses) {
-          await scheduleAllUpcomingDoses(allDoses);
-        }
-
-        // Success haptic and navigate
+        // Success haptic and navigate immediately
         triggerHaptic('medium');
         navigate("/my-stack");
+
+        // Reschedule notifications in background (non-blocking)
+        supabase
+          .from('doses')
+          .select('*, compounds(name)')
+          .eq('user_id', user.id)
+          .eq('taken', false)
+          .then(({ data: allDoses }) => {
+            if (allDoses) {
+              const dosesWithCompoundName = allDoses.map(dose => ({
+                ...dose,
+                compound_name: dose.compounds?.name || 'Medication'
+              }));
+              scheduleAllUpcomingDoses(dosesWithCompoundName);
+            }
+          });
         return;
       } else {
         // Insert new compound
@@ -411,26 +416,27 @@ export const AddCompoundScreen = () => {
           .insert(doses);
 
         if (dosesError) throw dosesError;
-        
-        // Schedule notifications for all upcoming doses
-        const { data: allDoses } = await supabase
-          .from('doses')
-          .select('*, compounds(name)')
-          .eq('user_id', user.id)
-          .eq('taken', false);
-        
-        if (allDoses) {
-          const dosesWithCompoundName = allDoses.map(dose => ({
-            ...dose,
-            compound_name: dose.compounds?.name || 'Medication'
-          }));
-          await scheduleAllUpcomingDoses(dosesWithCompoundName);
-        }
       }
 
-      // Success haptic and navigate
+      // Success haptic and navigate immediately
       triggerHaptic('medium');
       navigate('/today');
+
+      // Schedule notifications in background (non-blocking)
+      supabase
+        .from('doses')
+        .select('*, compounds(name)')
+        .eq('user_id', user.id)
+        .eq('taken', false)
+        .then(({ data: allDoses }) => {
+          if (allDoses) {
+            const dosesWithCompoundName = allDoses.map(dose => ({
+              ...dose,
+              compound_name: dose.compounds?.name || 'Medication'
+            }));
+            scheduleAllUpcomingDoses(dosesWithCompoundName);
+          }
+        });
     } catch (error) {
       console.error('Error saving compound:', error);
       toast({

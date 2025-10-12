@@ -85,8 +85,11 @@ export const scheduleDoseNotification = async (
     const notificationDate = new Date(dose.scheduled_date);
     notificationDate.setHours(time.hour, time.minute, 0, 0);
 
-    // Only schedule if in the future
-    if (notificationDate.getTime() <= Date.now()) {
+    // Only schedule if in the future (with 1 minute buffer to catch notifications just created)
+    const now = Date.now();
+    const oneMinuteAgo = now - (60 * 1000);
+    if (notificationDate.getTime() < oneMinuteAgo) {
+      console.log('Skipping past notification:', dose.compound_name, 'at', notificationDate);
       return;
     }
 
