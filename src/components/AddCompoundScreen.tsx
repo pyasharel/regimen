@@ -760,7 +760,7 @@ export const AddCompoundScreen = () => {
                 <>
                   {numberOfDoses === 1 ? (
                     <div className="flex items-center justify-between py-2">
-                      <Label className="mb-0 text-sm">Time</Label>
+                      <Label className="mb-0 text-sm flex items-center h-9">Time</Label>
                       <TimePicker
                         value={customTime}
                         onChange={setCustomTime}
@@ -770,7 +770,7 @@ export const AddCompoundScreen = () => {
                   ) : (
                     <>
                       <div className="flex items-center justify-between py-2">
-                        <Label className="mb-0 text-sm">First Dose</Label>
+                        <Label className="mb-0 text-sm flex items-center h-9">First Dose</Label>
                         <TimePicker
                           value={customTime}
                           onChange={setCustomTime}
@@ -778,7 +778,7 @@ export const AddCompoundScreen = () => {
                         />
                       </div>
                       <div className="flex items-center justify-between py-2">
-                        <Label className="mb-0 text-sm">Second Dose</Label>
+                        <Label className="mb-0 text-sm flex items-center h-9">Second Dose</Label>
                         <TimePicker
                           value={customTime2}
                           onChange={setCustomTime2}
@@ -790,7 +790,7 @@ export const AddCompoundScreen = () => {
                 </>
               ) : (
                 <div className="flex items-center justify-between py-2">
-                  <Label className="mb-0 text-sm">Time</Label>
+                  <Label className="mb-0 text-sm flex items-center h-9">Time</Label>
                   <div className="flex flex-col items-end gap-1">
                     <div className="h-9 px-3 bg-muted border-border rounded-lg border text-xs flex items-center text-muted-foreground">
                       {numberOfDoses === 1 ? '8:00 AM' : '8:00 AM & 8:00 PM'}
