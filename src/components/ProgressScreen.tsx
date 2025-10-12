@@ -27,6 +27,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
+import { CycleTimeline } from "@/components/CycleTimeline";
 
 type ProgressEntry = {
   id: string;
@@ -47,6 +48,8 @@ type Compound = {
   end_date: string | null;
   is_active: boolean;
   has_cycles: boolean;
+  cycle_weeks_on: number | null;
+  cycle_weeks_off: number | null;
   schedule_type: string;
   created_at: string;
 };
@@ -95,7 +98,7 @@ export const ProgressScreen = () => {
       
       const { data, error } = await supabase
         .from('compounds')
-        .select('id, name, start_date, end_date, is_active, has_cycles, schedule_type, created_at')
+        .select('id, name, start_date, end_date, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, schedule_type, created_at')
         .eq('user_id', user.id)
         .order('start_date', { ascending: false });
       
@@ -636,6 +639,7 @@ export const ProgressScreen = () => {
                             }}
                           />
                         </div>
+                        <CycleTimeline compound={compound} />
                       </div>
                     );
                   })}

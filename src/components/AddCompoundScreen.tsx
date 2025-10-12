@@ -264,13 +264,32 @@ export const AddCompoundScreen = () => {
         continue;
       }
 
+      // Check cycle logic - skip if in "off" period
+      if (enableCycle && cycleMode === 'continuous') {
+        const daysSinceStart = i;
+        const cycleLength = (cycleWeeksOn + cycleWeeksOff) * 7; // Total cycle in days
+        const positionInCycle = daysSinceStart % cycleLength;
+        const onPeriodDays = cycleWeeksOn * 7;
+        
+        // Skip if we're in the "off" period
+        if (positionInCycle >= onPeriodDays) {
+          continue;
+        }
+      } else if (enableCycle && cycleMode === 'one-time') {
+        // For one-time cycles, only generate for the "on" weeks
+        const onPeriodDays = cycleWeeksOn * 7;
+        if (i >= onPeriodDays) {
+          break; // Stop generating after on period ends
+        }
+      }
+
       let currentDose = parseFloat(intendedDose);
 
       doses.push({
         compound_id: compoundId,
         user_id: userId,
         scheduled_date: formatDate(date),
-        scheduled_time: isPremium ? customTime : timeOfDay,
+        scheduled_time: isPremium ? customTime : '08:00', // Free users get 8am only
         dose_amount: currentDose,
         dose_unit: doseUnit,
         calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
@@ -705,24 +724,19 @@ export const AddCompoundScreen = () => {
                   className="w-full"
                 />
                ) : (
-                <select
-                  value={timeOfDay}
-                  onChange={(e) => setTimeOfDay(e.target.value)}
-                  className="w-full h-11 bg-input border-border rounded-lg border px-3 text-sm"
-                >
-                  <option value="Morning">Morning</option>
-                  <option value="Evening">Evening</option>
-                </select>
-              )}
-              {!isPremium && (
-                <button
-                  type="button"
-                  onClick={() => setShowPremiumModal(true)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                >
-                  <PremiumDiamond className="h-3 w-3" />
-                  <span className="underline">Upgrade for custom times</span>
-                </button>
+                <div className="space-y-2">
+                  <div className="w-full h-11 bg-muted border-border rounded-lg border px-3 text-sm flex items-center text-muted-foreground">
+                    8:00 AM (Daily reminder for all medications)
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPremiumModal(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                  >
+                    <PremiumDiamond className="h-3 w-3" />
+                    <span className="underline">Upgrade for custom times per medication</span>
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -762,44 +776,61 @@ export const AddCompoundScreen = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">
-                  End Date <span className="font-normal">(optional)</span>
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(new Date(endDate + 'T00:00:00'), "PPP") : <span>Leave blank for ongoing</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          const year = date.getFullYear();
-                          const month = String(date.getMonth() + 1).padStart(2, '0');
-                          const day = String(date.getDate()).padStart(2, '0');
-                          setEndDate(`${year}-${month}-${day}`);
-                        } else {
-                          setEndDate("");
-                        }
-                      }}
-                      disabled={(date) => startDate ? date < new Date(startDate + 'T00:00:00') : false}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+              {isPremium && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-muted-foreground">
+                      End Date <span className="font-normal">(optional)</span>
+                    </Label>
+                    <PremiumDiamond className="h-3 w-3 text-primary" />
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(new Date(endDate + 'T00:00:00'), "PPP") : <span>Leave blank for ongoing</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                            const day = String(date.getDate()).padStart(2, '0');
+                            setEndDate(`${year}-${month}-${day}`);
+                          } else {
+                            setEndDate("");
+                          }
+                        }}
+                        disabled={(date) => startDate ? date < new Date(startDate + 'T00:00:00') : false}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+              {!isPremium && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setShowPremiumModal(true)}
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors w-full"
+                  >
+                    <PremiumDiamond className="h-3 w-3" />
+                    <span>Upgrade to set end dates</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -859,16 +890,6 @@ export const AddCompoundScreen = () => {
             <div className="space-y-4">
               <div className="flex gap-2">
                 <button
-                  onClick={() => setCycleMode('continuous')}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                    cycleMode === 'continuous'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted'
-                  }`}
-                >
-                  Continuous Cycle
-                </button>
-                <button
                   onClick={() => setCycleMode('one-time')}
                   className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
                     cycleMode === 'one-time'
@@ -877,6 +898,16 @@ export const AddCompoundScreen = () => {
                   }`}
                 >
                   One-Time Duration
+                </button>
+                <button
+                  onClick={() => setCycleMode('continuous')}
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                    cycleMode === 'continuous'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card border border-border hover:bg-muted'
+                  }`}
+                >
+                  On/Off Cycle
                 </button>
               </div>
 

@@ -58,27 +58,27 @@ export const scheduleDoseNotification = async (
   if (!Capacitor.isNativePlatform()) return;
 
   try {
-    // Parse the scheduled time
-    const timeMap: { [key: string]: { hour: number; minute: number } } = {
-      'Morning': { hour: 8, minute: 0 },
-      'Afternoon': { hour: 14, minute: 0 },
-      'Evening': { hour: 18, minute: 0 },
-    };
-
-    let time = timeMap[dose.scheduled_time];
+    // Parse the scheduled time - try HH:MM format first (custom times)
+    const customTimeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
+    let time: { hour: number; minute: number };
     
-    // If not a preset time, try to parse as HH:MM format (custom time)
-    if (!time) {
-      const customTimeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
-      if (customTimeMatch) {
-        time = {
-          hour: parseInt(customTimeMatch[1]),
-          minute: parseInt(customTimeMatch[2])
-        };
-      } else {
-        // Fallback to morning if we can't parse
-        time = { hour: 8, minute: 0 };
-      }
+    if (customTimeMatch) {
+      // Custom time in HH:MM format
+      time = {
+        hour: parseInt(customTimeMatch[1]),
+        minute: parseInt(customTimeMatch[2])
+      };
+      console.log(`✅ Parsed custom time: ${dose.scheduled_time} -> ${time.hour}:${time.minute}`);
+    } else {
+      // Preset time (Morning/Afternoon/Evening)
+      const timeMap: { [key: string]: { hour: number; minute: number } } = {
+        'Morning': { hour: 8, minute: 0 },
+        'Afternoon': { hour: 14, minute: 0 },
+        'Evening': { hour: 18, minute: 0 },
+      };
+      
+      time = timeMap[dose.scheduled_time] || { hour: 8, minute: 0 };
+      console.log(`✅ Parsed preset time: ${dose.scheduled_time} -> ${time.hour}:${time.minute}`);
     }
     
     // Create notification date

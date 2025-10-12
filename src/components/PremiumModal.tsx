@@ -71,8 +71,8 @@ export const PremiumModal = ({ open, onOpenChange }: PremiumModalProps) => {
 
         <div className="space-y-3 pt-4 border-t border-border">
           <div className="bg-muted/50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-primary">$9.99/month</div>
-            <div className="text-xs text-muted-foreground mt-1">or $99/year (save 17%)</div>
+            <div className="text-2xl font-bold text-primary">$5.99/month</div>
+            <div className="text-xs text-muted-foreground mt-1">or $59/year (save 18%)</div>
           </div>
 
           <Button className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90">
