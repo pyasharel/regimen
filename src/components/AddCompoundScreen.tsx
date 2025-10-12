@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { PremiumModal } from "@/components/PremiumModal";
-import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,7 +103,6 @@ export const AddCompoundScreen = () => {
   // Premium feature - check from Settings
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
 
   // Check premium status from localStorage (set in Settings)
   useEffect(() => {
@@ -431,18 +430,7 @@ export const AddCompoundScreen = () => {
 
       // Success haptic and navigate
       triggerHaptic('medium');
-      
-      // Check if this is first compound and notifications haven't been configured
-      if (!isEditing) {
-        const notificationAsked = localStorage.getItem('notificationPermissionAsked');
-        if (!notificationAsked) {
-          setShowNotificationDialog(true);
-        } else {
-          navigate('/today');
-        }
-      } else {
-        navigate('/today');
-      }
+      navigate('/today');
     } catch (error) {
       console.error('Error saving compound:', error);
       toast({
@@ -453,39 +441,6 @@ export const AddCompoundScreen = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleNotificationResponse = async (accepted: boolean) => {
-    localStorage.setItem('notificationPermissionAsked', 'true');
-    if (accepted) {
-      const granted = await requestNotificationPermissions();
-      if (granted) {
-        // Schedule notifications for all upcoming doses
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: allDoses } = await supabase
-            .from('doses')
-            .select('*, compounds(name)')
-            .eq('user_id', user.id)
-            .eq('taken', false);
-          
-          if (allDoses) {
-            const dosesWithCompoundName = allDoses.map(dose => ({
-              ...dose,
-              compound_name: dose.compounds?.name || 'Medication'
-            }));
-            await scheduleAllUpcomingDoses(dosesWithCompoundName);
-          }
-        }
-        
-        toast({
-          title: "Notifications enabled",
-          description: "You'll get reminders for your doses"
-        });
-      }
-    }
-    setShowNotificationDialog(false);
-    navigate('/today');
   };
 
   return (
@@ -556,7 +511,6 @@ export const AddCompoundScreen = () => {
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
                 <option value="iu">iu</option>
-                <option value="ml">ml</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -981,10 +935,6 @@ export const AddCompoundScreen = () => {
       </div>
 
       <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
-      <NotificationPermissionDialog 
-        open={showNotificationDialog} 
-        onResponse={handleNotificationResponse} 
-      />
     </div>
   );
 };

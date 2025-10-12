@@ -11,8 +11,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
-import { scheduleAllUpcomingDoses, cancelDoseNotification, requestNotificationPermissions } from "@/utils/notificationScheduler";
-import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
+import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
+import { formatDose } from "@/utils/doseUtils";
 
 interface Dose {
   id: string;
@@ -39,8 +39,6 @@ export const TodayScreen = () => {
   const [userName, setUserName] = useState<string | null>(null);
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
-  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
-  const [notificationAsked, setNotificationAsked] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Generate week days - keep the current week stable
@@ -80,30 +78,6 @@ export const TodayScreen = () => {
     return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
 
-  // Check if we should show notification permission dialog
-  useEffect(() => {
-    const checkNotificationPermission = () => {
-      const hasAsked = localStorage.getItem('notificationPermissionAsked');
-      if (!hasAsked && doses.length > 0 && !notificationAsked) {
-        setShowNotificationDialog(true);
-        setNotificationAsked(true);
-      }
-    };
-    
-    checkNotificationPermission();
-  }, [doses, notificationAsked]);
-
-  const handleNotificationResponse = async (accepted: boolean) => {
-    localStorage.setItem('notificationPermissionAsked', 'true');
-    setShowNotificationDialog(false);
-    
-    if (accepted) {
-      const granted = await requestNotificationPermissions();
-      if (granted && doses.length > 0) {
-        await scheduleAllUpcomingDoses(doses);
-      }
-    }
-  };
 
   const loadUserName = async () => {
     try {
@@ -776,7 +750,7 @@ export const TodayScreen = () => {
                         {dose.compound_name}
                       </h3>
                       <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
-                        {formatTime(dose.scheduled_time)} • {dose.dose_amount} {dose.dose_unit}
+                        {formatTime(dose.scheduled_time)} • {formatDose(dose.dose_amount, dose.dose_unit)}
                         {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                       </p>
                     </div>
@@ -847,7 +821,7 @@ export const TodayScreen = () => {
                             {dose.compound_name}
                           </h3>
                           <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
-                            {dose.dose_amount} {dose.dose_unit}
+                            {formatDose(dose.dose_amount, dose.dose_unit)}
                             {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                           </p>
                         </div>
@@ -902,11 +876,6 @@ export const TodayScreen = () => {
       </button>
 
       <BottomNavigation />
-      
-      <NotificationPermissionDialog 
-        open={showNotificationDialog}
-        onResponse={handleNotificationResponse}
-      />
     </div>
   );
 };

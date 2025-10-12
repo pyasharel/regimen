@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatDose } from "@/utils/doseUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -341,7 +342,7 @@ export const MyStackScreen = () => {
                     <div>
                       <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {compound.intended_dose} {compound.dose_unit}
+                        {formatDose(compound.intended_dose, compound.dose_unit)}
                         {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
                         {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
                       </p>
@@ -398,7 +399,7 @@ export const MyStackScreen = () => {
                     <div>
                       <h3 className="font-bold text-muted-foreground">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground/80">
-                        {compound.intended_dose} {compound.dose_unit}
+                        {formatDose(compound.intended_dose, compound.dose_unit)}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground/70">
                         {getScheduleDisplay(compound)} • Inactive
