@@ -726,13 +726,14 @@ export const AddCompoundScreen = () => {
 
           {frequency !== 'As Needed' && (
             <>
-              <div className="space-y-2">
-                <Label>Number of Doses Per Day</Label>
-                <div className="flex gap-3">
+              {/* Number of Doses - Compact single row */}
+              <div className="flex items-center justify-between py-2">
+                <Label className="mb-0 text-sm">Doses Per Day</Label>
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setNumberOfDoses(1)}
-                    className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors ${
+                    className={`w-12 h-9 rounded-lg text-sm font-medium transition-colors ${
                       numberOfDoses === 1
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
@@ -743,7 +744,7 @@ export const AddCompoundScreen = () => {
                   <button
                     type="button"
                     onClick={() => setNumberOfDoses(2)}
-                    className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors ${
+                    className={`w-12 h-9 rounded-lg text-sm font-medium transition-colors ${
                       numberOfDoses === 2
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
@@ -754,33 +755,45 @@ export const AddCompoundScreen = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Time{numberOfDoses === 2 ? 's' : ''}</Label>
-                {isPremium ? (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      {numberOfDoses === 2 && <Label className="text-xs text-muted-foreground">First Dose</Label>}
+              {/* Time(s) - Compact layout */}
+              {isPremium ? (
+                <>
+                  {numberOfDoses === 1 ? (
+                    <div className="flex items-center justify-between py-2">
+                      <Label className="mb-0 text-sm">Time</Label>
                       <TimePicker
                         value={customTime}
                         onChange={setCustomTime}
-                        className="w-full"
+                        className="w-32"
                       />
                     </div>
-                    {numberOfDoses === 2 && (
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Second Dose</Label>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between py-2">
+                        <Label className="mb-0 text-sm">First Dose</Label>
+                        <TimePicker
+                          value={customTime}
+                          onChange={setCustomTime}
+                          className="w-32"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <Label className="mb-0 text-sm">Second Dose</Label>
                         <TimePicker
                           value={customTime2}
                           onChange={setCustomTime2}
-                          className="w-full"
+                          className="w-32"
                         />
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="w-full h-11 bg-muted border-border rounded-lg border px-3 text-sm flex items-center text-muted-foreground">
-                      {numberOfDoses === 1 ? '8:00 AM' : '8:00 AM & 8:00 PM'} (Default times)
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center justify-between py-2">
+                  <Label className="mb-0 text-sm">Time</Label>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="h-9 px-3 bg-muted border-border rounded-lg border text-xs flex items-center text-muted-foreground">
+                      {numberOfDoses === 1 ? '8:00 AM' : '8:00 AM & 8:00 PM'}
                     </div>
                     <button
                       type="button"
@@ -788,11 +801,11 @@ export const AddCompoundScreen = () => {
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
                       <PremiumDiamond className="h-3 w-3" />
-                      <span className="underline">Upgrade for custom times per medication</span>
+                      <span className="underline">Custom times</span>
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
 
