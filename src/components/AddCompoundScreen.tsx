@@ -857,19 +857,6 @@ export const AddCompoundScreen = () => {
                   On/Off Cycle
                 </button>
               </div>
-              
-              {/* Cycle Reminders Toggle */}
-              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                <div className="flex-1">
-                  <Label htmlFor="cycle-reminders" className="mb-0 text-sm font-medium">Cycle Change Reminders</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
-                </div>
-                <Switch
-                  id="cycle-reminders"
-                  checked={cycleReminders}
-                  onCheckedChange={setCycleReminders}
-                />
-              </div>
 
               <div className="flex items-center gap-2">
                 <Input
@@ -894,6 +881,19 @@ export const AddCompoundScreen = () => {
                   <span className="text-sm">weeks off</span>
                 </div>
               )}
+              
+              {/* Cycle Reminders Toggle - Moved after duration inputs */}
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                <div className="flex-1">
+                  <Label htmlFor="cycle-reminders" className="mb-0 text-sm font-medium">Cycle Change Reminders</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
+                </div>
+                <Switch
+                  id="cycle-reminders"
+                  checked={cycleReminders}
+                  onCheckedChange={setCycleReminders}
+                />
+              </div>
 
               {cycleMode === 'one-time' && (
                 <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
