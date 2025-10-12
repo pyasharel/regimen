@@ -167,10 +167,10 @@ export const AddCompoundScreen = () => {
 
   // Calculate IU and auto-populate dose
   const calculateIU = () => {
-    if (!vialSize || !bacWater) return null;
+    if (!vialSize || !bacWater || !intendedDose) return null;
 
     const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-    const doseMcg = intendedDose ? (doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose)) : 0;
+    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
     const concentration = vialMcg / parseFloat(bacWater);
     const volumeML = doseMcg / concentration;
     return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
