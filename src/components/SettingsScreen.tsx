@@ -59,7 +59,7 @@ export const SettingsScreen = () => {
   };
 
   const handleSendFeedback = () => {
-    const email = "feedback@regimenstack.com";
+    const email = "hello@regimenstack.com";
     const subject = "Feedback & Feature Requests - Regimen App";
     const body = "Hi there,\n\nI'd like to share feedback about the Regimen app:\n\n";
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
