@@ -383,7 +383,7 @@ export const AddCompoundScreen = () => {
 
         // Success haptic and navigate immediately
         triggerHaptic('medium');
-        navigate("/my-stack");
+        navigate("/stack");
 
         // Reschedule notifications in background (non-blocking)
         supabase
