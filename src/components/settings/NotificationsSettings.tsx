@@ -17,6 +17,7 @@ export const NotificationsSettings = () => {
   
   // Notification states
   const [doseReminders, setDoseReminders] = useState(true);
+  const [cycleReminders, setCycleReminders] = useState(true);
   const [photoReminders, setPhotoReminders] = useState(false);
   const [photoFrequency, setPhotoFrequency] = useState<"daily" | "weekly">("weekly");
   const [photoTime, setPhotoTime] = useState("08:00");
@@ -31,6 +32,8 @@ export const NotificationsSettings = () => {
     setIsPremium(savedPremium);
     
     // Load saved preferences
+    const savedCycleReminders = localStorage.getItem('cycleReminders');
+    setCycleReminders(savedCycleReminders !== 'false');
     const savedPhotoReminders = localStorage.getItem('photoReminders') === 'true';
     const savedPhotoFrequency = localStorage.getItem('photoFrequency') as "daily" | "weekly" || "weekly";
     const savedPhotoTime = localStorage.getItem('photoTime') || "08:00";
@@ -92,6 +95,21 @@ export const NotificationsSettings = () => {
       toast.success("Dose reminders enabled");
     } else {
       toast.success("Dose reminders disabled");
+    }
+  };
+
+  const handleCycleRemindersToggle = (checked: boolean) => {
+    triggerHaptic();
+    if (checked && !isPremium) {
+      toast.error("Cycle reminders are a premium feature");
+      return;
+    }
+    setCycleReminders(checked);
+    localStorage.setItem('cycleReminders', String(checked));
+    if (checked) {
+      toast.success("Cycle reminders enabled");
+    } else {
+      toast.success("Cycle reminders disabled");
     }
   };
 
@@ -159,6 +177,28 @@ export const NotificationsSettings = () => {
             <Switch
               checked={doseReminders}
               onCheckedChange={handleDoseRemindersToggle}
+            />
+          </div>
+        </div>
+
+        {/* Cycle Reminders */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                <Bell className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <Label className="font-semibold flex items-center gap-2">
+                  Cycle Change Reminders
+                  {!isPremium && <PremiumDiamond className="h-4 w-4 text-primary" />}
+                </Label>
+                <p className="text-sm text-muted-foreground">Get notified before cycle transitions</p>
+              </div>
+            </div>
+            <Switch
+              checked={cycleReminders}
+              onCheckedChange={handleCycleRemindersToggle}
             />
           </div>
         </div>

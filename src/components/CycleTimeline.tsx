@@ -1,4 +1,4 @@
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInDays } from "date-fns";
 
 type CycleTimelineProps = {
   compound: {
@@ -20,25 +20,25 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
 
   const startDate = new Date(compound.start_date);
   const now = new Date();
-  const endDate = compound.end_date ? new Date(compound.end_date) : now;
+  const sixMonthsFromStart = addDays(startDate, 180);
   
   // Calculate cycle periods
   const weeksOn = compound.cycle_weeks_on;
   const weeksOff = compound.cycle_weeks_off || 0;
   const isOnOffCycle = weeksOff > 0;
   
-  // Generate cycle periods for display (max 6 months or until end date)
-  const cycles: { start: Date; end: Date; isOn: boolean }[] = [];
+  // Generate cycle periods for display
+  const segments: { start: Date; end: Date; isOn: boolean }[] = [];
   let currentDate = new Date(startDate);
   let isOnPeriod = true;
   
-  while (currentDate < endDate && cycles.length < 20) { // Limit to 20 cycles for display
+  while (currentDate < sixMonthsFromStart && segments.length < 20) {
     const periodWeeks = isOnPeriod ? weeksOn : weeksOff;
     const periodEnd = addDays(currentDate, periodWeeks * 7);
     
-    cycles.push({
+    segments.push({
       start: new Date(currentDate),
-      end: periodEnd > endDate ? endDate : periodEnd,
+      end: periodEnd > sixMonthsFromStart ? sixMonthsFromStart : periodEnd,
       isOn: isOnPeriod,
     });
     
@@ -53,47 +53,67 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
     }
   }
 
+  // Calculate total width for timeline
+  const totalDays = differenceInDays(sixMonthsFromStart, startDate);
+  
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 space-y-3">
       <div className="text-xs font-medium text-muted-foreground">
         {isOnOffCycle 
           ? `Cycle: ${weeksOn}w on, ${weeksOff}w off` 
           : `One-time: ${weeksOn} week${weeksOn > 1 ? 's' : ''}`}
       </div>
       
-      <div className="space-y-1.5">
-        {cycles.map((cycle, index) => {
-          const isCurrentPeriod = now >= cycle.start && now <= cycle.end;
-          
-          return (
-            <div 
-              key={index} 
-              className={`flex items-center gap-2 text-xs ${
-                isCurrentPeriod ? 'font-medium' : 'opacity-70'
-              }`}
-            >
-              <div 
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  cycle.isOn 
+      {/* Horizontal timeline visualization */}
+      <div className="relative">
+        <div className="flex h-8 rounded-lg overflow-hidden border border-border bg-muted/30">
+          {segments.map((segment, index) => {
+            const segmentDays = differenceInDays(segment.end, segment.start);
+            const widthPercent = (segmentDays / totalDays) * 100;
+            const isCurrentPeriod = now >= segment.start && now <= segment.end;
+            
+            return (
+              <div
+                key={index}
+                className={`relative flex items-center justify-center transition-all ${
+                  segment.isOn 
                     ? 'bg-primary' 
-                    : 'bg-muted-foreground/40'
-                }`}
-              />
-              <span className={cycle.isOn ? 'text-foreground' : 'text-muted-foreground'}>
-                {cycle.isOn ? 'ON' : 'OFF'}
-              </span>
-              <span className="text-muted-foreground">
-                {format(cycle.start, 'MMM d')} - {format(cycle.end, 'MMM d')}
-              </span>
-              {isCurrentPeriod && (
-                <span className="ml-auto px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold">
-                  Current
-                </span>
-              )}
-            </div>
-          );
-        })}
+                    : 'bg-muted-foreground/20'
+                } ${isCurrentPeriod ? 'ring-2 ring-primary ring-inset' : ''}`}
+                style={{ width: `${widthPercent}%` }}
+              >
+                {widthPercent > 8 && (
+                  <span className={`text-[10px] font-semibold ${
+                    segment.isOn ? 'text-primary-foreground' : 'text-muted-foreground'
+                  }`}>
+                    {segment.isOn ? 'ON' : 'OFF'}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Date labels below timeline */}
+        <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
+          <span>{format(startDate, 'MMM d')}</span>
+          <span>{format(sixMonthsFromStart, 'MMM d')}</span>
+        </div>
       </div>
+      
+      {/* Current status indicator */}
+      {segments.some(s => now >= s.start && now <= s.end) && (
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <span className="text-muted-foreground">
+            Currently in{' '}
+            <span className="font-medium text-foreground">
+              {segments.find(s => now >= s.start && now <= s.end)?.isOn ? 'ON' : 'OFF'}
+            </span>
+            {' '}period
+          </span>
+        </div>
+      )}
     </div>
   );
 };

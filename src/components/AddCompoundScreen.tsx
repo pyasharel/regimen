@@ -93,9 +93,10 @@ export const AddCompoundScreen = () => {
 
   // Cycle (premium)
   const [enableCycle, setEnableCycle] = useState(false);
-  const [cycleMode, setCycleMode] = useState<'continuous' | 'one-time'>('continuous');
+  const [cycleMode, setCycleMode] = useState<'continuous' | 'one-time'>('one-time');
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
+  const [cycleReminders, setCycleReminders] = useState(true);
 
   // Active status
   const [isActive, setIsActive] = useState(true);
@@ -354,9 +355,10 @@ export const AddCompoundScreen = () => {
             start_date: startDate,
             end_date: endDate || null,
             notes: notes || null,
-            has_cycles: enableCycle,
-            cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
-            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
+        has_cycles: enableCycle,
+        cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
+        cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
+        cycle_reminders_enabled: enableCycle ? cycleReminders : false,
             is_active: isActive
           })
           .eq('id', editingCompound.id);
@@ -517,7 +519,7 @@ export const AddCompoundScreen = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dose Amount</Label>
+            <Label htmlFor="intendedDose">Dose Amount <span className="text-destructive">*</span></Label>
             <div className="flex gap-3">
               <Input
                 id="intendedDose"
@@ -654,7 +656,7 @@ export const AddCompoundScreen = () => {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Schedule</h2>
 
           <div className="space-y-2">
-            <Label>Frequency</Label>
+            <Label>Frequency <span className="text-destructive">*</span></Label>
             <select
               value={frequency}
               onChange={(e) => {
@@ -744,7 +746,7 @@ export const AddCompoundScreen = () => {
           <div className="space-y-3">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label>Start Date (optional)</Label>
+                <Label>Start Date <span className="text-destructive">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -776,61 +778,6 @@ export const AddCompoundScreen = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              {isPremium && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">
-                      End Date <span className="font-normal">(optional)</span>
-                    </Label>
-                    <PremiumDiamond className="h-3 w-3 text-primary" />
-                  </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !endDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(new Date(endDate + 'T00:00:00'), "PPP") : <span>Leave blank for ongoing</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            const year = date.getFullYear();
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const day = String(date.getDate()).padStart(2, '0');
-                            setEndDate(`${year}-${month}-${day}`);
-                          } else {
-                            setEndDate("");
-                          }
-                        }}
-                        disabled={(date) => startDate ? date < new Date(startDate + 'T00:00:00') : false}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-              {!isPremium && (
-                <div className="p-3 bg-muted/50 rounded-lg border border-border">
-                  <button
-                    type="button"
-                    onClick={() => setShowPremiumModal(true)}
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors w-full"
-                  >
-                    <PremiumDiamond className="h-3 w-3" />
-                    <span>Upgrade to set end dates</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -909,6 +856,19 @@ export const AddCompoundScreen = () => {
                 >
                   On/Off Cycle
                 </button>
+              </div>
+              
+              {/* Cycle Reminders Toggle */}
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                <div className="flex-1">
+                  <Label htmlFor="cycle-reminders" className="mb-0 text-sm font-medium">Cycle Change Reminders</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
+                </div>
+                <Switch
+                  id="cycle-reminders"
+                  checked={cycleReminders}
+                  onCheckedChange={setCycleReminders}
+                />
               </div>
 
               <div className="flex items-center gap-2">

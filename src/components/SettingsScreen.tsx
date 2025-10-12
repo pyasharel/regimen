@@ -217,8 +217,8 @@ export const SettingsScreen = () => {
                 <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                        <section.icon className="h-4 w-4 text-foreground" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <section.icon className="h-4 w-4 text-primary" />
                       </div>
                       <h3 className="font-semibold text-sm">{section.label}</h3>
                     </div>
@@ -246,8 +246,8 @@ export const SettingsScreen = () => {
                 <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                        <section.icon className="h-4 w-4 text-foreground" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <section.icon className="h-4 w-4 text-primary" />
                       </div>
                       <h3 className="font-semibold text-sm">{section.label}</h3>
                     </div>
@@ -283,8 +283,8 @@ export const SettingsScreen = () => {
                 <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                        <section.icon className="h-4 w-4 text-foreground" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                        <section.icon className="h-4 w-4 text-primary" />
                       </div>
                       <h3 className="font-semibold text-sm">{section.label}</h3>
                     </div>
@@ -300,8 +300,8 @@ export const SettingsScreen = () => {
                   className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                      <section.icon className="h-5 w-5 text-foreground" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <section.icon className="h-5 w-5 text-primary" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold">{section.label}</h3>
