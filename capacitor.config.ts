@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-export const appVersion = '0.1.0';
-export const appBuild = '2';
+export const appVersion = '0.1.1';
+export const appBuild = '3';
 
 const config: CapacitorConfig = {
   appId: 'com.regimen.app',
