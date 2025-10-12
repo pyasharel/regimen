@@ -82,7 +82,9 @@ export const AddCompoundScreen = () => {
   const [customDays, setCustomDays] = useState<number[]>([]);
   const [everyXDays, setEveryXDays] = useState(3);
   const [timeOfDay, setTimeOfDay] = useState("Morning");
-  const [customTime, setCustomTime] = useState("09:00");
+  const [customTime, setCustomTime] = useState("08:00");
+  const [customTime2, setCustomTime2] = useState("20:00");
+  const [numberOfDoses, setNumberOfDoses] = useState(1);
   // Set start date to today in local timezone
   const today = new Date();
   const localDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -126,16 +128,11 @@ export const AddCompoundScreen = () => {
       setDoseUnit(editingCompound.dose_unit);
       setFrequency(editingCompound.schedule_type);
       
-      // Load the saved time - check if it's a custom time (HH:MM format) or preset
-      const savedTime = editingCompound.time_of_day?.[0] || "Morning";
-      if (savedTime.match(/^\d{1,2}:\d{2}$/)) {
-        // It's a custom time in HH:MM format
-        setCustomTime(savedTime);
-        setTimeOfDay("Morning"); // Set a default for the preset selector
-      } else {
-        // It's a preset time
-        setTimeOfDay(savedTime);
-      }
+      // Load the saved times - handle array of times
+      const times = editingCompound.time_of_day || ['08:00'];
+      setNumberOfDoses(times.length);
+      setCustomTime(times[0] || '08:00');
+      setCustomTime2(times[1] || '20:00');
       
       if (editingCompound.schedule_type === 'Specific day(s)' || editingCompound.schedule_type === 'Specific day of the week') {
         setCustomDays(editingCompound.schedule_days?.map(Number) || []);
@@ -286,14 +283,21 @@ export const AddCompoundScreen = () => {
 
       let currentDose = parseFloat(intendedDose);
 
-      doses.push({
-        compound_id: compoundId,
-        user_id: userId,
-        scheduled_date: formatDate(date),
-        scheduled_time: isPremium ? customTime : '08:00', // Free users get 8am only
-        dose_amount: currentDose,
-        dose_unit: doseUnit,
-        calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+      // Generate doses based on number of doses per day
+      const timesToGenerate = numberOfDoses === 2 
+        ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
+        : (isPremium ? [customTime] : ['08:00']);
+
+      timesToGenerate.forEach(time => {
+        doses.push({
+          compound_id: compoundId,
+          user_id: userId,
+          scheduled_date: formatDate(date),
+          scheduled_time: time,
+          dose_amount: currentDose,
+          dose_unit: doseUnit,
+          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+        });
       });
     }
     
@@ -349,9 +353,11 @@ export const AddCompoundScreen = () => {
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
-            schedule_type: frequency,
-            time_of_day: [isPremium ? customTime : timeOfDay],
-            schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
+          schedule_type: frequency,
+          time_of_day: numberOfDoses === 2 
+            ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
+            : (isPremium ? [customTime] : ['08:00']),
+          schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
             notes: notes || null,
@@ -414,9 +420,11 @@ export const AddCompoundScreen = () => {
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
-          schedule_type: frequency,
-          time_of_day: [isPremium ? customTime : timeOfDay],
-          schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
+            schedule_type: frequency,
+            time_of_day: numberOfDoses === 2 
+              ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
+              : (isPremium ? [customTime] : ['08:00']),
+            schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
             notes: notes || null,
@@ -717,30 +725,75 @@ export const AddCompoundScreen = () => {
           )}
 
           {frequency !== 'As Needed' && (
-            <div className="space-y-2">
-              <Label>Time</Label>
-              {isPremium ? (
-                <TimePicker
-                  value={customTime}
-                  onChange={setCustomTime}
-                  className="w-full"
-                />
-               ) : (
-                <div className="space-y-2">
-                  <div className="w-full h-11 bg-muted border-border rounded-lg border px-3 text-sm flex items-center text-muted-foreground">
-                    8:00 AM (Daily reminder for all medications)
-                  </div>
+            <>
+              <div className="space-y-2">
+                <Label>Number of Doses Per Day</Label>
+                <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowPremiumModal(true)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    onClick={() => setNumberOfDoses(1)}
+                    className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors ${
+                      numberOfDoses === 1
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
                   >
-                    <PremiumDiamond className="h-3 w-3" />
-                    <span className="underline">Upgrade for custom times per medication</span>
+                    1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNumberOfDoses(2)}
+                    className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors ${
+                      numberOfDoses === 2
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    2
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Time{numberOfDoses === 2 ? 's' : ''}</Label>
+                {isPremium ? (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      {numberOfDoses === 2 && <Label className="text-xs text-muted-foreground">First Dose</Label>}
+                      <TimePicker
+                        value={customTime}
+                        onChange={setCustomTime}
+                        className="w-full"
+                      />
+                    </div>
+                    {numberOfDoses === 2 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Second Dose</Label>
+                        <TimePicker
+                          value={customTime2}
+                          onChange={setCustomTime2}
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="w-full h-11 bg-muted border-border rounded-lg border px-3 text-sm flex items-center text-muted-foreground">
+                      {numberOfDoses === 1 ? '8:00 AM' : '8:00 AM & 8:00 PM'} (Default times)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPremiumModal(true)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      <PremiumDiamond className="h-3 w-3" />
+                      <span className="underline">Upgrade for custom times per medication</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <div className="space-y-3">
