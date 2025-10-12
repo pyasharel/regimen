@@ -7,6 +7,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
+import { calculateCycleStatus } from "@/utils/cycleUtils";
+import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,9 @@ interface Compound {
   start_date: string;
   is_active: boolean;
   created_at: string;
+  has_cycles: boolean;
+  cycle_weeks_on: number | null;
+  cycle_weeks_off: number | null;
 }
 
 export const MyStackScreen = () => {
@@ -337,9 +342,9 @@ export const MyStackScreen = () => {
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 flex-1">
                     <div className="mt-1 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse" />
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {formatDose(compound.intended_dose, compound.dose_unit)}
@@ -349,6 +354,56 @@ export const MyStackScreen = () => {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}d
                       </p>
+                      
+                      {/* Cycle Status - Only show if has_cycles is true */}
+                      {compound.has_cycles && (() => {
+                        const cycleStatus = calculateCycleStatus(
+                          compound.start_date,
+                          compound.cycle_weeks_on,
+                          compound.cycle_weeks_off
+                        );
+                        
+                        if (!cycleStatus) return null;
+                        
+                        // For one-time cycles that have ended, don't show status
+                        if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
+                        
+                        return (
+                          <div className="mt-3 pt-3 border-t border-border/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`h-2 w-2 rounded-full ${
+                                cycleStatus.currentPhase === 'on' 
+                                  ? 'bg-primary animate-pulse' 
+                                  : 'bg-muted-foreground'
+                              }`} />
+                              <span className={`text-xs font-semibold uppercase tracking-wider ${
+                                cycleStatus.currentPhase === 'on' 
+                                  ? 'text-primary' 
+                                  : 'text-muted-foreground'
+                              }`}>
+                                {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">
+                                  {cycleStatus.daysRemaining} {cycleStatus.daysRemaining === 1 ? 'day' : 'days'} remaining
+                                </span>
+                                <span className="text-muted-foreground font-medium">
+                                  {cycleStatus.progressPercentage}%
+                                </span>
+                              </div>
+                              <Progress 
+                                value={cycleStatus.progressPercentage} 
+                                className="h-1.5"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   <DropdownMenu>
