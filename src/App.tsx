@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
@@ -35,6 +36,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <AnalyticsWrapper />
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -68,6 +70,12 @@ const App = () => {
     </BrowserRouter>
   </QueryClientProvider>
   );
+};
+
+// Wrapper component to use hooks inside BrowserRouter
+const AnalyticsWrapper = () => {
+  useAnalytics();
+  return null;
 };
 
 export default App;

@@ -5,6 +5,14 @@ import { queryClient } from './lib/queryClient';
 import App from "./App.tsx";
 import "./index.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { initGA } from './utils/analytics';
+
+// Initialize Google Analytics 4
+// Replace 'G-XXXXXXXXXX' with your actual GA4 Measurement ID
+const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+if (GA_MEASUREMENT_ID) {
+  initGA(GA_MEASUREMENT_ID);
+}
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
