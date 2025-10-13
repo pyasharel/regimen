@@ -235,54 +235,66 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Process weight data and add medication bars
+  // Create continuous timeline with all dates in range
   const timelineData = useMemo(() => {
-    const dataMap = new Map<string, TimelineDataPoint>();
-
-    entries.forEach(entry => {
-      const metrics = entry.metrics as any;
-      if (metrics?.weight) {
-        const dateKey = entry.entry_date;
-        dataMap.set(dateKey, {
-          date: format(new Date(entry.entry_date), 'MMM d'),
-          dateObj: new Date(entry.entry_date),
-          weight: metrics.weight,
-        });
-      }
-    });
-
-    const dataArray = Array.from(dataMap.values())
-      .filter(d => d.dateObj >= cutoffDate)
-      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    const dataArray: TimelineDataPoint[] = [];
     
-    // Add medication bar data to each point
-    // First, get unique medications
-    const uniqueMeds = Array.from(new Set(medicationPeriods.map(p => p.name)));
+    // Generate all dates in the range
+    const endDate = new Date();
+    let currentDate = new Date(cutoffDate);
     
-    dataArray.forEach(point => {
-      uniqueMeds.forEach((medName, idx) => {
-        // Check if this medication is active on this date
-        const isActive = medicationPeriods.some(period => {
-          if (period.name !== medName) return false;
-          const pointDate = startOfDay(point.dateObj);
-          const start = startOfDay(period.startDate);
-          const end = period.endDate ? startOfDay(period.endDate) : new Date();
-          return pointDate >= start && pointDate <= end;
-        });
-        
-        // Set a fixed value if active (we'll position these at bottom of chart)
-        point[`med_${idx}`] = isActive ? 1 : 0;
+    while (currentDate <= endDate) {
+      const dateStr = format(currentDate, 'MMM d');
+      const point: TimelineDataPoint = {
+        date: dateStr,
+        dateObj: new Date(currentDate),
+      };
+      
+      // Add weight if it exists for this date
+      const weightEntry = entries.find(e => {
+        const entryDate = format(new Date(e.entry_date), 'MMM d');
+        return entryDate === dateStr;
       });
-    });
-
+      
+      if (weightEntry) {
+        const metrics = weightEntry.metrics as any;
+        if (metrics?.weight) {
+          point.weight = metrics.weight;
+        }
+      }
+      
+      dataArray.push(point);
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
     return dataArray;
-  }, [entries, cutoffDate, medicationPeriods]);
+  }, [entries, cutoffDate]);
+
+  // Get Y-axis domain for weight
+  const weightDomain = useMemo(() => {
+    const weights = timelineData
+      .map(d => d.weight)
+      .filter((w): w is number => w !== undefined);
+    
+    if (weights.length === 0) return [180, 250];
+    
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    const padding = (max - min) * 0.15 || 10;
+    
+    return [Math.floor(min - padding), Math.ceil(max + padding)];
+  }, [timelineData]);
 
   // Calculate dashboard metrics
   const dashboardMetrics = useMemo(() => {
-    if (timelineData.length === 0) return null;
+    const weights = timelineData
+      .map(d => d.weight)
+      .filter((w): w is number => w !== undefined);
+    
+    if (weights.length === 0) return null;
 
-    const weights = timelineData.map(d => d.weight).filter((w): w is number => w !== undefined);
     const currentWeight = weights[weights.length - 1];
     const oldestWeight = weights[0];
     const totalChange = currentWeight - oldestWeight;
@@ -302,24 +314,18 @@ export const InsightsScreen = () => {
       totalChange,
       percentChange,
       weeklyAvg,
-      goalWeight: null, // Future feature
+      goalWeight: null,
     };
   }, [timelineData]);
 
   // Get Y-axis domain - extend to make room for medication bars at bottom
-  const weightDomain = useMemo(() => {
-    const weights = timelineData.map(d => d.weight).filter((w): w is number => w !== undefined);
-    if (weights.length === 0) return [0, 100];
-    const min = Math.min(...weights);
-    const max = Math.max(...weights);
-    const padding = (max - min) * 0.1 || 10;
+  const chartDomain = useMemo(() => {
+    const [minWeight, maxWeight] = weightDomain;
+    const numMeds = new Set(medicationPeriods.map(m => m.name)).size;
+    const medBarSpace = (maxWeight - minWeight) * 0.15 * numMeds;
     
-    // Add extra space at bottom for medication bars (15% per medication)
-    const numMedications = new Set(medicationPeriods.map(m => m.name)).size;
-    const bottomExtension = (max - min) * 0.15 * Math.max(numMedications, 1);
-    
-    return [Math.floor(min - padding - bottomExtension), Math.ceil(max + padding)];
-  }, [timelineData, medicationPeriods]);
+    return [minWeight - medBarSpace, maxWeight];
+  }, [weightDomain, medicationPeriods]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -505,55 +511,70 @@ export const InsightsScreen = () => {
             </div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart data={timelineData} margin={{ top: 40, right: 10, bottom: 80, left: -20 }}>
+              <ResponsiveContainer width="100%" height={450}>
+                <ComposedChart data={timelineData} margin={{ top: 40, right: 10, bottom: 100, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis 
                     dataKey="date" 
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={11}
+                    fontSize={10}
                     tickLine={false}
                     axisLine={false}
+                    interval="preserveStartEnd"
+                    minTickGap={30}
                   />
                   <YAxis 
-                    yAxisId="weight"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    domain={weightDomain}
+                    domain={chartDomain}
                     width={50}
-                  />
-                  <YAxis 
-                    yAxisId="meds"
-                    hide
-                    domain={[0, 1]}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   
-                  {/* Medication bars */}
+                  {/* Horizontal medication bars using ReferenceArea */}
                   {(() => {
-                    const uniqueMeds = Array.from(new Set(medicationPeriods.map(p => ({ name: p.name, color: p.color }))));
-                    const dedupedMeds = Array.from(
-                      new Map(uniqueMeds.map(m => [m.name, m])).values()
-                    );
+                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
+                    medicationPeriods.forEach(period => {
+                      if (!medGroups.has(period.name)) {
+                        medGroups.set(period.name, { color: period.color, periods: [] });
+                      }
+                      medGroups.get(period.name)!.periods.push(period);
+                    });
                     
-                    return dedupedMeds.map((med, idx) => (
-                      <Bar
-                        key={`med-bar-${idx}`}
-                        yAxisId="meds"
-                        dataKey={`med_${idx}`}
-                        fill={med.color}
-                        opacity={0.7}
-                        barSize={20}
-                        stackId="medications"
-                      />
-                    ));
+                    const groupArray = Array.from(medGroups.entries());
+                    const [chartMin, chartMax] = chartDomain;
+                    const barHeight = (chartMax - chartMin) * 0.05;
+                    
+                    return groupArray.flatMap(([medName, { color, periods }], groupIdx) => {
+                      const yPosition = chartMin + (groupIdx * barHeight * 1.5);
+                      
+                      return periods.map((period, periodIdx) => {
+                        const startFormatted = format(period.startDate, 'MMM d');
+                        const endFormatted = period.endDate 
+                          ? format(period.endDate, 'MMM d')
+                          : format(new Date(), 'MMM d');
+                        
+                        return (
+                          <ReferenceArea
+                            key={`${medName}-${periodIdx}`}
+                            x1={startFormatted}
+                            x2={endFormatted}
+                            y1={yPosition}
+                            y2={yPosition + barHeight}
+                            fill={color}
+                            fillOpacity={0.8}
+                            stroke={color}
+                            strokeWidth={1}
+                          />
+                        );
+                      });
+                    });
                   })()}
                   
-                  {/* Weight Line - rendered last so it's on top */}
+                  {/* Weight Line */}
                   <Line 
-                    yAxisId="weight"
                     type="monotone" 
                     dataKey="weight" 
                     stroke="hsl(var(--primary))" 
