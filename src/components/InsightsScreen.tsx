@@ -235,9 +235,9 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Create smart timeline (not every day - use appropriate intervals)
+  // Create smart timeline using scheduled_date for doses (not taken_at)
   const timelineData = useMemo(() => {
-    // Collect all event dates (weight entries + dose logs)
+    // Collect all event dates (weight entries + scheduled dose dates)
     const eventDates = new Set<string>();
     
     entries.forEach(entry => {
@@ -246,11 +246,12 @@ export const InsightsScreen = () => {
       }
     });
     
+    // Use scheduled_date for doses, not taken_at
     doses.forEach(dose => {
-      if (dose.taken_at) {
-        const doseDate = parseISO(dose.taken_at);
+      if (dose.taken && dose.scheduled_date) {
+        const doseDate = parseISO(dose.scheduled_date);
         if (doseDate >= cutoffDate) {
-          eventDates.add(format(doseDate, 'yyyy-MM-dd'));
+          eventDates.add(dose.scheduled_date);
         }
       }
     });
@@ -554,14 +555,14 @@ export const InsightsScreen = () => {
                   {compounds.map((compound, idx) => {
                     const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
                     
-                    // Get all logged doses for this medication within the time range
+                    // Get all logged doses for this medication - use scheduled_date
                     const loggedDoses = doses
-                      .filter(d => d.compound_id === compound.id && d.taken && d.taken_at)
+                      .filter(d => d.compound_id === compound.id && d.taken && d.scheduled_date)
                       .map(d => {
-                        const doseDate = parseISO(d.taken_at!);
+                        const doseDate = parseISO(d.scheduled_date);
                         return {
                           date: doseDate,
-                          dateStr: format(doseDate, 'yyyy-MM-dd'),
+                          dateStr: d.scheduled_date,
                           amount: d.dose_amount,
                           unit: d.dose_unit,
                         };
@@ -579,7 +580,6 @@ export const InsightsScreen = () => {
                           <span className="text-xs font-medium text-foreground">{compound.name}</span>
                         </div>
                         <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
-                          {/* Render dots based on timeline positions */}
                           {loggedDoses.map((dose, doseIdx) => {
                             const timelineIndex = timelineData.findIndex(
                               t => format(t.dateObj, 'yyyy-MM-dd') === dose.dateStr
