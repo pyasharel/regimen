@@ -29,15 +29,32 @@ export const TermsSettings = () => {
 
           <section>
             <h3 className="font-semibold text-base mb-2">2. Medical Disclaimer</h3>
-            <div className="space-y-2 text-muted-foreground">
-              <p className="font-medium text-destructive">IMPORTANT: This app is for tracking purposes only and is not a substitute for professional medical advice.</p>
+            <div className="space-y-3 text-muted-foreground">
+              <p className="font-semibold text-destructive text-base">
+                MEDICAL DISCLAIMER
+              </p>
+              <p className="font-medium">
+                This application is a <strong>TRACKING TOOL ONLY</strong>. It does not provide medical advice, diagnosis, or treatment.
+              </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Regimen is NOT a medical device and does not provide medical advice, diagnosis, or treatment</li>
+                <li>All calculations are for informational purposes only</li>
+                <li>You must independently verify all dosages and calculations</li>
+                <li>Consult a qualified healthcare provider before starting any medication or supplement regimen</li>
+                <li>We are not responsible for dosing errors, adverse effects, or health consequences resulting from app use</li>
+                <li>Using this app does not create a physician-patient relationship</li>
                 <li>Always consult with a qualified healthcare provider before starting, stopping, or changing any medication regimen</li>
                 <li>Never disregard professional medical advice or delay seeking it because of information from this app</li>
                 <li>In case of medical emergency, call your doctor or emergency services immediately</li>
-                <li>The dosage information you enter is self-reported and not verified by medical professionals</li>
               </ul>
+              <div className="pt-2 mt-3 border-t border-border">
+                <p className="font-medium mb-2">By using this app, you acknowledge that:</p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>You are solely responsible for your health decisions</li>
+                  <li>You will verify all calculations independently</li>
+                  <li>You will consult healthcare professionals as appropriate</li>
+                  <li>You use this app entirely at your own risk</li>
+                </ol>
+              </div>
             </div>
           </section>
 

@@ -28,6 +28,7 @@ export const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [selectedChallenges, setSelectedChallenges] = useState<string[]>([]);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const navigate = useNavigate();
 
   const toggleGoal = (goal: string) => {
@@ -61,6 +62,12 @@ export const Onboarding = () => {
         toast.error("Please select at least one challenge");
         return;
       }
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      if (!termsAccepted) {
+        toast.error("Please accept the terms to continue");
+        return;
+      }
       await completeOnboarding();
     }
   };
@@ -81,7 +88,8 @@ export const Onboarding = () => {
           .update({ 
             onboarding_completed: true,
             goals: selectedGoals,
-            challenges: selectedChallenges
+            challenges: selectedChallenges,
+            terms_accepted_at: new Date().toISOString()
           })
           .eq("user_id", user.id);
       }
@@ -190,6 +198,58 @@ export const Onboarding = () => {
               </div>
             </>
           )}
+
+          {/* Step 3: Terms Acceptance */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="space-y-2 text-center">
+                <h1 className="text-3xl font-bold">Important Disclaimer</h1>
+                <p className="text-muted-foreground">Please read and accept to continue</p>
+              </div>
+
+              <div className="bg-muted/50 border border-border rounded-xl p-5 space-y-4 text-sm max-h-[400px] overflow-y-auto">
+                <div className="space-y-3">
+                  <p className="font-semibold text-base">MEDICAL DISCLAIMER</p>
+                  <p className="text-muted-foreground">
+                    This application is a <strong>TRACKING TOOL ONLY</strong>. It does not provide medical advice, diagnosis, or treatment.
+                  </p>
+                  <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-2 text-xs">
+                    <li>All calculations are for informational purposes only</li>
+                    <li>You must independently verify all dosages and calculations</li>
+                    <li>Consult a qualified healthcare provider before starting any medication or supplement</li>
+                    <li>We are not responsible for dosing errors, adverse effects, or health consequences</li>
+                    <li>Using this app does not create a physician-patient relationship</li>
+                  </ul>
+                </div>
+
+                <div className="pt-3 border-t border-border">
+                  <p className="font-medium mb-2">By using this app, you acknowledge that:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2 text-xs">
+                    <li>You are solely responsible for your health decisions</li>
+                    <li>You will verify all calculations independently</li>
+                    <li>You will consult healthcare professionals as appropriate</li>
+                    <li>You use this app entirely at your own risk</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-card border border-border rounded-xl">
+                <input
+                  type="checkbox"
+                  id="terms-accept"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-border cursor-pointer"
+                />
+                <label htmlFor="terms-accept" className="text-sm cursor-pointer flex-1">
+                  I understand this disclaimer and accept full responsibility for verifying all information. I agree to the{' '}
+                  <a href="/settings/terms" target="_blank" className="text-primary hover:underline">
+                    Terms of Service
+                  </a>.
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -198,7 +258,7 @@ export const Onboarding = () => {
         <div className="w-full max-w-md mx-auto space-y-6">
           {/* Progress dots */}
           <div className="flex justify-center gap-2">
-            {[0, 1, 2].map((index) => (
+            {[0, 1, 2, 3].map((index) => (
               <div
                 key={index}
                 className={`h-2 rounded-full transition-all ${
@@ -209,8 +269,13 @@ export const Onboarding = () => {
           </div>
 
           {/* Next button */}
-          <Button onClick={handleNext} className="w-full" size="lg">
-            {currentStep === 2 ? "Get Started" : "Next"}
+          <Button 
+            onClick={handleNext} 
+            className="w-full" 
+            size="lg"
+            disabled={currentStep === 3 && !termsAccepted}
+          >
+            {currentStep === 3 ? "Get Started" : currentStep === 2 ? "Next" : "Next"}
           </Button>
         </div>
       </div>

@@ -153,6 +153,7 @@ export type Database = {
           goals: string[] | null
           id: string
           onboarding_completed: boolean | null
+          terms_accepted_at: string | null
           updated_at: string | null
           user_id: string
         }
@@ -163,6 +164,7 @@ export type Database = {
           goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -173,6 +175,7 @@ export type Database = {
           goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
+          terms_accepted_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
