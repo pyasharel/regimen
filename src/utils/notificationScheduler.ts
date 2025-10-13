@@ -110,8 +110,8 @@ export const scheduleDoseNotification = async (
       notifications: [
         {
           id: parseInt(dose.id.replace(/\D/g, '').substring(0, 9)), // Convert UUID to number
-          title: 'Regimen: Time for your dose',
-          body: `${dose.compound_name} - ${dose.dose_amount} ${dose.dose_unit}`,
+          title: 'Regimen',
+          body: `Time for ${dose.compound_name} (${dose.dose_amount}${dose.dose_unit})`,
           schedule: { at: notificationDate },
           sound: 'light_bubble_pop_regimen.m4a', // Custom sound (requires adding to native projects)
           smallIcon: 'ic_stat_icon_config_sample',
