@@ -600,7 +600,7 @@ export const AddCompoundScreen = () => {
                       value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
                       onChange={(e) => setVialSize(e.target.value)}
                       placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-sm font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
                   </button>
                 </div>
@@ -639,7 +639,7 @@ export const AddCompoundScreen = () => {
                       value={![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
                       onChange={(e) => setBacWater(e.target.value)}
                       placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-sm font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
                   </button>
                 </div>
