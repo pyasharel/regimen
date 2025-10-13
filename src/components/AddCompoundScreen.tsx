@@ -606,7 +606,11 @@ export const AddCompoundScreen = () => {
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
-                      onClick={() => setVialSize(size.toString())}
+                      onClick={() => {
+                        setVialSize(size.toString());
+                        // Blur any focused input
+                        (document.activeElement as HTMLElement)?.blur();
+                      }}
                       className={`rounded-lg py-2 text-xs font-medium transition-colors ${
                         vialSize === size.toString()
                           ? 'bg-primary text-primary-foreground'
@@ -617,12 +621,13 @@ export const AddCompoundScreen = () => {
                     </button>
                   ))}
                   <button
+                    type="button"
                     onClick={() => {
                       const input = document.getElementById('peptide-amount-input') as HTMLInputElement;
                       input?.focus();
                     }}
                     className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                      vialSize === '' || ![5, 10, 15, 20].includes(Number(vialSize))
+                      vialSize !== '' && ![5, 10, 15, 20].includes(Number(vialSize))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
@@ -630,8 +635,9 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="peptide-amount-input"
                       type="number"
-                      value={[5, 10, 15, 20].includes(Number(vialSize)) ? '' : vialSize}
+                      value={vialSize}
                       onChange={(e) => setVialSize(e.target.value)}
+                      onFocus={(e) => e.target.select()}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
@@ -645,7 +651,11 @@ export const AddCompoundScreen = () => {
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
-                      onClick={() => setBacWater(vol.toString())}
+                      onClick={() => {
+                        setBacWater(vol.toString());
+                        // Blur any focused input
+                        (document.activeElement as HTMLElement)?.blur();
+                      }}
                       className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                         bacWater === vol.toString()
                           ? 'bg-primary text-primary-foreground'
@@ -656,12 +666,13 @@ export const AddCompoundScreen = () => {
                     </button>
                   ))}
                   <button
+                    type="button"
                     onClick={() => {
                       const input = document.getElementById('custom-bac-water') as HTMLInputElement;
                       input?.focus();
                     }}
                     className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      bacWater === '' || ![1, 2, 3, 5].includes(Number(bacWater))
+                      bacWater !== '' && ![1, 2, 3, 5].includes(Number(bacWater))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
@@ -669,8 +680,9 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="custom-bac-water"
                       type="number"
-                      value={[1, 2, 3, 5].includes(Number(bacWater)) ? '' : bacWater}
+                      value={bacWater}
                       onChange={(e) => setBacWater(e.target.value)}
+                      onFocus={(e) => e.target.select()}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
@@ -693,12 +705,15 @@ export const AddCompoundScreen = () => {
                 </div>
               )}
               
-              {/* Medical disclaimer - shown when calculator is open */}
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <p className="text-xs text-muted-foreground text-center">
-                  Always double-check your results.
-                </p>
-              </div>
+              
+              {/* Medical disclaimer - only shown when there's a calculation result */}
+              {calculatedIU && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground text-center">
+                    Always double-check your results.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
