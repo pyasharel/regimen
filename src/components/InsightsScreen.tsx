@@ -235,35 +235,50 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Create continuous timeline (all dates in range)
+  // Create smart timeline (not every day - use appropriate intervals)
   const timelineData = useMemo(() => {
-    const dataArray: TimelineDataPoint[] = [];
-    const endDate = new Date();
-    let currentDate = new Date(cutoffDate);
+    // Collect all event dates (weight entries + dose logs)
+    const eventDates = new Set<string>();
     
-    // Generate all dates in range
-    while (currentDate <= endDate) {
-      const dateKey = format(currentDate, 'yyyy-MM-dd');
-      const point: TimelineDataPoint = {
-        date: format(currentDate, 'MMM d'),
-        dateObj: new Date(currentDate),
-      };
-      
-      // Add weight if exists for this date
-      const weightEntry = entries.find(e => e.entry_date === dateKey);
-      if (weightEntry) {
-        const metrics = weightEntry.metrics as any;
-        if (metrics?.weight) {
-          point.weight = metrics.weight;
+    entries.forEach(entry => {
+      if (parseISO(entry.entry_date) >= cutoffDate) {
+        eventDates.add(entry.entry_date);
+      }
+    });
+    
+    doses.forEach(dose => {
+      if (dose.taken_at) {
+        const doseDate = parseISO(dose.taken_at);
+        if (doseDate >= cutoffDate) {
+          eventDates.add(format(doseDate, 'yyyy-MM-dd'));
         }
       }
-      
-      dataArray.push(point);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+    });
+    
+    // Convert to timeline points
+    const dataArray = Array.from(eventDates)
+      .map(dateStr => {
+        const dateObj = parseISO(dateStr);
+        const point: TimelineDataPoint = {
+          date: format(dateObj, 'MMM d'),
+          dateObj,
+        };
+        
+        // Add weight if exists
+        const weightEntry = entries.find(e => e.entry_date === dateStr);
+        if (weightEntry) {
+          const metrics = weightEntry.metrics as any;
+          if (metrics?.weight) {
+            point.weight = metrics.weight;
+          }
+        }
+        
+        return point;
+      })
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
     
     return dataArray;
-  }, [entries, cutoffDate]);
+  }, [entries, doses, cutoffDate]);
 
   // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
@@ -485,119 +500,123 @@ export const InsightsScreen = () => {
           </div>
         )}
 
-        {/* Unified Timeline */}
+        {/* Unified Chart with shared timeline */}
         <Card className="p-4 bg-muted/30">
           <h3 className="text-sm font-semibold text-foreground mb-3">Progress Timeline</h3>
           {timelineData.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[400px] text-center">
-              <p className="text-muted-foreground text-sm mb-2">No weight data for this time range</p>
-              <p className="text-xs text-muted-foreground">Log your weight on the Progress tab to see it here</p>
+              <p className="text-muted-foreground text-sm mb-2">No data for this time range</p>
+              <p className="text-xs text-muted-foreground">Log your weight or doses to see them here</p>
             </div>
           ) : (
-            <>
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart data={timelineData} margin={{ top: 20, right: 10, bottom: 20, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    interval={Math.floor(timelineData.length / 8)}
-                    minTickGap={40}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    domain={weightDomain}
-                    width={50}
-                    label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  
-                  {/* Weight Line */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="weight" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                    activeDot={{ r: 6 }}
-                    connectNulls
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-              
-              {/* Medication Dose Dots - Below chart */}
-              {medicationPeriods.length > 0 && (
-                <div className="mt-6 space-y-3">
-                  {(() => {
-                    // Group by medication name
-                    const medGroups = new Map<string, { color: string; compound_id: string }>();
-                    compounds.forEach((compound, idx) => {
-                      if (!medGroups.has(compound.name)) {
-                        medGroups.set(compound.name, {
-                          color: MEDICATION_COLORS[idx % MEDICATION_COLORS.length],
-                          compound_id: compound.id
-                        });
-                      }
-                    });
+            <div className="space-y-6">
+              {/* Weight Chart */}
+              <div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      hide
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      domain={weightDomain}
+                      width={50}
+                      label={{ value: 'lbs', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
                     
-                    return Array.from(medGroups.entries()).map(([medName, { color, compound_id }]) => {
-                      // Get all logged doses for this medication
-                      const loggedDoses = doses
-                        .filter(d => d.compound_id === compound_id && d.taken && d.taken_at)
-                        .map(d => ({
-                          date: parseISO(d.taken_at!),
+                    {/* Weight Line */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="weight" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                      activeDot={{ r: 6 }}
+                      connectNulls
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {/* Medication Dose Dots */}
+              {compounds.length > 0 && (
+                <div className="space-y-2">
+                  {compounds.map((compound, idx) => {
+                    const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
+                    
+                    // Get all logged doses for this medication within the time range
+                    const loggedDoses = doses
+                      .filter(d => d.compound_id === compound.id && d.taken && d.taken_at)
+                      .map(d => {
+                        const doseDate = parseISO(d.taken_at!);
+                        return {
+                          date: doseDate,
+                          dateStr: format(doseDate, 'yyyy-MM-dd'),
                           amount: d.dose_amount,
-                          unit: d.dose_unit
-                        }))
-                        .filter(d => d.date >= cutoffDate);
-                      
-                      if (loggedDoses.length === 0) return null;
-                      
-                      // Calculate timeline positions
-                      const firstDate = timelineData[0]?.dateObj || cutoffDate;
-                      const lastDate = timelineData[timelineData.length - 1]?.dateObj || new Date();
-                      const totalDays = differenceInDays(lastDate, firstDate);
-                      
-                      return (
-                        <div key={medName} className="relative">
-                          <div className="flex items-center gap-3">
-                            <div className="w-24 flex-shrink-0">
-                              <span className="text-xs font-medium text-foreground">{medName}</span>
-                            </div>
-                            <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
-                              {loggedDoses.map((dose, idx) => {
-                                const daysSinceStart = differenceInDays(dose.date, firstDate);
-                                const position = (daysSinceStart / totalDays) * 100;
-                                
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-                                    style={{ left: `${position}%` }}
-                                    title={`${format(dose.date, 'MMM d')}: ${dose.amount}${dose.unit}`}
-                                  >
-                                    <div
-                                      className="w-2 h-2 rounded-full"
-                                      style={{ backgroundColor: color }}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
+                          unit: d.dose_unit,
+                        };
+                      })
+                      .filter(d => d.date >= cutoffDate)
+                      .sort((a, b) => a.date.getTime() - b.date.getTime());
+                    
+                    if (loggedDoses.length === 0) return null;
+                    
+                    return (
+                      <div key={compound.id} className="flex items-center gap-3">
+                        <div className="w-24 flex-shrink-0">
+                          <span className="text-xs font-medium text-foreground">{compound.name}</span>
                         </div>
-                      );
-                    }).filter(Boolean);
-                  })()}
+                        <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
+                          {/* Render dots based on timeline positions */}
+                          {loggedDoses.map((dose, doseIdx) => {
+                            const timelineIndex = timelineData.findIndex(
+                              t => format(t.dateObj, 'yyyy-MM-dd') === dose.dateStr
+                            );
+                            
+                            if (timelineIndex === -1) return null;
+                            
+                            const position = (timelineIndex / (timelineData.length - 1)) * 100;
+                            
+                            return (
+                              <div
+                                key={doseIdx}
+                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                                style={{ left: `${position}%` }}
+                                title={`${format(dose.date, 'MMM d')}: ${dose.amount}${dose.unit}`}
+                              >
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full border-2 border-background"
+                                  style={{ backgroundColor: color }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }).filter(Boolean)}
                 </div>
               )}
-            </>
+              
+              {/* Shared X-axis labels at bottom */}
+              <div className="relative h-8 mt-2">
+                <div className="flex justify-between text-[10px] text-muted-foreground px-12">
+                  {timelineData.filter((_, idx) => idx % Math.ceil(timelineData.length / 8) === 0 || idx === timelineData.length - 1).map((point, idx) => (
+                    <span key={idx}>{point.date}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </Card>
       </div>
