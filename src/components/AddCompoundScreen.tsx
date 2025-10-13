@@ -622,7 +622,7 @@ export const AddCompoundScreen = () => {
                       input?.focus();
                     }}
                     className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                      ![5, 10, 15, 20].includes(Number(vialSize)) && vialSize !== ''
+                      vialSize === '' || ![5, 10, 15, 20].includes(Number(vialSize))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
@@ -630,7 +630,7 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="peptide-amount-input"
                       type="number"
-                      value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
+                      value={[5, 10, 15, 20].includes(Number(vialSize)) ? '' : vialSize}
                       onChange={(e) => setVialSize(e.target.value)}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
@@ -661,7 +661,7 @@ export const AddCompoundScreen = () => {
                       input?.focus();
                     }}
                     className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      ![1, 2, 3, 5].includes(Number(bacWater))
+                      bacWater === '' || ![1, 2, 3, 5].includes(Number(bacWater))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
@@ -669,7 +669,7 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="custom-bac-water"
                       type="number"
-                      value={![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
+                      value={[1, 2, 3, 5].includes(Number(bacWater)) ? '' : bacWater}
                       onChange={(e) => setBacWater(e.target.value)}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
