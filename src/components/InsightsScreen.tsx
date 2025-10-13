@@ -274,7 +274,7 @@ export const InsightsScreen = () => {
       entryDates: entries.map(e => e.entry_date)
     });
     
-    // Find the most recent weight entry BEFORE the cutoff date to carry forward
+    // Find the most recent weight entry BEFORE the cutoff date
     const entriesBeforeCutoff = entries
       .filter(e => parseISO(e.entry_date) < cutoffDate)
       .sort((a, b) => parseISO(b.entry_date).getTime() - parseISO(a.entry_date).getTime());
@@ -283,11 +283,7 @@ export const InsightsScreen = () => {
       ? (entriesBeforeCutoff[0].metrics as any)?.weight 
       : undefined;
     
-    console.log('Last weight before cutoff:', lastWeightBeforeCutoff);
-    
     // Generate continuous timeline from cutoffDate to today
-    let carriedWeight = lastWeightBeforeCutoff;
-    
     while (currentDate <= endDate) {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
       const point: TimelineDataPoint = {
@@ -301,11 +297,11 @@ export const InsightsScreen = () => {
         const metrics = weightEntry.metrics as any;
         if (metrics?.weight) {
           point.weight = metrics.weight;
-          carriedWeight = metrics.weight; // Update carried weight
         }
-      } else if (carriedWeight !== undefined) {
-        // Carry forward the last known weight
-        point.weight = carriedWeight;
+      }
+      // Only add the carried weight to the FIRST point if no weight exists
+      else if (dataArray.length === 0 && lastWeightBeforeCutoff !== undefined) {
+        point.weight = lastWeightBeforeCutoff;
       }
       
       dataArray.push(point);
@@ -316,7 +312,8 @@ export const InsightsScreen = () => {
       totalPoints: dataArray.length,
       firstDate: dataArray[0]?.date,
       lastDate: dataArray[dataArray.length - 1]?.date,
-      pointsWithWeight: dataArray.filter(p => p.weight !== undefined).length
+      pointsWithWeight: dataArray.filter(p => p.weight !== undefined).length,
+      firstWeight: dataArray[0]?.weight
     });
     
     return dataArray;
