@@ -11,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
 import { IOSTimePicker } from "@/components/ui/ios-time-picker";
+import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +48,12 @@ const COMMON_PEPTIDES = [
   // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
   // Other steroids
-  "Nandrolone", "Oxandrolone",
+  "Nandrolone", "Nandrolone Decanoate",
+  "Oxandrolone",
+  // HGH
+  "Somatropin (HGH)",
+  // Post-cycle therapy & support
+  "Anastrozole (Arimidex)", "Clomiphene Citrate (Clomid)",
   // Blends and stacks
   "Wolverine Stack",
   // GLP-1s
@@ -79,6 +85,10 @@ export const AddCompoundScreen = () => {
   const [bacWater, setBacWater] = useState("");
   const [isCustomVialSize, setIsCustomVialSize] = useState(false);
   const [isCustomBacWater, setIsCustomBacWater] = useState(false);
+
+  // mL calculator (for oils/injections)
+  const [concentration, setConcentration] = useState("");
+  const [targetDose, setTargetDose] = useState("");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -177,6 +187,17 @@ export const AddCompoundScreen = () => {
   };
 
   const calculatedIU = showCalculator ? calculateIU() : null;
+
+  // Calculate mL needed based on concentration
+  const calculateML = () => {
+    if (!concentration || !targetDose) return null;
+    const concentrationNum = parseFloat(concentration);
+    const targetDoseNum = parseFloat(targetDose);
+    const mlNeeded = targetDoseNum / concentrationNum;
+    return mlNeeded > 0 ? mlNeeded.toFixed(2) : null;
+  };
+
+  const calculatedML = showCalculator && doseUnit === 'mL' ? calculateML() : null;
 
   // Auto-populate dose when calculator values change - but preserve unit choice
   useEffect(() => {
@@ -552,6 +573,7 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
+                <option value="mL">mL</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -566,6 +588,16 @@ export const AddCompoundScreen = () => {
               className="text-sm text-primary hover:underline"
             >
               {showCalculator ? '- Hide' : '+ Show'} IU Calculator
+            </button>
+          )}
+
+          {/* mL Calculator - only show for mL unit */}
+          {doseUnit === 'mL' && (
+            <button
+              onClick={() => setShowCalculator(!showCalculator)}
+              className="text-sm text-primary hover:underline"
+            >
+              {showCalculator ? '- Hide' : '+ Show'} mL Calculator
             </button>
           )}
 
@@ -713,21 +745,74 @@ export const AddCompoundScreen = () => {
               )}
             </div>
           )}
+
+          {/* mL Calculator - for oil-based compounds */}
+          {showCalculator && doseUnit === 'mL' && (
+            <div className="space-y-4 p-4 bg-surface rounded-lg">
+              <div className="space-y-2">
+                <Label>Concentration (mg/mL)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={concentration}
+                  onChange={(e) => setConcentration(e.target.value)}
+                  placeholder="e.g., 200"
+                  className="text-lg h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  How many mg per mL (check your vial label)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Target Dose (mg)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={targetDose}
+                  onChange={(e) => setTargetDose(e.target.value)}
+                  placeholder="e.g., 100"
+                  className="text-lg h-12"
+                />
+                <p className="text-xs text-muted-foreground">
+                  How many mg you want to inject
+                </p>
+              </div>
+
+              {calculatedML && (
+                <>
+                  <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Volume to inject
+                    </div>
+                  </div>
+                  
+                  {/* Medical disclaimer */}
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground flex items-center justify-center">
+                      Always double-check your results
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Schedule */}
         <div className="space-y-4 bg-background rounded-lg p-4 border border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Schedule</h2>
 
-          <div className="space-y-2">
-            <Label>Frequency <span className="text-destructive">*</span></Label>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <Label className="sm:mb-0">Frequency <span className="text-destructive">*</span></Label>
             <select
               value={frequency}
               onChange={(e) => {
                 setFrequency(e.target.value);
                 if (e.target.value === 'Specific day(s)') setCustomDays([]);
               }}
-              className="w-full h-11 bg-input border-border rounded-lg border px-3 text-sm"
+              className="w-full sm:w-64 h-11 bg-input border-border rounded-lg border px-3 text-sm"
             >
               <option value="Daily">Daily</option>
               <option value="Specific day(s)">Specific days</option>
@@ -865,53 +950,48 @@ export const AddCompoundScreen = () => {
             </>
           )}
 
-          <div className="space-y-3">
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Start Date <span className="text-destructive">*</span></Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(new Date(startDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate ? new Date(startDate + 'T00:00:00') : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          const year = date.getFullYear();
-                          const month = String(date.getMonth() + 1).padStart(2, '0');
-                          const day = String(date.getDate()).padStart(2, '0');
-                          setStartDate(`${year}-${month}-${day}`);
-                        }
-                      }}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <Label className="sm:mb-0">Start Date <span className="text-destructive">*</span></Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full sm:w-64 justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(new Date(startDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate ? new Date(startDate + 'T00:00:00') : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      setStartDate(`${year}-${month}-${day}`);
+                    }
+                  }}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Input
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
               id="notes"
-              type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Batch number, COA link, etc."
-              className="text-sm"
+              placeholder="Batch number, COA link, storage location, etc."
+              className="text-sm resize-y min-h-[80px]"
             />
           </div>
 
