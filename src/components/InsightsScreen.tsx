@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays } from "date-fns";
 import { 
   ComposedChart, 
-  Line, 
+  Line,
+  Bar,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -23,6 +24,7 @@ type TimelineDataPoint = {
   date: string;
   dateObj: Date;
   weight?: number;
+  [key: string]: any; // For medication bars (med_0, med_1, etc.)
 };
 
 type MedicationPeriod = {
@@ -125,28 +127,7 @@ export const InsightsScreen = () => {
 
   const cutoffDate = subDays(new Date(), daysToShow);
 
-  // Process weight data
-  const timelineData = useMemo(() => {
-    const dataMap = new Map<string, TimelineDataPoint>();
-
-    entries.forEach(entry => {
-      const metrics = entry.metrics as any;
-      if (metrics?.weight) {
-        const dateKey = entry.entry_date;
-        dataMap.set(dateKey, {
-          date: format(new Date(entry.entry_date), 'MMM d'),
-          dateObj: new Date(entry.entry_date),
-          weight: metrics.weight,
-        });
-      }
-    });
-
-    return Array.from(dataMap.values())
-      .filter(d => d.dateObj >= cutoffDate)
-      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
-  }, [entries, cutoffDate]);
-
-  // Process medication periods and dose changes (including cycles)
+  // Process medication periods and dose changes (including cycles) - MUST come before timelineData
   const { medicationPeriods, doseChanges } = useMemo(() => {
     const periods: MedicationPeriod[] = [];
     const changes: DoseChange[] = [];
@@ -253,6 +234,49 @@ export const InsightsScreen = () => {
     
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
+
+  // Process weight data and add medication bars
+  const timelineData = useMemo(() => {
+    const dataMap = new Map<string, TimelineDataPoint>();
+
+    entries.forEach(entry => {
+      const metrics = entry.metrics as any;
+      if (metrics?.weight) {
+        const dateKey = entry.entry_date;
+        dataMap.set(dateKey, {
+          date: format(new Date(entry.entry_date), 'MMM d'),
+          dateObj: new Date(entry.entry_date),
+          weight: metrics.weight,
+        });
+      }
+    });
+
+    const dataArray = Array.from(dataMap.values())
+      .filter(d => d.dateObj >= cutoffDate)
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    
+    // Add medication bar data to each point
+    // First, get unique medications
+    const uniqueMeds = Array.from(new Set(medicationPeriods.map(p => p.name)));
+    
+    dataArray.forEach(point => {
+      uniqueMeds.forEach((medName, idx) => {
+        // Check if this medication is active on this date
+        const isActive = medicationPeriods.some(period => {
+          if (period.name !== medName) return false;
+          const pointDate = startOfDay(point.dateObj);
+          const start = startOfDay(period.startDate);
+          const end = period.endDate ? startOfDay(period.endDate) : new Date();
+          return pointDate >= start && pointDate <= end;
+        });
+        
+        // Set a fixed value if active (we'll position these at bottom of chart)
+        point[`med_${idx}`] = isActive ? 1 : 0;
+      });
+    });
+
+    return dataArray;
+  }, [entries, cutoffDate, medicationPeriods]);
 
   // Calculate dashboard metrics
   const dashboardMetrics = useMemo(() => {
@@ -492,6 +516,7 @@ export const InsightsScreen = () => {
                     axisLine={false}
                   />
                   <YAxis 
+                    yAxisId="weight"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={11}
                     tickLine={false}
@@ -499,53 +524,36 @@ export const InsightsScreen = () => {
                     domain={weightDomain}
                     width={50}
                   />
+                  <YAxis 
+                    yAxisId="meds"
+                    hide
+                    domain={[0, 1]}
+                  />
                   <Tooltip content={<CustomTooltip />} />
                   
-                  {/* Medication bars - positioned at bottom of chart */}
+                  {/* Medication bars */}
                   {(() => {
-                    // Group periods by medication name for proper stacking
-                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
-                    medicationPeriods.forEach(period => {
-                      if (!medGroups.has(period.name)) {
-                        medGroups.set(period.name, { color: period.color, periods: [] });
-                      }
-                      medGroups.get(period.name)!.periods.push(period);
-                    });
+                    const uniqueMeds = Array.from(new Set(medicationPeriods.map(p => ({ name: p.name, color: p.color }))));
+                    const dedupedMeds = Array.from(
+                      new Map(uniqueMeds.map(m => [m.name, m])).values()
+                    );
                     
-                    const groupArray = Array.from(medGroups.entries());
-                    const [minWeight, maxWeight] = weightDomain;
-                    const weightRange = maxWeight - minWeight;
-                    const barHeight = weightRange * 0.06; // 6% of chart height per medication
-                    
-                    return groupArray.flatMap(([medName, { color, periods }], groupIdx) => {
-                      const yPosition = minWeight + (groupIdx * barHeight * 1.4);
-                      
-                      return periods.map((med, periodIdx) => {
-                        const startFormatted = format(med.startDate, 'MMM d');
-                        const endFormatted = med.endDate 
-                          ? format(med.endDate, 'MMM d') 
-                          : format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d');
-                        
-                        return (
-                          <ReferenceArea
-                            key={`${medName}-${periodIdx}`}
-                            x1={startFormatted}
-                            x2={endFormatted}
-                            y1={yPosition}
-                            y2={yPosition + barHeight}
-                            fill={color}
-                            fillOpacity={0.7}
-                            stroke={color}
-                            strokeWidth={2}
-                            ifOverflow="visible"
-                          />
-                        );
-                      });
-                    });
+                    return dedupedMeds.map((med, idx) => (
+                      <Bar
+                        key={`med-bar-${idx}`}
+                        yAxisId="meds"
+                        dataKey={`med_${idx}`}
+                        fill={med.color}
+                        opacity={0.7}
+                        barSize={20}
+                        stackId="medications"
+                      />
+                    ));
                   })()}
                   
                   {/* Weight Line - rendered last so it's on top */}
                   <Line 
+                    yAxisId="weight"
                     type="monotone" 
                     dataKey="weight" 
                     stroke="hsl(var(--primary))" 
