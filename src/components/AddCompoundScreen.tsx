@@ -568,8 +568,8 @@ export const AddCompoundScreen = () => {
           {showCalculator && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
-                <Label>Peptide Amount</Label>
-                <div className="grid grid-cols-5 gap-2">
+                <Label>Peptide Amount (mg)</Label>
+                <div className="grid grid-cols-4 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
@@ -583,40 +583,25 @@ export const AddCompoundScreen = () => {
                       {size}mg
                     </button>
                   ))}
-                  <button
-                    onClick={() => {
-                      const input = document.getElementById('custom-vial-size') as HTMLInputElement;
-                      setVialSize('');
-                      setTimeout(() => input?.focus(), 0);
-                    }}
-                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
-                  >
-                    Custom
-                  </button>
                 </div>
-                {/* Custom input field - shown when typing custom value */}
-                {vialSize && ![5, 10, 15, 20].map(String).includes(vialSize) && (
-                  <Input
-                    id="custom-vial-size"
-                    type="text"
-                    inputMode="decimal"
-                    value={vialSize}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        setVialSize(value);
-                      }
-                    }}
-                    placeholder="Enter custom amount"
-                    className="text-center"
-                    autoFocus
-                  />
-                )}
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={vialSize}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setVialSize(value);
+                    }
+                  }}
+                  placeholder="Or enter custom amount"
+                  className="text-center"
+                />
               </div>
 
               <div className="space-y-2">
-                <Label>BAC Water Volume</Label>
-                <div className="grid grid-cols-5 gap-2">
+                <Label>BAC Water Volume (ml)</Label>
+                <div className="grid grid-cols-4 gap-2">
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
@@ -630,35 +615,20 @@ export const AddCompoundScreen = () => {
                       {vol}ml
                     </button>
                   ))}
-                  <button
-                    onClick={() => {
-                      const input = document.getElementById('custom-bac-water') as HTMLInputElement;
-                      setBacWater('');
-                      setTimeout(() => input?.focus(), 0);
-                    }}
-                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
-                  >
-                    Custom
-                  </button>
                 </div>
-                {/* Custom input field - shown when typing custom value */}
-                {bacWater && ![1, 2, 3, 5].map(String).includes(bacWater) && (
-                  <Input
-                    id="custom-bac-water"
-                    type="text"
-                    inputMode="decimal"
-                    value={bacWater}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                        setBacWater(value);
-                      }
-                    }}
-                    placeholder="Enter custom amount"
-                    className="text-center"
-                    autoFocus
-                  />
-                )}
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={bacWater}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      setBacWater(value);
+                    }
+                  }}
+                  placeholder="Or enter custom amount"
+                  className="text-center"
+                />
               </div>
 
 
