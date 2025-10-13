@@ -569,6 +569,8 @@ export const InsightsScreen = () => {
                       .filter(d => d.date >= cutoffDate)
                       .sort((a, b) => a.date.getTime() - b.date.getTime());
                     
+                    console.log(`${compound.name} logged doses:`, loggedDoses.length, loggedDoses.map(d => d.dateStr));
+                    
                     if (loggedDoses.length === 0) return null;
                     
                     return (
@@ -583,7 +585,12 @@ export const InsightsScreen = () => {
                               t => format(t.dateObj, 'yyyy-MM-dd') === dose.dateStr
                             );
                             
-                            if (timelineIndex === -1) return null;
+                            console.log(`Dose ${doseIdx} (${dose.dateStr}): timeline index ${timelineIndex}`);
+                            
+                            if (timelineIndex === -1) {
+                              console.warn(`No timeline point found for dose on ${dose.dateStr}`);
+                              return null;
+                            }
                             
                             const position = (timelineIndex / (timelineData.length - 1)) * 100;
                             
