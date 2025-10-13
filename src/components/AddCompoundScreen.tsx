@@ -569,7 +569,7 @@ export const AddCompoundScreen = () => {
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
@@ -583,25 +583,41 @@ export const AddCompoundScreen = () => {
                       {size}mg
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      setVialSize('');
+                      setTimeout(() => {
+                        const input = document.getElementById('custom-vial-size') as HTMLInputElement;
+                        input?.focus();
+                      }, 0);
+                    }}
+                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
+                  >
+                    <Input
+                      id="custom-vial-size"
+                      type="text"
+                      inputMode="decimal"
+                      value={vialSize}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setVialSize(value);
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setVialSize('');
+                      }}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
+                  </button>
                 </div>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={vialSize}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      setVialSize(value);
-                    }
-                  }}
-                  placeholder="Or enter custom amount"
-                  className="text-center"
-                />
               </div>
 
               <div className="space-y-2">
                 <Label>BAC Water Volume (ml)</Label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
@@ -615,20 +631,36 @@ export const AddCompoundScreen = () => {
                       {vol}ml
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      setBacWater('');
+                      setTimeout(() => {
+                        const input = document.getElementById('custom-bac-water') as HTMLInputElement;
+                        input?.focus();
+                      }, 0);
+                    }}
+                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
+                  >
+                    <Input
+                      id="custom-bac-water"
+                      type="text"
+                      inputMode="decimal"
+                      value={bacWater}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setBacWater(value);
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBacWater('');
+                      }}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
+                  </button>
                 </div>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={bacWater}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      setBacWater(value);
-                    }
-                  }}
-                  placeholder="Or enter custom amount"
-                  className="text-center"
-                />
               </div>
 
 
