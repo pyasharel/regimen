@@ -167,11 +167,60 @@ export const AddCompoundScreen = () => {
   const calculateIU = () => {
     if (!vialSize || !bacWater || !intendedDose) return null;
 
-    const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
-    const concentration = vialMcg / parseFloat(bacWater);
-    const volumeML = doseMcg / concentration;
-    return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
+    const vialAmount = parseFloat(vialSize);
+    const waterVolume = parseFloat(bacWater);
+    const doseAmount = parseFloat(intendedDose);
+
+    // Case 1: Vial is measured in IU (like insulin)
+    if (vialUnit === 'iu') {
+      // Concentration in IU per ml
+      const concentrationIUperML = vialAmount / waterVolume;
+      
+      // If dose is also in IU, calculate syringe units needed
+      if (doseUnit === 'iu') {
+        // Volume needed in ml
+        const volumeML = doseAmount / concentrationIUperML;
+        // Convert to units on 100-unit syringe (1ml = 100 units)
+        return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
+      } 
+      // If dose is in mg/mcg but vial is in IU, calculation doesn't make sense
+      else if (doseUnit === 'mg' || doseUnit === 'mcg') {
+        return null; // Can't convert between IU and weight units
+      }
+    }
+    
+    // Case 2: Vial is measured in mg or mcg (peptides)
+    else {
+      // If dose is in IU but vial is in mg/mcg, calculation doesn't make sense
+      if (doseUnit === 'iu') {
+        return null; // Can't convert between weight units and IU
+      }
+
+      // Convert vial to mcg
+      const vialMcg = vialUnit === 'mg' ? vialAmount * 1000 : vialAmount;
+      
+      // Convert dose to mcg
+      let doseMcg: number;
+      if (doseUnit === 'mg') {
+        doseMcg = doseAmount * 1000;
+      } else if (doseUnit === 'mcg') {
+        doseMcg = doseAmount;
+      } else {
+        // For other units (pill, drop, spray), calculator doesn't apply
+        return null;
+      }
+      
+      // Calculate concentration (mcg per ml)
+      const concentration = vialMcg / waterVolume;
+      
+      // Calculate volume needed in ml
+      const volumeML = doseMcg / concentration;
+      
+      // Convert to units on a 100-unit insulin syringe (1ml = 100 units)
+      return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
+    }
+    
+    return null;
   };
 
   const calculatedIU = showCalculator ? calculateIU() : null;
@@ -179,19 +228,41 @@ export const AddCompoundScreen = () => {
   // Auto-populate dose when calculator values change - but preserve unit choice
   useEffect(() => {
     if (showCalculator && vialSize && bacWater) {
-      const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-      const concentration = vialMcg / parseFloat(bacWater);
-      
       // Only auto-populate if dose is empty or if vial/water values just changed
       if (!intendedDose || intendedDose === '0') {
-        const iu = 10; // Default starting IU
-        const doseMcg = (iu / 100) * concentration;
+        const vialAmount = parseFloat(vialSize);
+        const waterVolume = parseFloat(bacWater);
+        const targetSyringeUnits = 10; // Default: 10 units on syringe
         
-        // Preserve the user's selected unit
-        if (doseUnit === 'mg') {
-          setIntendedDose((doseMcg / 1000).toFixed(2));
-        } else {
-          setIntendedDose(doseMcg.toFixed(0));
+        // For IU vials
+        if (vialUnit === 'iu') {
+          const concentrationIUperML = vialAmount / waterVolume;
+          const volumeML = targetSyringeUnits / 100; // 10 units = 0.1ml
+          const doseIU = volumeML * concentrationIUperML;
+          
+          // Set dose in IU and switch unit to IU if not already
+          if (doseUnit !== 'iu') {
+            setDoseUnit('iu');
+          }
+          setIntendedDose(doseIU.toFixed(2));
+        } 
+        // For mg/mcg vials
+        else {
+          const vialMcg = vialUnit === 'mg' ? vialAmount * 1000 : vialAmount;
+          const concentration = vialMcg / waterVolume;
+          const volumeML = targetSyringeUnits / 100; // 10 units = 0.1ml
+          const doseMcg = volumeML * concentration;
+          
+          // Preserve the user's selected unit
+          if (doseUnit === 'mg') {
+            setIntendedDose((doseMcg / 1000).toFixed(2));
+          } else if (doseUnit === 'mcg' || doseUnit === 'iu') {
+            // Switch to mcg if currently in IU (since vial is not IU)
+            if (doseUnit === 'iu') {
+              setDoseUnit('mcg');
+            }
+            setIntendedDose(doseMcg.toFixed(0));
+          }
         }
       }
     }
@@ -570,39 +641,48 @@ export const AddCompoundScreen = () => {
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={vialSize}
+                    onChange={(e) => setVialSize(e.target.value)}
+                    placeholder="Enter amount"
+                    className="flex-1 h-12 text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <select
+                    value={vialUnit}
+                    onChange={(e) => setVialUnit(e.target.value)}
+                    className="w-[100px] h-12 bg-input border-border rounded-lg border px-3 text-sm font-medium"
+                  >
+                    <option value="mg">mg</option>
+                    <option value="mcg">mcg</option>
+                    <option value="iu">iu</option>
+                  </select>
+                </div>
+                
+                {/* Quick select buttons */}
                 <div className="grid grid-cols-5 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
-                      onClick={() => setVialSize(size.toString())}
-                      className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                        vialSize === size.toString()
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-card border border-border hover:bg-muted'
-                      }`}
+                      onClick={() => {
+                        setVialSize(size.toString());
+                        setVialUnit('mg');
+                      }}
+                      className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
                     >
                       {size}mg
                     </button>
                   ))}
                   <button
                     onClick={() => {
-                      const input = document.getElementById('custom-vial-size') as HTMLInputElement;
+                      setVialSize('');
+                      const input = document.querySelector('input[type="number"]') as HTMLInputElement;
                       input?.focus();
                     }}
-                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      ![5, 10, 15, 20].includes(Number(vialSize))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
+                    className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
                   >
-                    <Input
-                      id="custom-vial-size"
-                      type="number"
-                      value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
-                      onChange={(e) => setVialSize(e.target.value)}
-                      placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
-                    />
+                    Custom
                   </button>
                 </div>
               </div>
