@@ -602,15 +602,12 @@ export const AddCompoundScreen = () => {
                 <Label>Peptide Amount (mg)</Label>
                 
                 {/* Quick select buttons */}
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
-                      onClick={() => {
-                        setVialSize(size.toString());
-                        // Blur any focused input
-                        (document.activeElement as HTMLElement)?.blur();
-                      }}
+                      type="button"
+                      onClick={() => setVialSize(size.toString())}
                       className={`rounded-lg py-2 text-xs font-medium transition-colors ${
                         vialSize === size.toString()
                           ? 'bg-primary text-primary-foreground'
@@ -620,42 +617,28 @@ export const AddCompoundScreen = () => {
                       {size}mg
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.getElementById('peptide-amount-input') as HTMLInputElement;
-                      input?.focus();
-                    }}
-                    className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                      vialSize !== '' && ![5, 10, 15, 20].includes(Number(vialSize))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
-                  >
-                    <Input
-                      id="peptide-amount-input"
-                      type="number"
-                      value={[5, 10, 15, 20].includes(Number(vialSize)) ? '' : vialSize}
-                      onChange={(e) => setVialSize(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
-                    />
-                  </button>
                 </div>
+                
+                {/* Custom input field */}
+                <Input
+                  type="number"
+                  value={vialSize}
+                  onChange={(e) => setVialSize(e.target.value)}
+                  placeholder="Or enter custom amount"
+                  className="h-10 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
 
               <div className="space-y-2">
-                <Label>BAC Water Volume</Label>
-                <div className="grid grid-cols-5 gap-2">
+                <Label>BAC Water Volume (ml)</Label>
+                
+                {/* Quick select buttons */}
+                <div className="grid grid-cols-4 gap-2">
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
-                      onClick={() => {
-                        setBacWater(vol.toString());
-                        // Blur any focused input
-                        (document.activeElement as HTMLElement)?.blur();
-                      }}
+                      type="button"
+                      onClick={() => setBacWater(vol.toString())}
                       className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                         bacWater === vol.toString()
                           ? 'bg-primary text-primary-foreground'
@@ -665,29 +648,16 @@ export const AddCompoundScreen = () => {
                       {vol}ml
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.getElementById('custom-bac-water') as HTMLInputElement;
-                      input?.focus();
-                    }}
-                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      bacWater !== '' && ![1, 2, 3, 5].includes(Number(bacWater))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
-                  >
-                    <Input
-                      id="custom-bac-water"
-                      type="number"
-                      value={[1, 2, 3, 5].includes(Number(bacWater)) ? '' : bacWater}
-                      onChange={(e) => setBacWater(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
-                    />
-                  </button>
                 </div>
+                
+                {/* Custom input field */}
+                <Input
+                  type="number"
+                  value={bacWater}
+                  onChange={(e) => setBacWater(e.target.value)}
+                  placeholder="Or enter custom amount"
+                  className="h-10 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
 
               {calculatedIU && (
