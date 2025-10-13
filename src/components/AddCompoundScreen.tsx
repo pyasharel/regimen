@@ -177,20 +177,24 @@ export const AddCompoundScreen = () => {
 
   // Auto-populate dose when calculator values change - but preserve unit choice
   useEffect(() => {
-    if (showCalculator && vialSize && bacWater && calculatedIU) {
+    if (showCalculator && vialSize && bacWater) {
       const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
       const concentration = vialMcg / parseFloat(bacWater);
-      const iu = parseFloat(calculatedIU);
-      const doseMcg = (iu / 100) * concentration;
       
-      // Preserve the user's selected unit
-      if (doseUnit === 'mg') {
-        setIntendedDose((doseMcg / 1000).toFixed(2));
-      } else {
-        setIntendedDose(doseMcg.toFixed(0));
+      // Only auto-populate if dose is empty or if vial/water values just changed
+      if (!intendedDose || intendedDose === '0') {
+        const iu = 10; // Default starting IU
+        const doseMcg = (iu / 100) * concentration;
+        
+        // Preserve the user's selected unit
+        if (doseUnit === 'mg') {
+          setIntendedDose((doseMcg / 1000).toFixed(2));
+        } else {
+          setIntendedDose(doseMcg.toFixed(0));
+        }
       }
     }
-  }, [calculatedIU, vialSize, bacWater, vialUnit]);
+  }, [vialSize, bacWater, vialUnit, showCalculator]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
