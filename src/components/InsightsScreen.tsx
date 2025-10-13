@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, parseISO, startOfDay } from "date-fns";
+import { format, subDays, parseISO, startOfDay, differenceInDays } from "date-fns";
 import { 
   ComposedChart, 
   Line, 
@@ -16,9 +16,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  ReferenceLine,
-  ReferenceArea,
-  Label as RechartsLabel
 } from 'recharts';
 
 type TimelineDataPoint = {
@@ -430,16 +427,17 @@ export const InsightsScreen = () => {
           </div>
         )}
 
-        {/* Chart */}
+        {/* Weight Chart */}
         <Card className="p-4 bg-muted/30">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Weight Progress</h3>
           {timelineData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <div className="flex flex-col items-center justify-center h-[250px] text-center">
               <p className="text-muted-foreground text-sm mb-2">No weight data for this time range</p>
               <p className="text-xs text-muted-foreground">Log your weight on the Progress tab to see it here</p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={timelineData} margin={{ top: 40, right: 10, bottom: 20, left: -20 }}>
+            <ResponsiveContainer width="100%" height={250}>
+              <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 20, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis 
                   dataKey="date" 
@@ -458,73 +456,6 @@ export const InsightsScreen = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 
-                {/* Medication period shaded areas */}
-                {medicationPeriods.map((med, idx) => {
-                  const startFormatted = format(med.startDate, 'MMM d');
-                  const endFormatted = med.endDate ? format(med.endDate, 'MMM d') : format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d');
-                  
-                  return (
-                    <ReferenceArea
-                      key={`med-area-${idx}`}
-                      x1={startFormatted}
-                      x2={endFormatted}
-                      fill={med.color}
-                      fillOpacity={0.1}
-                      stroke={med.color}
-                      strokeOpacity={0.3}
-                      strokeWidth={1}
-                      strokeDasharray="3 3"
-                    />
-                  );
-                })}
-                
-                {/* Medication start markers */}
-                {medicationPeriods.map((med, idx) => {
-                  const start = format(med.startDate, 'MMM d');
-                  
-                  return (
-                    <ReferenceLine
-                      key={`med-start-${idx}`}
-                      x={start}
-                      stroke={med.color}
-                      strokeWidth={2}
-                      strokeDasharray="3 3"
-                      label={
-                        <RechartsLabel
-                          value={med.name}
-                          position="top"
-                          fill={med.color}
-                          fontSize={10}
-                          fontWeight={600}
-                        />
-                      }
-                    />
-                  );
-                })}
-
-                {/* Dose change markers */}
-                {doseChanges.map((change, idx) => (
-                  <ReferenceLine
-                    key={`dose-change-${idx}`}
-                    x={change.dateFormatted}
-                    stroke={change.color}
-                    strokeWidth={1}
-                    strokeDasharray="2 2"
-                    label={
-                      change.amount > 0 ? (
-                        <RechartsLabel
-                          value={`${change.amount}${change.unit}`}
-                          position="top"
-                          fill={change.color}
-                          fontSize={9}
-                          fontWeight={500}
-                          offset={10}
-                        />
-                      ) : undefined
-                    }
-                  />
-                ))}
-                
                 {/* Weight Line */}
                 <Line 
                   type="monotone" 
@@ -540,25 +471,83 @@ export const InsightsScreen = () => {
           )}
         </Card>
 
-        {/* Medication Legend */}
+        {/* Medication Timeline */}
         {medicationPeriods.length > 0 && (
-          <Card className="p-3 bg-muted/30">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Medications
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {medicationPeriods.map((med, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full border-2" 
-                    style={{ 
-                      backgroundColor: med.color,
-                      borderColor: med.color 
-                    }}
-                  />
-                  <span className="text-xs text-foreground">{med.name}</span>
-                </div>
-              ))}
+          <Card className="p-4 bg-muted/30">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Medication Timeline</h3>
+            <div className="space-y-4">
+              {medicationPeriods.map((med, idx) => {
+                // Calculate the position and width based on dates
+                const rangeStart = cutoffDate;
+                const rangeEnd = new Date();
+                const totalDays = differenceInDays(rangeEnd, rangeStart);
+                
+                const medStartDays = differenceInDays(med.startDate, rangeStart);
+                const medEndDays = med.endDate 
+                  ? differenceInDays(med.endDate, rangeStart)
+                  : totalDays;
+                
+                const leftPercent = Math.max(0, (medStartDays / totalDays) * 100);
+                const widthPercent = Math.min(100 - leftPercent, ((medEndDays - medStartDays) / totalDays) * 100);
+                
+                // Get dose changes for this medication
+                const medDoseChanges = doseChanges.filter(dc => dc.color === med.color);
+                
+                return (
+                  <div key={idx} className="relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: med.color }}
+                      />
+                      <span className="text-xs font-medium text-foreground">{med.name}</span>
+                    </div>
+                    
+                    {/* Timeline container */}
+                    <div className="relative h-8 bg-muted/50 rounded-lg overflow-visible">
+                      {/* Medication active period bar */}
+                      <div
+                        className="absolute h-full rounded-lg flex items-center px-2"
+                        style={{
+                          left: `${leftPercent}%`,
+                          width: `${widthPercent}%`,
+                          backgroundColor: med.color,
+                          opacity: 0.6,
+                        }}
+                      >
+                        {/* Dose markers */}
+                        {medDoseChanges.map((change, changeIdx) => {
+                          const changeDays = differenceInDays(change.date, rangeStart);
+                          const changeLeftPercent = ((changeDays - medStartDays) / (medEndDays - medStartDays)) * 100;
+                          
+                          if (changeLeftPercent < 0 || changeLeftPercent > 100) return null;
+                          
+                          return (
+                            <div
+                              key={changeIdx}
+                              className="absolute -top-6 transform -translate-x-1/2"
+                              style={{ left: `${changeLeftPercent}%` }}
+                            >
+                              <div className="flex flex-col items-center">
+                                <span 
+                                  className="text-[10px] font-semibold whitespace-nowrap"
+                                  style={{ color: med.color }}
+                                >
+                                  {change.amount > 0 ? `${change.amount}${change.unit}` : 'End'}
+                                </span>
+                                <div 
+                                  className="w-0.5 h-6"
+                                  style={{ backgroundColor: med.color }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         )}
