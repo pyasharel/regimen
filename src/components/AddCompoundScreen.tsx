@@ -597,7 +597,7 @@ export const AddCompoundScreen = () => {
                       id="custom-vial-size"
                       type="text"
                       inputMode="decimal"
-                      value={vialSize}
+                      value={[5, 10, 15, 20].map(String).includes(vialSize) ? '' : vialSize}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -645,7 +645,7 @@ export const AddCompoundScreen = () => {
                       id="custom-bac-water"
                       type="text"
                       inputMode="decimal"
-                      value={bacWater}
+                      value={[1, 2, 3, 5].map(String).includes(bacWater) ? '' : bacWater}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
