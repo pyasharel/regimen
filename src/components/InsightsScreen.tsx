@@ -574,7 +574,7 @@ export const InsightsScreen = () => {
                                   }}
                                   title={isSmall ? `${medName} ${doseDisplay ? `(${doseDisplay})` : ''}` : undefined}
                                 >
-                                  {!isSmall && periodIdx === 0 && (
+                                  {!isSmall && (
                                     <span className="text-[10px] font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                                       {medName} {doseDisplay && `(${doseDisplay})`}
                                     </span>
