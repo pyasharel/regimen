@@ -235,41 +235,27 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Create continuous timeline with all dates in range
+  // Create timeline based on actual weight entries + medication events
   const timelineData = useMemo(() => {
-    const dataArray: TimelineDataPoint[] = [];
+    const dateMap = new Map<string, TimelineDataPoint>();
     
-    // Generate all dates in the range
-    const endDate = new Date();
-    let currentDate = new Date(cutoffDate);
-    
-    while (currentDate <= endDate) {
-      const dateStr = format(currentDate, 'MMM d');
-      const point: TimelineDataPoint = {
-        date: dateStr,
-        dateObj: new Date(currentDate),
-      };
+    // Add all weight entry dates
+    entries.forEach(entry => {
+      const metrics = entry.metrics as any;
+      const entryDate = parseISO(entry.entry_date);
       
-      // Add weight if it exists for this date
-      const weightEntry = entries.find(e => {
-        const entryDate = format(new Date(e.entry_date), 'MMM d');
-        return entryDate === dateStr;
-      });
-      
-      if (weightEntry) {
-        const metrics = weightEntry.metrics as any;
-        if (metrics?.weight) {
-          point.weight = metrics.weight;
-        }
+      if (entryDate >= cutoffDate && metrics?.weight) {
+        const dateKey = entry.entry_date; // Use full ISO date as key
+        dateMap.set(dateKey, {
+          date: format(entryDate, 'MMM d'),
+          dateObj: entryDate,
+          weight: metrics.weight,
+        });
       }
-      
-      dataArray.push(point);
-      
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+    });
     
-    return dataArray;
+    return Array.from(dateMap.values())
+      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [entries, cutoffDate]);
 
   // Get Y-axis domain for weight (no medication bar space needed)
@@ -557,31 +543,38 @@ export const InsightsScreen = () => {
                         ? `${medDoses[0].amount}${medDoses[0].unit}` 
                         : '';
                       
+                      // Calculate positions based on actual timeline data range
+                      const firstDate = timelineData[0]?.dateObj || cutoffDate;
+                      const lastDate = timelineData[timelineData.length - 1]?.dateObj || new Date();
+                      const totalDays = differenceInDays(lastDate, firstDate);
+                      
                       return (
-                        <div key={medName} className="relative">
+                        <div key={medName} className="relative group">
                           <div className="relative h-6 bg-muted/30 rounded-sm overflow-visible">
                             {periods.map((period, periodIdx) => {
-                              const totalDays = differenceInDays(new Date(), cutoffDate);
-                              const startDays = differenceInDays(period.startDate, cutoffDate);
+                              const startDays = differenceInDays(period.startDate, firstDate);
                               const endDays = period.endDate 
-                                ? differenceInDays(period.endDate, cutoffDate)
+                                ? differenceInDays(period.endDate, firstDate)
                                 : totalDays;
                               
                               const leftPercent = Math.max(0, (startDays / totalDays) * 100);
                               const widthPercent = Math.min(100 - leftPercent, ((endDays - startDays) / totalDays) * 100);
                               
+                              const isSmall = widthPercent < 10;
+                              
                               return (
                                 <div
                                   key={periodIdx}
-                                  className="absolute h-full flex items-center px-2"
+                                  className="absolute h-full flex items-center px-2 group/bar"
                                   style={{
                                     left: `${leftPercent}%`,
                                     width: `${widthPercent}%`,
                                     backgroundColor: color,
                                     opacity: 0.85,
                                   }}
+                                  title={isSmall ? `${medName} ${doseDisplay ? `(${doseDisplay})` : ''}` : undefined}
                                 >
-                                  {periodIdx === 0 && widthPercent > 15 && (
+                                  {!isSmall && periodIdx === 0 && (
                                     <span className="text-[10px] font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
                                       {medName} {doseDisplay && `(${doseDisplay})`}
                                     </span>
