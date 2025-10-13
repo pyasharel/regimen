@@ -600,13 +600,6 @@ export const AddCompoundScreen = () => {
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
-                <Input
-                  type="number"
-                  value={vialSize}
-                  onChange={(e) => setVialSize(e.target.value)}
-                  placeholder="Enter mg amount"
-                  className="h-12 text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
                 
                 {/* Quick select buttons */}
                 <div className="grid grid-cols-5 gap-2">
@@ -614,20 +607,34 @@ export const AddCompoundScreen = () => {
                     <button
                       key={size}
                       onClick={() => setVialSize(size.toString())}
-                      className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
+                      className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                        vialSize === size.toString()
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border hover:bg-muted'
+                      }`}
                     >
                       {size}mg
                     </button>
                   ))}
                   <button
                     onClick={() => {
-                      setVialSize('');
-                      const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+                      const input = document.getElementById('peptide-amount-input') as HTMLInputElement;
                       input?.focus();
                     }}
-                    className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
+                    className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                      ![5, 10, 15, 20].includes(Number(vialSize)) && vialSize !== ''
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
                   >
-                    Custom
+                    <Input
+                      id="peptide-amount-input"
+                      type="number"
+                      value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
+                      onChange={(e) => setVialSize(e.target.value)}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
                   </button>
                 </div>
               </div>
@@ -688,9 +695,8 @@ export const AddCompoundScreen = () => {
               
               {/* Medical disclaimer - shown when calculator is open */}
               <div className="mt-3 pt-3 border-t border-border/50">
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                  <span className="text-yellow-500">⚠️</span>
-                  Verify independently. Not medical advice.
+                <p className="text-xs text-muted-foreground text-center">
+                  Always double-check your results.
                 </p>
               </div>
             </div>
