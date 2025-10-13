@@ -235,51 +235,35 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Create smart timeline using scheduled_date for doses (not taken_at)
+  // Create continuous timeline for full date range
   const timelineData = useMemo(() => {
-    // Collect all event dates (weight entries + scheduled dose dates)
-    const eventDates = new Set<string>();
+    const dataArray: TimelineDataPoint[] = [];
+    const endDate = new Date();
+    let currentDate = new Date(cutoffDate);
     
-    entries.forEach(entry => {
-      if (parseISO(entry.entry_date) >= cutoffDate) {
-        eventDates.add(entry.entry_date);
-      }
-    });
-    
-    // Use scheduled_date for doses, not taken_at
-    doses.forEach(dose => {
-      if (dose.taken && dose.scheduled_date) {
-        const doseDate = parseISO(dose.scheduled_date);
-        if (doseDate >= cutoffDate) {
-          eventDates.add(dose.scheduled_date);
+    // Generate continuous timeline
+    while (currentDate <= endDate) {
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const point: TimelineDataPoint = {
+        date: format(currentDate, 'MMM d'),
+        dateObj: new Date(currentDate),
+      };
+      
+      // Add weight if exists for this date
+      const weightEntry = entries.find(e => e.entry_date === dateStr);
+      if (weightEntry) {
+        const metrics = weightEntry.metrics as any;
+        if (metrics?.weight) {
+          point.weight = metrics.weight;
         }
       }
-    });
-    
-    // Convert to timeline points
-    const dataArray = Array.from(eventDates)
-      .map(dateStr => {
-        const dateObj = parseISO(dateStr);
-        const point: TimelineDataPoint = {
-          date: format(dateObj, 'MMM d'),
-          dateObj,
-        };
-        
-        // Add weight if exists
-        const weightEntry = entries.find(e => e.entry_date === dateStr);
-        if (weightEntry) {
-          const metrics = weightEntry.metrics as any;
-          if (metrics?.weight) {
-            point.weight = metrics.weight;
-          }
-        }
-        
-        return point;
-      })
-      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+      
+      dataArray.push(point);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
     
     return dataArray;
-  }, [entries, doses, cutoffDate]);
+  }, [entries, cutoffDate]);
 
   // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
@@ -516,14 +500,15 @@ export const InsightsScreen = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      hide
-                    />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    hide
+                    interval={0}
+                  />
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={11}
@@ -615,12 +600,19 @@ export const InsightsScreen = () => {
                 </div>
               )}
               
-              {/* Shared X-axis labels at bottom */}
+              {/* Shared X-axis labels at bottom - evenly spaced */}
               <div className="relative h-8 mt-2">
-                <div className="flex justify-between text-[10px] text-muted-foreground px-12">
-                  {timelineData.filter((_, idx) => idx % Math.ceil(timelineData.length / 8) === 0 || idx === timelineData.length - 1).map((point, idx) => (
-                    <span key={idx}>{point.date}</span>
-                  ))}
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  {(() => {
+                    const numLabels = 8;
+                    const interval = Math.floor(timelineData.length / numLabels);
+                    return timelineData
+                      .filter((_, idx) => idx % interval === 0 || idx === timelineData.length - 1)
+                      .slice(0, numLabels)
+                      .map((point, idx) => (
+                        <span key={idx}>{point.date}</span>
+                      ));
+                  })()}
                 </div>
               </div>
             </div>
