@@ -196,7 +196,8 @@ export const AddCompoundScreen = () => {
     const concentrationNum = parseFloat(concentration);
     const doseNum = parseFloat(intendedDose);
     const mlNeeded = doseNum / concentrationNum;
-    return mlNeeded > 0 ? mlNeeded.toFixed(2) : null;
+    // Remove trailing zeros: 0.50 becomes 0.5, 1.00 becomes 1
+    return mlNeeded > 0 ? parseFloat(mlNeeded.toFixed(2)).toString() : null;
   };
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
@@ -326,7 +327,9 @@ export const AddCompoundScreen = () => {
           scheduled_time: time,
           dose_amount: currentDose,
           dose_unit: doseUnit,
-          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null
+          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+          calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+          concentration: concentration ? parseFloat(concentration) : null
         });
       });
     }
@@ -383,6 +386,8 @@ export const AddCompoundScreen = () => {
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+            concentration: concentration ? parseFloat(concentration) : null,
           schedule_type: frequency,
           time_of_day: numberOfDoses === 2 
             ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
@@ -450,6 +455,8 @@ export const AddCompoundScreen = () => {
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
             calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+            concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: frequency,
             time_of_day: numberOfDoses === 2 
               ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])

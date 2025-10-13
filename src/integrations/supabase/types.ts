@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           bac_water_volume: number | null
           calculated_iu: number | null
+          calculated_ml: number | null
+          concentration: number | null
           created_at: string | null
           cycle_reminders_enabled: boolean | null
           cycle_weeks_off: number | null
@@ -43,6 +45,8 @@ export type Database = {
         Insert: {
           bac_water_volume?: number | null
           calculated_iu?: number | null
+          calculated_ml?: number | null
+          concentration?: number | null
           created_at?: string | null
           cycle_reminders_enabled?: boolean | null
           cycle_weeks_off?: number | null
@@ -68,6 +72,8 @@ export type Database = {
         Update: {
           bac_water_volume?: number | null
           calculated_iu?: number | null
+          calculated_ml?: number | null
+          concentration?: number | null
           created_at?: string | null
           cycle_reminders_enabled?: boolean | null
           cycle_weeks_off?: number | null
@@ -95,7 +101,9 @@ export type Database = {
       doses: {
         Row: {
           calculated_iu: number | null
+          calculated_ml: number | null
           compound_id: string | null
+          concentration: number | null
           created_at: string | null
           dose_amount: number
           dose_unit: string
@@ -109,7 +117,9 @@ export type Database = {
         }
         Insert: {
           calculated_iu?: number | null
+          calculated_ml?: number | null
           compound_id?: string | null
+          concentration?: number | null
           created_at?: string | null
           dose_amount: number
           dose_unit: string
@@ -123,7 +133,9 @@ export type Database = {
         }
         Update: {
           calculated_iu?: number | null
+          calculated_ml?: number | null
           compound_id?: string | null
+          concentration?: number | null
           created_at?: string | null
           dose_amount?: number
           dose_unit?: string

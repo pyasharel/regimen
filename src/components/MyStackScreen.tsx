@@ -22,6 +22,7 @@ interface Compound {
   intended_dose: number;
   dose_unit: string;
   calculated_iu: number | null;
+  calculated_ml: number | null;
   schedule_type: string;
   schedule_days: string[] | null;
   time_of_day: string[];
@@ -349,6 +350,7 @@ export const MyStackScreen = () => {
                       <p className="mt-1 text-sm text-muted-foreground">
                         {formatDose(compound.intended_dose, compound.dose_unit)}
                         {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
+                        {compound.calculated_ml && ` • Draw ${compound.calculated_ml} mL`}
                         {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">

@@ -22,6 +22,7 @@ interface Dose {
   dose_amount: number;
   dose_unit: string;
   calculated_iu: number | null;
+  calculated_ml: number | null;
   taken: boolean;
   compound_name?: string;
   schedule_type?: string;
@@ -159,6 +160,7 @@ export const TodayScreen = () => {
         skipped: false,
         schedule_type: 'As Needed',
         calculated_iu: compound.calculated_iu,
+        calculated_ml: compound.calculated_ml,
         user_id: compound.user_id,
         created_at: new Date().toISOString(),
         compounds: { name: compound.name, schedule_type: 'As Needed' }
@@ -235,6 +237,7 @@ export const TodayScreen = () => {
               dose_amount: dose.dose_amount,
               dose_unit: dose.dose_unit,
               calculated_iu: dose.calculated_iu,
+              calculated_ml: dose.calculated_ml,
               scheduled_time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
               scheduled_date: selectedDate.toISOString().split('T')[0],
               taken: true,
@@ -752,6 +755,7 @@ export const TodayScreen = () => {
                       <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-white/90'}`}>
                         {formatTime(dose.scheduled_time)} • {formatDose(dose.dose_amount, dose.dose_unit)}
                         {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                        {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
                       </p>
                     </div>
                     <button
@@ -823,6 +827,7 @@ export const TodayScreen = () => {
                           <p className={`mt-1 text-sm transition-colors duration-300 ${dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                             {formatDose(dose.dose_amount, dose.dose_unit)}
                             {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
                           </p>
                         </div>
                         <button
