@@ -16,6 +16,7 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
+  ReferenceArea,
 } from 'recharts';
 
 type TimelineDataPoint = {
@@ -145,7 +146,7 @@ export const InsightsScreen = () => {
       .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
   }, [entries, cutoffDate]);
 
-  // Process medication periods and dose changes
+  // Process medication periods and dose changes (including cycles)
   const { medicationPeriods, doseChanges } = useMemo(() => {
     const periods: MedicationPeriod[] = [];
     const changes: DoseChange[] = [];
@@ -155,63 +156,101 @@ export const InsightsScreen = () => {
       const startDate = parseISO(compound.start_date);
       const endDate = compound.end_date ? parseISO(compound.end_date) : null;
       
-      // Only show if it overlaps with our time range
-      if (!endDate || endDate >= cutoffDate) {
-        periods.push({
-          name: compound.name,
-          startDate,
-          endDate,
-          color,
-        });
-
-        // Track dose changes for this compound from the doses table
-        const compoundDoses = doses
-          .filter(d => d.compound_id === compound.id && d.taken_at)
-          .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime());
-
-        // Add start dose marker
-        if (startDate >= cutoffDate) {
-          changes.push({
-            date: startDate,
-            dateFormatted: format(startDate, 'MMM d'),
-            medicationName: compound.name,
-            amount: compound.intended_dose,
-            unit: compound.dose_unit,
+      // Calculate all periods (including cycle on/off periods)
+      const activePeriods: Array<{ start: Date; end: Date | null }> = [];
+      
+      if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
+        // Calculate cycle periods
+        const cycleWeeksOn = compound.cycle_weeks_on;
+        const cycleWeeksOff = compound.cycle_weeks_off;
+        const cycleDuration = (cycleWeeksOn + cycleWeeksOff) * 7; // days
+        
+        let currentStart = startDate;
+        const finalEnd = endDate || new Date();
+        
+        while (currentStart < finalEnd) {
+          const currentEnd = new Date(currentStart);
+          currentEnd.setDate(currentEnd.getDate() + (cycleWeeksOn * 7));
+          
+          activePeriods.push({
+            start: currentStart,
+            end: currentEnd > finalEnd ? finalEnd : currentEnd
+          });
+          
+          // Move to next cycle start (after off period)
+          currentStart = new Date(currentEnd);
+          currentStart.setDate(currentStart.getDate() + (cycleWeeksOff * 7));
+          
+          if (currentStart >= finalEnd) break;
+        }
+      } else {
+        // No cycles, just one continuous period
+        activePeriods.push({ start: startDate, end: endDate });
+      }
+      
+      // Add each active period
+      activePeriods.forEach((period, periodIdx) => {
+        if (!period.end || period.end >= cutoffDate) {
+          periods.push({
+            name: compound.name,
+            startDate: period.start,
+            endDate: period.end,
             color,
           });
-        }
-
-        // Detect dose changes
-        let lastDose = compound.intended_dose;
-        compoundDoses.forEach(dose => {
-          const doseDate = parseISO(dose.taken_at!);
-          if (dose.dose_amount !== lastDose && doseDate >= cutoffDate) {
+          
+          // Track dose changes for this period
+          const compoundDoses = doses
+            .filter(d => d.compound_id === compound.id && d.taken_at)
+            .filter(d => {
+              const doseDate = parseISO(d.taken_at!);
+              return doseDate >= period.start && (!period.end || doseDate <= period.end);
+            })
+            .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime());
+          
+          // Add start dose marker for first period only
+          if (periodIdx === 0 && period.start >= cutoffDate) {
             changes.push({
-              date: doseDate,
-              dateFormatted: format(doseDate, 'MMM d'),
+              date: period.start,
+              dateFormatted: format(period.start, 'MMM d'),
               medicationName: compound.name,
-              amount: dose.dose_amount,
-              unit: dose.dose_unit,
+              amount: compound.intended_dose,
+              unit: compound.dose_unit,
               color,
             });
-            lastDose = dose.dose_amount;
           }
-        });
-
-        // Add end marker if applicable
-        if (endDate && endDate >= cutoffDate) {
-          changes.push({
-            date: endDate,
-            dateFormatted: format(endDate, 'MMM d'),
-            medicationName: `${compound.name} (End)`,
-            amount: 0,
-            unit: '',
-            color,
+          
+          // Detect dose changes within this period
+          let lastDose = compound.intended_dose;
+          compoundDoses.forEach(dose => {
+            const doseDate = parseISO(dose.taken_at!);
+            if (dose.dose_amount !== lastDose && doseDate >= cutoffDate) {
+              changes.push({
+                date: doseDate,
+                dateFormatted: format(doseDate, 'MMM d'),
+                medicationName: compound.name,
+                amount: dose.dose_amount,
+                unit: dose.dose_unit,
+                color,
+              });
+              lastDose = dose.dose_amount;
+            }
           });
+          
+          // Add end marker if applicable
+          if (period.end && period.end >= cutoffDate) {
+            changes.push({
+              date: period.end,
+              dateFormatted: format(period.end, 'MMM d'),
+              medicationName: `${compound.name} (End)`,
+              amount: 0,
+              unit: '',
+              color,
+            });
+          }
         }
-      }
+      });
     });
-
+    
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
@@ -427,130 +466,135 @@ export const InsightsScreen = () => {
           </div>
         )}
 
-        {/* Weight Chart */}
+        {/* Unified Timeline */}
         <Card className="p-4 bg-muted/30">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Weight Progress</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Progress Timeline</h3>
           {timelineData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[250px] text-center">
+            <div className="flex flex-col items-center justify-center h-[400px] text-center">
               <p className="text-muted-foreground text-sm mb-2">No weight data for this time range</p>
               <p className="text-xs text-muted-foreground">Log your weight on the Progress tab to see it here</p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 20, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={weightDomain}
-                  width={50}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                
-                {/* Weight Line */}
-                <Line 
-                  type="monotone" 
-                  dataKey="weight" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                  activeDot={{ r: 6 }}
-                  connectNulls
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart data={timelineData} margin={{ top: 40, right: 10, bottom: 80, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={weightDomain}
+                    width={50}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  
+                  {/* Medication bars as shaded areas at bottom */}
+                  {(() => {
+                    // Group periods by medication name
+                    const medGroups = new Map<string, MedicationPeriod[]>();
+                    medicationPeriods.forEach(period => {
+                      if (!medGroups.has(period.name)) {
+                        medGroups.set(period.name, []);
+                      }
+                      medGroups.get(period.name)!.push(period);
+                    });
+                    
+                    const groupArray = Array.from(medGroups.entries());
+                    const baseY = weightDomain[0];
+                    const barHeight = (weightDomain[1] - weightDomain[0]) * 0.08; // 8% of chart height per medication
+                    
+                    return groupArray.map(([medName, periods], groupIdx) => (
+                      periods.map((med, periodIdx) => {
+                        const startFormatted = format(med.startDate, 'MMM d');
+                        const endFormatted = med.endDate 
+                          ? format(med.endDate, 'MMM d') 
+                          : format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d');
+                        
+                        const yPos = baseY + (groupIdx * barHeight * 1.3);
+                        
+                        return (
+                          <ReferenceArea
+                            key={`${medName}-${periodIdx}`}
+                            x1={startFormatted}
+                            x2={endFormatted}
+                            y1={yPos}
+                            y2={yPos + barHeight}
+                            fill={med.color}
+                            fillOpacity={0.6}
+                            stroke={med.color}
+                            strokeOpacity={0.8}
+                            strokeWidth={2}
+                            ifOverflow="visible"
+                          />
+                        );
+                      })
+                    ));
+                  })()}
+                  
+                  {/* Weight Line - rendered last so it's on top */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="weight" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                    activeDot={{ r: 6 }}
+                    connectNulls
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+              
+              {/* Medication Legend with dose info */}
+              {medicationPeriods.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {(() => {
+                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
+                    medicationPeriods.forEach(period => {
+                      if (!medGroups.has(period.name)) {
+                        medGroups.set(period.name, { color: period.color, periods: [] });
+                      }
+                      medGroups.get(period.name)!.periods.push(period);
+                    });
+                    
+                    return Array.from(medGroups.entries()).map(([medName, { color, periods }]) => {
+                      const medDoseChanges = doseChanges.filter(dc => dc.medicationName.startsWith(medName));
+                      
+                      return (
+                        <div key={medName} className="flex items-start gap-2 text-xs">
+                          <div 
+                            className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" 
+                            style={{ backgroundColor: color }}
+                          />
+                          <div>
+                            <span className="font-medium text-foreground">{medName}</span>
+                            {medDoseChanges.length > 0 && (
+                              <span className="text-muted-foreground ml-1">
+                                ({medDoseChanges.filter(dc => dc.amount > 0).map(dc => `${dc.amount}${dc.unit}`).join(' → ')})
+                              </span>
+                            )}
+                            {periods.length > 1 && (
+                              <span className="text-muted-foreground ml-1">
+                                • {periods.length} cycles
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </>
           )}
         </Card>
-
-        {/* Medication Timeline */}
-        {medicationPeriods.length > 0 && (
-          <Card className="p-4 bg-muted/30">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Medication Timeline</h3>
-            <div className="space-y-4">
-              {medicationPeriods.map((med, idx) => {
-                // Calculate the position and width based on dates
-                const rangeStart = cutoffDate;
-                const rangeEnd = new Date();
-                const totalDays = differenceInDays(rangeEnd, rangeStart);
-                
-                const medStartDays = differenceInDays(med.startDate, rangeStart);
-                const medEndDays = med.endDate 
-                  ? differenceInDays(med.endDate, rangeStart)
-                  : totalDays;
-                
-                const leftPercent = Math.max(0, (medStartDays / totalDays) * 100);
-                const widthPercent = Math.min(100 - leftPercent, ((medEndDays - medStartDays) / totalDays) * 100);
-                
-                // Get dose changes for this medication
-                const medDoseChanges = doseChanges.filter(dc => dc.color === med.color);
-                
-                return (
-                  <div key={idx} className="relative">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: med.color }}
-                      />
-                      <span className="text-xs font-medium text-foreground">{med.name}</span>
-                    </div>
-                    
-                    {/* Timeline container */}
-                    <div className="relative h-8 bg-muted/50 rounded-lg overflow-visible">
-                      {/* Medication active period bar */}
-                      <div
-                        className="absolute h-full rounded-lg flex items-center px-2"
-                        style={{
-                          left: `${leftPercent}%`,
-                          width: `${widthPercent}%`,
-                          backgroundColor: med.color,
-                          opacity: 0.6,
-                        }}
-                      >
-                        {/* Dose markers */}
-                        {medDoseChanges.map((change, changeIdx) => {
-                          const changeDays = differenceInDays(change.date, rangeStart);
-                          const changeLeftPercent = ((changeDays - medStartDays) / (medEndDays - medStartDays)) * 100;
-                          
-                          if (changeLeftPercent < 0 || changeLeftPercent > 100) return null;
-                          
-                          return (
-                            <div
-                              key={changeIdx}
-                              className="absolute -top-6 transform -translate-x-1/2"
-                              style={{ left: `${changeLeftPercent}%` }}
-                            >
-                              <div className="flex flex-col items-center">
-                                <span 
-                                  className="text-[10px] font-semibold whitespace-nowrap"
-                                  style={{ color: med.color }}
-                                >
-                                  {change.amount > 0 ? `${change.amount}${change.unit}` : 'End'}
-                                </span>
-                                <div 
-                                  className="w-0.5 h-6"
-                                  style={{ backgroundColor: med.color }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
       </div>
 
       <BottomNavigation />
