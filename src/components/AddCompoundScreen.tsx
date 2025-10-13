@@ -173,7 +173,7 @@ export const AddCompoundScreen = () => {
     const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
     const concentration = vialMcg / parseFloat(bacWater);
     const volumeML = doseMcg / concentration;
-    return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
+    return volumeML > 0 ? Math.round(volumeML * 100).toString() : null;
   };
 
   const calculatedIU = showCalculator ? calculateIU() : null;
@@ -559,15 +559,17 @@ export const AddCompoundScreen = () => {
             </div>
           </div>
 
-          {/* IU Calculator */}
-          <button
-            onClick={() => setShowCalculator(!showCalculator)}
-            className="text-sm text-primary hover:underline"
-          >
-            {showCalculator ? '- Hide' : '+ Show'} IU Calculator
-          </button>
+          {/* IU Calculator - only show for mcg/mg units */}
+          {(doseUnit === 'mcg' || doseUnit === 'mg') && (
+            <button
+              onClick={() => setShowCalculator(!showCalculator)}
+              className="text-sm text-primary hover:underline"
+            >
+              {showCalculator ? '- Hide' : '+ Show'} IU Calculator
+            </button>
+          )}
 
-          {showCalculator && (
+          {showCalculator && (doseUnit === 'mcg' || doseUnit === 'mg') && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
