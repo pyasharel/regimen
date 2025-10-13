@@ -653,14 +653,16 @@ export const AddCompoundScreen = () => {
                       <span>{getWarning()}</span>
                     </div>
                   )}
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                      <span className="text-yellow-500">⚠️</span>
-                      Verify independently. Not medical advice.
-                    </p>
-                  </div>
                 </div>
               )}
+              
+              {/* Medical disclaimer - shown when calculator is open */}
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                  <span className="text-yellow-500">⚠️</span>
+                  Verify independently. Not medical advice.
+                </p>
+              </div>
             </div>
           )}
         </div>
