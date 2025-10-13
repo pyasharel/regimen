@@ -77,6 +77,8 @@ export const AddCompoundScreen = () => {
   const [vialSize, setVialSize] = useState("");
   const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("");
+  const [isCustomVialSize, setIsCustomVialSize] = useState(false);
+  const [isCustomBacWater, setIsCustomBacWater] = useState(false);
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -573,9 +575,12 @@ export const AddCompoundScreen = () => {
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
-                      onClick={() => setVialSize(size.toString())}
+                      onClick={() => {
+                        setVialSize(size.toString());
+                        setIsCustomVialSize(false);
+                      }}
                       className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                        vialSize === size.toString()
+                        vialSize === size.toString() && !isCustomVialSize
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card border border-border hover:bg-muted'
                       }`}
@@ -586,27 +591,34 @@ export const AddCompoundScreen = () => {
                   <button
                     onClick={() => {
                       setVialSize('');
+                      setIsCustomVialSize(true);
                       setTimeout(() => {
                         const input = document.getElementById('custom-vial-size') as HTMLInputElement;
                         input?.focus();
                       }, 0);
                     }}
-                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      isCustomVialSize && vialSize
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
                   >
                     <Input
                       id="custom-vial-size"
                       type="text"
                       inputMode="decimal"
-                      value={[5, 10, 15, 20].map(String).includes(vialSize) ? '' : vialSize}
+                      value={!isCustomVialSize && [5, 10, 15, 20].map(String).includes(vialSize) ? '' : vialSize}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
                           setVialSize(value);
+                          setIsCustomVialSize(true);
                         }
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setVialSize('');
+                        setIsCustomVialSize(true);
                       }}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
@@ -621,9 +633,12 @@ export const AddCompoundScreen = () => {
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
-                      onClick={() => setBacWater(vol.toString())}
+                      onClick={() => {
+                        setBacWater(vol.toString());
+                        setIsCustomBacWater(false);
+                      }}
                       className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                        bacWater === vol.toString()
+                        bacWater === vol.toString() && !isCustomBacWater
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-card border border-border hover:bg-muted'
                       }`}
@@ -634,27 +649,34 @@ export const AddCompoundScreen = () => {
                   <button
                     onClick={() => {
                       setBacWater('');
+                      setIsCustomBacWater(true);
                       setTimeout(() => {
                         const input = document.getElementById('custom-bac-water') as HTMLInputElement;
                         input?.focus();
                       }, 0);
                     }}
-                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      isCustomBacWater && bacWater
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
                   >
                     <Input
                       id="custom-bac-water"
                       type="text"
                       inputMode="decimal"
-                      value={[1, 2, 3, 5].map(String).includes(bacWater) ? '' : bacWater}
+                      value={!isCustomBacWater && [1, 2, 3, 5].map(String).includes(bacWater) ? '' : bacWater}
                       onChange={(e) => {
                         const value = e.target.value;
                         if (value === '' || /^\d*\.?\d*$/.test(value)) {
                           setBacWater(value);
+                          setIsCustomBacWater(true);
                         }
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setBacWater('');
+                        setIsCustomBacWater(true);
                       }}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
