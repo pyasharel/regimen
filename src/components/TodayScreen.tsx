@@ -869,7 +869,7 @@ export const TodayScreen = () => {
       {/* FAB Button */}
       <button
         onClick={() => navigate("/add-compound")}
-        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-[0_8px_30px_rgb(0,0,0,0.5)] ring-[3px] ring-white/90 transition-all hover:scale-105 hover:shadow-[0_12px_40px_rgb(0,0,0,0.6)] active:scale-95"
+        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-black/80 dark:ring-white/80 transition-all hover:scale-105 active:scale-95"
         style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
       >
         <Plus className="h-6 w-6 text-white" />
