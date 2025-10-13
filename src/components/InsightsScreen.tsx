@@ -272,7 +272,7 @@ export const InsightsScreen = () => {
     return dataArray;
   }, [entries, cutoffDate]);
 
-  // Get Y-axis domain for weight
+  // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
     const weights = timelineData
       .map(d => d.weight)
@@ -282,7 +282,7 @@ export const InsightsScreen = () => {
     
     const min = Math.min(...weights);
     const max = Math.max(...weights);
-    const padding = (max - min) * 0.15 || 10;
+    const padding = (max - min) * 0.1 || 10;
     
     return [Math.floor(min - padding), Math.ceil(max + padding)];
   }, [timelineData]);
@@ -317,15 +317,6 @@ export const InsightsScreen = () => {
       goalWeight: null,
     };
   }, [timelineData]);
-
-  // Get Y-axis domain - extend to make room for medication bars at bottom
-  const chartDomain = useMemo(() => {
-    const [minWeight, maxWeight] = weightDomain;
-    const numMeds = new Set(medicationPeriods.map(m => m.name)).size;
-    const medBarSpace = (maxWeight - minWeight) * 0.15 * numMeds;
-    
-    return [minWeight - medBarSpace, maxWeight];
-  }, [weightDomain, medicationPeriods]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -511,8 +502,8 @@ export const InsightsScreen = () => {
             </div>
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={450}>
-                <ComposedChart data={timelineData} margin={{ top: 40, right: 10, bottom: 100, left: -20 }}>
+              <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart data={timelineData} margin={{ top: 20, right: 10, bottom: 20, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis 
                     dataKey="date" 
@@ -528,50 +519,11 @@ export const InsightsScreen = () => {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    domain={chartDomain}
+                    domain={weightDomain}
                     width={50}
+                    label={{ value: 'Weight (lbs)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'hsl(var(--muted-foreground))' } }}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  
-                  {/* Horizontal medication bars using ReferenceArea */}
-                  {(() => {
-                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
-                    medicationPeriods.forEach(period => {
-                      if (!medGroups.has(period.name)) {
-                        medGroups.set(period.name, { color: period.color, periods: [] });
-                      }
-                      medGroups.get(period.name)!.periods.push(period);
-                    });
-                    
-                    const groupArray = Array.from(medGroups.entries());
-                    const [chartMin, chartMax] = chartDomain;
-                    const barHeight = (chartMax - chartMin) * 0.05;
-                    
-                    return groupArray.flatMap(([medName, { color, periods }], groupIdx) => {
-                      const yPosition = chartMin + (groupIdx * barHeight * 1.5);
-                      
-                      return periods.map((period, periodIdx) => {
-                        const startFormatted = format(period.startDate, 'MMM d');
-                        const endFormatted = period.endDate 
-                          ? format(period.endDate, 'MMM d')
-                          : format(new Date(), 'MMM d');
-                        
-                        return (
-                          <ReferenceArea
-                            key={`${medName}-${periodIdx}`}
-                            x1={startFormatted}
-                            x2={endFormatted}
-                            y1={yPosition}
-                            y2={yPosition + barHeight}
-                            fill={color}
-                            fillOpacity={0.8}
-                            stroke={color}
-                            strokeWidth={1}
-                          />
-                        );
-                      });
-                    });
-                  })()}
                   
                   {/* Weight Line */}
                   <Line 
@@ -586,9 +538,9 @@ export const InsightsScreen = () => {
                 </ComposedChart>
               </ResponsiveContainer>
               
-              {/* Medication Legend with dose info */}
+              {/* Medication Timeline Bars - Below chart */}
               {medicationPeriods.length > 0 && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2 px-12">
                   {(() => {
                     const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
                     medicationPeriods.forEach(period => {
@@ -599,26 +551,44 @@ export const InsightsScreen = () => {
                     });
                     
                     return Array.from(medGroups.entries()).map(([medName, { color, periods }]) => {
-                      const medDoseChanges = doseChanges.filter(dc => dc.medicationName.startsWith(medName));
+                      // Get dose info for this medication
+                      const medDoses = doseChanges.filter(dc => dc.medicationName.startsWith(medName) && dc.amount > 0);
+                      const doseDisplay = medDoses.length > 0 
+                        ? `${medDoses[0].amount}${medDoses[0].unit}` 
+                        : '';
                       
                       return (
-                        <div key={medName} className="flex items-start gap-2 text-xs">
-                          <div 
-                            className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" 
-                            style={{ backgroundColor: color }}
-                          />
-                          <div>
-                            <span className="font-medium text-foreground">{medName}</span>
-                            {medDoseChanges.length > 0 && (
-                              <span className="text-muted-foreground ml-1">
-                                ({medDoseChanges.filter(dc => dc.amount > 0).map(dc => `${dc.amount}${dc.unit}`).join(' → ')})
-                              </span>
-                            )}
-                            {periods.length > 1 && (
-                              <span className="text-muted-foreground ml-1">
-                                • {periods.length} cycles
-                              </span>
-                            )}
+                        <div key={medName} className="relative">
+                          <div className="relative h-6 bg-muted/30 rounded-sm overflow-visible">
+                            {periods.map((period, periodIdx) => {
+                              const totalDays = differenceInDays(new Date(), cutoffDate);
+                              const startDays = differenceInDays(period.startDate, cutoffDate);
+                              const endDays = period.endDate 
+                                ? differenceInDays(period.endDate, cutoffDate)
+                                : totalDays;
+                              
+                              const leftPercent = Math.max(0, (startDays / totalDays) * 100);
+                              const widthPercent = Math.min(100 - leftPercent, ((endDays - startDays) / totalDays) * 100);
+                              
+                              return (
+                                <div
+                                  key={periodIdx}
+                                  className="absolute h-full flex items-center px-2"
+                                  style={{
+                                    left: `${leftPercent}%`,
+                                    width: `${widthPercent}%`,
+                                    backgroundColor: color,
+                                    opacity: 0.85,
+                                  }}
+                                >
+                                  {periodIdx === 0 && widthPercent > 15 && (
+                                    <span className="text-[10px] font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
+                                      {medName} {doseDisplay && `(${doseDisplay})`}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
