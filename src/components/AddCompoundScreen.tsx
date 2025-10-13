@@ -586,22 +586,16 @@ export const AddCompoundScreen = () => {
                   <button
                     onClick={() => {
                       const input = document.getElementById('custom-vial-size') as HTMLInputElement;
-                      input?.focus();
-                      if ([5, 10, 15, 20].includes(Number(vialSize))) {
-                        setVialSize('');
-                      }
+                      setVialSize('');
+                      setTimeout(() => input?.focus(), 0);
                     }}
-                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      vialSize && ![5, 10, 15, 20].includes(Number(vialSize))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
+                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
                   >
                     <Input
                       id="custom-vial-size"
                       type="text"
                       inputMode="decimal"
-                      value={vialSize && ![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
+                      value={vialSize}
                       onChange={(e) => {
                         const value = e.target.value;
                         // Allow empty, numbers, and decimal point
@@ -635,22 +629,16 @@ export const AddCompoundScreen = () => {
                   <button
                     onClick={() => {
                       const input = document.getElementById('custom-bac-water') as HTMLInputElement;
-                      input?.focus();
-                      if ([1, 2, 3, 5].includes(Number(bacWater))) {
-                        setBacWater('');
-                      }
+                      setBacWater('');
+                      setTimeout(() => input?.focus(), 0);
                     }}
-                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      bacWater && ![1, 2, 3, 5].includes(Number(bacWater))
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border hover:bg-muted'
-                    }`}
+                    className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
                   >
                     <Input
                       id="custom-bac-water"
                       type="text"
                       inputMode="decimal"
-                      value={bacWater && ![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
+                      value={bacWater}
                       onChange={(e) => {
                         const value = e.target.value;
                         // Allow empty, numbers, and decimal point
