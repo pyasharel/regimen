@@ -282,15 +282,20 @@ export const InsightsScreen = () => {
     };
   }, [timelineData]);
 
-  // Get Y-axis domain
+  // Get Y-axis domain - extend to make room for medication bars at bottom
   const weightDomain = useMemo(() => {
     const weights = timelineData.map(d => d.weight).filter((w): w is number => w !== undefined);
     if (weights.length === 0) return [0, 100];
     const min = Math.min(...weights);
     const max = Math.max(...weights);
     const padding = (max - min) * 0.1 || 10;
-    return [Math.floor(min - padding), Math.ceil(max + padding)];
-  }, [timelineData]);
+    
+    // Add extra space at bottom for medication bars (15% per medication)
+    const numMedications = new Set(medicationPeriods.map(m => m.name)).size;
+    const bottomExtension = (max - min) * 0.15 * Math.max(numMedications, 1);
+    
+    return [Math.floor(min - padding - bottomExtension), Math.ceil(max + padding)];
+  }, [timelineData, medicationPeriods]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
