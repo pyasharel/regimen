@@ -495,7 +495,7 @@ export const MyStackScreen = () => {
       {/* FAB Button */}
       <button
         onClick={() => navigate("/add-compound")}
-        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 transition-transform hover:scale-105 active:scale-95"
+        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_30px_rgb(0,0,0,0.4)] ring-4 ring-background transition-all hover:scale-105 hover:shadow-[0_12px_40px_rgb(0,0,0,0.5)] active:scale-95"
         style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
       >
         <Plus className="h-6 w-6" />
