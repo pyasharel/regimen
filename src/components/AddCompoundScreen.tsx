@@ -550,7 +550,6 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
-                <option value="iu">iu</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -588,18 +587,28 @@ export const AddCompoundScreen = () => {
                     onClick={() => {
                       const input = document.getElementById('custom-vial-size') as HTMLInputElement;
                       input?.focus();
+                      if ([5, 10, 15, 20].includes(Number(vialSize))) {
+                        setVialSize('');
+                      }
                     }}
                     className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      ![5, 10, 15, 20].includes(Number(vialSize))
+                      vialSize && ![5, 10, 15, 20].includes(Number(vialSize))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
                   >
                     <Input
                       id="custom-vial-size"
-                      type="number"
-                      value={![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
-                      onChange={(e) => setVialSize(e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      value={vialSize && ![5, 10, 15, 20].includes(Number(vialSize)) ? vialSize : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty, numbers, and decimal point
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setVialSize(value);
+                        }
+                      }}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
@@ -627,18 +636,28 @@ export const AddCompoundScreen = () => {
                     onClick={() => {
                       const input = document.getElementById('custom-bac-water') as HTMLInputElement;
                       input?.focus();
+                      if ([1, 2, 3, 5].includes(Number(bacWater))) {
+                        setBacWater('');
+                      }
                     }}
                     className={`rounded-lg py-2 text-sm font-medium transition-colors ${
-                      ![1, 2, 3, 5].includes(Number(bacWater))
+                      bacWater && ![1, 2, 3, 5].includes(Number(bacWater))
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
                   >
                     <Input
                       id="custom-bac-water"
-                      type="number"
-                      value={![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
-                      onChange={(e) => setBacWater(e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      value={bacWater && ![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty, numbers, and decimal point
+                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                          setBacWater(value);
+                        }
+                      }}
                       placeholder="Custom"
                       className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
@@ -647,27 +666,28 @@ export const AddCompoundScreen = () => {
               </div>
 
               {calculatedIU && (
-                <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-primary">{calculatedIU} units</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    on a 100 unit insulin syringe
-                  </div>
-                  {getWarning() && (
-                    <div className="flex items-center gap-2 mt-3 text-sm text-warning">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>{getWarning()}</span>
+                <>
+                  <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-primary">{calculatedIU} units</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      on a 100 unit insulin syringe
                     </div>
-                  )}
-                </div>
+                    {getWarning() && (
+                      <div className="flex items-center gap-2 mt-3 text-sm text-warning">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{getWarning()}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Medical disclaimer - only shown when calculation is displayed */}
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground flex items-center justify-center">
+                      Always double-check your results
+                    </p>
+                  </div>
+                </>
               )}
-              
-              {/* Medical disclaimer - shown when calculator is open */}
-              <div className="mt-3 pt-3 border-t border-border/50">
-                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                  <span className="text-yellow-500">⚠️</span>
-                  Verify independently. Not medical advice.
-                </p>
-              </div>
             </div>
           )}
         </div>
