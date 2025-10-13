@@ -266,6 +266,14 @@ export const InsightsScreen = () => {
     const endDate = startOfDay(new Date()); // Today at midnight
     let currentDate = new Date(cutoffDate);
     
+    console.log('Timeline calculation:', {
+      timeRange,
+      cutoffDate: format(cutoffDate, 'yyyy-MM-dd'),
+      endDate: format(endDate, 'yyyy-MM-dd'),
+      totalEntries: entries.length,
+      entryDates: entries.map(e => e.entry_date)
+    });
+    
     // Generate continuous timeline from cutoffDate to today
     while (currentDate <= endDate) {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
@@ -287,8 +295,15 @@ export const InsightsScreen = () => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
+    console.log('Timeline data generated:', {
+      totalPoints: dataArray.length,
+      firstDate: dataArray[0]?.date,
+      lastDate: dataArray[dataArray.length - 1]?.date,
+      pointsWithWeight: dataArray.filter(p => p.weight !== undefined).length
+    });
+    
     return dataArray;
-  }, [entries, cutoffDate]);
+  }, [entries, cutoffDate, timeRange]);
 
   // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
