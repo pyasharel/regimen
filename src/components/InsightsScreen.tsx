@@ -537,6 +537,7 @@ export const InsightsScreen = () => {
             <div className="space-y-6">
               {/* Weight Chart */}
               <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Weight</h4>
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -576,7 +577,9 @@ export const InsightsScreen = () => {
               
               {/* Medication Dose Dots */}
               {compounds.length > 0 && (
-                <div className="space-y-2">
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Medications</h4>
+                  <div className="space-y-2">
                   {compounds.map((compound, idx) => {
                     const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
                     
@@ -637,6 +640,7 @@ export const InsightsScreen = () => {
                       </div>
                     );
                   }).filter(Boolean)}
+                  </div>
                 </div>
               )}
               
@@ -645,13 +649,19 @@ export const InsightsScreen = () => {
                 <div className="flex justify-between text-[10px] text-muted-foreground">
                   {(() => {
                     const numLabels = 8;
-                    const interval = Math.floor(timelineData.length / numLabels);
-                    return timelineData
-                      .filter((_, idx) => idx % interval === 0 || idx === timelineData.length - 1)
-                      .slice(0, numLabels)
-                      .map((point, idx) => (
-                        <span key={idx}>{point.date}</span>
-                      ));
+                    const interval = Math.floor((timelineData.length - 1) / (numLabels - 1));
+                    const labels = [];
+                    
+                    for (let i = 0; i < numLabels; i++) {
+                      const idx = i === numLabels - 1 ? timelineData.length - 1 : i * interval;
+                      if (idx < timelineData.length) {
+                        labels.push(timelineData[idx].date);
+                      }
+                    }
+                    
+                    return labels.map((label, idx) => (
+                      <span key={idx}>{label}</span>
+                    ));
                   })()}
                 </div>
               </div>
