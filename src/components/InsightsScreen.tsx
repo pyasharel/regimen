@@ -235,27 +235,34 @@ export const InsightsScreen = () => {
     return { medicationPeriods: periods, doseChanges: changes };
   }, [compounds, doses, cutoffDate, MEDICATION_COLORS]);
 
-  // Create timeline based on actual weight entries + medication events
+  // Create continuous timeline (all dates in range)
   const timelineData = useMemo(() => {
-    const dateMap = new Map<string, TimelineDataPoint>();
+    const dataArray: TimelineDataPoint[] = [];
+    const endDate = new Date();
+    let currentDate = new Date(cutoffDate);
     
-    // Add all weight entry dates
-    entries.forEach(entry => {
-      const metrics = entry.metrics as any;
-      const entryDate = parseISO(entry.entry_date);
+    // Generate all dates in range
+    while (currentDate <= endDate) {
+      const dateKey = format(currentDate, 'yyyy-MM-dd');
+      const point: TimelineDataPoint = {
+        date: format(currentDate, 'MMM d'),
+        dateObj: new Date(currentDate),
+      };
       
-      if (entryDate >= cutoffDate && metrics?.weight) {
-        const dateKey = entry.entry_date; // Use full ISO date as key
-        dateMap.set(dateKey, {
-          date: format(entryDate, 'MMM d'),
-          dateObj: entryDate,
-          weight: metrics.weight,
-        });
+      // Add weight if exists for this date
+      const weightEntry = entries.find(e => e.entry_date === dateKey);
+      if (weightEntry) {
+        const metrics = weightEntry.metrics as any;
+        if (metrics?.weight) {
+          point.weight = metrics.weight;
+        }
       }
-    });
+      
+      dataArray.push(point);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
     
-    return Array.from(dateMap.values())
-      .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    return dataArray;
   }, [entries, cutoffDate]);
 
   // Get Y-axis domain for weight (no medication bar space needed)
@@ -497,8 +504,8 @@ export const InsightsScreen = () => {
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    interval="preserveStartEnd"
-                    minTickGap={30}
+                    interval={Math.floor(timelineData.length / 8)}
+                    minTickGap={40}
                   />
                   <YAxis 
                     stroke="hsl(var(--muted-foreground))"
@@ -524,68 +531,69 @@ export const InsightsScreen = () => {
                 </ComposedChart>
               </ResponsiveContainer>
               
-              {/* Medication Timeline Bars - Below chart */}
+              {/* Medication Dose Dots - Below chart */}
               {medicationPeriods.length > 0 && (
-                <div className="mt-4 space-y-2 px-12">
+                <div className="mt-6 space-y-3">
                   {(() => {
-                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
-                    medicationPeriods.forEach(period => {
-                      if (!medGroups.has(period.name)) {
-                        medGroups.set(period.name, { color: period.color, periods: [] });
+                    // Group by medication name
+                    const medGroups = new Map<string, { color: string; compound_id: string }>();
+                    compounds.forEach((compound, idx) => {
+                      if (!medGroups.has(compound.name)) {
+                        medGroups.set(compound.name, {
+                          color: MEDICATION_COLORS[idx % MEDICATION_COLORS.length],
+                          compound_id: compound.id
+                        });
                       }
-                      medGroups.get(period.name)!.periods.push(period);
                     });
                     
-                    return Array.from(medGroups.entries()).map(([medName, { color, periods }]) => {
-                      // Get dose info for this medication
-                      const medDoses = doseChanges.filter(dc => dc.medicationName.startsWith(medName) && dc.amount > 0);
-                      const doseDisplay = medDoses.length > 0 
-                        ? `${medDoses[0].amount}${medDoses[0].unit}` 
-                        : '';
+                    return Array.from(medGroups.entries()).map(([medName, { color, compound_id }]) => {
+                      // Get all logged doses for this medication
+                      const loggedDoses = doses
+                        .filter(d => d.compound_id === compound_id && d.taken && d.taken_at)
+                        .map(d => ({
+                          date: parseISO(d.taken_at!),
+                          amount: d.dose_amount,
+                          unit: d.dose_unit
+                        }))
+                        .filter(d => d.date >= cutoffDate);
                       
-                      // Calculate positions based on actual timeline data range
+                      if (loggedDoses.length === 0) return null;
+                      
+                      // Calculate timeline positions
                       const firstDate = timelineData[0]?.dateObj || cutoffDate;
                       const lastDate = timelineData[timelineData.length - 1]?.dateObj || new Date();
                       const totalDays = differenceInDays(lastDate, firstDate);
                       
                       return (
-                        <div key={medName} className="relative group">
-                          <div className="relative h-6 bg-muted/30 rounded-sm overflow-visible">
-                            {periods.map((period, periodIdx) => {
-                              const startDays = differenceInDays(period.startDate, firstDate);
-                              const endDays = period.endDate 
-                                ? differenceInDays(period.endDate, firstDate)
-                                : totalDays;
-                              
-                              const leftPercent = Math.max(0, (startDays / totalDays) * 100);
-                              const widthPercent = Math.min(100 - leftPercent, ((endDays - startDays) / totalDays) * 100);
-                              
-                              const isSmall = widthPercent < 10;
-                              
-                              return (
-                                <div
-                                  key={periodIdx}
-                                  className="absolute h-full flex items-center px-2 group/bar"
-                                  style={{
-                                    left: `${leftPercent}%`,
-                                    width: `${widthPercent}%`,
-                                    backgroundColor: color,
-                                    opacity: 0.85,
-                                  }}
-                                  title={isSmall ? `${medName} ${doseDisplay ? `(${doseDisplay})` : ''}` : undefined}
-                                >
-                                  {!isSmall && (
-                                    <span className="text-[10px] font-semibold text-white whitespace-nowrap overflow-hidden text-ellipsis">
-                                      {medName} {doseDisplay && `(${doseDisplay})`}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
+                        <div key={medName} className="relative">
+                          <div className="flex items-center gap-3">
+                            <div className="w-24 flex-shrink-0">
+                              <span className="text-xs font-medium text-foreground">{medName}</span>
+                            </div>
+                            <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
+                              {loggedDoses.map((dose, idx) => {
+                                const daysSinceStart = differenceInDays(dose.date, firstDate);
+                                const position = (daysSinceStart / totalDays) * 100;
+                                
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                                    style={{ left: `${position}%` }}
+                                    title={`${format(dose.date, 'MMM d')}: ${dose.amount}${dose.unit}`}
+                                  >
+                                    <div
+                                      className="w-2 h-2 rounded-full"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
                       );
-                    });
+                    }).filter(Boolean);
                   })()}
                 </div>
               )}
