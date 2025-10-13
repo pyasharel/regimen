@@ -17,6 +17,7 @@ import {
   Tooltip, 
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
   Label as RechartsLabel
 } from 'recharts';
 
@@ -344,6 +345,28 @@ export const InsightsScreen = () => {
       </header>
 
       <div className="p-4 space-y-4">
+        {/* Time Range Selector - at top since it affects both dashboard and chart */}
+        <div className="flex gap-2">
+          {[
+            { value: '1M', label: '1 month' },
+            { value: '3M', label: '3 months' },
+            { value: '6M', label: '6 months' },
+            { value: 'ALL', label: 'All Time' }
+          ].map(option => (
+            <button
+              key={option.value}
+              onClick={() => setTimeRange(option.value as any)}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                timeRange === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         {/* Dashboard Metrics */}
         {dashboardMetrics && (
           <div className="space-y-3">
@@ -407,28 +430,6 @@ export const InsightsScreen = () => {
           </div>
         )}
 
-        {/* Time Range Selector */}
-        <div className="flex gap-2">
-          {[
-            { value: '1M', label: '1 month' },
-            { value: '3M', label: '3 months' },
-            { value: '6M', label: '6 months' },
-            { value: 'ALL', label: 'All Time' }
-          ].map(option => (
-            <button
-              key={option.value}
-              onClick={() => setTimeRange(option.value as any)}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                timeRange === option.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
         {/* Chart */}
         <Card className="p-4 bg-muted/30">
           {timelineData.length === 0 ? (
@@ -457,13 +458,33 @@ export const InsightsScreen = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 
-                {/* Medication period markers */}
+                {/* Medication period shaded areas */}
+                {medicationPeriods.map((med, idx) => {
+                  const startFormatted = format(med.startDate, 'MMM d');
+                  const endFormatted = med.endDate ? format(med.endDate, 'MMM d') : format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d');
+                  
+                  return (
+                    <ReferenceArea
+                      key={`med-area-${idx}`}
+                      x1={startFormatted}
+                      x2={endFormatted}
+                      fill={med.color}
+                      fillOpacity={0.1}
+                      stroke={med.color}
+                      strokeOpacity={0.3}
+                      strokeWidth={1}
+                      strokeDasharray="3 3"
+                    />
+                  );
+                })}
+                
+                {/* Medication start markers */}
                 {medicationPeriods.map((med, idx) => {
                   const start = format(med.startDate, 'MMM d');
                   
                   return (
                     <ReferenceLine
-                      key={`med-period-${idx}`}
+                      key={`med-start-${idx}`}
                       x={start}
                       stroke={med.color}
                       strokeWidth={2}
