@@ -591,23 +591,27 @@ export const AddCompoundScreen = () => {
                     }}
                     className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
                   >
-                    <Input
-                      id="custom-vial-size"
-                      type="text"
-                      inputMode="decimal"
-                      value={vialSize}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow empty, numbers, and decimal point
-                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                          setVialSize(value);
-                        }
-                      }}
-                      placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
-                    />
+                    Custom
                   </button>
                 </div>
+                {/* Custom input field - shown when typing custom value */}
+                {vialSize && ![5, 10, 15, 20].map(String).includes(vialSize) && (
+                  <Input
+                    id="custom-vial-size"
+                    type="text"
+                    inputMode="decimal"
+                    value={vialSize}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setVialSize(value);
+                      }
+                    }}
+                    placeholder="Enter custom amount"
+                    className="text-center"
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -634,24 +638,29 @@ export const AddCompoundScreen = () => {
                     }}
                     className="rounded-lg py-2 text-sm font-medium transition-colors bg-card border border-border hover:bg-muted"
                   >
-                    <Input
-                      id="custom-bac-water"
-                      type="text"
-                      inputMode="decimal"
-                      value={bacWater}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow empty, numbers, and decimal point
-                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                          setBacWater(value);
-                        }
-                      }}
-                      placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
-                    />
+                    Custom
                   </button>
                 </div>
+                {/* Custom input field - shown when typing custom value */}
+                {bacWater && ![1, 2, 3, 5].map(String).includes(bacWater) && (
+                  <Input
+                    id="custom-bac-water"
+                    type="text"
+                    inputMode="decimal"
+                    value={bacWater}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setBacWater(value);
+                      }
+                    }}
+                    placeholder="Enter custom amount"
+                    className="text-center"
+                    autoFocus
+                  />
+                )}
               </div>
+
 
               {calculatedIU && (
                 <>
