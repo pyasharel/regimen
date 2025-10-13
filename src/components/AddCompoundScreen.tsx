@@ -75,6 +75,7 @@ export const AddCompoundScreen = () => {
   // IU calculator (optional)
   const [showCalculator, setShowCalculator] = useState(false);
   const [vialSize, setVialSize] = useState("");
+  const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("");
 
   // Schedule
@@ -156,12 +157,13 @@ export const AddCompoundScreen = () => {
     if (editingCompound.vial_size) {
         setShowCalculator(true);
         setVialSize(editingCompound.vial_size.toString());
+        setVialUnit(editingCompound.vial_unit || "mg");
         setBacWater(editingCompound.bac_water_volume?.toString() || "");
       }
     }
   }, []);
 
-  // Calculate syringe units for peptide reconstitution
+  // Calculate IU and auto-populate dose
   const calculateIU = () => {
     if (!vialSize || !bacWater || !intendedDose) return null;
 
@@ -169,29 +171,53 @@ export const AddCompoundScreen = () => {
     const waterVolume = parseFloat(bacWater);
     const doseAmount = parseFloat(intendedDose);
 
-    // Only works for mg/mcg doses (not pills, drops, sprays)
-    if (doseUnit !== 'mg' && doseUnit !== 'mcg') {
-      return null;
+    // Case 1: Vial is measured in IU (like insulin)
+    if (vialUnit === 'iu') {
+      // Concentration in IU per ml
+      const concentrationIUperML = vialAmount / waterVolume;
+      
+      // If dose is also in IU, calculate syringe units needed
+      if (doseUnit === 'iu') {
+        // Volume needed in ml
+        const volumeML = doseAmount / concentrationIUperML;
+        // Convert to units on 100-unit syringe (1ml = 100 units)
+        return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
+      } 
+      // If dose is in mg/mcg but vial is in IU, calculation doesn't make sense
+      else if (doseUnit === 'mg' || doseUnit === 'mcg') {
+        return null; // Can't convert between IU and weight units
+      }
     }
+    
+    // Case 2: Vial is measured in mg or mcg (peptides)
+    else {
+      // If dose is in IU but vial is in mg/mcg, calculation doesn't make sense
+      if (doseUnit === 'iu') {
+        return null; // Can't convert between weight units and IU
+      }
 
-    // Vial is always in mg for peptides
-    // Convert vial to mcg: vial is in mg, so multiply by 1000
-    const vialMcg = vialAmount * 1000;
-    
-    // Convert dose to mcg
-    const doseMcg = doseUnit === 'mg' ? doseAmount * 1000 : doseAmount;
-    
-    // Calculate concentration (mcg per ml)
-    const concentration = vialMcg / waterVolume;
-    
-    // Calculate volume needed in ml
-    const volumeML = doseMcg / concentration;
-    
-    // Convert to units on a 100-unit insulin syringe (1ml = 100 units)
-    if (volumeML > 0) {
-      const units = volumeML * 100;
-      // Show whole numbers when possible, decimals only when needed
-      return units % 1 === 0 ? units.toFixed(0) : units.toFixed(1);
+      // Convert vial to mcg
+      const vialMcg = vialUnit === 'mg' ? vialAmount * 1000 : vialAmount;
+      
+      // Convert dose to mcg
+      let doseMcg: number;
+      if (doseUnit === 'mg') {
+        doseMcg = doseAmount * 1000;
+      } else if (doseUnit === 'mcg') {
+        doseMcg = doseAmount;
+      } else {
+        // For other units (pill, drop, spray), calculator doesn't apply
+        return null;
+      }
+      
+      // Calculate concentration (mcg per ml)
+      const concentration = vialMcg / waterVolume;
+      
+      // Calculate volume needed in ml
+      const volumeML = doseMcg / concentration;
+      
+      // Convert to units on a 100-unit insulin syringe (1ml = 100 units)
+      return volumeML > 0 ? (volumeML * 100).toFixed(1) : null;
     }
     
     return null;
@@ -199,34 +225,48 @@ export const AddCompoundScreen = () => {
 
   const calculatedIU = showCalculator ? calculateIU() : null;
 
-  // Auto-populate dose when calculator values change
+  // Auto-populate dose when calculator values change - but preserve unit choice
   useEffect(() => {
     if (showCalculator && vialSize && bacWater) {
-      // Only auto-populate if dose is empty
+      // Only auto-populate if dose is empty or if vial/water values just changed
       if (!intendedDose || intendedDose === '0') {
         const vialAmount = parseFloat(vialSize);
         const waterVolume = parseFloat(bacWater);
         const targetSyringeUnits = 10; // Default: 10 units on syringe
         
-        // Vial is always in mg for peptides
-        const vialMcg = vialAmount * 1000;
-        const concentration = vialMcg / waterVolume;
-        const volumeML = targetSyringeUnits / 100; // 10 units = 0.1ml
-        const doseMcg = volumeML * concentration;
-        
-        // Set suggested dose based on current unit preference
-        if (doseUnit === 'mg') {
-          setIntendedDose((doseMcg / 1000).toFixed(2));
-        } else {
-          // Default to mcg
-          if (doseUnit !== 'mcg') {
-            setDoseUnit('mcg');
+        // For IU vials
+        if (vialUnit === 'iu') {
+          const concentrationIUperML = vialAmount / waterVolume;
+          const volumeML = targetSyringeUnits / 100; // 10 units = 0.1ml
+          const doseIU = volumeML * concentrationIUperML;
+          
+          // Set dose in IU and switch unit to IU if not already
+          if (doseUnit !== 'iu') {
+            setDoseUnit('iu');
           }
-          setIntendedDose(doseMcg.toFixed(0));
+          setIntendedDose(doseIU.toFixed(2));
+        } 
+        // For mg/mcg vials
+        else {
+          const vialMcg = vialUnit === 'mg' ? vialAmount * 1000 : vialAmount;
+          const concentration = vialMcg / waterVolume;
+          const volumeML = targetSyringeUnits / 100; // 10 units = 0.1ml
+          const doseMcg = volumeML * concentration;
+          
+          // Preserve the user's selected unit
+          if (doseUnit === 'mg') {
+            setIntendedDose((doseMcg / 1000).toFixed(2));
+          } else if (doseUnit === 'mcg' || doseUnit === 'iu') {
+            // Switch to mcg if currently in IU (since vial is not IU)
+            if (doseUnit === 'iu') {
+              setDoseUnit('mcg');
+            }
+            setIntendedDose(doseMcg.toFixed(0));
+          }
         }
       }
     }
-  }, [vialSize, bacWater, showCalculator]);
+  }, [vialSize, bacWater, vialUnit, showCalculator]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
@@ -384,7 +424,7 @@ export const AddCompoundScreen = () => {
           .update({
             name,
             vial_size: vialSize ? parseFloat(vialSize) : null,
-            vial_unit: 'mg',
+            vial_unit: vialUnit,
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
@@ -451,7 +491,7 @@ export const AddCompoundScreen = () => {
             user_id: user.id,
             name,
             vial_size: vialSize ? parseFloat(vialSize) : null,
-            vial_unit: 'mg',
+            vial_unit: vialUnit,
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
@@ -581,6 +621,7 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
+                <option value="iu">iu</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -599,45 +640,59 @@ export const AddCompoundScreen = () => {
           {showCalculator && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
-                <Label>Peptide Amount (mg)</Label>
+                <Label>Peptide Amount</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={vialSize}
+                    onChange={(e) => setVialSize(e.target.value)}
+                    placeholder="Enter amount"
+                    className="flex-1 h-12 text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <select
+                    value={vialUnit}
+                    onChange={(e) => setVialUnit(e.target.value)}
+                    className="w-[100px] h-12 bg-input border-border rounded-lg border px-3 text-sm font-medium"
+                  >
+                    <option value="mg">mg</option>
+                    <option value="mcg">mcg</option>
+                    <option value="iu">iu</option>
+                  </select>
+                </div>
                 
                 {/* Quick select buttons */}
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {[5, 10, 15, 20].map((size) => (
                     <button
                       key={size}
-                      type="button"
-                      onClick={() => setVialSize(size.toString())}
-                      className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                        vialSize === size.toString()
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-card border border-border hover:bg-muted'
-                      }`}
+                      onClick={() => {
+                        setVialSize(size.toString());
+                        setVialUnit('mg');
+                      }}
+                      className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
                     >
                       {size}mg
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      setVialSize('');
+                      const input = document.querySelector('input[type="number"]') as HTMLInputElement;
+                      input?.focus();
+                    }}
+                    className="rounded-lg py-2 text-xs font-medium bg-card border border-border hover:bg-muted transition-colors"
+                  >
+                    Custom
+                  </button>
                 </div>
-                
-                {/* Custom input field */}
-                <Input
-                  type="number"
-                  value={vialSize}
-                  onChange={(e) => setVialSize(e.target.value)}
-                  placeholder="Or enter custom amount"
-                  className="h-10 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
               </div>
 
               <div className="space-y-2">
-                <Label>BAC Water Volume (ml)</Label>
-                
-                {/* Quick select buttons */}
-                <div className="grid grid-cols-4 gap-2">
+                <Label>BAC Water Volume</Label>
+                <div className="grid grid-cols-5 gap-2">
                   {[1, 2, 3, 5].map((vol) => (
                     <button
                       key={vol}
-                      type="button"
                       onClick={() => setBacWater(vol.toString())}
                       className={`rounded-lg py-2 text-sm font-medium transition-colors ${
                         bacWater === vol.toString()
@@ -648,16 +703,27 @@ export const AddCompoundScreen = () => {
                       {vol}ml
                     </button>
                   ))}
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById('custom-bac-water') as HTMLInputElement;
+                      input?.focus();
+                    }}
+                    className={`rounded-lg py-2 text-sm font-medium transition-colors ${
+                      ![1, 2, 3, 5].includes(Number(bacWater))
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    <Input
+                      id="custom-bac-water"
+                      type="number"
+                      value={![1, 2, 3, 5].includes(Number(bacWater)) ? bacWater : ''}
+                      onChange={(e) => setBacWater(e.target.value)}
+                      placeholder="Custom"
+                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                    />
+                  </button>
                 </div>
-                
-                {/* Custom input field */}
-                <Input
-                  type="number"
-                  value={bacWater}
-                  onChange={(e) => setBacWater(e.target.value)}
-                  placeholder="Or enter custom amount"
-                  className="h-10 text-base [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
               </div>
 
               {calculatedIU && (
@@ -675,15 +741,13 @@ export const AddCompoundScreen = () => {
                 </div>
               )}
               
-              
-              {/* Medical disclaimer - only shown when there's a calculation result */}
-              {calculatedIU && (
-                <div className="mt-3 pt-3 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground text-center">
-                    Always double-check your results.
-                  </p>
-                </div>
-              )}
+              {/* Medical disclaimer - shown when calculator is open */}
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                  <span className="text-yellow-500">⚠️</span>
+                  Verify independently. Not medical advice.
+                </p>
+              </div>
             </div>
           )}
         </div>
