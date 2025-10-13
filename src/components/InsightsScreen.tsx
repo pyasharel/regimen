@@ -501,47 +501,47 @@ export const InsightsScreen = () => {
                   />
                   <Tooltip content={<CustomTooltip />} />
                   
-                  {/* Medication bars as shaded areas at bottom */}
+                  {/* Medication bars - positioned at bottom of chart */}
                   {(() => {
-                    // Group periods by medication name
-                    const medGroups = new Map<string, MedicationPeriod[]>();
+                    // Group periods by medication name for proper stacking
+                    const medGroups = new Map<string, { color: string; periods: MedicationPeriod[] }>();
                     medicationPeriods.forEach(period => {
                       if (!medGroups.has(period.name)) {
-                        medGroups.set(period.name, []);
+                        medGroups.set(period.name, { color: period.color, periods: [] });
                       }
-                      medGroups.get(period.name)!.push(period);
+                      medGroups.get(period.name)!.periods.push(period);
                     });
                     
                     const groupArray = Array.from(medGroups.entries());
-                    const baseY = weightDomain[0];
-                    const barHeight = (weightDomain[1] - weightDomain[0]) * 0.08; // 8% of chart height per medication
+                    const [minWeight, maxWeight] = weightDomain;
+                    const weightRange = maxWeight - minWeight;
+                    const barHeight = weightRange * 0.06; // 6% of chart height per medication
                     
-                    return groupArray.map(([medName, periods], groupIdx) => (
-                      periods.map((med, periodIdx) => {
+                    return groupArray.flatMap(([medName, { color, periods }], groupIdx) => {
+                      const yPosition = minWeight + (groupIdx * barHeight * 1.4);
+                      
+                      return periods.map((med, periodIdx) => {
                         const startFormatted = format(med.startDate, 'MMM d');
                         const endFormatted = med.endDate 
                           ? format(med.endDate, 'MMM d') 
                           : format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d');
-                        
-                        const yPos = baseY + (groupIdx * barHeight * 1.3);
                         
                         return (
                           <ReferenceArea
                             key={`${medName}-${periodIdx}`}
                             x1={startFormatted}
                             x2={endFormatted}
-                            y1={yPos}
-                            y2={yPos + barHeight}
-                            fill={med.color}
-                            fillOpacity={0.6}
-                            stroke={med.color}
-                            strokeOpacity={0.8}
+                            y1={yPosition}
+                            y2={yPosition + barHeight}
+                            fill={color}
+                            fillOpacity={0.7}
+                            stroke={color}
                             strokeWidth={2}
                             ifOverflow="visible"
                           />
                         );
-                      })
-                    ));
+                      });
+                    });
                   })()}
                   
                   {/* Weight Line - rendered last so it's on top */}
