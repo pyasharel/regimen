@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, parseISO, startOfDay, differenceInDays } from "date-fns";
+import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
 import { 
   ComposedChart, 
   Line,
@@ -116,16 +116,41 @@ export const InsightsScreen = () => {
   const isLoading = entriesLoading || compoundsLoading || dosesLoading;
 
   // Calculate date range
-  const daysToShow = useMemo(() => {
-    switch (timeRange) {
-      case '1M': return 30;
-      case '3M': return 90;
-      case '6M': return 180;
-      case 'ALL': return 3650; // 10 years
+  const cutoffDate = useMemo(() => {
+    const today = startOfDay(new Date());
+    
+    if (timeRange === 'ALL') {
+      // Find the earliest date from both entries and doses
+      const allDates: Date[] = [];
+      
+      entries.forEach(entry => {
+        allDates.push(parseISO(entry.entry_date));
+      });
+      
+      doses.forEach(dose => {
+        if (dose.scheduled_date) {
+          allDates.push(parseISO(dose.scheduled_date));
+        }
+      });
+      
+      compounds.forEach(compound => {
+        allDates.push(parseISO(compound.start_date));
+      });
+      
+      if (allDates.length === 0) {
+        return subYears(today, 1); // Default to 1 year if no data
+      }
+      
+      return startOfDay(new Date(Math.min(...allDates.map(d => d.getTime()))));
     }
-  }, [timeRange]);
-
-  const cutoffDate = subDays(new Date(), daysToShow);
+    
+    switch (timeRange) {
+      case '1M': return subMonths(today, 1);
+      case '3M': return subMonths(today, 3);
+      case '6M': return subMonths(today, 6);
+      default: return subMonths(today, 1);
+    }
+  }, [timeRange, entries, doses, compounds]);
 
   // Process medication periods and dose changes (including cycles) - MUST come before timelineData
   const { medicationPeriods, doseChanges } = useMemo(() => {
@@ -238,10 +263,10 @@ export const InsightsScreen = () => {
   // Create continuous timeline for full date range
   const timelineData = useMemo(() => {
     const dataArray: TimelineDataPoint[] = [];
-    const endDate = new Date();
+    const endDate = startOfDay(new Date()); // Today at midnight
     let currentDate = new Date(cutoffDate);
     
-    // Generate continuous timeline
+    // Generate continuous timeline from cutoffDate to today
     while (currentDate <= endDate) {
       const dateStr = format(currentDate, 'yyyy-MM-dd');
       const point: TimelineDataPoint = {
