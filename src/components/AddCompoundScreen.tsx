@@ -635,7 +635,7 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="peptide-amount-input"
                       type="number"
-                      value={vialSize}
+                      value={[5, 10, 15, 20].includes(Number(vialSize)) ? '' : vialSize}
                       onChange={(e) => setVialSize(e.target.value)}
                       onFocus={(e) => e.target.select()}
                       placeholder="Custom"
@@ -680,7 +680,7 @@ export const AddCompoundScreen = () => {
                     <Input
                       id="custom-bac-water"
                       type="number"
-                      value={bacWater}
+                      value={[1, 2, 3, 5].includes(Number(bacWater)) ? '' : bacWater}
                       onChange={(e) => setBacWater(e.target.value)}
                       onFocus={(e) => e.target.select()}
                       placeholder="Custom"
