@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
+import { IOSTimePicker } from "@/components/ui/ios-time-picker";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -773,28 +774,28 @@ export const AddCompoundScreen = () => {
                   {numberOfDoses === 1 ? (
                     <div className="flex items-center justify-between py-2">
                       <Label className="mb-0 text-sm flex items-center h-9">Time</Label>
-                      <TimePicker
+                      <IOSTimePicker
                         value={customTime}
                         onChange={setCustomTime}
-                        className="w-32"
+                        className="w-40"
                       />
                     </div>
                   ) : (
                     <>
                       <div className="flex items-center justify-between py-2">
                         <Label className="mb-0 text-sm flex items-center h-9">First Dose</Label>
-                        <TimePicker
+                        <IOSTimePicker
                           value={customTime}
                           onChange={setCustomTime}
-                          className="w-32"
+                          className="w-40"
                         />
                       </div>
                       <div className="flex items-center justify-between py-2">
                         <Label className="mb-0 text-sm flex items-center h-9">Second Dose</Label>
-                        <TimePicker
+                        <IOSTimePicker
                           value={customTime2}
                           onChange={setCustomTime2}
-                          className="w-32"
+                          className="w-40"
                         />
                       </div>
                     </>
