@@ -44,7 +44,9 @@ const COMMON_PEPTIDES = [
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
   "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity",
   // Bioregulators
-  "Cortagen", "Pinealon", "Thymulin",
+  "Cortagen",
+  // Additional compounds
+  "5-Amino-1MQ", "Glutathione",
   // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
   // Other steroids
@@ -88,7 +90,6 @@ export const AddCompoundScreen = () => {
 
   // mL calculator (for oils/injections)
   const [concentration, setConcentration] = useState("");
-  const [targetDose, setTargetDose] = useState("");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -190,10 +191,10 @@ export const AddCompoundScreen = () => {
 
   // Calculate mL needed based on concentration
   const calculateML = () => {
-    if (!concentration || !targetDose) return null;
+    if (!concentration || !intendedDose) return null;
     const concentrationNum = parseFloat(concentration);
-    const targetDoseNum = parseFloat(targetDose);
-    const mlNeeded = targetDoseNum / concentrationNum;
+    const doseNum = parseFloat(intendedDose);
+    const mlNeeded = doseNum / concentrationNum;
     return mlNeeded > 0 ? mlNeeded.toFixed(2) : null;
   };
 
@@ -749,35 +750,20 @@ export const AddCompoundScreen = () => {
           {/* mL Calculator - for oil-based compounds */}
           {showCalculator && doseUnit === 'mL' && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
-              <div className="space-y-2">
-                <Label>Concentration (mg/mL)</Label>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <Label className="sm:mb-0">Concentration (mg/mL)</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
                   value={concentration}
                   onChange={(e) => setConcentration(e.target.value)}
                   placeholder="e.g., 200"
-                  className="text-lg h-12"
+                  className="text-lg h-12 w-full sm:w-64"
                 />
-                <p className="text-xs text-muted-foreground">
-                  How many mg per mL (check your vial label)
-                </p>
               </div>
-
-              <div className="space-y-2">
-                <Label>Target Dose (mg)</Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={targetDose}
-                  onChange={(e) => setTargetDose(e.target.value)}
-                  placeholder="e.g., 100"
-                  className="text-lg h-12"
-                />
-                <p className="text-xs text-muted-foreground">
-                  How many mg you want to inject
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the mg/mL shown on your vial label
+              </p>
 
               {calculatedML && (
                 <>
