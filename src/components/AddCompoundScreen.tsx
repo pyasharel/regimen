@@ -80,8 +80,9 @@ export const AddCompoundScreen = () => {
   const [intendedDose, setIntendedDose] = useState("");
   const [doseUnit, setDoseUnit] = useState("mcg");
 
-  // IU calculator (optional)
+  // Calculator state
   const [showCalculator, setShowCalculator] = useState(false);
+  const [activeCalculator, setActiveCalculator] = useState<'iu' | 'ml' | null>(null);
   const [vialSize, setVialSize] = useState("");
   const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("");
@@ -168,7 +169,7 @@ export const AddCompoundScreen = () => {
     }
     
     if (editingCompound.vial_size) {
-        setShowCalculator(true);
+        setActiveCalculator('iu');
         setVialSize(editingCompound.vial_size.toString());
         setVialUnit(editingCompound.vial_unit || "mg");
         setBacWater(editingCompound.bac_water_volume?.toString() || "");
@@ -198,11 +199,11 @@ export const AddCompoundScreen = () => {
     return mlNeeded > 0 ? mlNeeded.toFixed(2) : null;
   };
 
-  const calculatedML = showCalculator && doseUnit === 'mL' ? calculateML() : null;
+  const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
 
-  // Auto-populate dose when calculator values change - but preserve unit choice
+  // Auto-populate dose when IU calculator values change
   useEffect(() => {
-    if (showCalculator && vialSize && bacWater) {
+    if (activeCalculator === 'iu' && vialSize && bacWater) {
       const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
       const concentration = vialMcg / parseFloat(bacWater);
       
@@ -219,7 +220,7 @@ export const AddCompoundScreen = () => {
         }
       }
     }
-  }, [vialSize, bacWater, vialUnit, showCalculator]);
+  }, [vialSize, bacWater, vialUnit, activeCalculator]);
 
   const getWarning = () => {
     if (!calculatedIU) return null;
@@ -574,7 +575,6 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
-                <option value="mL">mL</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -582,27 +582,41 @@ export const AddCompoundScreen = () => {
             </div>
           </div>
 
-          {/* IU Calculator - only show for mcg/mg units */}
-          {(doseUnit === 'mcg' || doseUnit === 'mg') && (
+          {/* Calculator buttons - shown based on dose unit */}
+          {doseUnit === 'mcg' && (
             <button
-              onClick={() => setShowCalculator(!showCalculator)}
+              onClick={() => {
+                setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
+              }}
               className="text-sm text-primary hover:underline"
             >
-              {showCalculator ? '- Hide' : '+ Show'} IU Calculator
+              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
             </button>
           )}
 
-          {/* mL Calculator - only show for mL unit */}
-          {doseUnit === 'mL' && (
-            <button
-              onClick={() => setShowCalculator(!showCalculator)}
-              className="text-sm text-primary hover:underline"
-            >
-              {showCalculator ? '- Hide' : '+ Show'} mL Calculator
-            </button>
+          {doseUnit === 'mg' && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                onClick={() => {
+                  setActiveCalculator(activeCalculator === 'ml' ? null : 'ml');
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                {activeCalculator === 'ml' ? '- Hide' : '+ Show'} mL Calculator
+              </button>
+            </div>
           )}
 
-          {showCalculator && (doseUnit === 'mcg' || doseUnit === 'mg') && (
+          {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg') && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
@@ -748,7 +762,7 @@ export const AddCompoundScreen = () => {
           )}
 
           {/* mL Calculator - for oil-based compounds */}
-          {showCalculator && doseUnit === 'mL' && (
+          {activeCalculator === 'ml' && doseUnit === 'mg' && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <Label className="sm:mb-0">Concentration (mg/mL)</Label>
