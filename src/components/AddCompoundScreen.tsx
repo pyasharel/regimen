@@ -591,12 +591,6 @@ export const AddCompoundScreen = () => {
           </div>
 
           {/* Calculator buttons - shown based on dose unit */}
-          {doseUnit === 'mL' && (
-            <p className="text-sm text-muted-foreground">
-              Enter dose amount in mL directly
-            </p>
-          )}
-          
           {doseUnit === 'mcg' && (
             <button
               onClick={() => {
