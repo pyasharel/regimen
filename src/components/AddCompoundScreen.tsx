@@ -582,6 +582,7 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
+                <option value="mL">mL</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
                 <option value="spray">spray</option>
@@ -590,6 +591,12 @@ export const AddCompoundScreen = () => {
           </div>
 
           {/* Calculator buttons - shown based on dose unit */}
+          {doseUnit === 'mL' && (
+            <p className="text-sm text-muted-foreground">
+              Enter dose amount in mL directly
+            </p>
+          )}
+          
           {doseUnit === 'mcg' && (
             <button
               onClick={() => {
