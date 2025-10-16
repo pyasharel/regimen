@@ -746,47 +746,40 @@ export const TodayScreen = () => {
                   />
                 )}
                 
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      {/* Time badge with rounded background */}
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-colors duration-300 ${
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Medication name and time badge on same line */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`text-lg font-bold truncate transition-colors duration-300 ${
+                          dose.taken ? 'text-muted-foreground' : 'text-white'
+                        }`}>
+                          {dose.compound_name}
+                        </h3>
+                        <span className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
                           dose.taken 
                             ? 'bg-muted text-muted-foreground' 
-                            : 'bg-white/15 text-white backdrop-blur-sm'
+                            : 'bg-white/15 text-white/90 backdrop-blur-sm'
                         }`}>
                           {formatTime(dose.scheduled_time)}
                         </span>
                       </div>
                       
-                      {/* Compound name - primary focus */}
-                      <h3 className={`text-xl font-bold leading-tight transition-colors duration-300 ${
-                        dose.taken ? 'text-muted-foreground' : 'text-white'
-                      }`}>
-                        {dose.compound_name}
-                      </h3>
-                      
                       {/* Dosage info - secondary */}
-                      <div className={`text-sm font-medium transition-colors duration-300 ${
+                      <p className={`text-sm transition-colors duration-300 ${
                         dose.taken ? 'text-muted-foreground' : 'text-white/80'
                       }`}>
-                        <div>{formatDose(dose.dose_amount, dose.dose_unit)}</div>
-                        {(dose.calculated_iu || dose.calculated_ml) && (
-                          <div className="mt-0.5 text-xs opacity-80">
-                            {dose.calculated_iu && `${dose.calculated_iu} IU`}
-                            {dose.calculated_iu && dose.calculated_ml && ' • '}
-                            {dose.calculated_ml && `Draw ${dose.calculated_ml} mL`}
-                          </div>
-                        )}
-                      </div>
+                        {formatDose(dose.dose_amount, dose.dose_unit)}
+                        {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                        {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                      </p>
                     </div>
                     
                     {/* Check button */}
                     <button
                       onClick={() => toggleDose(dose.id, dose.taken)}
                       disabled={animatingDoses.has(dose.id)}
-                      className={`flex-shrink-0 h-8 w-8 rounded-full border-2 transition-all duration-200 ${
+                      className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                         dose.taken
                           ? 'bg-success border-success'
                           : 'border-white/40 hover:border-white active:scale-95'
@@ -843,47 +836,36 @@ export const TodayScreen = () => {
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
                   >
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-3">
-                          {/* "As Needed" badge */}
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-colors duration-300 ${
-                              dose.taken 
-                                ? 'bg-muted text-muted-foreground' 
-                                : 'bg-muted text-muted-foreground'
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* Medication name and "As Needed" badge on same line */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className={`text-lg font-bold truncate transition-colors duration-300 ${
+                              dose.taken ? 'text-muted-foreground' : 'text-foreground'
                             }`}>
+                              {dose.compound_name}
+                            </h3>
+                            <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                               As Needed
                             </span>
                           </div>
                           
-                          {/* Compound name - primary focus */}
-                          <h3 className={`text-xl font-bold leading-tight transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-foreground'
-                          }`}>
-                            {dose.compound_name}
-                          </h3>
-                          
                           {/* Dosage info - secondary */}
-                          <div className={`text-sm font-medium transition-colors duration-300 ${
+                          <p className={`text-sm transition-colors duration-300 ${
                             dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'
                           }`}>
-                            <div>{formatDose(dose.dose_amount, dose.dose_unit)}</div>
-                            {(dose.calculated_iu || dose.calculated_ml) && (
-                              <div className="mt-0.5 text-xs opacity-80">
-                                {dose.calculated_iu && `${dose.calculated_iu} IU`}
-                                {dose.calculated_iu && dose.calculated_ml && ' • '}
-                                {dose.calculated_ml && `Draw ${dose.calculated_ml} mL`}
-                              </div>
-                            )}
-                          </div>
+                            {formatDose(dose.dose_amount, dose.dose_unit)}
+                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                          </p>
                         </div>
                         
                         {/* Check button */}
                         <button
                           onClick={() => toggleDose(dose.id, dose.taken)}
                           disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-8 w-8 rounded-full border-2 transition-all duration-200 ${
+                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                             dose.taken
                               ? 'bg-success border-success'
                               : 'border-border hover:border-primary active:scale-95'
