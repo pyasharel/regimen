@@ -780,32 +780,23 @@ export const TodayScreen = () => {
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        {/* Medication name and dosage badge on same line */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className={`text-lg font-bold transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white'
-                          }`}>
-                            {dose.compound_name}
-                          </h3>
-                          <span className={`flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
-                            dose.taken 
-                              ? 'bg-muted text-muted-foreground' 
-                              : 'bg-white/15 text-white/90 backdrop-blur-sm'
-                          }`}>
-                            {formatDose(dose.dose_amount, dose.dose_unit)}
-                          </span>
-                        </div>
+                        {/* Medication name */}
+                        <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
+                          dose.taken ? 'text-muted-foreground' : 'text-white'
+                        }`}>
+                          {dose.compound_name}
+                        </h3>
                         
-                        {/* Additional dosage info - secondary */}
-                        {(dose.calculated_iu || dose.calculated_ml) && (
-                          <p className={`text-xs mt-1.5 transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white/70'
-                          }`}>
-                            {dose.calculated_iu && `${dose.calculated_iu} IU`}
-                            {dose.calculated_iu && dose.calculated_ml && ' • '}
-                            {dose.calculated_ml && `Draw ${dose.calculated_ml} mL`}
-                          </p>
-                        )}
+                        {/* Dosage badge with all info */}
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
+                          dose.taken 
+                            ? 'bg-muted text-muted-foreground' 
+                            : 'bg-white/15 text-white/90 backdrop-blur-sm'
+                        }`}>
+                          {formatDose(dose.dose_amount, dose.dose_unit)}
+                          {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                          {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                        </span>
                       </div>
                       
                       {/* Check button */}
@@ -907,28 +898,19 @@ export const TodayScreen = () => {
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          {/* Medication name and dosage badge on same line */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className={`text-lg font-bold transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground' : 'text-foreground'
-                            }`}>
-                              {dose.compound_name}
-                            </h3>
-                            <span className="flex-shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                              {formatDose(dose.dose_amount, dose.dose_unit)}
-                            </span>
-                          </div>
+                          {/* Medication name */}
+                          <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
+                            dose.taken ? 'text-muted-foreground' : 'text-foreground'
+                          }`}>
+                            {dose.compound_name}
+                          </h3>
                           
-                          {/* Additional dosage info - secondary */}
-                          {(dose.calculated_iu || dose.calculated_ml) && (
-                            <p className={`text-xs mt-1.5 transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground' : 'text-muted-foreground'
-                            }`}>
-                              {dose.calculated_iu && `${dose.calculated_iu} IU`}
-                              {dose.calculated_iu && dose.calculated_ml && ' • '}
-                              {dose.calculated_ml && `Draw ${dose.calculated_ml} mL`}
-                            </p>
-                          )}
+                          {/* Dosage badge with all info */}
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            {formatDose(dose.dose_amount, dose.dose_unit)}
+                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                          </span>
                         </div>
                         
                         {/* Check button */}
