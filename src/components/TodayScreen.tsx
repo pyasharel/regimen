@@ -709,167 +709,269 @@ export const TodayScreen = () => {
           )
         ) : (
           <>
-            {/* Group scheduled doses by time of day */}
-            {(() => {
-              const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
-              
-              // Group doses by time of day
-              const morningDoses = scheduledDoses.filter(d => {
-                const time = d.scheduled_time;
-                if (time === 'Morning') return true;
-                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                if (timeMatch) {
-                  const hours = parseInt(timeMatch[1]);
-                  return hours >= 6 && hours < 12;
-                }
-                return false;
-              });
+            {isPremium ? (
+              // Premium: Show time-of-day sections
+              (() => {
+                const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
+                
+                // Group doses by time of day
+                const morningDoses = scheduledDoses.filter(d => {
+                  const time = d.scheduled_time;
+                  if (time === 'Morning') return true;
+                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                  if (timeMatch) {
+                    const hours = parseInt(timeMatch[1]);
+                    return hours >= 6 && hours < 12;
+                  }
+                  return false;
+                });
 
-              const afternoonDoses = scheduledDoses.filter(d => {
-                const time = d.scheduled_time;
-                if (time === 'Afternoon') return true;
-                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                if (timeMatch) {
-                  const hours = parseInt(timeMatch[1]);
-                  return hours >= 12 && hours < 18;
-                }
-                return false;
-              });
+                const afternoonDoses = scheduledDoses.filter(d => {
+                  const time = d.scheduled_time;
+                  if (time === 'Afternoon') return true;
+                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                  if (timeMatch) {
+                    const hours = parseInt(timeMatch[1]);
+                    return hours >= 12 && hours < 18;
+                  }
+                  return false;
+                });
 
-              const eveningDoses = scheduledDoses.filter(d => {
-                const time = d.scheduled_time;
-                if (time === 'Evening') return true;
-                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                if (timeMatch) {
-                  const hours = parseInt(timeMatch[1]);
-                  return hours >= 18 || hours < 6;
-                }
-                return false;
-              });
+                const eveningDoses = scheduledDoses.filter(d => {
+                  const time = d.scheduled_time;
+                  if (time === 'Evening') return true;
+                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                  if (timeMatch) {
+                    const hours = parseInt(timeMatch[1]);
+                    return hours >= 18 || hours < 6;
+                  }
+                  return false;
+                });
 
-              const renderDoseCard = (dose: typeof doses[0]) => (
-                <div
-                  key={dose.id}
-                  ref={(el) => {
-                    if (el) cardRefs.current.set(dose.id, el);
-                    else cardRefs.current.delete(dose.id);
-                  }}
-                  className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
-                    dose.taken
-                      ? 'bg-card border-border'
-                      : 'bg-primary border-primary shadow-sm'
-                  }`}
-                  style={{
-                    opacity: dose.taken ? 0.85 : 1,
-                    transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  {/* Golden shine for day complete only */}
-                  {showDayComplete && dose.taken && (
-                    <div 
-                      className="absolute inset-0 pointer-events-none"
-                      style={{
-                        background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
-                        backgroundSize: '200% 100%',
-                        animation: 'golden-shine 0.3s ease-out'
-                      }}
-                    />
-                  )}
-                  
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        {/* Medication name */}
-                        <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
-                          dose.taken ? 'text-muted-foreground' : 'text-white'
-                        }`}>
-                          {dose.compound_name}
-                        </h3>
-                        
-                        {/* Dosage badge with all info */}
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
-                          dose.taken 
-                            ? 'bg-muted text-muted-foreground' 
-                            : 'bg-white/15 text-white/90 backdrop-blur-sm'
-                        }`}>
-                          {formatDose(dose.dose_amount, dose.dose_unit)}
-                          {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
-                          {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
-                        </span>
-                      </div>
-                      
-                      {/* Check button */}
-                      <button
-                        onClick={() => toggleDose(dose.id, dose.taken)}
-                        disabled={animatingDoses.has(dose.id)}
-                        className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
-                          dose.taken
-                            ? 'bg-success border-success'
-                            : 'border-white/40 hover:border-white active:scale-95'
-                        }`}
+                const renderDoseCard = (dose: typeof doses[0]) => (
+                  <div
+                    key={dose.id}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(dose.id, el);
+                      else cardRefs.current.delete(dose.id);
+                    }}
+                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
+                      dose.taken
+                        ? 'bg-card border-border'
+                        : 'bg-primary border-primary shadow-sm'
+                    }`}
+                    style={{
+                      opacity: dose.taken ? 0.85 : 1,
+                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    {/* Golden shine for day complete only */}
+                    {showDayComplete && dose.taken && (
+                      <div 
+                        className="absolute inset-0 pointer-events-none"
                         style={{
-                          ...(animatingDoses.has(dose.id) && dose.taken ? {
-                            animation: 'checkbox-check 0.2s ease-out'
-                          } : {})
+                          background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'golden-shine 0.3s ease-out'
                         }}
-                      >
-                        {dose.taken && (
-                          <svg
-                            className="h-full w-full text-white"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24"
-                            strokeDashoffset="0"
-                            style={{
-                              animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
-                            }}
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </button>
+                      />
+                    )}
+                    
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* Medication name */}
+                          <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
+                            dose.taken ? 'text-muted-foreground' : 'text-white'
+                          }`}>
+                            {dose.compound_name}
+                          </h3>
+                          
+                          {/* Dosage badge with all info */}
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
+                            dose.taken 
+                              ? 'bg-muted text-muted-foreground' 
+                              : 'bg-white/15 text-white/90 backdrop-blur-sm'
+                          }`}>
+                            {formatDose(dose.dose_amount, dose.dose_unit)}
+                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                          </span>
+                        </div>
+                        
+                        {/* Check button */}
+                        <button
+                          onClick={() => toggleDose(dose.id, dose.taken)}
+                          disabled={animatingDoses.has(dose.id)}
+                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                            dose.taken
+                              ? 'bg-success border-success'
+                              : 'border-white/40 hover:border-white active:scale-95'
+                          }`}
+                          style={{
+                            ...(animatingDoses.has(dose.id) && dose.taken ? {
+                              animation: 'checkbox-check 0.2s ease-out'
+                            } : {})
+                          }}
+                        >
+                          {dose.taken && (
+                            <svg
+                              className="h-full w-full text-white"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24"
+                              strokeDashoffset="0"
+                              style={{
+                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                              }}
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
+                );
 
-              return (
-                <>
-                  {/* Morning Section */}
-                  {morningDoses.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
-                        Morning
-                      </h4>
-                      {morningDoses.map(renderDoseCard)}
-                    </div>
-                  )}
+                return (
+                  <>
+                    {/* Morning Section */}
+                    {morningDoses.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                          Morning
+                        </h4>
+                        {morningDoses.map(renderDoseCard)}
+                      </div>
+                    )}
 
-                  {/* Afternoon Section */}
-                  {afternoonDoses.length > 0 && (
-                    <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
-                      <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
-                        Afternoon
-                      </h4>
-                      {afternoonDoses.map(renderDoseCard)}
-                    </div>
-                  )}
+                    {/* Afternoon Section */}
+                    {afternoonDoses.length > 0 && (
+                      <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                          Afternoon
+                        </h4>
+                        {afternoonDoses.map(renderDoseCard)}
+                      </div>
+                    )}
 
-                  {/* Evening Section */}
-                  {eveningDoses.length > 0 && (
-                    <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
-                      <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
-                        Evening
-                      </h4>
-                      {eveningDoses.map(renderDoseCard)}
+                    {/* Evening Section */}
+                    {eveningDoses.length > 0 && (
+                      <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                          Evening
+                        </h4>
+                        {eveningDoses.map(renderDoseCard)}
+                      </div>
+                    )}
+                  </>
+                );
+              })()
+            ) : (
+              // Free: Show simple running list
+              (() => {
+                const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
+
+                const renderDoseCard = (dose: typeof doses[0]) => (
+                  <div
+                    key={dose.id}
+                    ref={(el) => {
+                      if (el) cardRefs.current.set(dose.id, el);
+                      else cardRefs.current.delete(dose.id);
+                    }}
+                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
+                      dose.taken
+                        ? 'bg-card border-border'
+                        : 'bg-primary border-primary shadow-sm'
+                    }`}
+                    style={{
+                      opacity: dose.taken ? 0.85 : 1,
+                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    {/* Golden shine for day complete only */}
+                    {showDayComplete && dose.taken && (
+                      <div 
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'golden-shine 0.3s ease-out'
+                        }}
+                      />
+                    )}
+                    
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {/* Medication name */}
+                          <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
+                            dose.taken ? 'text-muted-foreground' : 'text-white'
+                          }`}>
+                            {dose.compound_name}
+                          </h3>
+                          
+                          {/* Dosage badge with all info */}
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
+                            dose.taken 
+                              ? 'bg-muted text-muted-foreground' 
+                              : 'bg-white/15 text-white/90 backdrop-blur-sm'
+                          }`}>
+                            {formatDose(dose.dose_amount, dose.dose_unit)}
+                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
+                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
+                          </span>
+                        </div>
+                        
+                        {/* Check button */}
+                        <button
+                          onClick={() => toggleDose(dose.id, dose.taken)}
+                          disabled={animatingDoses.has(dose.id)}
+                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                            dose.taken
+                              ? 'bg-success border-success'
+                              : 'border-white/40 hover:border-white active:scale-95'
+                          }`}
+                          style={{
+                            ...(animatingDoses.has(dose.id) && dose.taken ? {
+                              animation: 'checkbox-check 0.2s ease-out'
+                            } : {})
+                          }}
+                        >
+                          {dose.taken && (
+                            <svg
+                              className="h-full w-full text-white"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24"
+                              strokeDashoffset="0"
+                              style={{
+                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                              }}
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </>
-              );
-            })()}
+                  </div>
+                );
+
+                return (
+                  <div className="space-y-3">
+                    {scheduledDoses.map(renderDoseCard)}
+                  </div>
+                );
+              })()
+            )}
 
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
