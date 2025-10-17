@@ -8,7 +8,9 @@ import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target, Camera } from "lu
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
-import { StreakCard } from "@/components/StreakCard";
+import { useStreaks } from "@/hooks/useStreaks";
+import { Flame, Trophy, Target as TargetIcon } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { 
   ComposedChart, 
   Line,
@@ -44,9 +46,50 @@ type DoseChange = {
   color: string;
 };
 
+// Streak stat card component
+const StreakStatCard = () => {
+  const { data: stats } = useStreaks();
+  
+  const currentStreak = stats?.current_streak || 0;
+  const longestStreak = stats?.longest_streak || 0;
+  const totalLogged = stats?.total_doses_logged || 0;
+
+  return (
+    <>
+      <Card className="p-3 bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
+          <p className="text-[10px] text-muted-foreground">Streak</p>
+        </div>
+        <p className="text-xl font-bold text-foreground">{currentStreak}</p>
+        <p className="text-[9px] text-muted-foreground">days</p>
+      </Card>
+      
+      <Card className="p-3 bg-muted/30">
+        <div className="flex items-center gap-1.5 mb-1">
+          <Trophy className="w-3.5 h-3.5 text-orange-500" />
+          <p className="text-[10px] text-muted-foreground">Longest</p>
+        </div>
+        <p className="text-xl font-bold text-foreground">{longestStreak}</p>
+        <p className="text-[9px] text-muted-foreground">days</p>
+      </Card>
+      
+      <Card className="p-3 bg-muted/30">
+        <div className="flex items-center gap-1.5 mb-1">
+          <TargetIcon className="w-3.5 h-3.5 text-orange-500" />
+          <p className="text-[10px] text-muted-foreground">Logged</p>
+        </div>
+        <p className="text-xl font-bold text-foreground">{totalLogged}</p>
+        <p className="text-[9px] text-muted-foreground">total</p>
+      </Card>
+    </>
+  );
+};
+
 export const InsightsScreen = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | 'ALL'>('1M');
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string } | null>(null);
   const [isPremium] = useState(() => 
     localStorage.getItem('testPremiumMode') === 'true'
   );
@@ -353,7 +396,7 @@ export const InsightsScreen = () => {
     return [Math.floor(min - padding), Math.ceil(max + padding)];
   }, [timelineData]);
 
-  // Calculate dashboard metrics
+  // Calculate dashboard metrics - now filtered by timeline
   const dashboardMetrics = useMemo(() => {
     const weights = timelineData
       .map(d => d.weight)
@@ -366,7 +409,7 @@ export const InsightsScreen = () => {
     const totalChange = currentWeight - oldestWeight;
     const percentChange = ((totalChange / oldestWeight) * 100);
 
-    // Weekly average (last 7 days)
+    // Weekly average (last 7 days from timeline data)
     const sevenDaysAgo = subDays(new Date(), 7);
     const recentWeights = timelineData
       .filter(d => d.dateObj >= sevenDaysAgo && d.weight)
@@ -495,8 +538,13 @@ export const InsightsScreen = () => {
           ))}
         </div>
 
-        {/* Streak Card */}
-        <StreakCard />
+        {/* Dashboard - Streak Stats */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold text-foreground">Stats</h2>
+          <div className="grid grid-cols-3 gap-2">
+            <StreakStatCard />
+          </div>
+        </div>
 
         {/* Dashboard Metrics */}
         {dashboardMetrics && (
@@ -509,17 +557,17 @@ export const InsightsScreen = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Card className="p-3 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+              <Card className="p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
                 <div className="flex items-center gap-2 mb-1">
                   {dashboardMetrics.totalChange < 0 ? (
-                    <TrendingDown className="w-4 h-4 text-primary" />
+                    <TrendingDown className="w-4 h-4 text-green-600 dark:text-green-400" />
                   ) : (
-                    <TrendingUp className="w-4 h-4 text-primary" />
+                    <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-400" />
                   )}
                   <p className="text-xs text-muted-foreground">Total change</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {dashboardMetrics.totalChange > 0 ? '+' : ''}{dashboardMetrics.totalChange.toFixed(1)} lb
+                  {dashboardMetrics.totalChange > 0 ? '+' : ''}{Math.round(dashboardMetrics.totalChange)} lb
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {dashboardMetrics.percentChange > 0 ? '+' : ''}{dashboardMetrics.percentChange.toFixed(1)}%
@@ -532,7 +580,7 @@ export const InsightsScreen = () => {
                   <p className="text-xs text-muted-foreground">Current</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {dashboardMetrics.currentWeight.toFixed(1)} lb
+                  {Math.round(dashboardMetrics.currentWeight)} lb
                 </p>
               </Card>
 
@@ -542,7 +590,7 @@ export const InsightsScreen = () => {
                   <p className="text-xs text-muted-foreground">Weekly avg</p>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {dashboardMetrics.weeklyAvg.toFixed(1)} lb
+                  {Math.round(dashboardMetrics.weeklyAvg)} lb
                 </p>
               </Card>
 
@@ -615,7 +663,7 @@ export const InsightsScreen = () => {
               {photoEntries.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Photos</h4>
-                  <div className="flex-1 relative h-12 bg-muted/20 rounded-sm">
+                  <div className="flex-1 relative h-16 bg-muted/20 rounded-sm">
                     {photoEntries
                       .filter(entry => parseISO(entry.entry_date) >= cutoffDate)
                       .map((entry, idx) => {
@@ -631,12 +679,15 @@ export const InsightsScreen = () => {
                         return (
                           <div
                             key={entry.id}
-                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-125 transition-transform"
+                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-110 transition-transform"
                             style={{ left: `${position}%` }}
-                            title={format(parseISO(entry.entry_date), 'MMM d, yyyy')}
+                            onClick={() => photoUrl && setSelectedPhoto({ 
+                              url: photoUrl, 
+                              date: format(parseISO(entry.entry_date), 'MMM d, yyyy') 
+                            })}
                           >
                             {photoUrl ? (
-                              <div className="w-8 h-8 rounded-full border-2 border-primary bg-background overflow-hidden">
+                              <div className="w-12 h-12 rounded-sm border-2 border-primary bg-background overflow-hidden shadow-lg">
                                 <img 
                                   src={photoUrl} 
                                   alt={`Progress photo ${format(parseISO(entry.entry_date), 'MMM d')}`}
@@ -644,8 +695,8 @@ export const InsightsScreen = () => {
                                 />
                               </div>
                             ) : (
-                              <div className="w-6 h-6 rounded-full border-2 border-primary bg-primary/20 flex items-center justify-center">
-                                <Camera className="w-3 h-3 text-primary" />
+                              <div className="w-10 h-10 rounded-sm border-2 border-primary bg-primary/20 flex items-center justify-center">
+                                <Camera className="w-4 h-4 text-primary" />
                               </div>
                             )}
                           </div>
@@ -751,6 +802,22 @@ export const InsightsScreen = () => {
       </div>
 
       <BottomNavigation />
+      
+      {/* Simple Photo Preview Dialog */}
+      {selectedPhoto && (
+        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
+          <DialogContent className="max-w-[90vw] p-0">
+            <div className="relative">
+              <img 
+                src={selectedPhoto.url} 
+                alt={`Progress photo from ${selectedPhoto.date}`}
+                className="w-full h-auto rounded-lg"
+              />
+              <p className="text-sm text-center text-muted-foreground mt-2 pb-2">{selectedPhoto.date}</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

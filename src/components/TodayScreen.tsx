@@ -16,6 +16,7 @@ import { formatDose } from "@/utils/doseUtils";
 import { StreakBadge } from "@/components/StreakBadge";
 import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Dose {
   id: string;
@@ -34,6 +35,7 @@ interface Dose {
 export const TodayScreen = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [doses, setDoses] = useState<Dose[]>([]);
   
   // Track engagement for first dose notification
@@ -283,6 +285,9 @@ export const TodayScreen = () => {
           : d
       );
       setDoses(updatedDoses);
+
+      // Invalidate streak query to refresh in real-time
+      queryClient.invalidateQueries({ queryKey: ['user-stats'] });
 
       // Check if this was the last dose (excluding "as needed" medications)
       if (!currentStatus) {
