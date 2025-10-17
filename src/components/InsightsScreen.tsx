@@ -516,29 +516,7 @@ export const InsightsScreen = () => {
       </header>
 
       <div className="p-4 space-y-4">
-        {/* Time Range Selector - at top since it affects both dashboard and chart */}
-        <div className="flex gap-2">
-          {[
-            { value: '1M', label: '1 month' },
-            { value: '3M', label: '3 months' },
-            { value: '6M', label: '6 months' },
-            { value: 'ALL', label: 'All Time' }
-          ].map(option => (
-            <button
-              key={option.value}
-              onClick={() => setTimeRange(option.value as any)}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                timeRange === option.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Dashboard - Streak Stats */}
+        {/* Dashboard Stats - Streaks & Weight together */}
         <div className="space-y-3">
           <h2 className="text-lg font-bold text-foreground">Stats</h2>
           <div className="grid grid-cols-3 gap-2">
@@ -549,13 +527,6 @@ export const InsightsScreen = () => {
         {/* Dashboard Metrics */}
         {dashboardMetrics && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-foreground">Weight Progress</h2>
-              <p className="text-xs text-muted-foreground">
-                {format(timelineData[0]?.dateObj || new Date(), 'MMM d')} - {format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d')}
-              </p>
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <Card className="p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
                 <div className="flex items-center gap-2 mb-1">
@@ -608,6 +579,28 @@ export const InsightsScreen = () => {
             </div>
           </div>
         )}
+
+        {/* Time Range Selector - right above timeline */}
+        <div className="flex gap-2">
+          {[
+            { value: '1M', label: '1M' },
+            { value: '3M', label: '3M' },
+            { value: '6M', label: '6M' },
+            { value: 'ALL', label: 'All' }
+          ].map(option => (
+            <button
+              key={option.value}
+              onClick={() => setTimeRange(option.value as any)}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                timeRange === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
 
         {/* Unified Chart with shared timeline */}
         <Card className="p-4 bg-muted/30">
@@ -687,7 +680,7 @@ export const InsightsScreen = () => {
                             })}
                           >
                             {photoUrl ? (
-                              <div className="w-12 h-12 rounded-sm border-2 border-primary bg-background overflow-hidden shadow-lg">
+                              <div className="w-8 h-8 rounded-sm border-2 border-primary bg-background overflow-hidden shadow-lg">
                                 <img 
                                   src={photoUrl} 
                                   alt={`Progress photo ${format(parseISO(entry.entry_date), 'MMM d')}`}
@@ -695,8 +688,8 @@ export const InsightsScreen = () => {
                                 />
                               </div>
                             ) : (
-                              <div className="w-10 h-10 rounded-sm border-2 border-primary bg-primary/20 flex items-center justify-center">
-                                <Camera className="w-4 h-4 text-primary" />
+                              <div className="w-7 h-7 rounded-sm border-2 border-primary bg-primary/20 flex items-center justify-center">
+                                <Camera className="w-3 h-3 text-primary" />
                               </div>
                             )}
                           </div>
