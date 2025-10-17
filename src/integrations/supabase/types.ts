@@ -229,6 +229,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_stats: {
+        Row: {
+          created_at: string | null
+          current_streak: number | null
+          id: string
+          last_check_in_date: string | null
+          longest_streak: number | null
+          total_doses_logged: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_check_in_date?: string | null
+          longest_streak?: number | null
+          total_doses_logged?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string
+          last_check_in_date?: string | null
+          longest_streak?: number | null
+          total_doses_logged?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -28,6 +28,8 @@ import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { CycleTimeline } from "@/components/CycleTimeline";
+import { StreakCard } from "@/components/StreakCard";
+import { EncouragingMessage } from "@/components/EncouragingMessage";
 
 type ProgressEntry = {
   id: string;
@@ -327,6 +329,16 @@ export const ProgressScreen = () => {
   const weightEntries = getFilteredEntries().filter(e => e.metrics?.weight);
   const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
   const currentWeight = entries[0]?.metrics?.weight;
+  const previousWeight = entries[1]?.metrics?.weight;
+
+  // Calculate weight trend for encouraging message
+  const getWeightTrend = () => {
+    if (!currentWeight || !previousWeight) return 'getting_started';
+    const change = previousWeight - currentWeight;
+    if (change > 2) return 'weight_down'; // Lost weight
+    if (change < -2) return 'weight_up'; // Gained weight
+    return 'consistent'; // Maintaining
+  };
 
   const chartData = weightEntries
     .slice()
@@ -396,9 +408,17 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {/* Streak Card */}
+        <StreakCard />
+
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
+              {chartData.length > 1 && (
+                <EncouragingMessage type={getWeightTrend()} />
+              )}
+            </div>
             <Button onClick={() => setShowLogModal(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Log Weight

@@ -13,6 +13,9 @@ import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 import { formatDose } from "@/utils/doseUtils";
+import { StreakBadge } from "@/components/StreakBadge";
+import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
+import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 
 interface Dose {
   id: string;
@@ -32,6 +35,9 @@ export const TodayScreen = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [doses, setDoses] = useState<Dose[]>([]);
+  
+  // Track engagement for first dose notification
+  useEngagementTracking();
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
@@ -67,6 +73,9 @@ export const TodayScreen = () => {
     loadDoses();
     checkCompounds();
     loadUserName();
+    
+    // Initialize engagement notifications
+    initializeEngagementNotifications();
     
     // Check premium status
     const checkPremium = () => {
@@ -285,6 +294,9 @@ export const TodayScreen = () => {
             triggerLastDoseCelebration();
           }, 600);
         }
+        
+        // Check and schedule streak notifications
+        await checkAndScheduleStreakNotifications();
       }
 
       // Remove from animating set after animation completes
@@ -542,11 +554,14 @@ export const TodayScreen = () => {
 
       {/* Greeting */}
       <div className="px-4 pt-6 pb-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
-            {greeting.text}{userName ? `, ${userName}` : ''}
-          </h2>
-          <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
+              {greeting.text}{userName ? `, ${userName}` : ''}
+            </h2>
+            <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary" />
+          </div>
+          <StreakBadge />
         </div>
       </div>
 
