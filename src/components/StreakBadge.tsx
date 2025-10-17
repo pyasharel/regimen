@@ -4,7 +4,7 @@ import { Flame } from "lucide-react";
 export const StreakBadge = () => {
   const { data: stats } = useStreaks();
 
-  if (!stats || stats.current_streak < 2) return null;
+  if (!stats || stats.current_streak < 1) return null;
 
   return (
     <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-full px-3 py-1.5">

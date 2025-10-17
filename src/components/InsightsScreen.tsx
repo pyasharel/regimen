@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target } from "lucide-react";
+import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target, Camera } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
+import { StreakCard } from "@/components/StreakCard";
 import { 
   ComposedChart, 
   Line,
@@ -59,7 +60,7 @@ export const InsightsScreen = () => {
     '#EC4899', // pink
   ];
 
-  // Fetch weight entries
+  // Fetch ALL progress entries (weight + photos)
   const { data: entries = [], isLoading: entriesLoading } = useQuery({
     queryKey: ['progress-entries-insights'],
     queryFn: async () => {
@@ -70,13 +71,16 @@ export const InsightsScreen = () => {
         .from('progress_entries')
         .select('*')
         .eq('user_id', user.id)
-        .eq('category', 'weight')
         .order('entry_date', { ascending: true });
       
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Separate weight and photo entries
+  const weightEntries = entries.filter(e => e.category === 'weight');
+  const photoEntries = entries.filter(e => e.category === 'photo');
 
   const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
     queryKey: ['compounds-insights'],
@@ -270,12 +274,12 @@ export const InsightsScreen = () => {
       timeRange,
       cutoffDate: format(cutoffDate, 'yyyy-MM-dd'),
       endDate: format(endDate, 'yyyy-MM-dd'),
-      totalEntries: entries.length,
-      entryDates: entries.map(e => e.entry_date)
+      totalEntries: weightEntries.length,
+      entryDates: weightEntries.map(e => e.entry_date)
     });
     
     // Find the most recent weight entry BEFORE the cutoff date
-    const entriesBeforeCutoff = entries
+    const entriesBeforeCutoff = weightEntries
       .filter(e => parseISO(e.entry_date) < cutoffDate)
       .sort((a, b) => parseISO(b.entry_date).getTime() - parseISO(a.entry_date).getTime());
     
@@ -292,7 +296,7 @@ export const InsightsScreen = () => {
       };
       
       // Add weight if exists for this date
-      const weightEntry = entries.find(e => e.entry_date === dateStr);
+      const weightEntry = weightEntries.find(e => e.entry_date === dateStr);
       if (weightEntry) {
         const metrics = weightEntry.metrics as any;
         if (metrics?.weight) {
@@ -302,6 +306,14 @@ export const InsightsScreen = () => {
       // Only add the carried weight to the FIRST point if no weight exists
       else if (dataArray.length === 0 && lastWeightBeforeCutoff !== undefined) {
         point.weight = lastWeightBeforeCutoff;
+      }
+
+      // Add photo marker if exists for this date
+      const photoEntry = photoEntries.find(e => e.entry_date === dateStr);
+      if (photoEntry) {
+        point.hasPhoto = true;
+        point.photoUrl = photoEntry.photo_url;
+        point.photoId = photoEntry.id;
       }
       
       dataArray.push(point);
@@ -317,7 +329,14 @@ export const InsightsScreen = () => {
     });
     
     return dataArray;
-  }, [entries, cutoffDate, timeRange]);
+  }, [weightEntries, photoEntries, cutoffDate, timeRange]);
+
+  // Helper to get public photo URL
+  const getPhotoUrl = (photoUrl: string | null) => {
+    if (!photoUrl) return null;
+    const { data } = supabase.storage.from('progress-photos').getPublicUrl(photoUrl);
+    return data.publicUrl;
+  };
 
   // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
@@ -476,11 +495,14 @@ export const InsightsScreen = () => {
           ))}
         </div>
 
+        {/* Streak Card */}
+        <StreakCard />
+
         {/* Dashboard Metrics */}
         {dashboardMetrics && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">Progress</h2>
+              <h2 className="text-lg font-bold text-foreground">Weight Progress</h2>
               <p className="text-xs text-muted-foreground">
                 {format(timelineData[0]?.dateObj || new Date(), 'MMM d')} - {format(timelineData[timelineData.length - 1]?.dateObj || new Date(), 'MMM d')}
               </p>
@@ -589,6 +611,50 @@ export const InsightsScreen = () => {
                 </ResponsiveContainer>
               </div>
               
+              {/* Photo Timeline */}
+              {photoEntries.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Photos</h4>
+                  <div className="flex-1 relative h-12 bg-muted/20 rounded-sm">
+                    {photoEntries
+                      .filter(entry => parseISO(entry.entry_date) >= cutoffDate)
+                      .map((entry, idx) => {
+                        const timelineIndex = timelineData.findIndex(
+                          t => format(t.dateObj, 'yyyy-MM-dd') === entry.entry_date
+                        );
+                        
+                        if (timelineIndex === -1) return null;
+                        
+                        const position = (timelineIndex / (timelineData.length - 1)) * 100;
+                        const photoUrl = getPhotoUrl(entry.photo_url);
+                        
+                        return (
+                          <div
+                            key={entry.id}
+                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-125 transition-transform"
+                            style={{ left: `${position}%` }}
+                            title={format(parseISO(entry.entry_date), 'MMM d, yyyy')}
+                          >
+                            {photoUrl ? (
+                              <div className="w-8 h-8 rounded-full border-2 border-primary bg-background overflow-hidden">
+                                <img 
+                                  src={photoUrl} 
+                                  alt={`Progress photo ${format(parseISO(entry.entry_date), 'MMM d')}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-full border-2 border-primary bg-primary/20 flex items-center justify-center">
+                                <Camera className="w-3 h-3 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
               {/* Medication Dose Dots */}
               {compounds.length > 0 && (
                 <div>
