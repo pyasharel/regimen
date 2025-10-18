@@ -56,7 +56,7 @@ const StreakStatCard = () => {
 
   return (
     <>
-      <Card className="p-3 bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
+      <Card className="p-3 bg-muted/30">
         <div className="flex items-center gap-1.5 mb-1">
           <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
           <p className="text-[10px] text-muted-foreground">Streak</p>
@@ -67,7 +67,7 @@ const StreakStatCard = () => {
       
       <Card className="p-3 bg-muted/30">
         <div className="flex items-center gap-1.5 mb-1">
-          <Trophy className="w-3.5 h-3.5 text-orange-500" />
+          <Trophy className="w-3.5 h-3.5 text-muted-foreground" />
           <p className="text-[10px] text-muted-foreground">Longest</p>
         </div>
         <p className="text-xl font-bold text-foreground">{longestStreak}</p>
@@ -76,7 +76,7 @@ const StreakStatCard = () => {
       
       <Card className="p-3 bg-muted/30">
         <div className="flex items-center gap-1.5 mb-1">
-          <TargetIcon className="w-3.5 h-3.5 text-orange-500" />
+          <TargetIcon className="w-3.5 h-3.5 text-muted-foreground" />
           <p className="text-[10px] text-muted-foreground">Logged</p>
         </div>
         <p className="text-xl font-bold text-foreground">{totalLogged}</p>
@@ -527,12 +527,12 @@ export const InsightsScreen = () => {
               Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
             </h3>
             <div className="grid grid-cols-3 gap-2">
-              <Card className={`p-3 ${dashboardMetrics.totalChange < 0 ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20' : 'bg-muted/30'}`}>
+              <Card className="p-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-1">
                   {dashboardMetrics.totalChange < 0 ? (
-                    <TrendingDown className="w-3.5 h-3.5 text-green-500" />
+                    <TrendingDown className="w-3.5 h-3.5 text-muted-foreground" />
                   ) : (
-                    <TrendingUp className="w-3.5 h-3.5 text-red-500" />
+                    <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
                   )}
                   <p className="text-[10px] text-muted-foreground">Change</p>
                 </div>
@@ -544,7 +544,7 @@ export const InsightsScreen = () => {
               
               <Card className="p-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Scale className="w-3.5 h-3.5 text-primary" />
+                  <Scale className="w-3.5 h-3.5 text-muted-foreground" />
                   <p className="text-[10px] text-muted-foreground">Current</p>
                 </div>
                 <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.currentWeight)}</p>
@@ -553,7 +553,7 @@ export const InsightsScreen = () => {
               
               <Card className="p-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Target className="w-3.5 h-3.5 text-primary" />
+                  <Target className="w-3.5 h-3.5 text-muted-foreground" />
                   <p className="text-[10px] text-muted-foreground">Average</p>
                 </div>
                 <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.timelineAvg)}</p>
@@ -631,8 +631,8 @@ export const InsightsScreen = () => {
                 </ResponsiveContainer>
               </div>
               
-              {/* Photo Timeline - only show on 3M or less to prevent overlap */}
-              {photoEntries.length > 0 && timeRange !== '6M' && timeRange !== 'ALL' && (
+              {/* Photo Timeline - shown on all timelines */}
+              {photoEntries.length > 0 && (
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Photos</h4>
                   <div className="flex-1 relative h-16 bg-muted/20 rounded-sm">
