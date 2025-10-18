@@ -68,7 +68,10 @@ const StreakStatCard = () => {
 
   return (
     <>
-      <Card className="p-3 bg-muted/30">
+      <Card className={cn(
+        "p-3 bg-muted/30 transition-all duration-300",
+        currentStreak > 0 && "ring-2 ring-primary/20 shadow-[0_0_16px_rgba(255,111,97,0.12)]"
+      )}>
         <div className="flex items-center gap-1.5 mb-1">
           <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
           <p className="text-[10px] text-muted-foreground">Streak</p>
@@ -730,12 +733,12 @@ export const InsightsScreen = () => {
 
         {/* Weight Stats - Timeline Dependent */}
         {dashboardMetrics && (
-          <div>
+          <div className="pt-3 border-t border-border/50">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
               </h3>
-              <Button onClick={() => setShowLogModal(true)} size="sm" variant="outline">
+              <Button onClick={() => setShowLogModal(true)} size="sm" variant="default">
                 <Plus className="w-3 h-3 mr-1" />
                 Log Weight
               </Button>
@@ -778,13 +781,13 @@ export const InsightsScreen = () => {
         )}
 
         {/* Timeline Selector */}
-        <div>
+        <div className="pt-3 border-t border-border/50">
           <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Timeline</h3>
           <div className="flex items-center gap-2">
             {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
               <Button
                 key={range}
-                variant={timeRange === range ? "default" : "outline"}
+                variant={timeRange === range ? "secondary" : "outline"}
                 size="sm"
                 onClick={() => setTimeRange(range)}
                 className="flex-1 text-xs"
@@ -988,18 +991,19 @@ export const InsightsScreen = () => {
         </Card>
 
         {/* Photo Gallery Section */}
-        <div className="space-y-4 pb-4">
+        <div className="space-y-4 pb-4 border-l-2 border-primary/30 pl-4 -ml-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
+            </div>
             <Button 
               onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
               size="sm"
-              variant={isPremium ? "default" : "outline"}
-              className={!isPremium ? "gap-2" : ""}
+              variant="default"
             >
-              {!isPremium && <PremiumDiamond className="w-4 h-4" />}
               <CameraIconLucide className="w-3 h-3 mr-1" />
-              {isPremium ? "Upload Photo" : "Unlock"}
+              {isPremium ? "Upload Photo" : "Unlock Premium"}
             </Button>
           </div>
 
@@ -1036,7 +1040,7 @@ export const InsightsScreen = () => {
             <div className="flex gap-3 overflow-x-auto pb-2">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="flex-shrink-0">
-                  <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
+                  <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 hover:shadow-[0_0_20px_rgba(255,111,97,0.15)] transition-all duration-300 flex items-center justify-center relative group cursor-pointer">
                     <CameraIconLucide className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
                     <div className="absolute top-2 right-2">
                       <PremiumDiamond className="w-4 h-4 text-primary/70" />
