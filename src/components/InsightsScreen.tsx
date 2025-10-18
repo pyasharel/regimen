@@ -409,23 +409,19 @@ export const InsightsScreen = () => {
     const totalChange = currentWeight - oldestWeight;
     const percentChange = ((totalChange / oldestWeight) * 100);
 
-    // Weekly average (last 7 days from timeline data)
-    const sevenDaysAgo = subDays(new Date(), 7);
-    const recentWeights = timelineData
-      .filter(d => d.dateObj >= sevenDaysAgo && d.weight)
-      .map(d => d.weight!);
-    const weeklyAvg = recentWeights.length > 0 
-      ? recentWeights.reduce((a, b) => a + b, 0) / recentWeights.length 
-      : currentWeight;
+    // Weekly average based on selected timeline range
+    const timelineDays = differenceInDays(new Date(), cutoffDate);
+    const avgWeight = weights.reduce((a, b) => a + b, 0) / weights.length;
 
     return {
       currentWeight,
       totalChange,
       percentChange,
-      weeklyAvg,
+      timelineAvg: avgWeight,
+      timelineDays,
       goalWeight: null,
     };
-  }, [timelineData]);
+  }, [timelineData, cutoffDate]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -515,91 +511,74 @@ export const InsightsScreen = () => {
         </div>
       </header>
 
-      <div className="p-4 space-y-4">
-        {/* Dashboard Stats - Streaks & Weight together */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-bold text-foreground">Stats</h2>
+      <div className="px-4 pt-4 space-y-4">
+        {/* Adherence Stats */}
+        <div>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Adherence</h3>
           <div className="grid grid-cols-3 gap-2">
             <StreakStatCard />
           </div>
         </div>
 
-        {/* Dashboard Metrics */}
+        {/* Weight Stats - Timeline Dependent */}
         {dashboardMetrics && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
-                <div className="flex items-center gap-2 mb-1">
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+              Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <Card className={`p-3 ${dashboardMetrics.totalChange < 0 ? 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20' : 'bg-muted/30'}`}>
+                <div className="flex items-center gap-1.5 mb-1">
                   {dashboardMetrics.totalChange < 0 ? (
-                    <TrendingDown className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <TrendingDown className="w-3.5 h-3.5 text-green-500" />
                   ) : (
-                    <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <TrendingUp className="w-3.5 h-3.5 text-red-500" />
                   )}
-                  <p className="text-xs text-muted-foreground">Total change</p>
+                  <p className="text-[10px] text-muted-foreground">Change</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {dashboardMetrics.totalChange > 0 ? '+' : ''}{Math.round(dashboardMetrics.totalChange)} lb
+                <p className="text-xl font-bold text-foreground">
+                  {dashboardMetrics.totalChange > 0 ? '+' : ''}{Math.round(dashboardMetrics.totalChange)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {dashboardMetrics.percentChange > 0 ? '+' : ''}{dashboardMetrics.percentChange.toFixed(1)}%
-                </p>
+                <p className="text-[9px] text-muted-foreground">lbs</p>
               </Card>
-
+              
               <Card className="p-3 bg-muted/30">
-                <div className="flex items-center gap-2 mb-1">
-                  <Scale className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Current</p>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Scale className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-[10px] text-muted-foreground">Current</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {Math.round(dashboardMetrics.currentWeight)} lb
-                </p>
+                <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.currentWeight)}</p>
+                <p className="text-[9px] text-muted-foreground">lbs</p>
               </Card>
-
+              
               <Card className="p-3 bg-muted/30">
-                <div className="flex items-center gap-2 mb-1">
-                  <Scale className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Weekly avg</p>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Target className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-[10px] text-muted-foreground">Average</p>
                 </div>
-                <p className="text-2xl font-bold text-foreground">
-                  {Math.round(dashboardMetrics.weeklyAvg)} lb
-                </p>
+                <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.timelineAvg)}</p>
+                <p className="text-[9px] text-muted-foreground">lbs</p>
               </Card>
-
-              {dashboardMetrics.goalWeight && (
-                <Card className="p-3 bg-muted/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground">Goal</p>
-                  </div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {dashboardMetrics.goalWeight} lb
-                  </p>
-                </Card>
-              )}
             </div>
           </div>
         )}
 
-        {/* Time Range Selector - right above timeline */}
-        <div className="flex gap-2">
-          {[
-            { value: '1M', label: '1M' },
-            { value: '3M', label: '3M' },
-            { value: '6M', label: '6M' },
-            { value: 'ALL', label: 'All' }
-          ].map(option => (
-            <button
-              key={option.value}
-              onClick={() => setTimeRange(option.value as any)}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                timeRange === option.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+        {/* Timeline Selector */}
+        <div>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Timeline</h3>
+          <div className="flex items-center gap-2">
+            {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
+              <Button
+                key={range}
+                variant={timeRange === range ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeRange(range)}
+                className="flex-1 text-xs"
+              >
+                {range}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Unified Chart with shared timeline */}
@@ -652,8 +631,8 @@ export const InsightsScreen = () => {
                 </ResponsiveContainer>
               </div>
               
-              {/* Photo Timeline */}
-              {photoEntries.length > 0 && (
+              {/* Photo Timeline - only show on 3M or less to prevent overlap */}
+              {photoEntries.length > 0 && timeRange !== '6M' && timeRange !== 'ALL' && (
                 <div>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Photos</h4>
                   <div className="flex-1 relative h-16 bg-muted/20 rounded-sm">
