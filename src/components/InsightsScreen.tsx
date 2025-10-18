@@ -790,7 +790,10 @@ export const InsightsScreen = () => {
                 variant={timeRange === range ? "secondary" : "outline"}
                 size="sm"
                 onClick={() => setTimeRange(range)}
-                className="flex-1 text-xs"
+                className={cn(
+                  "flex-1 text-xs",
+                  timeRange !== range && "border-secondary/50 text-secondary hover:bg-secondary/10 hover:text-secondary"
+                )}
               >
                 {range}
               </Button>
@@ -834,14 +837,24 @@ export const InsightsScreen = () => {
                     />
                     <Tooltip content={<CustomTooltip />} />
                     
-                    {/* Weight Line */}
+                    {/* Weight Line with Purple Dots */}
                     <Line 
                       type="monotone" 
                       dataKey="weight" 
                       stroke="hsl(var(--primary))" 
                       strokeWidth={3}
-                      dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                      activeDot={{ r: 6 }}
+                      dot={{ 
+                        fill: 'hsl(var(--secondary))', 
+                        stroke: 'hsl(var(--secondary))',
+                        strokeWidth: 2,
+                        r: 4
+                      }}
+                      activeDot={{ 
+                        fill: 'hsl(var(--secondary))',
+                        stroke: 'hsl(var(--background))',
+                        strokeWidth: 2,
+                        r: 6
+                      }}
                       connectNulls
                     />
                   </ComposedChart>
@@ -997,19 +1010,31 @@ export const InsightsScreen = () => {
               <Camera className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
             </div>
-            <Button 
-              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
-              size="sm"
-              variant="default"
-            >
-              <CameraIconLucide className="w-3 h-3 mr-1" />
-              {isPremium ? "Upload Photo" : "Unlock Premium"}
-            </Button>
+            <div className="flex gap-2">
+              {photoEntries.length >= 2 && isPremium && (
+                <Button 
+                  onClick={() => navigate('/progress/compare')}
+                  size="sm"
+                  variant="outline"
+                  className="border-secondary/50 text-secondary hover:bg-secondary/10 hover:text-secondary"
+                >
+                  Compare
+                </Button>
+              )}
+              <Button 
+                onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+                size="sm"
+                variant="default"
+              >
+                <CameraIconLucide className="w-3 h-3 mr-1" />
+                {isPremium ? "Upload Photo" : "Unlock Premium"}
+              </Button>
+            </div>
           </div>
 
           {photoEntries.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {[...photoEntries].reverse().map((entry) => {
+            <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+              {photoEntries.map((entry) => {
                 const photoUrl = getPhotoUrl(entry.photo_url);
                 return (
                   <div key={entry.id} className="flex-shrink-0 text-center">
