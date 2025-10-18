@@ -783,20 +783,20 @@ export const InsightsScreen = () => {
         {/* Timeline Selector */}
         <div className="pt-3 border-t border-border/50">
           <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Timeline</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
-              <Button
+              <button
                 key={range}
-                variant={timeRange === range ? "secondary" : "outline"}
-                size="sm"
                 onClick={() => setTimeRange(range)}
                 className={cn(
-                  "flex-1 text-xs",
-                  timeRange !== range && "border-secondary/50 text-secondary hover:bg-secondary/10 hover:text-secondary"
+                  "px-4 py-2 rounded-md text-sm font-medium transition-all",
+                  timeRange === range
+                    ? 'bg-background text-primary shadow-sm'
+                    : 'text-foreground/70 hover:text-foreground'
                 )}
               >
                 {range}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -837,24 +837,14 @@ export const InsightsScreen = () => {
                     />
                     <Tooltip content={<CustomTooltip />} />
                     
-                    {/* Weight Line with Purple Dots */}
+                    {/* Weight Line */}
                     <Line 
                       type="monotone" 
                       dataKey="weight" 
                       stroke="hsl(var(--primary))" 
                       strokeWidth={3}
-                      dot={{ 
-                        fill: 'hsl(var(--secondary))', 
-                        stroke: 'hsl(var(--secondary))',
-                        strokeWidth: 2,
-                        r: 4
-                      }}
-                      activeDot={{ 
-                        fill: 'hsl(var(--secondary))',
-                        stroke: 'hsl(var(--background))',
-                        strokeWidth: 2,
-                        r: 6
-                      }}
+                      dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                      activeDot={{ r: 6 }}
                       connectNulls
                     />
                   </ComposedChart>

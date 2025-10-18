@@ -15,17 +15,17 @@ interface PhotoPreviewModalProps {
 }
 
 export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete }: PhotoPreviewModalProps) => {
-  const handleDownload = async () => {
+  const handleSavePhoto = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        // On mobile, use Share API to save to camera roll
+        // On mobile, use Share API to save to photos
         await Share.share({
           url: photoUrl,
         });
-        toast.success("Photo shared");
+        toast.success("Saved to photos");
       } catch (error) {
-        console.error("Error sharing photo:", error);
-        toast.error("Failed to share photo");
+        console.error("Error saving photo:", error);
+        toast.error("Failed to save photo");
       }
     } else {
       // On web, download the image
@@ -77,12 +77,12 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete }
           {/* Action buttons */}
           <div className="flex gap-2 p-4 bg-background border-t">
             <Button
-              onClick={handleDownload}
+              onClick={handleSavePhoto}
               variant="outline"
               className="flex-1"
             >
               <Download className="h-4 w-4 mr-2" />
-              {Capacitor.isNativePlatform() ? 'Share' : 'Download'}
+              {Capacitor.isNativePlatform() ? 'Save to Photos' : 'Download'}
             </Button>
             <Button
               onClick={handleDelete}
