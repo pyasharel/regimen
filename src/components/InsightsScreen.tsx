@@ -810,7 +810,7 @@ export const InsightsScreen = () => {
               <p className="text-xs text-muted-foreground">Log your weight or doses to see them here</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Weight Chart */}
               <div>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Weight</h4>
@@ -994,8 +994,8 @@ export const InsightsScreen = () => {
         </Card>
 
         {/* Photo Gallery Section */}
-        <div className="space-y-4 pb-4 border-l-2 border-primary/30 pl-4 -ml-4">
-          <div className="flex justify-between items-center">
+        <Card className="p-4 bg-muted/30">
+          <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
@@ -1070,7 +1070,7 @@ export const InsightsScreen = () => {
               <p className="text-xs mt-1">Upload your first progress photo</p>
             </div>
           )}
-        </div>
+        </Card>
       </div>
 
       <BottomNavigation />
