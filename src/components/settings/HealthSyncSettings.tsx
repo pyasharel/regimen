@@ -4,13 +4,17 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 export const HealthSyncSettings = () => {
   const navigate = useNavigate();
   const { platform, isEnabled, toggleHealthSync } = useHealthIntegration();
 
   const handleToggle = async (checked: boolean) => {
-    await toggleHealthSync(checked);
+    toast({
+      title: "Coming Soon",
+      description: "Health sync integration will be available in a future update!",
+    });
   };
 
   const getPlatformName = () => {
