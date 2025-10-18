@@ -4,15 +4,27 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target, Camera } from "lucide-react";
+import { Scale, ChevronLeft, TrendingDown, TrendingUp, Target, Camera, Plus, Upload, CameraIcon as CameraIconLucide } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PremiumModal } from "@/components/PremiumModal";
+import { toast } from "sonner";
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
+import { useHealthIntegration } from "@/hooks/useHealthIntegration";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Flame, Trophy, Target as TargetIcon } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { 
-  ComposedChart, 
+  ComposedChart,
   Line,
   Bar,
   XAxis, 
@@ -89,10 +101,19 @@ const StreakStatCard = () => {
 export const InsightsScreen = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | 'ALL'>('1M');
-  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string } | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string; id: string } | null>(null);
   const [isPremium] = useState(() => 
     localStorage.getItem('testPremiumMode') === 'true'
   );
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [weight, setWeight] = useState("");
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [entryDate, setEntryDate] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(false);
+
+  const { isEnabled: healthSyncEnabled, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
   const MEDICATION_COLORS = [
     '#FF6F61', // coral
@@ -104,7 +125,7 @@ export const InsightsScreen = () => {
   ];
 
   // Fetch ALL progress entries (weight + photos)
-  const { data: entries = [], isLoading: entriesLoading } = useQuery({
+  const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
     queryKey: ['progress-entries-insights'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -381,6 +402,193 @@ export const InsightsScreen = () => {
     return data.publicUrl;
   };
 
+  // Log Weight Handler
+  const handleLogWeight = async () => {
+    if (!weight) {
+      toast.error('Please enter your weight');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const weightValue = parseFloat(weight);
+      if (isNaN(weightValue) || weightValue <= 0) {
+        toast.error('Please enter a valid weight');
+        return;
+      }
+
+      const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
+
+      if (healthSyncEnabled) {
+        await requestPermission();
+      }
+
+      const { error } = await supabase
+        .from('progress_entries')
+        .insert([{
+          user_id: user.id,
+          entry_date: format(entryDate, 'yyyy-MM-dd'),
+          category: 'weight',
+          metrics: { weight: weightInLbs }
+        }]);
+
+      if (error) throw error;
+
+      if (healthSyncEnabled) {
+        await saveWeightToHealth(weightInLbs);
+      }
+
+      toast.success('Weight logged successfully');
+      setShowLogModal(false);
+      setWeight("");
+      refetchEntries();
+    } catch (error) {
+      console.error('Error logging weight:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to log weight');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(intensity === 'light' ? 30 : 50);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
+  const handleCapturePhoto = async () => {
+    if (!isPremium) {
+      setShowPremiumModal(true);
+      return;
+    }
+
+    triggerHaptic('light');
+
+    try {
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera
+      });
+
+      if (image.dataUrl) {
+        await uploadPhotoFromDataUrl(image.dataUrl);
+      }
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      toast.error('Failed to capture photo');
+    }
+  };
+
+  const handleSelectPhoto = async () => {
+    if (!isPremium) {
+      setShowPremiumModal(true);
+      return;
+    }
+
+    triggerHaptic('light');
+
+    try {
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Photos
+      });
+
+      if (image.dataUrl) {
+        await uploadPhotoFromDataUrl(image.dataUrl);
+      }
+    } catch (error) {
+      console.error('Error selecting photo:', error);
+      toast.error('Failed to select photo');
+    }
+  };
+
+  const uploadPhotoFromDataUrl = async (dataUrl: string) => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      const fileName = `${user.id}/${Date.now()}-image.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('progress-photos')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg'
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { error: entryError } = await supabase
+        .from('progress_entries')
+        .insert([{
+          user_id: user.id,
+          entry_date: new Date().toISOString().split('T')[0],
+          category: 'photo',
+          photo_url: fileName
+        }]);
+
+      if (entryError) throw entryError;
+
+      triggerHaptic('medium');
+      toast.success('Photo uploaded successfully');
+      setShowPhotoModal(false);
+      refetchEntries();
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload photo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (entryId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) return;
+
+      if (entry.photo_url) {
+        const { error: storageError } = await supabase.storage
+          .from('progress-photos')
+          .remove([entry.photo_url]);
+        
+        if (storageError) console.error('Error deleting from storage:', storageError);
+      }
+
+      const { error } = await supabase
+        .from('progress_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Photo deleted');
+      setSelectedPhoto(null);
+      refetchEntries();
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast.error('Failed to delete photo');
+    }
+  };
+
   // Get Y-axis domain for weight (no medication bar space needed)
   const weightDomain = useMemo(() => {
     const weights = timelineData
@@ -523,9 +731,15 @@ export const InsightsScreen = () => {
         {/* Weight Stats - Timeline Dependent */}
         {dashboardMetrics && (
           <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-              Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
-            </h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
+              </h3>
+              <Button onClick={() => setShowLogModal(true)} size="sm" variant="outline">
+                <Plus className="w-3 h-3 mr-1" />
+                Log Weight
+              </Button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <Card className="p-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -655,7 +869,8 @@ export const InsightsScreen = () => {
                             style={{ left: `${position}%` }}
                             onClick={() => photoUrl && setSelectedPhoto({ 
                               url: photoUrl, 
-                              date: format(parseISO(entry.entry_date), 'MMM d, yyyy') 
+                              date: format(parseISO(entry.entry_date), 'MMM d, yyyy'),
+                              id: entry.id
                             })}
                           >
                             {photoUrl ? (
@@ -771,25 +986,207 @@ export const InsightsScreen = () => {
             </div>
           )}
         </Card>
+
+        {/* Photo Gallery Section */}
+        <div className="space-y-4 pb-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
+            <Button 
+              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+              size="sm"
+              variant={isPremium ? "default" : "outline"}
+              className={!isPremium ? "gap-2" : ""}
+            >
+              {!isPremium && <PremiumDiamond className="w-4 h-4" />}
+              <CameraIconLucide className="w-3 h-3 mr-1" />
+              {isPremium ? "Upload Photo" : "Unlock"}
+            </Button>
+          </div>
+
+          {photoEntries.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {[...photoEntries].reverse().map((entry) => {
+                const photoUrl = getPhotoUrl(entry.photo_url);
+                return (
+                  <div key={entry.id} className="flex-shrink-0 text-center">
+                    <div 
+                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity border-2 border-border"
+                      onClick={() => photoUrl && setSelectedPhoto({ 
+                        url: photoUrl, 
+                        date: format(parseISO(entry.entry_date), 'MMM d, yyyy'),
+                        id: entry.id
+                      })}
+                    >
+                      {photoUrl && (
+                        <img
+                          src={photoUrl}
+                          alt={`Progress ${entry.entry_date}`}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      {format(parseISO(entry.entry_date), 'MMM d')}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : !isPremium ? (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="flex-shrink-0">
+                  <Card className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group">
+                    <CameraIconLucide className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
+                    <div className="absolute top-2 right-2">
+                      <PremiumDiamond className="w-4 h-4 text-primary/70" />
+                    </div>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No photos yet</p>
+              <p className="text-xs mt-1">Upload your first progress photo</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <BottomNavigation />
       
-      {/* Simple Photo Preview Dialog */}
+      {/* Log Weight Dialog */}
+      <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Log Weight</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="Enter weight"
+                  className="flex-1 h-14 text-lg"
+                />
+                <Select value={weightUnit} onValueChange={(value: "lbs" | "kg") => setWeightUnit(value)}>
+                  <SelectTrigger className="w-24 h-14">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lbs">lbs</SelectItem>
+                    <SelectItem value="kg">kg</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full h-14 justify-between text-left font-normal",
+                      !entryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <span>Entry Date</span>
+                    <span>{format(entryDate, "MMM d, yyyy")}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={entryDate}
+                    onSelect={(date) => date && setEntryDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <Button 
+              onClick={handleLogWeight} 
+              disabled={loading || !weight} 
+              className="w-full h-14 text-base"
+            >
+              {loading ? 'Logging...' : 'Log Weight Entry'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Upload Dialog */}
+      <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Progress Photo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button 
+              onClick={handleCapturePhoto} 
+              disabled={loading} 
+              className="w-full h-14 text-base"
+              variant="default"
+            >
+              <CameraIconLucide className="w-5 h-5 mr-2" />
+              {loading ? 'Processing...' : 'Snap a Photo'}
+            </Button>
+            <Button 
+              onClick={handleSelectPhoto} 
+              disabled={loading} 
+              className="w-full h-14 text-base"
+              variant="outline"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              {loading ? 'Processing...' : 'Upload from Gallery'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Preview with Delete */}
       {selectedPhoto && (
         <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="max-w-[90vw] p-0">
-            <div className="relative">
+          <DialogContent className="max-w-[90vw]">
+            <div className="space-y-4">
               <img 
                 src={selectedPhoto.url} 
                 alt={`Progress photo from ${selectedPhoto.date}`}
                 className="w-full h-auto rounded-lg"
               />
-              <p className="text-sm text-center text-muted-foreground mt-2 pb-2">{selectedPhoto.date}</p>
+              <p className="text-sm text-center text-muted-foreground">{selectedPhoto.date}</p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    // Download/share logic could go here
+                    toast.success('Feature coming soon');
+                  }}
+                >
+                  Share
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="flex-1"
+                  onClick={() => selectedPhoto.id && handleDeletePhoto(selectedPhoto.id)}
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
+
+      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 };
