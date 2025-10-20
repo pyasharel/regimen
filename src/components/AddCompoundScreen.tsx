@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
+import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 
 const COMMON_PEPTIDES = [
   // Peptides
@@ -441,6 +442,22 @@ export const AddCompoundScreen = () => {
               scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
             }
           });
+
+        // Schedule cycle reminders if enabled
+        if (enableCycle && cycleReminders) {
+          const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
+          if (cycleRemindersEnabled) {
+            scheduleCycleReminders({
+              id: editingCompound.id,
+              name,
+              start_date: startDate,
+              cycle_weeks_on: cycleWeeksOn,
+              cycle_weeks_off: cycleMode === 'continuous' ? cycleWeeksOff : null,
+              has_cycles: true,
+              cycle_reminders_enabled: true
+            });
+          }
+        }
         return;
       } else {
         // Insert new compound
@@ -482,6 +499,22 @@ export const AddCompoundScreen = () => {
           .insert(doses);
 
         if (dosesError) throw dosesError;
+
+        // Schedule cycle reminders if enabled
+        if (enableCycle) {
+          const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
+          if (cycleRemindersEnabled) {
+            scheduleCycleReminders({
+              id: compound.id,
+              name,
+              start_date: startDate,
+              cycle_weeks_on: cycleWeeksOn,
+              cycle_weeks_off: cycleMode === 'continuous' ? cycleWeeksOff : null,
+              has_cycles: true,
+              cycle_reminders_enabled: true
+            });
+          }
+        }
       }
 
       // Success haptic and navigate immediately

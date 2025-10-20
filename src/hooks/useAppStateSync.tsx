@@ -3,6 +3,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/utils/notificationScheduler';
+import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -33,6 +34,10 @@ export const useAppStateSync = () => {
           }));
           const isPremium = localStorage.getItem('testPremiumMode') === 'true';
           await scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
+          
+          // Also reschedule cycle reminders
+          await rescheduleAllCycleReminders();
+          
           console.log('✅ Notifications synced successfully');
         }
       } catch (error) {

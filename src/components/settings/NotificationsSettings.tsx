@@ -10,6 +10,8 @@ import { WeeklyDigestSettings } from "@/components/WeeklyDigestSettings";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from "@/integrations/supabase/client";
+import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -98,7 +100,7 @@ export const NotificationsSettings = () => {
     }
   };
 
-  const handleCycleRemindersToggle = (checked: boolean) => {
+  const handleCycleRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
     if (checked && !isPremium) {
       toast.error("Cycle reminders are a premium feature");
@@ -106,10 +108,24 @@ export const NotificationsSettings = () => {
     }
     setCycleReminders(checked);
     localStorage.setItem('cycleReminders', String(checked));
-    if (checked) {
-      toast.success("Cycle reminders enabled");
-    } else {
-      toast.success("Cycle reminders disabled");
+
+    // Update all compounds' cycle_reminders_enabled field
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('compounds')
+        .update({ cycle_reminders_enabled: checked })
+        .eq('user_id', user.id)
+        .eq('has_cycles', true);
+
+      // Reschedule all cycle reminders
+      await rescheduleAllCycleReminders();
+
+      if (checked) {
+        toast.success("Cycle reminders enabled - You'll be notified 1 week before and on the day of transitions");
+      } else {
+        toast.success("Cycle reminders disabled");
+      }
     }
   };
 
