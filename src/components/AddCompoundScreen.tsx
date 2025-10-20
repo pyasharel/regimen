@@ -115,6 +115,7 @@ export const AddCompoundScreen = () => {
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
   const [cycleReminders, setCycleReminders] = useState(true);
+  const [cycleTimeUnit, setCycleTimeUnit] = useState<'weeks' | 'months'>('weeks');
 
   // Active status
   const [isActive, setIsActive] = useState(true);
@@ -160,16 +161,30 @@ export const AddCompoundScreen = () => {
       
       if (editingCompound.has_cycles) {
         setEnableCycle(true);
-        setCycleWeeksOn(editingCompound.cycle_weeks_on || 4);
+        const weeksOn = editingCompound.cycle_weeks_on || 4;
+        // Auto-detect if it's in months (if divisible by 4 and >= 4)
+        if (weeksOn >= 4 && weeksOn % 4 === 0) {
+          setCycleTimeUnit('months');
+          setCycleWeeksOn(weeksOn / 4);
+        } else {
+          setCycleTimeUnit('weeks');
+          setCycleWeeksOn(weeksOn);
+        }
+        
         if (editingCompound.cycle_weeks_off) {
           setCycleMode('continuous');
-          setCycleWeeksOff(editingCompound.cycle_weeks_off);
+          const weeksOff = editingCompound.cycle_weeks_off;
+          if (weeksOff >= 4 && weeksOff % 4 === 0 && cycleTimeUnit === 'months') {
+            setCycleWeeksOff(weeksOff / 4);
+          } else {
+            setCycleWeeksOff(weeksOff);
+          }
         } else {
-        setCycleMode('one-time');
+          setCycleMode('one-time');
+        }
       }
-    }
-    
-    if (editingCompound.vial_size) {
+      
+      if (editingCompound.vial_size) {
         setActiveCalculator('iu');
         setVialSize(editingCompound.vial_size.toString());
         setVialUnit(editingCompound.vial_unit || "mg");
@@ -297,17 +312,19 @@ export const AddCompoundScreen = () => {
       // Check cycle logic - skip if in "off" period
       if (enableCycle && cycleMode === 'continuous') {
         const daysSinceStart = i;
-        const cycleLength = (cycleWeeksOn + cycleWeeksOff) * 7; // Total cycle in days
+        // Convert to days: if cycleTimeUnit is months, multiply by ~30 days, else by 7
+        const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
+        const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
+        const cycleLength = weeksOnInDays + weeksOffInDays;
         const positionInCycle = daysSinceStart % cycleLength;
-        const onPeriodDays = cycleWeeksOn * 7;
         
         // Skip if we're in the "off" period
-        if (positionInCycle >= onPeriodDays) {
+        if (positionInCycle >= weeksOnInDays) {
           continue;
         }
       } else if (enableCycle && cycleMode === 'one-time') {
         // For one-time cycles, only generate for the "on" weeks
-        const onPeriodDays = cycleWeeksOn * 7;
+        const onPeriodDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
         if (i >= onPeriodDays) {
           break; // Stop generating after on period ends
         }
@@ -398,8 +415,8 @@ export const AddCompoundScreen = () => {
             end_date: endDate || null,
             notes: notes || null,
         has_cycles: enableCycle,
-        cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
-        cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
+        cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
+        cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
         cycle_reminders_enabled: enableCycle ? cycleReminders : false,
             is_active: isActive
           })
@@ -451,8 +468,8 @@ export const AddCompoundScreen = () => {
               id: editingCompound.id,
               name,
               start_date: startDate,
-              cycle_weeks_on: cycleWeeksOn,
-              cycle_weeks_off: cycleMode === 'continuous' ? cycleWeeksOff : null,
+              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
               has_cycles: true,
               cycle_reminders_enabled: true
             });
@@ -483,8 +500,8 @@ export const AddCompoundScreen = () => {
             end_date: endDate || null,
             notes: notes || null,
             has_cycles: enableCycle,
-            cycle_weeks_on: enableCycle ? cycleWeeksOn : null,
-            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? cycleWeeksOff : null,
+            cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
+            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
             is_active: isActive
           }])
           .select()
@@ -504,12 +521,12 @@ export const AddCompoundScreen = () => {
         if (enableCycle) {
           const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
           if (cycleRemindersEnabled) {
-            scheduleCycleReminders({
+          scheduleCycleReminders({
               id: compound.id,
               name,
               start_date: startDate,
-              cycle_weeks_on: cycleWeeksOn,
-              cycle_weeks_off: cycleMode === 'continuous' ? cycleWeeksOff : null,
+              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
               has_cycles: true,
               cycle_reminders_enabled: true
             });
@@ -898,7 +915,29 @@ export const AddCompoundScreen = () => {
                   type="number"
                   min="1"
                   value={everyXDays}
-                  onChange={(e) => setEveryXDays(parseInt(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Allow empty string for clearing
+                    if (val === '') {
+                      setEveryXDays(1);
+                      return;
+                    }
+                    // Parse and validate
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num >= 1) {
+                      setEveryXDays(num);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Allow: backspace, delete, tab, escape, enter, arrows
+                    if ([8, 9, 27, 13, 37, 38, 39, 40, 46].includes(e.keyCode)) {
+                      return;
+                    }
+                    // Prevent non-numeric keys
+                    if ((e.keyCode < 48 || e.keyCode > 57) && (e.keyCode < 96 || e.keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-20"
                 />
                 <span className="text-sm">days</span>
@@ -1104,24 +1143,52 @@ export const AddCompoundScreen = () => {
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  min="1"
+                  step="0.5"
+                  min="0.5"
                   value={cycleWeeksOn}
-                  onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val) && val >= 0.5) {
+                      setCycleWeeksOn(val);
+                    }
+                  }}
                   className="w-20"
                 />
-                <span className="text-sm">weeks on</span>
+                <select
+                  value={cycleTimeUnit}
+                  onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
+                  className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
+                >
+                  <option value="weeks">weeks</option>
+                  <option value="months">months</option>
+                </select>
+                <span className="text-sm">on</span>
               </div>
 
               {cycleMode === 'continuous' && (
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    min="1"
+                    step="0.5"
+                    min="0.5"
                     value={cycleWeeksOff}
-                    onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0.5) {
+                        setCycleWeeksOff(val);
+                      }
+                    }}
                     className="w-20"
                   />
-                  <span className="text-sm">weeks off</span>
+                  <select
+                    value={cycleTimeUnit}
+                    onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
+                    className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
+                  >
+                    <option value="weeks">weeks</option>
+                    <option value="months">months</option>
+                  </select>
+                  <span className="text-sm">off</span>
                 </div>
               )}
               
@@ -1140,7 +1207,7 @@ export const AddCompoundScreen = () => {
 
               {cycleMode === 'one-time' && (
                 <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                  After {cycleWeeksOn} week{cycleWeeksOn !== 1 ? 's' : ''}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                  After {cycleWeeksOn} {cycleTimeUnit === 'months' ? (cycleWeeksOn !== 1 ? 'months' : 'month') : (cycleWeeksOn !== 1 ? 'weeks' : 'week')}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
                 </p>
               )}
             </div>
