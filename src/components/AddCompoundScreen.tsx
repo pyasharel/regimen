@@ -424,15 +424,20 @@ export const AddCompoundScreen = () => {
 
         if (updateError) throw updateError;
 
-        // Delete ALL existing doses for this compound and regenerate
+        // Delete only FUTURE doses (preserve taken/skipped doses)
+        const today = new Date();
+        const todayStr = formatDate(today);
         const { error: deleteError } = await supabase
           .from('doses')
           .delete()
-          .eq('compound_id', editingCompound.id);
+          .eq('compound_id', editingCompound.id)
+          .gte('scheduled_date', todayStr)
+          .eq('taken', false)
+          .eq('skipped', false);
 
         if (deleteError) throw deleteError;
 
-        // Generate new doses for next 30 days
+        // Generate new doses from today forward
         const doses = generateDoses(editingCompound.id, user.id);
         const { error: dosesUpdateError } = await supabase
           .from('doses')
@@ -914,12 +919,12 @@ export const AddCompoundScreen = () => {
                 <Input
                   type="text"
                   inputMode="numeric"
-                  value={everyXDays}
+                  value={everyXDays === 0 ? '' : everyXDays}
                   onChange={(e) => {
                     const val = e.target.value;
-                    // Allow empty for clearing
+                    // Allow empty for clearing (temporary state)
                     if (val === '') {
-                      setEveryXDays(1);
+                      setEveryXDays(0);
                       return;
                     }
                     // Only allow digits
@@ -928,6 +933,12 @@ export const AddCompoundScreen = () => {
                       if (num >= 1 && num <= 999) {
                         setEveryXDays(num);
                       }
+                    }
+                  }}
+                  onBlur={() => {
+                    // If still empty/0 on blur, set to 1
+                    if (everyXDays === 0) {
+                      setEveryXDays(1);
                     }
                   }}
                   placeholder="3"
