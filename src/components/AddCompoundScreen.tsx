@@ -912,33 +912,26 @@ export const AddCompoundScreen = () => {
               <Label>Every</Label>
               <div className="flex items-center gap-2">
                 <Input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   value={everyXDays}
                   onChange={(e) => {
                     const val = e.target.value;
-                    // Allow empty string for clearing
+                    // Allow empty for clearing
                     if (val === '') {
                       setEveryXDays(1);
                       return;
                     }
-                    // Parse and validate
-                    const num = parseInt(val);
-                    if (!isNaN(num) && num >= 1) {
-                      setEveryXDays(num);
+                    // Only allow digits
+                    if (/^\d+$/.test(val)) {
+                      const num = parseInt(val);
+                      if (num >= 1 && num <= 999) {
+                        setEveryXDays(num);
+                      }
                     }
                   }}
-                  onKeyDown={(e) => {
-                    // Allow: backspace, delete, tab, escape, enter, arrows
-                    if ([8, 9, 27, 13, 37, 38, 39, 40, 46].includes(e.keyCode)) {
-                      return;
-                    }
-                    // Prevent non-numeric keys
-                    if ((e.keyCode < 48 || e.keyCode > 57) && (e.keyCode < 96 || e.keyCode > 105)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="w-20"
+                  placeholder="3"
+                  className="w-20 text-center"
                 />
                 <span className="text-sm">days</span>
               </div>
