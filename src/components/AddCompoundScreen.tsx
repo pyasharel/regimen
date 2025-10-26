@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { PremiumModal } from "@/components/PremiumModal";
 
@@ -314,13 +314,13 @@ export const AddCompoundScreen = () => {
     // Special handling for extremely small doses (likely unit confusion)
     if (iu < 0.5 && iu >= 0) {
       const doseNum = parseFloat(intendedDose);
-      return `⚠️ Unusually small dose (${iu.toFixed(1)} units) - did you mean ${doseNum} mg?`;
+      return `Unusually small dose (${iu.toFixed(1)} units) - did you mean ${doseNum} mg?`;
     }
     
-    if (iu < 1) return "⚠️ Very small dose - consider using more BAC water or smaller vial size";
-    if (iu > 100) return "❌ Exceeds 100-unit syringe capacity - use less BAC water or smaller vial";
-    if (iu > 80) return "⚠️ Large dose - close to syringe limit";
-    if (iu > 50) return "⚠️ Large dose - please double-check your inputs";
+    if (iu < 1) return "Very small dose - consider using more BAC water or smaller vial size";
+    if (iu > 100) return "Exceeds 100-unit syringe capacity - use less BAC water or smaller vial";
+    if (iu > 80) return "Large dose - close to syringe limit";
+    if (iu > 50) return "Large dose - please double-check your inputs";
     if (iu < 5 && iu >= 1) return "⚠️ Small dose - ensure accurate measurement";
     
     return null;
@@ -911,27 +911,23 @@ export const AddCompoundScreen = () => {
                       on a 100-unit insulin syringe
                     </div>
                     {getWarning() && (
-                      <div className={cn(
-                        "flex items-center gap-2 mt-3 text-sm",
-                        getWarning()?.startsWith("❌") ? "text-destructive font-semibold" : "text-warning"
-                      )}>
-                        <AlertCircle className="h-4 w-4" />
-                        <span>{getWarning()}</span>
+                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-center">{getWarning()}</span>
                       </div>
                     )}
                     
                     {/* Show the calculation breakdown for transparency */}
                     <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground space-y-1">
                       <div>Concentration: {((parseFloat(vialSize) * (vialUnit === 'mg' ? 1000 : 1)) / parseFloat(bacWater)).toFixed(0)} mcg/mL</div>
-                      <div>Volume: {(parseFloat(displayIU) / 100).toFixed(3)} mL</div>
+                      <div>Volume: {parseFloat((parseFloat(displayIU) / 100).toFixed(3))} mL</div>
                     </div>
                   </div>
                   
                   {/* Medical disclaimer - only shown when calculation is displayed */}
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground flex items-center justify-center font-semibold">
-                      ⚠️ Always verify your calculations before use
-                    </p>
+                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Always verify your calculations before use</span>
                   </div>
                 </>
               )}
@@ -969,21 +965,17 @@ export const AddCompoundScreen = () => {
                       Volume to inject
                     </div>
                     {getMLWarning() && (
-                      <div className={cn(
-                        "flex items-center gap-2 mt-3 text-sm",
-                        getMLWarning()?.startsWith("❌") ? "text-destructive font-semibold" : "text-warning"
-                      )}>
-                        <AlertCircle className="h-4 w-4" />
-                        <span>{getMLWarning()}</span>
+                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-center">{getMLWarning()}</span>
                       </div>
                     )}
                   </div>
                   
-                  {/* Medical disclaimer - FIX #5: Standardize warning message */}
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground flex items-center justify-center font-semibold">
-                      ⚠️ Always verify your calculations before use
-                    </p>
+                  {/* Medical disclaimer */}
+                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Always verify your calculations before use</span>
                   </div>
                 </>
               )}
