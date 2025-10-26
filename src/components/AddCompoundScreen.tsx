@@ -193,29 +193,94 @@ export const AddCompoundScreen = () => {
     }
   }, []);
 
-  // Calculate IU and auto-populate dose
+  // Calculate IU (syringe units on 100-unit insulin syringe)
+  // This converts your dose to the number of units on a standard insulin syringe
   const calculateIU = () => {
+    // Validate all inputs are present and numeric
     if (!vialSize || !bacWater || !intendedDose) return null;
+    
+    const vialNum = parseFloat(vialSize);
+    const bacWaterNum = parseFloat(bacWater);
+    const doseNum = parseFloat(intendedDose);
+    
+    // Validate all numbers are valid and positive
+    if (isNaN(vialNum) || isNaN(bacWaterNum) || isNaN(doseNum) || 
+        vialNum <= 0 || bacWaterNum <= 0 || doseNum <= 0) {
+      return null;
+    }
 
-    const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : 
-                     doseUnit === 'iu' ? parseFloat(intendedDose) : 
-                     parseFloat(intendedDose);
-    const concentration = vialMcg / parseFloat(bacWater);
-    const volumeML = doseMcg / concentration;
-    return volumeML > 0 ? Math.round(volumeML * 100).toString() : null;
+    // Convert everything to mcg for consistent calculation
+    const vialMcg = vialUnit === 'mg' ? vialNum * 1000 : vialNum;
+    
+    // Convert dose to mcg based on unit
+    let doseMcg: number;
+    if (doseUnit === 'mg') {
+      doseMcg = doseNum * 1000;
+    } else if (doseUnit === 'mcg') {
+      doseMcg = doseNum;
+    } else if (doseUnit === 'iu') {
+      // If user selected IU as dose unit, they're working backwards
+      // This shouldn't happen in normal flow, but handle gracefully
+      return null;
+    } else {
+      // Other units (mL, pill, etc.) don't make sense for IU calculation
+      return null;
+    }
+    
+    // Calculate concentration: total mcg divided by total mL
+    const concentrationMcgPerML = vialMcg / bacWaterNum;
+    
+    // Validate concentration is reasonable
+    if (concentrationMcgPerML <= 0 || !isFinite(concentrationMcgPerML)) {
+      return null;
+    }
+    
+    // Calculate volume needed in mL
+    const volumeML = doseMcg / concentrationMcgPerML;
+    
+    // Validate volume is reasonable
+    if (volumeML <= 0 || !isFinite(volumeML)) {
+      return null;
+    }
+    
+    // Convert mL to units on a 100-unit insulin syringe (1mL = 100 units)
+    const syringeUnits = volumeML * 100;
+    
+    // Round to 1 decimal place for precision
+    return syringeUnits > 0 && isFinite(syringeUnits) 
+      ? Math.round(syringeUnits * 10) / 10 
+      : null;
   };
 
+  // Only calculate IU when calculator is active and inputs are valid
   const calculatedIU = activeCalculator === 'iu' ? calculateIU() : null;
+  
+  // Convert calculatedIU to string for display, preserving decimal if present
+  const displayIU = calculatedIU !== null ? calculatedIU.toString() : null;
 
-  // Calculate mL needed based on concentration
+  // Calculate mL needed based on concentration for oil-based compounds
   const calculateML = () => {
     if (!concentration || !intendedDose) return null;
+    
     const concentrationNum = parseFloat(concentration);
     const doseNum = parseFloat(intendedDose);
+    
+    // Validate inputs
+    if (isNaN(concentrationNum) || isNaN(doseNum) || 
+        concentrationNum <= 0 || doseNum <= 0) {
+      return null;
+    }
+    
+    // Formula: mL needed = dose (mg) / concentration (mg/mL)
     const mlNeeded = doseNum / concentrationNum;
-    // Remove trailing zeros: 0.50 becomes 0.5, 1.00 becomes 1
-    return mlNeeded > 0 ? parseFloat(mlNeeded.toFixed(2)).toString() : null;
+    
+    // Validate result
+    if (mlNeeded <= 0 || !isFinite(mlNeeded)) {
+      return null;
+    }
+    
+    // Round to 2 decimal places and remove trailing zeros
+    return parseFloat(mlNeeded.toFixed(2)).toString();
   };
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
@@ -224,11 +289,29 @@ export const AddCompoundScreen = () => {
   // The calculator will show them the IU amount based on their dose
 
   const getWarning = () => {
-    if (!calculatedIU) return null;
-    const iu = parseFloat(calculatedIU);
-    if (iu < 2) return "⚠️ Very small dose - consider using more BAC water";
-    if (iu > 100) return "⚠️ Exceeds syringe capacity";
-    if (iu > 50) return "⚠️ Large dose - please double-check";
+    if (!displayIU) return null;
+    const iu = parseFloat(displayIU);
+    
+    // Validate the calculated units
+    if (isNaN(iu) || iu <= 0) return "❌ Invalid calculation";
+    if (iu < 1) return "⚠️ Very small dose - consider using more BAC water or smaller vial size";
+    if (iu > 100) return "❌ Exceeds 100-unit syringe capacity - use less BAC water or smaller vial";
+    if (iu > 80) return "⚠️ Large dose - close to syringe limit";
+    if (iu > 50) return "⚠️ Large dose - please double-check your inputs";
+    if (iu < 5 && iu >= 1) return "⚠️ Small dose - ensure accurate measurement";
+    
+    return null;
+  };
+  
+  // Validation for mL calculator
+  const getMLWarning = () => {
+    if (!calculatedML) return null;
+    const ml = parseFloat(calculatedML);
+    
+    if (isNaN(ml) || ml <= 0) return "❌ Invalid calculation";
+    if (ml > 3) return "⚠️ Large volume - verify your concentration";
+    if (ml < 0.1) return "⚠️ Very small volume - difficult to measure accurately";
+    
     return null;
   };
 
@@ -329,7 +412,7 @@ export const AddCompoundScreen = () => {
           scheduled_time: time,
           dose_amount: currentDose,
           dose_unit: doseUnit,
-          calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+          calculated_iu: displayIU ? parseFloat(displayIU) : null,
           calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
           concentration: concentration ? parseFloat(concentration) : null
         });
@@ -387,7 +470,7 @@ export const AddCompoundScreen = () => {
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
-            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+            calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
           schedule_type: frequency,
@@ -477,7 +560,7 @@ export const AddCompoundScreen = () => {
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
             intended_dose: parseFloat(intendedDose),
             dose_unit: doseUnit,
-            calculated_iu: calculatedIU ? parseFloat(calculatedIU) : null,
+          calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: frequency,
@@ -794,25 +877,39 @@ export const AddCompoundScreen = () => {
               </div>
 
 
-              {calculatedIU && (
+              {displayIU && (
                 <>
-                  <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-primary">{calculatedIU} units</div>
+                  <div className={cn(
+                    "border-2 rounded-lg p-4 text-center",
+                    getWarning()?.startsWith("❌") 
+                      ? "bg-destructive/10 border-destructive" 
+                      : "bg-card border-secondary"
+                  )}>
+                    <div className="text-3xl font-bold text-primary">{displayIU} units</div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      on a 100 unit insulin syringe
+                      on a 100-unit insulin syringe
                     </div>
                     {getWarning() && (
-                      <div className="flex items-center gap-2 mt-3 text-sm text-warning">
+                      <div className={cn(
+                        "flex items-center gap-2 mt-3 text-sm",
+                        getWarning()?.startsWith("❌") ? "text-destructive font-semibold" : "text-warning"
+                      )}>
                         <AlertCircle className="h-4 w-4" />
                         <span>{getWarning()}</span>
                       </div>
                     )}
+                    
+                    {/* Show the calculation breakdown for transparency */}
+                    <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground space-y-1">
+                      <div>Concentration: {((parseFloat(vialSize) * (vialUnit === 'mg' ? 1000 : 1)) / parseFloat(bacWater)).toFixed(0)} mcg/mL</div>
+                      <div>Volume: {(parseFloat(displayIU) / 100).toFixed(3)} mL</div>
+                    </div>
                   </div>
                   
                   {/* Medical disclaimer - only shown when calculation is displayed */}
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground flex items-center justify-center">
-                      Always double-check your results
+                    <p className="text-xs text-muted-foreground flex items-center justify-center font-semibold">
+                      ⚠️ Always verify your calculations before use
                     </p>
                   </div>
                 </>
@@ -840,11 +937,25 @@ export const AddCompoundScreen = () => {
 
               {calculatedML && (
                 <>
-                  <div className="bg-card border-2 border-secondary rounded-lg p-4 text-center">
+                  <div className={cn(
+                    "border-2 rounded-lg p-4 text-center",
+                    getMLWarning()?.startsWith("❌") 
+                      ? "bg-destructive/10 border-destructive" 
+                      : "bg-card border-secondary"
+                  )}>
                     <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
                     <div className="text-sm text-muted-foreground mt-1">
                       Volume to inject
                     </div>
+                    {getMLWarning() && (
+                      <div className={cn(
+                        "flex items-center gap-2 mt-3 text-sm",
+                        getMLWarning()?.startsWith("❌") ? "text-destructive font-semibold" : "text-warning"
+                      )}>
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{getMLWarning()}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Medical disclaimer */}
