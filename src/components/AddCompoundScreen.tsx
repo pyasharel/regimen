@@ -309,7 +309,14 @@ export const AddCompoundScreen = () => {
     }
     
     // Validate the calculated units
-    if (isNaN(iu) || iu <= 0) return "❌ Invalid calculation";
+    if (isNaN(iu)) return "❌ Invalid calculation";
+    
+    // Special handling for extremely small doses (likely unit confusion)
+    if (iu < 0.5 && iu >= 0) {
+      const doseNum = parseFloat(intendedDose);
+      return `⚠️ Unusually small dose (${iu.toFixed(1)} units) - did you mean ${doseNum} mg?`;
+    }
+    
     if (iu < 1) return "⚠️ Very small dose - consider using more BAC water or smaller vial size";
     if (iu > 100) return "❌ Exceeds 100-unit syringe capacity - use less BAC water or smaller vial";
     if (iu > 80) return "⚠️ Large dose - close to syringe limit";
