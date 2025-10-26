@@ -227,6 +227,11 @@ export const AddCompoundScreen = () => {
       return null;
     }
     
+    // CRITICAL FIX #2: Validate dose doesn't exceed vial capacity
+    if (doseMcg > vialMcg) {
+      return null;
+    }
+    
     // Calculate concentration: total mcg divided by total mL
     const concentrationMcgPerML = vialMcg / bacWaterNum;
     
@@ -256,7 +261,8 @@ export const AddCompoundScreen = () => {
   const calculatedIU = activeCalculator === 'iu' ? calculateIU() : null;
   
   // Convert calculatedIU to string for display, preserving decimal if present
-  const displayIU = calculatedIU !== null ? calculatedIU.toString() : null;
+  // FIX #1: Ensure we always show .0 for whole numbers (e.g., "0.0" not "0")
+  const displayIU = calculatedIU !== null ? calculatedIU.toFixed(1) : null;
 
   // Calculate mL needed based on concentration for oil-based compounds
   const calculateML = () => {
@@ -291,6 +297,16 @@ export const AddCompoundScreen = () => {
   const getWarning = () => {
     if (!displayIU) return null;
     const iu = parseFloat(displayIU);
+    
+    // FIX #2: Check if dose exceeds vial capacity (critical error)
+    if (!vialSize || !intendedDose) return null;
+    const vialMcg = parseFloat(vialSize) * (vialUnit === 'mg' ? 1000 : 1);
+    let doseMcg = parseFloat(intendedDose);
+    if (doseUnit === 'mg') doseMcg = doseMcg * 1000;
+    
+    if (doseMcg > vialMcg) {
+      return "❌ Dose exceeds total peptide in vial";
+    }
     
     // Validate the calculated units
     if (isNaN(iu) || iu <= 0) return "❌ Invalid calculation";
@@ -663,6 +679,14 @@ export const AddCompoundScreen = () => {
               onChange={(e) => {
                 setName(e.target.value);
                 setShowAutocomplete(e.target.value.length > 0);
+                // FIX #3: Clear calculator values when compound name changes
+                if (e.target.value !== name) {
+                  setVialSize("");
+                  setBacWater("");
+                  setConcentration("");
+                  setIsCustomVialSize(false);
+                  setIsCustomBacWater(false);
+                }
               }}
               placeholder="Compound name"
               onFocus={() => setShowAutocomplete(name.length > 0)}
@@ -714,6 +738,7 @@ export const AddCompoundScreen = () => {
           </div>
 
           {/* Calculator buttons - shown based on dose unit */}
+          {/* FIX #4: Hide IU calculator when dose unit is already 'iu' */}
           {doseUnit === 'mcg' && (
             <button
               onClick={() => {
@@ -747,18 +772,7 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          {doseUnit === 'iu' && (
-            <button
-              onClick={() => {
-                setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
-              }}
-              className="text-sm text-primary hover:underline"
-            >
-              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
-            </button>
-          )}
-
-          {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg' || doseUnit === 'iu') && (
+          {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg') && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
@@ -958,10 +972,10 @@ export const AddCompoundScreen = () => {
                     )}
                   </div>
                   
-                  {/* Medical disclaimer */}
+                  {/* Medical disclaimer - FIX #5: Standardize warning message */}
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground flex items-center justify-center">
-                      Always double-check your results
+                    <p className="text-xs text-muted-foreground flex items-center justify-center font-semibold">
+                      ⚠️ Always verify your calculations before use
                     </p>
                   </div>
                 </>
