@@ -8,8 +8,9 @@ export const pluralizeDoseUnit = (amount: number, unit: string): string => {
   // Units that should not be pluralized
   const nonPluralUnits = ['mcg', 'mg', 'iu', 'ml'];
   
-  // If the unit should not be pluralized, return as-is
-  if (nonPluralUnits.includes(unit.toLowerCase())) {
+  // Handle case-insensitive matching but preserve original case for IU
+  const lowerUnit = unit.toLowerCase();
+  if (nonPluralUnits.includes(lowerUnit)) {
     return unit;
   }
   

@@ -637,6 +637,7 @@ export const AddCompoundScreen = () => {
               >
                 <option value="mcg">mcg</option>
                 <option value="mg">mg</option>
+                <option value="iu">IU</option>
                 <option value="mL">mL</option>
                 <option value="pill">pill</option>
                 <option value="drop">drop</option>
@@ -679,7 +680,18 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg') && (
+          {doseUnit === 'iu' && (
+            <button
+              onClick={() => {
+                setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
+              }}
+              className="text-sm text-primary hover:underline"
+            >
+              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
+            </button>
+          )}
+
+          {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg' || doseUnit === 'iu') && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
                 <Label>Peptide Amount (mg)</Label>
