@@ -198,13 +198,15 @@ export const AddCompoundScreen = () => {
     if (!vialSize || !bacWater || !intendedDose) return null;
 
     const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : parseFloat(intendedDose);
+    const doseMcg = doseUnit === 'mg' ? parseFloat(intendedDose) * 1000 : 
+                     doseUnit === 'iu' ? parseFloat(intendedDose) : 
+                     parseFloat(intendedDose);
     const concentration = vialMcg / parseFloat(bacWater);
     const volumeML = doseMcg / concentration;
     return volumeML > 0 ? Math.round(volumeML * 100).toString() : null;
   };
 
-  const calculatedIU = showCalculator ? calculateIU() : null;
+  const calculatedIU = activeCalculator === 'iu' ? calculateIU() : null;
 
   // Calculate mL needed based on concentration
   const calculateML = () => {
@@ -218,26 +220,8 @@ export const AddCompoundScreen = () => {
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
 
-  // Auto-populate dose when IU calculator values change
-  useEffect(() => {
-    if (activeCalculator === 'iu' && vialSize && bacWater) {
-      const vialMcg = vialUnit === 'mg' ? parseFloat(vialSize) * 1000 : parseFloat(vialSize);
-      const concentration = vialMcg / parseFloat(bacWater);
-      
-      // Only auto-populate if dose is empty or if vial/water values just changed
-      if (!intendedDose || intendedDose === '0') {
-        const iu = 10; // Default starting IU
-        const doseMcg = (iu / 100) * concentration;
-        
-        // Preserve the user's selected unit
-        if (doseUnit === 'mg') {
-          setIntendedDose((doseMcg / 1000).toFixed(2));
-        } else {
-          setIntendedDose(doseMcg.toFixed(0));
-        }
-      }
-    }
-  }, [vialSize, bacWater, vialUnit, activeCalculator]);
+  // Don't auto-populate dose - let user enter their intended dose
+  // The calculator will show them the IU amount based on their dose
 
   const getWarning = () => {
     if (!calculatedIU) return null;
