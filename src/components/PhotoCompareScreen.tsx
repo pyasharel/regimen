@@ -226,43 +226,109 @@ export default function PhotoCompareScreen() {
       new Promise(resolve => afterImg.onload = resolve)
     ]);
 
-    const targetHeight = 800;
-    const aspectBefore = beforeImg.width / beforeImg.height;
-    const aspectAfter = afterImg.width / afterImg.height;
-    const widthBefore = targetHeight * aspectBefore;
-    const widthAfter = targetHeight * aspectAfter;
-    const padding = 40;
-    const watermarkHeight = 80;
-
-    canvas.width = widthBefore + widthAfter + padding * 3;
-    canvas.height = targetHeight + padding * 2 + watermarkHeight;
-
+    // Create a side-by-side comparison with proper aspect ratios
+    const targetWidth = 1080; // Instagram-friendly width
+    const targetHeight = 1080; // Square format for best compatibility
+    
+    // Calculate dimensions to fit both images side by side
+    const halfWidth = targetWidth / 2;
+    const padding = 60;
+    const labelSpace = 100;
+    
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    
+    // White background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.drawImage(beforeImg, padding, padding, widthBefore, targetHeight);
-    ctx.drawImage(afterImg, widthBefore + padding * 2, padding, widthAfter, targetHeight);
-
-    // Add labels with dates
+    
+    // Calculate image dimensions to fit in their half while maintaining aspect ratio
+    const beforeAspect = beforeImg.width / beforeImg.height;
+    const afterAspect = afterImg.width / afterImg.height;
+    
+    const availableHeight = targetHeight - labelSpace - padding * 2;
+    const availableWidth = halfWidth - padding * 1.5;
+    
+    // Calculate dimensions for before image
+    let beforeWidth = availableWidth;
+    let beforeHeight = beforeWidth / beforeAspect;
+    if (beforeHeight > availableHeight) {
+      beforeHeight = availableHeight;
+      beforeWidth = beforeHeight * beforeAspect;
+    }
+    
+    // Calculate dimensions for after image
+    let afterWidth = availableWidth;
+    let afterHeight = afterWidth / afterAspect;
+    if (afterHeight > availableHeight) {
+      afterHeight = availableHeight;
+      afterWidth = afterHeight * afterAspect;
+    }
+    
+    // Center images in their respective halves
+    const beforeX = (halfWidth - beforeWidth) / 2;
+    const afterX = halfWidth + (halfWidth - afterWidth) / 2;
+    const imageY = labelSpace + padding;
+    
+    // Draw images
+    ctx.drawImage(beforeImg, beforeX, imageY, beforeWidth, beforeHeight);
+    ctx.drawImage(afterImg, afterX, imageY, afterWidth, afterHeight);
+    
+    // Add vertical divider line
+    ctx.strokeStyle = '#E0E0E0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(halfWidth, labelSpace);
+    ctx.lineTo(halfWidth, targetHeight - 80);
+    ctx.stroke();
+    
+    // Add labels with dates at the top
     ctx.fillStyle = '#FF6F61';
-    ctx.font = 'bold 28px Inter, sans-serif';
+    ctx.font = 'bold 36px Inter, -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BEFORE', padding + widthBefore / 2, padding - 30);
-    ctx.fillText('AFTER', widthBefore + padding * 2 + widthAfter / 2, padding - 30);
-
+    ctx.fillText('BEFORE', halfWidth / 2, 50);
+    ctx.fillText('AFTER', halfWidth + halfWidth / 2, 50);
+    
     // Add date stamps
     ctx.fillStyle = '#666666';
-    ctx.font = '18px Inter, sans-serif';
-    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), padding + widthBefore / 2, padding - 5);
-    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), widthBefore + padding * 2 + widthAfter / 2, padding - 5);
-
-    // Add watermark
-    ctx.fillStyle = '#000000';
-    ctx.globalAlpha = 0.3;
-    ctx.font = 'bold 22px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('REGIMEN • getregimen.app', canvas.width / 2, canvas.height - 30);
-    ctx.globalAlpha = 1.0;
+    ctx.font = '20px Inter, -apple-system, sans-serif';
+    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), halfWidth / 2, 85);
+    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 85);
+    
+    // Add logo watermark in bottom right
+    const logo = new Image();
+    logo.crossOrigin = "anonymous";
+    logo.src = logoGradient;
+    
+    await new Promise(resolve => {
+      logo.onload = () => {
+        const logoWidth = 120;
+        const logoHeight = (logo.height / logo.width) * logoWidth;
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(logo, canvas.width - logoWidth - 30, canvas.height - logoHeight - 30, logoWidth, logoHeight);
+        ctx.globalAlpha = 1.0;
+        
+        // Add text watermark
+        ctx.fillStyle = '#000000';
+        ctx.globalAlpha = 0.35;
+        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('getregimen.app', canvas.width - 30, canvas.height - 15);
+        ctx.globalAlpha = 1.0;
+        resolve(true);
+      };
+      // Fallback if logo doesn't load
+      logo.onerror = () => {
+        ctx.fillStyle = '#000000';
+        ctx.globalAlpha = 0.35;
+        ctx.font = 'bold 20px Inter, -apple-system, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('REGIMEN', canvas.width - 30, canvas.height - 30);
+        ctx.fillText('getregimen.app', canvas.width - 30, canvas.height - 10);
+        ctx.globalAlpha = 1.0;
+        resolve(true);
+      };
+    });
 
     return new Promise((resolve) => {
       canvas.toBlob((blob) => resolve(blob), 'image/png');
