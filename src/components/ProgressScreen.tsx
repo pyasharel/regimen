@@ -365,11 +365,17 @@ export const ProgressScreen = () => {
   const chartData = weightEntries
     .slice()
     .reverse()
-    .map(entry => ({
-      date: format(new Date(entry.entry_date), 'MMM d'),
-      weight: Math.round(entry.metrics.weight * 10) / 10,
-      fullDate: entry.entry_date
-    }));
+    .map(entry => {
+      // Parse as local date to avoid timezone shifts
+      const [year, month, day] = entry.entry_date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      
+      return {
+        date: format(localDate, 'MMM d'),
+        weight: Math.round(entry.metrics.weight * 10) / 10,
+        fullDate: entry.entry_date
+      };
+    });
 
   const getPhotoUrl = (photoPath: string) => {
     const { data } = supabase.storage
@@ -567,23 +573,29 @@ export const ProgressScreen = () => {
           ) : photoEntries.length > 0 ? (
             <>
               <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
-                {photoEntries.map((entry) => (
-                  <div key={entry.id} className="flex-shrink-0 text-center">
-                    <div 
-                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => setPreviewPhoto({ url: getPhotoUrl(entry.photo_url!), id: entry.id })}
-                    >
-                      <img
-                        src={getPhotoUrl(entry.photo_url!)}
-                        alt={`Progress ${entry.entry_date}`}
-                        className="w-full h-full object-cover"
-                      />
+                {photoEntries.map((entry) => {
+                  // Parse as local date to avoid timezone shifts
+                  const [year, month, day] = entry.entry_date.split('-').map(Number);
+                  const localDate = new Date(year, month - 1, day);
+                  
+                  return (
+                    <div key={entry.id} className="flex-shrink-0 text-center">
+                      <div 
+                        className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewPhoto({ url: getPhotoUrl(entry.photo_url!), id: entry.id })}
+                      >
+                        <img
+                          src={getPhotoUrl(entry.photo_url!)}
+                          alt={`Progress ${entry.entry_date}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {format(localDate, 'MMM d')}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {format(new Date(entry.entry_date), 'MMM d')}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {photoEntries.length > 0 && (

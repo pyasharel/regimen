@@ -396,24 +396,30 @@ export default function PhotoCompareScreen() {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground">All Photos</h3>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-              {availablePhotos.map((photo) => (
-                <div 
-                  key={photo.id} 
-                  className="flex-shrink-0 snap-center cursor-pointer"
-                  onClick={() => {
-                    setPreviewPhoto(photo.id);
-                  }}
-                >
-                  <img
-                    src={getPhotoUrl(photo.photo_url)}
-                    alt={`Progress from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
-                    className="h-32 w-32 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors"
-                  />
-                  <p className="text-xs text-center text-muted-foreground mt-1">
-                    {format(new Date(photo.entry_date), 'MMM d')}
-                  </p>
-                </div>
-              ))}
+              {availablePhotos.map((photo) => {
+                // Parse as local date to avoid timezone shifts
+                const [year, month, day] = photo.entry_date.split('-').map(Number);
+                const localDate = new Date(year, month - 1, day);
+                
+                return (
+                  <div 
+                    key={photo.id} 
+                    className="flex-shrink-0 snap-center cursor-pointer"
+                    onClick={() => {
+                      setPreviewPhoto(photo.id);
+                    }}
+                  >
+                    <img
+                      src={getPhotoUrl(photo.photo_url)}
+                      alt={`Progress from ${format(localDate, 'MMM d, yyyy')}`}
+                      className="h-32 w-32 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors"
+                    />
+                    <p className="text-xs text-center text-muted-foreground mt-1">
+                      {format(localDate, 'MMM d')}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -509,26 +515,31 @@ export default function PhotoCompareScreen() {
                 const isSelectedAfter = selectedPhotos.after?.url === getPhotoUrl(photo.photo_url);
                 return !isSelectedBefore && !isSelectedAfter;
               })
-              .map((photo) => (
-                <Card
-                  key={photo.id}
-                  className="relative hover:ring-2 hover:ring-primary transition-all group"
-                >
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+              .map((photo) => {
+                // Parse as local date to avoid timezone shifts
+                const [year, month, day] = photo.entry_date.split('-').map(Number);
+                const localDate = new Date(year, month - 1, day);
+                
+                return (
+                  <Card
+                    key={photo.id}
+                    className="relative hover:ring-2 hover:ring-primary transition-all group"
                   >
-                    <img
-                      src={getPhotoUrl(photo.photo_url)}
-                      alt={`Progress photo from ${format(new Date(photo.entry_date), 'MMM d, yyyy')}`}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    <div className="p-3 text-center">
-                      <p className="text-sm font-medium">
-                        {format(new Date(photo.entry_date), 'MMM d, yyyy')}
-                      </p>
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => handlePhotoSelection(photo, showPhotoSelector!)}
+                    >
+                      <img
+                        src={getPhotoUrl(photo.photo_url)}
+                        alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                        className="w-full h-48 object-cover rounded-t-lg"
+                      />
+                      <div className="p-3 text-center">
+                        <p className="text-sm font-medium">
+                          {format(localDate, 'MMM d, yyyy')}
+                        </p>
+                      </div>
                     </div>
-                  </div>
                   <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       size="icon"
@@ -554,7 +565,8 @@ export default function PhotoCompareScreen() {
                     </Button>
                   </div>
                 </Card>
-              ))}
+              );
+            })}
           </div>
           {availablePhotos.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
