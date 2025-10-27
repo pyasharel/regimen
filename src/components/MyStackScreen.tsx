@@ -198,8 +198,19 @@ export const MyStackScreen = () => {
   const getDaysActive = (startDate: string) => {
     const start = new Date(startDate);
     const now = new Date();
-    const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(1, diff + 1); // +1 to show "day 1" on start day, matching cycle display
+    const days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Show in months if > 30 days
+    if (days > 30) {
+      const months = Math.floor(days / 30);
+      const remainingDays = days % 30;
+      if (remainingDays === 0) {
+        return `${months}mo`;
+      }
+      return `${months}mo ${remainingDays}d`;
+    }
+    
+    return `${days}d`;
   };
 
   const formatTime = (time: string) => {
@@ -354,7 +365,7 @@ export const MyStackScreen = () => {
                         {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}d
+                        {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}
                       </p>
                       
                       {/* Cycle Status - Only show if has_cycles is true */}

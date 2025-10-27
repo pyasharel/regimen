@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/utils/notificationScheduler';
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
+import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -19,6 +20,9 @@ export const useAppStateSync = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+        // Check and regenerate doses if needed
+        await checkAndRegenerateDoses(user.id);
 
         // Fetch all upcoming doses
         const { data: allDoses } = await supabase
