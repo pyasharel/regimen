@@ -175,10 +175,9 @@ export const ProgressScreen = () => {
       const dateStr = format(entryDate, 'yyyy-MM-dd');
       const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .select('id')
+        .select('id, category, photo_url')
         .eq('user_id', user.id)
         .eq('entry_date', dateStr)
-        .eq('category', 'weight')
         .maybeSingle();
 
       let error;
@@ -186,7 +185,10 @@ export const ProgressScreen = () => {
         // Update existing entry
         ({ error } = await supabase
           .from('progress_entries')
-          .update({ metrics: { weight: weightInLbs } })
+          .update({ 
+            category: 'weight',
+            metrics: { weight: weightInLbs } 
+          })
           .eq('id', existingEntry.id));
       } else {
         // Insert new entry
@@ -301,14 +303,36 @@ export const ProgressScreen = () => {
 
       if (uploadError) throw uploadError;
 
-      const { error: entryError } = await supabase
+      // Check if entry exists for this date
+      const dateStr = format(photoDate, 'yyyy-MM-dd');
+      const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .insert([{
-          user_id: user.id,
-          entry_date: format(photoDate, 'yyyy-MM-dd'), // Use selected photo date
-          category: 'photo',
-          photo_url: fileName
-        }]);
+        .select('id, category, metrics')
+        .eq('user_id', user.id)
+        .eq('entry_date', dateStr)
+        .maybeSingle();
+
+      let entryError;
+      if (existingEntry) {
+        // Update existing entry with photo
+        ({ error: entryError } = await supabase
+          .from('progress_entries')
+          .update({ 
+            category: 'photo',
+            photo_url: fileName 
+          })
+          .eq('id', existingEntry.id));
+      } else {
+        // Insert new entry
+        ({ error: entryError } = await supabase
+          .from('progress_entries')
+          .insert([{
+            user_id: user.id,
+            entry_date: dateStr,
+            category: 'photo',
+            photo_url: fileName
+          }]));
+      }
 
       if (entryError) throw entryError;
 
