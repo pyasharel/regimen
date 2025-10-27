@@ -28,8 +28,6 @@ import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { CycleTimeline } from "@/components/CycleTimeline";
-import { StreakCard } from "@/components/StreakCard";
-import { EncouragingMessage } from "@/components/EncouragingMessage";
 
 type ProgressEntry = {
   id: string;
@@ -459,17 +457,9 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
-        {/* Streak Card */}
-        <StreakCard />
-
         <div className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
-              {chartData.length > 1 && (
-                <EncouragingMessage type={getWeightTrend()} />
-              )}
-            </div>
+            <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
             <Button onClick={() => setShowLogModal(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Log Weight
@@ -568,13 +558,8 @@ export const ProgressScreen = () => {
         </div>
 
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Track your transformation with side-by-side photo comparisons
-              </p>
-            </div>
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
             <Button 
               onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
               size="sm"
@@ -667,7 +652,7 @@ export const ProgressScreen = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Medication Timeline</h2>
+          <h2 className="text-xl font-semibold text-foreground">Active Cycles</h2>
           
           <Card className="p-6 bg-muted/30">
             {compounds.length > 0 ? (
@@ -725,7 +710,7 @@ export const ProgressScreen = () => {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No medications tracked yet</p>
-                <p className="text-sm mt-1">Add your first compound to see your medication timeline</p>
+                <p className="text-sm mt-1">Add your first compound to see your active cycles</p>
               </div>
             )}
           </Card>

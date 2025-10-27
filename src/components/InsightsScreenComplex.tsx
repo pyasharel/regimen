@@ -755,10 +755,14 @@ export const InsightsScreen = () => {
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/progress')}>
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-              Progress
+              Insights
             </h1>
             {isPremium && (
               <PremiumDiamond className="h-5 w-5 text-primary" />
