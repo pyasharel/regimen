@@ -801,12 +801,19 @@ export const TodayScreen = () => {
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          {/* Medication name */}
-                          <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white'
-                          }`}>
-                            {dose.compound_name}
-                          </h3>
+                          {/* Medication name and time */}
+                          <div className="mb-2">
+                            <h3 className={`text-lg font-bold transition-colors duration-300 ${
+                              dose.taken ? 'text-muted-foreground' : 'text-white'
+                            }`}>
+                              {dose.compound_name}
+                            </h3>
+                            <p className={`text-xs transition-colors duration-300 ${
+                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
+                            }`}>
+                              {formatTime(dose.scheduled_time)}
+                            </p>
+                          </div>
                           
                           {/* Dosage badge with all info */}
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${

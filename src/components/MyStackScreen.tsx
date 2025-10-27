@@ -200,6 +200,12 @@ export const MyStackScreen = () => {
     const now = new Date();
     const days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
+    // Check if medication starts in the future
+    if (days <= 0) {
+      const futureDays = Math.abs(days) + 1;
+      return `Starts in ${futureDays}d`;
+    }
+    
     // Show in months if > 30 days
     if (days > 30) {
       const months = Math.floor(days / 30);
@@ -238,6 +244,16 @@ export const MyStackScreen = () => {
       const selectedDays = compound.schedule_days.map(d => dayNames[typeof d === 'string' ? parseInt(d) : d]);
       return selectedDays.join(', ');
     }
+    
+    // Handle "Every X Days" format
+    if (compound.schedule_type?.startsWith('Every') && compound.schedule_type.includes('Day')) {
+      const match = compound.schedule_type.match(/Every (\d+) Day/);
+      if (match) {
+        const days = match[1];
+        return `Every ${days} Days`;
+      }
+    }
+    
     return compound.schedule_type;
   };
 
