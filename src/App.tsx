@@ -52,7 +52,8 @@ const App = () => {
           <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
           <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
           <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
-          <Route path="/progress" element={<ProtectedRoute><InsightsScreen /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
+          <Route path="/progress/insights" element={<ProtectedRoute><InsightsScreen /></ProtectedRoute>} />
           <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
           <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
