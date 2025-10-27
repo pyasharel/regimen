@@ -59,7 +59,7 @@ export default function PhotoCompareScreen() {
       .select('id, photo_url, entry_date')
       .eq('user_id', user.id)
       .not('photo_url', 'is', null)
-      .order('entry_date', { ascending: false });
+      .order('entry_date', { ascending: true }); // Oldest to newest
 
     if (error) {
       console.error('Error fetching photos:', error);
@@ -67,6 +67,14 @@ export default function PhotoCompareScreen() {
     }
 
     setAvailablePhotos(data || []);
+    
+    // Auto-scroll to the right (newest photo) after loading
+    setTimeout(() => {
+      const container = document.querySelector('.overflow-x-auto');
+      if (container) {
+        container.scrollLeft = container.scrollWidth;
+      }
+    }, 100);
   };
 
   const getPhotoUrl = (photoPath: string) => {
@@ -226,28 +234,29 @@ export default function PhotoCompareScreen() {
       new Promise(resolve => afterImg.onload = resolve)
     ]);
 
-    // Create a side-by-side comparison with proper aspect ratios
-    const targetWidth = 1080; // Instagram-friendly width
-    const targetHeight = 1080; // Square format for best compatibility
+    // Create a side-by-side comparison - Instagram friendly 1080x1080
+    const targetWidth = 1080;
+    const targetHeight = 1080;
     
-    // Calculate dimensions to fit both images side by side
+    // Calculate dimensions
     const halfWidth = targetWidth / 2;
-    const padding = 60;
-    const labelSpace = 100;
+    const padding = 40; // Reduced padding for tighter layout
+    const labelSpace = 80; // Reduced label space
+    const bottomSpace = 60; // Reduced bottom space
     
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     
-    // White background
-    ctx.fillStyle = '#FFFFFF';
+    // Black background to match logo
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Calculate image dimensions to fit in their half while maintaining aspect ratio
     const beforeAspect = beforeImg.width / beforeImg.height;
     const afterAspect = afterImg.width / afterImg.height;
     
-    const availableHeight = targetHeight - labelSpace - padding * 2;
-    const availableWidth = halfWidth - padding * 1.5;
+    const availableHeight = targetHeight - labelSpace - bottomSpace - padding;
+    const availableWidth = halfWidth - padding;
     
     // Calculate dimensions for before image
     let beforeWidth = availableWidth;
@@ -274,57 +283,62 @@ export default function PhotoCompareScreen() {
     ctx.drawImage(beforeImg, beforeX, imageY, beforeWidth, beforeHeight);
     ctx.drawImage(afterImg, afterX, imageY, afterWidth, afterHeight);
     
-    // Add vertical divider line
-    ctx.strokeStyle = '#E0E0E0';
-    ctx.lineWidth = 2;
+    // Add subtle vertical divider line
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(halfWidth, labelSpace);
-    ctx.lineTo(halfWidth, targetHeight - 80);
+    ctx.lineTo(halfWidth, targetHeight - bottomSpace);
     ctx.stroke();
     
     // Add labels with dates at the top
     ctx.fillStyle = '#FF6F61';
-    ctx.font = 'bold 36px Inter, -apple-system, sans-serif';
+    ctx.font = 'bold 32px Inter, -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BEFORE', halfWidth / 2, 50);
-    ctx.fillText('AFTER', halfWidth + halfWidth / 2, 50);
+    ctx.fillText('BEFORE', halfWidth / 2, 45);
+    ctx.fillText('AFTER', halfWidth + halfWidth / 2, 45);
     
     // Add date stamps
-    ctx.fillStyle = '#666666';
-    ctx.font = '20px Inter, -apple-system, sans-serif';
-    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), halfWidth / 2, 85);
-    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 85);
+    ctx.fillStyle = '#AAAAAA';
+    ctx.font = '18px Inter, -apple-system, sans-serif';
+    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
     
-    // Add logo watermark in bottom right
+    // Add logo and watermark in bottom right corner
     const logo = new Image();
     logo.crossOrigin = "anonymous";
+    // Use the final logo icon
     logo.src = logoGradient;
     
     await new Promise(resolve => {
       logo.onload = () => {
-        const logoWidth = 120;
+        const logoWidth = 100;
         const logoHeight = (logo.height / logo.width) * logoWidth;
-        ctx.globalAlpha = 0.4;
-        ctx.drawImage(logo, canvas.width - logoWidth - 30, canvas.height - logoHeight - 30, logoWidth, logoHeight);
+        const logoX = canvas.width - logoWidth - 20;
+        const logoY = canvas.height - logoHeight - 35;
+        
+        // Draw logo with slight transparency
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
         ctx.globalAlpha = 1.0;
         
         // Add text watermark
-        ctx.fillStyle = '#000000';
-        ctx.globalAlpha = 0.35;
-        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = 0.7;
+        ctx.font = 'bold 16px Inter, -apple-system, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('getregimen.app', canvas.width - 30, canvas.height - 15);
+        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
       // Fallback if logo doesn't load
       logo.onerror = () => {
-        ctx.fillStyle = '#000000';
-        ctx.globalAlpha = 0.35;
-        ctx.font = 'bold 20px Inter, -apple-system, sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = 0.7;
+        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('REGIMEN', canvas.width - 30, canvas.height - 30);
-        ctx.fillText('getregimen.app', canvas.width - 30, canvas.height - 10);
+        ctx.fillText('REGIMEN', canvas.width - 20, canvas.height - 35);
+        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
@@ -461,8 +475,8 @@ export default function PhotoCompareScreen() {
         {availablePhotos.length > 0 && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground">All Photos</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
-              {availablePhotos.map((photo) => {
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth" style={{ scrollSnapType: 'x mandatory' }}>
+              {availablePhotos.map((photo, index) => {
                 // Parse as local date to avoid timezone shifts
                 const [year, month, day] = photo.entry_date.split('-').map(Number);
                 const localDate = new Date(year, month - 1, day);

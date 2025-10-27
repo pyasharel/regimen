@@ -115,6 +115,7 @@ export const InsightsScreen = () => {
   const [weight, setWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
+  const [photoEntryDate, setPhotoEntryDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
 
   const { isEnabled: healthSyncEnabled, saveWeightToHealth, requestPermission } = useHealthIntegration();
@@ -558,20 +559,44 @@ export const InsightsScreen = () => {
 
       if (uploadError) throw uploadError;
 
-      const { error: entryError } = await supabase
+      const dateStr = format(photoEntryDate, 'yyyy-MM-dd');
+      
+      // Check if entry exists for this date
+      const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .insert([{
-          user_id: user.id,
-          entry_date: new Date().toISOString().split('T')[0],
-          category: 'photo',
-          photo_url: fileName
-        }]);
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('entry_date', dateStr)
+        .maybeSingle();
 
-      if (entryError) throw entryError;
+      let error: any;
+      if (existingEntry) {
+        // Update existing entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .update({ 
+            photo_url: fileName,
+            category: 'photo' 
+          })
+          .eq('id', existingEntry.id));
+      } else {
+        // Insert new entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .insert([{
+            user_id: user.id,
+            entry_date: dateStr,
+            category: 'photo',
+            photo_url: fileName
+          }]));
+      }
+
+      if (error) throw error;
 
       triggerHaptic('medium');
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
+      setPhotoEntryDate(new Date()); // Reset to today
       refetchEntries();
     } catch (error) {
       console.error('Error uploading photo:', error);
@@ -1194,7 +1219,34 @@ export const InsightsScreen = () => {
           <DialogHeader>
             <DialogTitle>Add Progress Photo</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Photo Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full h-12 justify-between text-left font-normal",
+                      !photoEntryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <span>Select Date</span>
+                    <span>{format(photoEntryDate, "MMM d, yyyy")}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={photoEntryDate}
+                    onSelect={(date) => date && setPhotoEntryDate(date)}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
             <Button 
               onClick={handleCapturePhoto} 
               disabled={loading} 
