@@ -732,22 +732,22 @@ export const ProgressScreen = () => {
                           }
                           
                           return (
-                            <div key={compound.id} className="space-y-1.5">
-                              <div className="flex items-center justify-between text-sm">
+                            <div key={compound.id} className="space-y-1">
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-foreground">{compound.name}</span>
+                                  <span className="text-xs font-medium text-foreground">{compound.name}</span>
                                   {isActive && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
                                       Active
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(startDate, 'MMM d, yyyy')} - {isActive ? 'Present' : format(endDate, 'MMM d, yyyy')}
+                                <span className="text-[10px] text-muted-foreground">
+                                  {format(startDate, 'MMM d, yy')} - {isActive ? 'Now' : format(endDate, 'MMM d, yy')}
                                 </span>
                               </div>
                               
-                              <div className="relative h-7 bg-background/50 rounded-md overflow-hidden">
+                              <div className="relative h-5 bg-background/50 rounded-sm overflow-hidden">
                                 {periods.map((period, periodIdx) => {
                                   const periodStartDays = Math.floor((period.start.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                                   const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -780,7 +780,7 @@ export const ProgressScreen = () => {
                       </div>
                       
                       {/* Timeline labels */}
-                      <div className="relative h-6 mt-3 pt-2 border-t border-border/50">
+                      <div className="relative h-5 mt-2 pt-2 border-t border-border/50">
                         <div className="flex justify-between text-[10px] text-muted-foreground">
                           {(() => {
                             const numLabels = Math.min(8, Math.ceil(totalDays / 30));
