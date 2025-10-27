@@ -1,10 +1,17 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2, X } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Download, Trash2, X, Calendar as CalendarIcon, Pencil } from "lucide-react";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface PhotoPreviewModalProps {
   open: boolean;
@@ -12,9 +19,59 @@ interface PhotoPreviewModalProps {
   photoUrl: string;
   entryId: string;
   onDelete: (entryId: string) => void;
+  onDateUpdate?: () => void;
 }
 
-export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete }: PhotoPreviewModalProps) => {
+export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, onDateUpdate }: PhotoPreviewModalProps) => {
+  const [editingDate, setEditingDate] = useState(false);
+  const [photoDate, setPhotoDate] = useState<Date>(new Date());
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && entryId) {
+      fetchPhotoDate();
+    }
+  }, [open, entryId]);
+
+  const fetchPhotoDate = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('progress_entries')
+        .select('entry_date')
+        .eq('id', entryId)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setPhotoDate(new Date(data.entry_date));
+      }
+    } catch (error) {
+      console.error('Error fetching photo date:', error);
+    }
+  };
+
+  const handleUpdateDate = async (newDate: Date) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('progress_entries')
+        .update({ entry_date: format(newDate, 'yyyy-MM-dd') })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      setPhotoDate(newDate);
+      setEditingDate(false);
+      toast.success('Photo date updated');
+      if (onDateUpdate) onDateUpdate();
+    } catch (error) {
+      console.error('Error updating photo date:', error);
+      toast.error('Failed to update photo date');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSavePhoto = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
@@ -74,24 +131,80 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete }
             />
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 p-4 bg-background border-t">
-            <Button
-              onClick={handleSavePhoto}
-              variant="outline"
-              className="flex-1"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {Capacitor.isNativePlatform() ? 'Save to Photos' : 'Download'}
-            </Button>
-            <Button
-              onClick={handleDelete}
-              variant="destructive"
-              className="flex-1"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+          {/* Photo info and action buttons */}
+          <div className="p-4 bg-background border-t space-y-3">
+            {/* Date section */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm">
+                <CalendarIcon className="w-4 h-4" />
+                Photo Date
+              </Label>
+              {editingDate ? (
+                <div className="space-y-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-between text-left font-normal"
+                        )}
+                      >
+                        <span className="text-muted-foreground">Select Date</span>
+                        <span>{format(photoDate, "MMM d, yyyy")}</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={photoDate}
+                        onSelect={(date) => date && handleUpdateDate(date)}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingDate(false)}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingDate(true)}
+                  className="w-full justify-between"
+                  disabled={loading}
+                >
+                  <span>{format(photoDate, "MMMM d, yyyy")}</span>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSavePhoto}
+                variant="outline"
+                className="flex-1"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {Capacitor.isNativePlatform() ? 'Save' : 'Download'}
+              </Button>
+              <Button
+                onClick={handleDelete}
+                variant="destructive"
+                className="flex-1"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

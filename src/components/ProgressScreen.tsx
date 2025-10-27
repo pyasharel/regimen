@@ -768,7 +768,7 @@ export const ProgressScreen = () => {
                       !photoDate && "text-muted-foreground"
                     )}
                   >
-                    <span>When was this photo taken?</span>
+                    <span className="text-muted-foreground">Photo Date</span>
                     <span>{format(photoDate, "MMM d, yyyy")}</span>
                   </Button>
                 </PopoverTrigger>
@@ -814,6 +814,7 @@ export const ProgressScreen = () => {
         photoUrl={previewPhoto?.url || ''}
         entryId={previewPhoto?.id || ''}
         onDelete={handleDeletePhoto}
+        onDateUpdate={refetchEntries}
       />
     </div>
   );
