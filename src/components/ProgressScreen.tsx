@@ -487,7 +487,7 @@ export const ProgressScreen = () => {
           <Card className="p-4 bg-muted/30">
             {dataLoading ? (
               <Skeleton className="w-full h-[200px]" />
-            ) : chartData.length > 0 ? (
+            ) : weightEntries.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />

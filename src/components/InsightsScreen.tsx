@@ -700,7 +700,7 @@ export const InsightsScreen = () => {
       <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
         <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/progress')}>
               <ChevronLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
@@ -729,7 +729,7 @@ export const InsightsScreen = () => {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/progress')}>
             <ChevronLeft className="w-4 h-4 mr-1" />
             Back
           </Button>
