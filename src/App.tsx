@@ -12,7 +12,7 @@ import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
-import { InsightsScreen } from "./components/InsightsScreen";
+import { InsightsScreen } from "./components/InsightsScreenComplex";
 import { SettingsScreen } from "./components/SettingsScreen";
 import PhotoCompareScreen from "./components/PhotoCompareScreen";
 import { AccountSettings } from "./components/settings/AccountSettings";
