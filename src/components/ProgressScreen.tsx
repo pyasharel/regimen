@@ -655,56 +655,95 @@ export const ProgressScreen = () => {
           <h2 className="text-xl font-semibold text-foreground">Active Cycles</h2>
           
           <Card className="p-6 bg-muted/30">
-            {compounds.length > 0 ? (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  {compounds.map((compound) => {
-                    const startDate = new Date(compound.start_date);
-                    const endDate = compound.end_date ? new Date(compound.end_date) : new Date();
-                    const now = new Date();
+            {dataLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : compounds.length > 0 ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {compounds.map((compound, idx) => {
+                    const MEDICATION_COLORS = [
+                      '#FF6F61', // coral
+                      '#8B5CF6', // purple  
+                      '#3B82F6', // blue
+                      '#10B981', // green
+                      '#F59E0B', // orange
+                      '#EC4899', // pink
+                    ];
+                    const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
                     
-                    // Consider active if: is_active flag is true AND (no end_date OR end_date is in the future)
-                    const isActive = compound.is_active && (!compound.end_date || endDate >= now);
+                    // Get all logged doses for this medication in the last 6 months
+                    const sixMonthsAgo = new Date();
+                    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
                     
-                    const sixMonthsAgo = new Date(now);
-                    sixMonthsAgo.setMonth(now.getMonth() - 6);
+                    const loggedDoses = recentDoses
+                      .filter(d => 
+                        d.compound_id === compound.id && 
+                        d.taken && 
+                        d.scheduled_date &&
+                        new Date(d.scheduled_date) >= sixMonthsAgo
+                      )
+                      .map(d => ({
+                        date: new Date(d.scheduled_date),
+                        dateStr: d.scheduled_date,
+                      }))
+                      .sort((a, b) => a.date.getTime() - b.date.getTime());
                     
-                    const timelineStart = sixMonthsAgo;
-                    const timelineEnd = now;
-                    const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-                    
-                    const compoundStartDays = Math.max(0, Math.floor((startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
-                    const compoundEndDays = Math.min(totalDays, Math.floor((endDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)));
-                    
-                    const leftPercent = (compoundStartDays / totalDays) * 100;
-                    const widthPercent = ((compoundEndDays - compoundStartDays) / totalDays) * 100;
+                    if (loggedDoses.length === 0) return null;
                     
                     return (
-                      <div key={compound.id} className="space-y-1">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="font-medium text-foreground">{compound.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(startDate, 'MMM d')} - {isActive ? 'Active' : format(endDate, 'MMM d')}
-                          </span>
+                      <div key={compound.id} className="flex items-center gap-3">
+                        <div className="w-24 flex-shrink-0">
+                          <span className="text-xs font-medium text-foreground">{compound.name}</span>
                         </div>
-                        <div className="relative h-8 bg-background/50 rounded-lg overflow-hidden">
-                          <div
-                            className={`absolute h-full rounded-lg transition-all ${
-                              isActive 
-                                ? 'bg-gradient-to-r from-primary to-primary/70' 
-                                : 'bg-muted'
-                            }`}
-                            style={{
-                              left: `${leftPercent}%`,
-                              width: `${widthPercent}%`,
-                              minWidth: '2%'
-                            }}
-                          />
+                        <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
+                          {loggedDoses.map((dose, doseIdx) => {
+                            // Calculate position based on date range
+                            const now = new Date();
+                            const totalDays = Math.floor((now.getTime() - sixMonthsAgo.getTime()) / (1000 * 60 * 60 * 24));
+                            const doseDays = Math.floor((dose.date.getTime() - sixMonthsAgo.getTime()) / (1000 * 60 * 60 * 24));
+                            const position = (doseDays / totalDays) * 100;
+                            
+                            return (
+                              <div
+                                key={doseIdx}
+                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                                style={{ left: `${position}%` }}
+                                title={`${format(dose.date, 'MMM d')}`}
+                              >
+                                <div
+                                  className="w-2.5 h-2.5 rounded-full border-2 border-background"
+                                  style={{ backgroundColor: color }}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
-                        <CycleTimeline compound={compound} />
                       </div>
                     );
-                  })}
+                  }).filter(Boolean)}
+                </div>
+                
+                {/* X-axis labels */}
+                <div className="relative h-6 mt-2">
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    {(() => {
+                      const now = new Date();
+                      const sixMonthsAgo = new Date();
+                      sixMonthsAgo.setMonth(now.getMonth() - 6);
+                      const numLabels = 8;
+                      const labels = [];
+                      
+                      for (let i = 0; i < numLabels; i++) {
+                        const date = new Date(sixMonthsAgo);
+                        date.setDate(date.getDate() + (i * Math.floor(180 / (numLabels - 1))));
+                        labels.push(format(date, 'MMM d'));
+                      }
+                      
+                      return labels.map((label, idx) => (
+                        <span key={idx}>{label}</span>
+                      ));
+                    })()}
+                  </div>
                 </div>
               </div>
             ) : (
