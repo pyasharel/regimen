@@ -64,6 +64,7 @@ export const ProgressScreen = () => {
   const [weight, setWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
+  const [photoDate, setPhotoDate] = useState<Date>(new Date()); // Add photo date state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -283,7 +284,7 @@ export const ProgressScreen = () => {
         .from('progress_entries')
         .insert([{
           user_id: user.id,
-          entry_date: new Date().toISOString().split('T')[0],
+          entry_date: format(photoDate, 'yyyy-MM-dd'), // Use selected photo date
           category: 'photo',
           photo_url: fileName
         }]);
@@ -752,7 +753,38 @@ export const ProgressScreen = () => {
           <DialogHeader>
             <DialogTitle>Add Progress Photo</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                Photo Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full h-12 justify-between text-left font-normal",
+                      !photoDate && "text-muted-foreground"
+                    )}
+                  >
+                    <span>When was this photo taken?</span>
+                    <span>{format(photoDate, "MMM d, yyyy")}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={photoDate}
+                    onSelect={(date) => date && setPhotoDate(date)}
+                    disabled={(date) => date > new Date()}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <Button 
               onClick={handleCapturePhoto} 
               disabled={loading} 
