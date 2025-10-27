@@ -23,12 +23,12 @@ import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/util
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 
 const COMMON_PEPTIDES = [
-  // Peptides
+  // Research Peptides - Healing & Recovery
   "AOD-9604",
   "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide",
   "CagriSema", "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
   "DSIP", "Dihexa", "Dulaglutide",
-  "Epithalon",
+  "Epitalon",
   "Follistatin", "FTPP (Adipotide)",
   "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Gonadorelin", "GRF (1-29)",
   "HCG", "Hexarelin", "HMG",
@@ -41,26 +41,70 @@ const COMMON_PEPTIDES = [
   "Ozempic",
   "P21", "PEG-MGF", "Pinealon", "PT-141",
   "Retatrutide",
-  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP",
+  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31 (Elamipretide)",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
   "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity",
-  // Bioregulators
-  "Cortagen",
-  // Additional compounds
-  "5-Amino-1MQ", "Glutathione",
-  // Testosterone variants
+  
+  // Khavinson Bioregulators
+  "Cortagen", "Epitalon", "Endoluten", "Vilon", "Thymalin",
+  "Cerluten", "Pinealon", "Ventfort", "Sigumir", "Stamakort",
+  "Svetinorm", "Vladonix", "Gotratix", "Testalamin", "Ovagen",
+  "Bronchogen", "Pielotax", "Prostatilen", "Crystagen",
+  
+  // Mitochondrial & Longevity
+  "5-Amino-1MQ", "Glutathione", "NAD+", "NMN", "Urolithin A",
+  
+  // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  // Other steroids
-  "Nandrolone", "Nandrolone Decanoate",
-  "Oxandrolone",
-  // HGH
-  "Somatropin (HGH)",
-  // Post-cycle therapy & support
-  "Anastrozole (Arimidex)", "Clomiphene Citrate (Clomid)",
-  // Blends and stacks
-  "Wolverine Stack",
-  // GLP-1s
-  "Victoza", "Wegovy", "Zepbound"
+  "Testosterone Undecanoate", "Sustanon 250", "Testosterone Gel",
+  
+  // Anabolic Steroids
+  "Nandrolone Decanoate (Deca)", "Nandrolone Phenylpropionate (NPP)",
+  "Trenbolone Acetate", "Trenbolone Enanthate",
+  "Boldenone Undecylenate (Equipoise)",
+  "Drostanolone Propionate (Masteron)", "Drostanolone Enanthate",
+  "Methenolone Enanthate (Primobolan)", "Methenolone Acetate",
+  "Oxandrolone (Anavar)", "Stanozolol (Winstrol)",
+  "Oxymetholone (Anadrol)", "Methandrostenolone (Dianabol)",
+  "Turinabol", "Halotestin",
+  
+  // Women's HRT - Estrogen
+  "Estradiol", "Estradiol Valerate", "Estradiol Cypionate",
+  "Estradiol Patch", "Estradiol Gel", "Estradiol Cream",
+  "Premarin", "Climara", "Vivelle-Dot", "Estrace",
+  
+  // Women's HRT - Progesterone
+  "Progesterone (Micronized)", "Prometrium", "Provera",
+  "Medroxyprogesterone", "Norethindrone",
+  
+  // Women's HRT - Testosterone
+  "Testosterone Cream (Women)", "Testosterone Pellets",
+  
+  // HGH & Growth Hormone
+  "Somatropin (HGH)", "Genotropin", "Humatrope", "Norditropin", "Saizen",
+  
+  // Post-Cycle Therapy (PCT) & Ancillaries
+  "Anastrozole (Arimidex)", "Letrozole (Femara)", "Exemestane (Aromasin)",
+  "Clomiphene Citrate (Clomid)", "Tamoxifen (Nolvadex)",
+  "Cabergoline (Dostinex)", "Pramipexole",
+  "Finasteride", "Dutasteride",
+  
+  // GLP-1 Agonists (Weight Loss)
+  "Victoza", "Wegovy", "Zepbound", "Rybelsus",
+  
+  // Performance & Cognitive Enhancement
+  "Modafinil", "Armodafinil",
+  
+  // Supplements & Others
+  "L-Carnitine", "Taurine", "Creatine",
+  "B12 (Methylcobalamin)", "B-Complex",
+  "Vitamin D3", "Magnesium",
+  
+  // Specialty Compounds
+  "Foxdri", "PT-141 (Bremelanotide)",
+  
+  // Blends and Stacks
+  "Wolverine Stack", "GHK-Cu + BPC-157 Blend"
 ];
 
 export const AddCompoundScreen = () => {
