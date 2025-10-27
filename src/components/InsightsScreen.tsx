@@ -147,8 +147,8 @@ export const InsightsScreen = () => {
   });
 
   // Separate weight and photo entries
-  const weightEntries = entries.filter(e => e.category === 'weight');
-  const photoEntries = entries.filter(e => e.category === 'photo');
+  const weightEntries = entries.filter(e => (e.metrics as any)?.weight);
+  const photoEntries = entries.filter(e => e.photo_url);
 
   const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
     queryKey: ['compounds-insights'],
