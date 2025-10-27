@@ -652,104 +652,160 @@ export const ProgressScreen = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Active Cycles</h2>
+          <h2 className="text-xl font-semibold text-foreground">Medication Journey</h2>
           
           <Card className="p-6 bg-muted/30">
             {dataLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : compounds.length > 0 ? (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  {compounds.map((compound, idx) => {
-                    const MEDICATION_COLORS = [
-                      '#FF6F61', // coral
-                      '#8B5CF6', // purple  
-                      '#3B82F6', // blue
-                      '#10B981', // green
-                      '#F59E0B', // orange
-                      '#EC4899', // pink
-                    ];
-                    const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
-                    
-                    // Get all logged doses for this medication in the last 6 months
-                    const sixMonthsAgo = new Date();
-                    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-                    
-                    const loggedDoses = recentDoses
-                      .filter(d => 
-                        d.compound_id === compound.id && 
-                        d.taken && 
-                        d.scheduled_date &&
-                        new Date(d.scheduled_date) >= sixMonthsAgo
-                      )
-                      .map(d => ({
-                        date: new Date(d.scheduled_date),
-                        dateStr: d.scheduled_date,
-                      }))
-                      .sort((a, b) => a.date.getTime() - b.date.getTime());
-                    
-                    if (loggedDoses.length === 0) return null;
-                    
-                    return (
-                      <div key={compound.id} className="flex items-center gap-3">
-                        <div className="w-24 flex-shrink-0">
-                          <span className="text-xs font-medium text-foreground">{compound.name}</span>
-                        </div>
-                        <div className="flex-1 relative h-8 bg-muted/20 rounded-sm">
-                          {loggedDoses.map((dose, doseIdx) => {
-                            // Calculate position based on date range
-                            const now = new Date();
-                            const totalDays = Math.floor((now.getTime() - sixMonthsAgo.getTime()) / (1000 * 60 * 60 * 24));
-                            const doseDays = Math.floor((dose.date.getTime() - sixMonthsAgo.getTime()) / (1000 * 60 * 60 * 24));
-                            const position = (doseDays / totalDays) * 100;
+                {(() => {
+                  // Calculate timeline range: earliest start date to now
+                  const now = new Date();
+                  const earliestStart = compounds.reduce((earliest, compound) => {
+                    const startDate = new Date(compound.start_date);
+                    return startDate < earliest ? startDate : earliest;
+                  }, now);
+                  
+                  const timelineStart = new Date(earliestStart);
+                  timelineStart.setDate(1); // Start of that month
+                  const timelineEnd = now;
+                  const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  const MEDICATION_COLORS = [
+                    '#FF6F61', '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EC4899'
+                  ];
+                  
+                  return (
+                    <>
+                      <div className="space-y-3">
+                        {compounds.map((compound, idx) => {
+                          const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
+                          const startDate = new Date(compound.start_date);
+                          const endDate = compound.end_date ? new Date(compound.end_date) : now;
+                          const isActive = compound.is_active && (!compound.end_date || endDate >= now);
+                          
+                          // Calculate all on/off periods if has cycles
+                          const periods: Array<{ start: Date; end: Date; isOn: boolean }> = [];
+                          
+                          if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
+                            const cycleWeeksOn = compound.cycle_weeks_on;
+                            const cycleWeeksOff = compound.cycle_weeks_off;
                             
-                            return (
-                              <div
-                                key={doseIdx}
-                                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-                                style={{ left: `${position}%` }}
-                                title={`${format(dose.date, 'MMM d')}`}
-                              >
-                                <div
-                                  className="w-2.5 h-2.5 rounded-full border-2 border-background"
-                                  style={{ backgroundColor: color }}
-                                />
+                            let currentStart = startDate;
+                            const finalEnd = endDate;
+                            
+                            while (currentStart < finalEnd) {
+                              // On period
+                              const onEnd = new Date(currentStart);
+                              onEnd.setDate(onEnd.getDate() + (cycleWeeksOn * 7));
+                              
+                              periods.push({
+                                start: currentStart,
+                                end: onEnd > finalEnd ? finalEnd : onEnd,
+                                isOn: true
+                              });
+                              
+                              // Off period
+                              const offStart = new Date(onEnd);
+                              const offEnd = new Date(offStart);
+                              offEnd.setDate(offEnd.getDate() + (cycleWeeksOff * 7));
+                              
+                              if (offStart < finalEnd) {
+                                periods.push({
+                                  start: offStart,
+                                  end: offEnd > finalEnd ? finalEnd : offEnd,
+                                  isOn: false
+                                });
+                              }
+                              
+                              currentStart = offEnd;
+                              if (currentStart >= finalEnd) break;
+                            }
+                          } else {
+                            // No cycles - just one continuous period
+                            periods.push({
+                              start: startDate,
+                              end: endDate,
+                              isOn: true
+                            });
+                          }
+                          
+                          return (
+                            <div key={compound.id} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-foreground">{compound.name}</span>
+                                  {isActive && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(startDate, 'MMM d, yyyy')} - {isActive ? 'Present' : format(endDate, 'MMM d, yyyy')}
+                                </span>
                               </div>
-                            );
-                          })}
+                              
+                              <div className="relative h-7 bg-background/50 rounded-md overflow-hidden">
+                                {periods.map((period, periodIdx) => {
+                                  const periodStartDays = Math.floor((period.start.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                                  const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                                  
+                                  const leftPercent = Math.max(0, (periodStartDays / totalDays) * 100);
+                                  const widthPercent = Math.max(0.5, ((periodEndDays - periodStartDays) / totalDays) * 100);
+                                  
+                                  if (!period.isOn) return null; // Only show "on" periods
+                                  
+                                  return (
+                                    <div
+                                      key={periodIdx}
+                                      className={`absolute h-full transition-all ${
+                                        isActive 
+                                          ? 'bg-gradient-to-r from-primary to-primary/80' 
+                                          : 'bg-muted-foreground/40'
+                                      }`}
+                                      style={{
+                                        left: `${leftPercent}%`,
+                                        width: `${widthPercent}%`,
+                                      }}
+                                      title={`${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Timeline labels */}
+                      <div className="relative h-6 mt-3 pt-2 border-t border-border/50">
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          {(() => {
+                            const numLabels = Math.min(8, Math.ceil(totalDays / 30));
+                            const labels = [];
+                            
+                            for (let i = 0; i < numLabels; i++) {
+                              const date = new Date(timelineStart);
+                              date.setDate(date.getDate() + (i * Math.floor(totalDays / (numLabels - 1))));
+                              labels.push(format(date, 'MMM yyyy'));
+                            }
+                            
+                            return labels.map((label, idx) => (
+                              <span key={idx}>{label}</span>
+                            ));
+                          })()}
                         </div>
                       </div>
-                    );
-                  }).filter(Boolean)}
-                </div>
-                
-                {/* X-axis labels */}
-                <div className="relative h-6 mt-2">
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
-                    {(() => {
-                      const now = new Date();
-                      const sixMonthsAgo = new Date();
-                      sixMonthsAgo.setMonth(now.getMonth() - 6);
-                      const numLabels = 8;
-                      const labels = [];
-                      
-                      for (let i = 0; i < numLabels; i++) {
-                        const date = new Date(sixMonthsAgo);
-                        date.setDate(date.getDate() + (i * Math.floor(180 / (numLabels - 1))));
-                        labels.push(format(date, 'MMM d'));
-                      }
-                      
-                      return labels.map((label, idx) => (
-                        <span key={idx}>{label}</span>
-                      ));
-                    })()}
-                  </div>
-                </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No medications tracked yet</p>
-                <p className="text-sm mt-1">Add your first compound to see your active cycles</p>
+                <p className="text-sm mt-1">Add your first compound to see your medication journey</p>
               </div>
             )}
           </Card>
