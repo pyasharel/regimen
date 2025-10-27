@@ -372,19 +372,24 @@ export const AddCompoundScreen = () => {
       return doses;
     }
     
-    // Calculate end boundary (60 days or user-specified end date, whichever is sooner)
+    // Start from today or start date (whichever is later) to ensure future doses exist
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const effectiveStart = start > today ? start : today;
+    
+    // Calculate end boundary (60 days from effective start or user-specified end date, whichever is sooner)
     const maxDays = 60;
     let daysToGenerate = maxDays;
     
     if (endDate) {
       const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
       const end = new Date(endYear, endMonth - 1, endDay);
-      const daysDiff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
       daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
     }
     
     for (let i = 0; i < daysToGenerate; i++) {
-      const date = new Date(start);
+      const date = new Date(effectiveStart);
       date.setDate(date.getDate() + i);
       const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
       
@@ -401,7 +406,8 @@ export const AddCompoundScreen = () => {
 
       // Check cycle logic - skip if in "off" period
       if (enableCycle && cycleMode === 'continuous') {
-        const daysSinceStart = i;
+        // Calculate days since original start date (not effective start)
+        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         // Convert to days: if cycleTimeUnit is months, multiply by ~30 days, else by 7
         const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
         const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
