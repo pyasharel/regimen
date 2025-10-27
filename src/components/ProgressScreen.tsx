@@ -387,8 +387,6 @@ export const ProgressScreen = () => {
   };
 
   const chartData = weightEntries
-    .slice()
-    .reverse()
     .map(entry => {
       // Parse as local date to avoid timezone shifts
       const [year, month, day] = entry.entry_date.split('-').map(Number);
@@ -399,7 +397,8 @@ export const ProgressScreen = () => {
         weight: Math.round(entry.metrics.weight * 10) / 10,
         fullDate: entry.entry_date
       };
-    });
+    })
+    .sort((a, b) => a.fullDate.localeCompare(b.fullDate)); // Sort chronologically
 
   const getPhotoUrl = (photoPath: string) => {
     const { data } = supabase.storage

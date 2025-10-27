@@ -873,53 +873,77 @@ export const InsightsScreen = () => {
                 </ResponsiveContainer>
               </div>
               
-              {/* Photo Timeline - shown on all timelines */}
-              {photoEntries.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Photos</h4>
-                  <div className="flex-1 relative h-16 bg-muted/20 rounded-sm">
-                    {photoEntries
-                      .filter(entry => parseISO(entry.entry_date) >= cutoffDate)
-                      .map((entry, idx) => {
-                        const timelineIndex = timelineData.findIndex(
-                          t => format(t.dateObj, 'yyyy-MM-dd') === entry.entry_date
-                        );
-                        
-                        if (timelineIndex === -1) return null;
-                        
-                        const position = (timelineIndex / (timelineData.length - 1)) * 100;
-                        const photoUrl = getPhotoUrl(entry.photo_url);
-                        
-                        return (
-                          <div
-                            key={entry.id}
-                            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-110 transition-transform"
-                            style={{ left: `${position}%` }}
-                            onClick={() => photoUrl && setSelectedPhoto({ 
-                              url: photoUrl, 
-                              date: format(parseISO(entry.entry_date), 'MMM d, yyyy'),
-                              id: entry.id
-                            })}
-                          >
-                            {photoUrl ? (
-                              <div className="w-8 h-8 rounded-sm border-2 border-primary bg-background overflow-hidden shadow-lg">
-                                <img 
-                                  src={photoUrl} 
-                                  alt={`Progress photo ${format(parseISO(entry.entry_date), 'MMM d')}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-7 h-7 rounded-sm border-2 border-primary bg-primary/20 flex items-center justify-center">
-                                <Camera className="w-3 h-3 text-primary" />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
+              {/* Weight & Photo Timeline */}
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Progress Tracking</h4>
+                <div className="flex-1 relative h-16 bg-muted/20 rounded-sm">
+                  {/* Weight entries */}
+                  {weightEntries
+                    .filter(entry => parseISO(entry.entry_date) >= cutoffDate)
+                    .map((entry) => {
+                      const timelineIndex = timelineData.findIndex(
+                        t => format(t.dateObj, 'yyyy-MM-dd') === entry.entry_date
+                      );
+                      
+                      if (timelineIndex === -1) return null;
+                      
+                      const position = (timelineIndex / (timelineData.length - 1)) * 100;
+                      const weight = (entry.metrics as any)?.weight;
+                      
+                      return (
+                        <div
+                          key={`weight-${entry.id}`}
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                          style={{ left: `${position}%` }}
+                          title={`${format(parseISO(entry.entry_date), 'MMM d')}: ${weight}lbs`}
+                        >
+                          <div className="w-2.5 h-2.5 rounded-full border-2 border-background bg-blue-500" />
+                        </div>
+                      );
+                    })}
+                  
+                  {/* Photo entries */}
+                  {photoEntries
+                    .filter(entry => parseISO(entry.entry_date) >= cutoffDate)
+                    .map((entry) => {
+                      const timelineIndex = timelineData.findIndex(
+                        t => format(t.dateObj, 'yyyy-MM-dd') === entry.entry_date
+                      );
+                      
+                      if (timelineIndex === -1) return null;
+                      
+                      const position = (timelineIndex / (timelineData.length - 1)) * 100;
+                      const photoUrl = getPhotoUrl(entry.photo_url);
+                      
+                      return (
+                        <div
+                          key={`photo-${entry.id}`}
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer hover:scale-110 transition-transform"
+                          style={{ left: `${position}%` }}
+                          onClick={() => photoUrl && setSelectedPhoto({ 
+                            url: photoUrl, 
+                            date: format(parseISO(entry.entry_date), 'MMM d, yyyy'),
+                            id: entry.id
+                          })}
+                        >
+                          {photoUrl ? (
+                            <div className="w-8 h-8 rounded-sm border-2 border-primary bg-background overflow-hidden shadow-lg">
+                              <img 
+                                src={photoUrl} 
+                                alt={`Progress photo ${format(parseISO(entry.entry_date), 'MMM d')}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-sm border-2 border-primary bg-primary/20 flex items-center justify-center">
+                              <Camera className="w-3 h-3 text-primary" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
-              )}
+              </div>
 
               {/* Medication Dose Dots */}
               {compounds.length > 0 && (
