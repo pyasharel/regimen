@@ -196,8 +196,11 @@ export const MyStackScreen = () => {
   const inactiveCompounds = compounds.filter(c => !c.is_active);
 
   const getDaysActive = (startDate: string) => {
-    const start = new Date(startDate);
+    const start = new Date(startDate + 'T00:00:00'); // Parse as local date
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set to start of today
+    start.setHours(0, 0, 0, 0); // Set to start of start date
+    
     const days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
     // Check if medication starts in the future
@@ -245,8 +248,12 @@ export const MyStackScreen = () => {
       return selectedDays.join(', ');
     }
     
-    // For "Every X Days" format, it's already in the right format from the database
-    // Just return it as-is
+    // Handle legacy "Every X Days" - if it's literally "Every X Days", show it friendlier
+    if (compound.schedule_type === 'Every X Days') {
+      return 'Custom Interval';
+    }
+    
+    // For newer format "Every 3 Days", it's already in the right format
     return compound.schedule_type;
   };
 
