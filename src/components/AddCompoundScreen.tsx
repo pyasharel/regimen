@@ -28,7 +28,6 @@ const COMMON_PEPTIDES = [
   "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide",
   "CagriSema", "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
   "DSIP", "Dihexa", "Dulaglutide",
-  "Epitalon",
   "Follistatin", "FTPP (Adipotide)",
   "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Gonadorelin", "GRF (1-29)",
   "HCG", "Hexarelin", "HMG",
@@ -78,7 +77,7 @@ const COMMON_PEPTIDES = [
   "Medroxyprogesterone", "Norethindrone",
   
   // Women's HRT - Testosterone
-  "Testosterone Cream (Women)", "Testosterone Pellets",
+  "Testosterone Cream", "Testosterone Pellets",
   
   // HGH & Growth Hormone
   "Somatropin (HGH)", "Genotropin", "Humatrope", "Norditropin", "Saizen",
@@ -95,10 +94,13 @@ const COMMON_PEPTIDES = [
   // Performance & Cognitive Enhancement
   "Modafinil", "Armodafinil",
   
-  // Supplements & Others
-  "L-Carnitine", "Taurine", "Creatine",
-  "B12 (Methylcobalamin)", "B-Complex",
-  "Vitamin D3", "Magnesium",
+  // Supplements & Injectable Vitamins
+  "L-Carnitine", "Taurine",
+  "B12 (Methylcobalamin)", "B12 (Cyanocobalamin)", "B-Complex Injectable",
+  "Vitamin D3 Injectable", "Magnesium Injectable",
+  
+  // Hair Loss Treatments
+  "Minoxidil (Oral)", "Minoxidil (Topical)",
   
   // Specialty Compounds
   "Foxdri", "PT-141 (Bremelanotide)",
