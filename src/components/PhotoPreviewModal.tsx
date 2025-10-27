@@ -10,7 +10,6 @@ import { Capacitor } from '@capacitor/core';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface PhotoPreviewModalProps {
@@ -43,7 +42,9 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
 
       if (error) throw error;
       if (data) {
-        setPhotoDate(new Date(data.entry_date));
+        // Parse as local date to avoid timezone shifts
+        const [year, month, day] = data.entry_date.split('-').map(Number);
+        setPhotoDate(new Date(year, month - 1, day));
       }
     } catch (error) {
       console.error('Error fetching photo date:', error);
@@ -53,9 +54,15 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
   const handleUpdateDate = async (newDate: Date) => {
     setLoading(true);
     try {
+      // Format as local date string (YYYY-MM-DD) to avoid timezone conversion
+      const year = newDate.getFullYear();
+      const month = String(newDate.getMonth() + 1).padStart(2, '0');
+      const day = String(newDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
       const { error } = await supabase
         .from('progress_entries')
-        .update({ entry_date: format(newDate, 'yyyy-MM-dd') })
+        .update({ entry_date: dateString })
         .eq('id', entryId);
 
       if (error) throw error;
@@ -150,7 +157,13 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
                         )}
                       >
                         <span className="text-muted-foreground">Select Date</span>
-                        <span>{format(photoDate, "MMM d, yyyy")}</span>
+                        <span>
+                          {photoDate.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -180,7 +193,13 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
                   className="w-full justify-between"
                   disabled={loading}
                 >
-                  <span>{format(photoDate, "MMMM d, yyyy")}</span>
+                  <span>
+                    {photoDate.toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
+                  </span>
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
