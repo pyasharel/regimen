@@ -17,7 +17,6 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
-import { checkAndRegenerateDoses } from "@/utils/doseRegeneration";
 
 interface Dose {
   id: string;
@@ -132,12 +131,6 @@ export const TodayScreen = () => {
 
   const loadDoses = async () => {
     try {
-      // Check and regenerate doses if needed
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await checkAndRegenerateDoses(user.id);
-      }
-      
       // Format date in local timezone to avoid UTC conversion issues
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
