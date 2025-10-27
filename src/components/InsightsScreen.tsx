@@ -18,6 +18,7 @@ import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capa
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
+import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
@@ -429,14 +430,34 @@ export const InsightsScreen = () => {
         await requestPermission();
       }
 
-      const { error } = await supabase
+      // Check if entry exists for this date
+      const dateStr = format(entryDate, 'yyyy-MM-dd');
+      const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .insert([{
-          user_id: user.id,
-          entry_date: format(entryDate, 'yyyy-MM-dd'),
-          category: 'weight',
-          metrics: { weight: weightInLbs }
-        }]);
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('entry_date', dateStr)
+        .eq('category', 'weight')
+        .maybeSingle();
+
+      let error;
+      if (existingEntry) {
+        // Update existing entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .update({ metrics: { weight: weightInLbs } })
+          .eq('id', existingEntry.id));
+      } else {
+        // Insert new entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .insert([{
+            user_id: user.id,
+            entry_date: dateStr,
+            category: 'weight',
+            metrics: { weight: weightInLbs }
+          }]));
+      }
 
       if (error) throw error;
 
@@ -447,6 +468,7 @@ export const InsightsScreen = () => {
       toast.success('Weight logged successfully');
       setShowLogModal(false);
       setWeight("");
+      setEntryDate(new Date()); // Reset to today
       refetchEntries();
     } catch (error) {
       console.error('Error logging weight:', error);
@@ -1125,6 +1147,7 @@ export const InsightsScreen = () => {
                     selected={entryDate}
                     onSelect={(date) => date && setEntryDate(date)}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -1170,39 +1193,16 @@ export const InsightsScreen = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Photo Preview with Delete */}
+      {/* Photo Preview with Date Edit and Delete */}
       {selectedPhoto && (
-        <Dialog open={!!selectedPhoto} onOpenChange={() => setSelectedPhoto(null)}>
-          <DialogContent className="max-w-[90vw]">
-            <div className="space-y-4">
-              <img 
-                src={selectedPhoto.url} 
-                alt={`Progress photo from ${selectedPhoto.date}`}
-                className="w-full h-auto rounded-lg"
-              />
-              <p className="text-sm text-center text-muted-foreground">{selectedPhoto.date}</p>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => {
-                    // Download/share logic could go here
-                    toast.success('Feature coming soon');
-                  }}
-                >
-                  Share
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  className="flex-1"
-                  onClick={() => selectedPhoto.id && handleDeletePhoto(selectedPhoto.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <PhotoPreviewModal
+          open={!!selectedPhoto}
+          onClose={() => setSelectedPhoto(null)}
+          photoUrl={selectedPhoto.url}
+          entryId={selectedPhoto.id}
+          onDelete={handleDeletePhoto}
+          onDateUpdate={refetchEntries}
+        />
       )}
 
       <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />

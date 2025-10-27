@@ -64,7 +64,7 @@ export const ProgressScreen = () => {
   const [weight, setWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
-  const [photoDate, setPhotoDate] = useState<Date>(new Date()); // Add photo date state
+  const [photoDate, setPhotoDate] = useState<Date>(new Date());
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -84,7 +84,7 @@ export const ProgressScreen = () => {
         .from('progress_entries')
         .select('*')
         .eq('user_id', user.id)
-        .order('entry_date', { ascending: false });
+        .order('entry_date', { ascending: true }); // Oldest to newest for timeline view
       
       if (error) throw error;
       return data as ProgressEntry[];
@@ -171,14 +171,34 @@ export const ProgressScreen = () => {
         await requestPermission();
       }
 
-      const { error } = await supabase
+      // Check if entry exists for this date
+      const dateStr = format(entryDate, 'yyyy-MM-dd');
+      const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .insert([{
-          user_id: user.id,
-          entry_date: format(entryDate, 'yyyy-MM-dd'),
-          category: 'weight',
-          metrics: { weight: weightInLbs }
-        }]);
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('entry_date', dateStr)
+        .eq('category', 'weight')
+        .maybeSingle();
+
+      let error;
+      if (existingEntry) {
+        // Update existing entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .update({ metrics: { weight: weightInLbs } })
+          .eq('id', existingEntry.id));
+      } else {
+        // Insert new entry
+        ({ error } = await supabase
+          .from('progress_entries')
+          .insert([{
+            user_id: user.id,
+            entry_date: dateStr,
+            category: 'weight',
+            metrics: { weight: weightInLbs }
+          }]));
+      }
 
       if (error) throw error;
 
@@ -190,6 +210,7 @@ export const ProgressScreen = () => {
       toast.success('Weight logged successfully');
       setShowLogModal(false);
       setWeight("");
+      setEntryDate(new Date()); // Reset to today
       refetchEntries();
     } catch (error) {
       console.error('Error logging weight:', error);
