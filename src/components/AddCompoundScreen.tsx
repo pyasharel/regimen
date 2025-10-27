@@ -49,6 +49,8 @@ const COMMON_PEPTIDES = [
   "Cerluten", "Pinealon", "Ventfort", "Sigumir", "Stamakort",
   "Svetinorm", "Vladonix", "Gotratix", "Testalamin", "Ovagen",
   "Bronchogen", "Pielotax", "Prostatilen", "Crystagen",
+  "Cartalax", "Testagen", "Chonluten", "Taxorest", "Chelohart",
+  "Honluten", "Libidon", "Vesugen", "Normoftal", "Tiramen",
   
   // Mitochondrial & Longevity
   "5-Amino-1MQ", "Glutathione", "NAD+", "NMN", "Urolithin A",
