@@ -25,49 +25,47 @@ import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
   "AOD-9604",
-  "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide",
-  "CagriSema", "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
-  "DSIP", "Dihexa", "Dulaglutide",
+  "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide (PT-141)",
+  "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
+  "DSIP", "Dihexa",
   "Follistatin", "FTPP (Adipotide)",
-  "GHK-Cu", "GHRP-2", "GHRP-6", "GLOW", "Gonadorelin", "GRF (1-29)",
+  "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF (1-29)",
   "HCG", "Hexarelin", "HMG",
-  "Ibutamoren (MK-677)", "IGF-1 DES", "IGF-1 LR3", "Ipamorelin", 
-  "Ipamorelin + CJC-1295 Blend", "Ipamorelin + Sermorelin Blend",
-  "Kisspeptin", "KLOW", "KPV",
-  "Larazotide", "Liraglutide", "LL-37",
-  "Melanotan I", "Melanotan II", "MGF", "MOD-GRF (1-29)", "Mounjaro", "MOTS-c",
-  "NA-Selank", "NA-Semax",
-  "Ozempic",
-  "P21", "PEG-MGF", "Pinealon", "PT-141",
-  "Retatrutide",
-  "Saxenda", "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31 (Elamipretide)",
+  "IGF-1 LR3",
+  "Ipamorelin", "Ibutamoren (MK-677)",
+  "KPV",
+  "MOTS-c", "Melanotan II",
+  "NAD+", "N-Acetyl Semax", "N-Acetyl Selank",
+  "P21", "PEG-MGF", "Pinealon",
+  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31 (Elamipretide)",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
-  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin", "Tirzepatide", "Trulicity",
+  "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin",
   
-  // Khavinson Bioregulators
-  "Cortagen", "Epitalon", "Endoluten", "Vilon", "Thymalin",
-  "Cerluten", "Pinealon", "Ventfort", "Sigumir", "Stamakort",
-  "Svetinorm", "Vladonix", "Gotratix", "Testalamin", "Ovagen",
-  "Bronchogen", "Pielotax", "Prostatilen", "Crystagen",
-  "Cartalax", "Testagen", "Chonluten", "Taxorest", "Chelohart",
-  "Honluten", "Libidon", "Vesugen", "Normoftal", "Tiramen",
+  // Khavinson Bioregulators (Popular Ones)
+  "Epitalon", "Pinealon", "Thymalin", "Cortagen", "Testagen", 
+  "Cartalax", "Vilon", "Endoluten", "Cerluten", "Ventfort",
+  "Sigumir", "Chonluten", "Chelohart", "Libidon", "Vesugen",
   
   // Mitochondrial & Longevity
   "5-Amino-1MQ", "Glutathione", "NAD+", "NMN", "Urolithin A",
   
+  // GLP-1 Agonists (Weight Loss)
+  "Semaglutide (Ozempic/Wegovy)", "Tirzepatide (Mounjaro/Zepbound)",
+  "Retatrutide", "CagriSema", "Dulaglutide (Trulicity)",
+  "Liraglutide (Victoza/Saxenda)", "Rybelsus",
+  
   // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Testosterone Undecanoate", "Sustanon 250", "Testosterone Gel",
+  "Testosterone Gel",
   
   // Anabolic Steroids
   "Nandrolone Decanoate (Deca)", "Nandrolone Phenylpropionate (NPP)",
   "Trenbolone Acetate", "Trenbolone Enanthate",
   "Boldenone Undecylenate (Equipoise)",
   "Drostanolone Propionate (Masteron)", "Drostanolone Enanthate",
-  "Methenolone Enanthate (Primobolan)", "Methenolone Acetate",
+  "Methenolone Enanthate (Primobolan)",
   "Oxandrolone (Anavar)", "Stanozolol (Winstrol)",
   "Oxymetholone (Anadrol)", "Methandrostenolone (Dianabol)",
-  "Turinabol", "Halotestin",
   
   // Women's HRT - Estrogen
   "Estradiol", "Estradiol Valerate", "Estradiol Cypionate",
@@ -75,8 +73,8 @@ const COMMON_PEPTIDES = [
   "Premarin", "Climara", "Vivelle-Dot", "Estrace",
   
   // Women's HRT - Progesterone
-  "Progesterone (Micronized)", "Prometrium", "Provera",
-  "Medroxyprogesterone", "Norethindrone",
+  "Progesterone (Micronized)", "Prometrium", 
+  "Medroxyprogesterone (Provera)", "Norethindrone",
   
   // Women's HRT - Testosterone
   "Testosterone Cream", "Testosterone Pellets",
@@ -90,22 +88,18 @@ const COMMON_PEPTIDES = [
   "Cabergoline (Dostinex)", "Pramipexole",
   "Finasteride", "Dutasteride",
   
-  // GLP-1 Agonists (Weight Loss)
-  "Victoza", "Wegovy", "Zepbound", "Rybelsus",
+  // Hair Loss Treatments
+  "Minoxidil (Oral)", "Minoxidil (Topical)",
   
   // Performance & Cognitive Enhancement
   "Modafinil", "Armodafinil",
   
-  // Supplements & Injectable Vitamins
-  "L-Carnitine", "Taurine",
-  "B12 (Methylcobalamin)", "B12 (Cyanocobalamin)", "B-Complex Injectable",
-  "Vitamin D3 Injectable", "Magnesium Injectable",
-  
-  // Hair Loss Treatments
-  "Minoxidil (Oral)", "Minoxidil (Topical)",
+  // Injectable Vitamins & Supplements
+  "L-Carnitine", "B12 (Methylcobalamin)", "B12 (Cyanocobalamin)", 
+  "B-Complex Injectable",
   
   // Specialty Compounds
-  "Foxdri", "PT-141 (Bremelanotide)",
+  "Foxdri",
   
   // Blends and Stacks
   "Wolverine Stack", "GHK-Cu + BPC-157 Blend"
