@@ -245,15 +245,8 @@ export const MyStackScreen = () => {
       return selectedDays.join(', ');
     }
     
-    // Handle "Every X Days" format
-    if (compound.schedule_type?.startsWith('Every') && compound.schedule_type.includes('Day')) {
-      const match = compound.schedule_type.match(/Every (\d+) Day/);
-      if (match) {
-        const days = match[1];
-        return `Every ${days} Days`;
-      }
-    }
-    
+    // For "Every X Days" format, it's already in the right format from the database
+    // Just return it as-is
     return compound.schedule_type;
   };
 

@@ -143,7 +143,16 @@ export const AddCompoundScreen = () => {
       setName(editingCompound.name);
       setIntendedDose(editingCompound.intended_dose.toString());
       setDoseUnit(editingCompound.dose_unit);
-      setFrequency(editingCompound.schedule_type);
+      
+      // Handle schedule type - extract number from "Every X Days" format
+      const scheduleType = editingCompound.schedule_type;
+      const everyXDaysMatch = scheduleType.match(/Every (\d+) Days/);
+      if (everyXDaysMatch) {
+        setFrequency('Every X Days');
+        setEveryXDays(parseInt(everyXDaysMatch[1]));
+      } else {
+        setFrequency(scheduleType);
+      }
       
       // Load the saved times - handle array of times
       const times = editingCompound.time_of_day || ['08:00'];
@@ -502,7 +511,7 @@ export const AddCompoundScreen = () => {
             calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
-          schedule_type: frequency,
+          schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
           time_of_day: numberOfDoses === 2 
             ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
             : (isPremium ? [customTime] : ['08:00']),
@@ -592,7 +601,7 @@ export const AddCompoundScreen = () => {
           calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
-            schedule_type: frequency,
+            schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
             time_of_day: numberOfDoses === 2 
               ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
               : (isPremium ? [customTime] : ['08:00']),
