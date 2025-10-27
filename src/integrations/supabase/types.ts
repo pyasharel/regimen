@@ -267,7 +267,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_duplicate_doses: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
