@@ -186,6 +186,8 @@ export const InsightsScreen = () => {
     },
   });
 
+  const { data: stats } = useStreaks();
+
   const isLoading = entriesLoading || compoundsLoading || dosesLoading;
 
   // Calculate date range
@@ -753,14 +755,10 @@ export const InsightsScreen = () => {
     <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/progress')}>
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Back
-          </Button>
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-              REGIMEN
+              Progress
             </h1>
             {isPremium && (
               <PremiumDiamond className="h-5 w-5 text-primary" />
@@ -769,110 +767,106 @@ export const InsightsScreen = () => {
         </div>
       </header>
 
-      <div className="px-4 pt-4 space-y-4">
-        {/* Adherence Stats */}
-        <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Adherence</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <StreakStatCard />
-          </div>
-        </div>
-
-        {/* Weight Stats - Timeline Dependent */}
+      <div className="px-4 pt-4 space-y-6 max-w-4xl mx-auto">
+        {/* Current Weight Hero */}
         {dashboardMetrics && (
-          <div className="pt-3 border-t border-border/50">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Weight Progress ({timeRange === 'ALL' ? 'All Time' : timeRange})
-              </h3>
+          <Card className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Scale className="w-10 h-10 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Current Weight</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-4xl font-bold text-foreground">{Math.round(dashboardMetrics.currentWeight)}</p>
+                    <span className="text-lg text-muted-foreground">lbs</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                {dashboardMetrics.totalChange !== 0 && (
+                  <div className="flex items-center gap-2">
+                    {dashboardMetrics.totalChange < 0 ? (
+                      <TrendingDown className="w-6 h-6 text-green-500" />
+                    ) : (
+                      <TrendingUp className="w-6 h-6 text-orange-500" />
+                    )}
+                    <div>
+                      <p className={cn(
+                        "text-2xl font-bold",
+                        dashboardMetrics.totalChange < 0 ? "text-green-500" : "text-orange-500"
+                      )}>
+                        {dashboardMetrics.totalChange > 0 ? '+' : ''}{Math.round(dashboardMetrics.totalChange)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">lbs {timeRange === 'ALL' ? 'total' : timeRange}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Small streak badge */}
+            {stats?.current_streak > 0 && (
+              <div className="mt-4 pt-4 border-t border-primary/20">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-500" fill="currentColor" />
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-bold text-foreground">{stats.current_streak}</span> day streak
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Timeline with Graph - The Star of the Show */}
+        <Card className="p-5 bg-muted/30">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-foreground">Progress Timeline</h3>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 bg-secondary p-1 rounded-lg">
+                {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                      timeRange === range
+                        ? 'bg-background text-primary shadow-sm'
+                        : 'text-foreground/70 hover:text-foreground'
+                    )}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
               <Button onClick={() => setShowLogModal(true)} size="sm" variant="default">
                 <Plus className="w-3 h-3 mr-1" />
                 Log Weight
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Card className="p-3 bg-muted/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  {dashboardMetrics.totalChange < 0 ? (
-                    <TrendingDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  ) : (
-                    <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
-                  )}
-                  <p className="text-[10px] text-muted-foreground">Change</p>
-                </div>
-                <p className="text-xl font-bold text-foreground">
-                  {dashboardMetrics.totalChange > 0 ? '+' : ''}{Math.round(dashboardMetrics.totalChange)}
-                </p>
-                <p className="text-[9px] text-muted-foreground">lbs</p>
-              </Card>
-              
-              <Card className="p-3 bg-muted/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Scale className="w-3.5 h-3.5 text-muted-foreground" />
-                  <p className="text-[10px] text-muted-foreground">Current</p>
-                </div>
-                <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.currentWeight)}</p>
-                <p className="text-[9px] text-muted-foreground">lbs</p>
-              </Card>
-              
-              <Card className="p-3 bg-muted/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Target className="w-3.5 h-3.5 text-muted-foreground" />
-                  <p className="text-[10px] text-muted-foreground">Average</p>
-                </div>
-                <p className="text-xl font-bold text-foreground">{Math.round(dashboardMetrics.timelineAvg)}</p>
-                <p className="text-[9px] text-muted-foreground">lbs</p>
-              </Card>
-            </div>
           </div>
-        )}
 
-        {/* Timeline Selector */}
-        <div className="pt-3 border-t border-border/50">
-          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Timeline</h3>
-          <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
-            {(['1M', '3M', '6M', 'ALL'] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={cn(
-                  "px-4 py-2 rounded-md text-sm font-medium transition-all",
-                  timeRange === range
-                    ? 'bg-background text-primary shadow-sm'
-                    : 'text-foreground/70 hover:text-foreground'
-                )}
-              >
-                {range}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Unified Chart with shared timeline */}
-        <Card className="p-4 bg-muted/30">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Progress Timeline</h3>
           {timelineData.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center">
+            <div className="flex flex-col items-center justify-center h-[300px] text-center">
               <p className="text-muted-foreground text-sm mb-2">No data for this time range</p>
               <p className="text-xs text-muted-foreground">Log your weight or doses to see them here</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Weight Chart */}
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2 ml-1">Weight</h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 0, left: -20 }}>
+            <div className="space-y-3">
+              {/* Weight Chart with Photo Markers */}
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart data={timelineData} margin={{ top: 10, right: 10, bottom: 20, left: -20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={10}
-                    tickLine={false}
-                    axisLine={false}
-                    hide
-                    interval={0}
-                  />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={30}
+                    />
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={11}
@@ -890,7 +884,31 @@ export const InsightsScreen = () => {
                       dataKey="weight" 
                       stroke="hsl(var(--primary))" 
                       strokeWidth={3}
-                      dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                      dot={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        // If this point has a photo, render a camera icon dot
+                        if (payload.hasPhoto) {
+                          return (
+                            <g
+                              onClick={() => {
+                                const photoEntry = photoEntries.find(e => e.id === payload.photoId);
+                                if (photoEntry) {
+                                  // Scroll to photo in gallery
+                                  const photoElement = document.getElementById(`photo-${photoEntry.id}`);
+                                  if (photoElement) {
+                                    photoElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                  }
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <circle cx={cx} cy={cy} r={8} fill="hsl(var(--primary))" stroke="white" strokeWidth={2} />
+                              <circle cx={cx} cy={cy} r={3} fill="white" />
+                            </g>
+                          );
+                        }
+                        return <circle cx={cx} cy={cy} r={4} fill="hsl(var(--primary))" />;
+                      }}
                       activeDot={{ r: 6 }}
                       connectNulls
                     />
@@ -1098,9 +1116,9 @@ export const InsightsScreen = () => {
               {photoEntries.map((entry) => {
                 const photoUrl = getPhotoUrl(entry.photo_url);
                 return (
-                  <div key={entry.id} className="flex-shrink-0 text-center">
+                  <div key={entry.id} id={`photo-${entry.id}`} className="flex-shrink-0 text-center">
                     <div 
-                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity border-2 border-border"
+                      className="w-28 h-36 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity border-2 border-border hover:border-primary"
                       onClick={() => photoUrl && setSelectedPhoto({ 
                         url: photoUrl, 
                         date: format(parseISO(entry.entry_date), 'MMM d, yyyy'),
