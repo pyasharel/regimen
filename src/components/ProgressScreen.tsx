@@ -470,8 +470,15 @@ export const ProgressScreen = () => {
 
   const weightEntries = getFilteredEntries().filter(e => e.metrics?.weight);
   const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
-  const currentWeight = entries[0]?.metrics?.weight;
-  const previousWeight = entries[1]?.metrics?.weight;
+  
+  // Get all weight entries sorted by date (most recent first)
+  const allWeightEntries = entries
+    .filter(e => e.metrics?.weight)
+    .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
+  
+  const currentWeight = allWeightEntries[0]?.metrics?.weight;
+  const startingWeight = allWeightEntries[allWeightEntries.length - 1]?.metrics?.weight;
+  const previousWeight = allWeightEntries[1]?.metrics?.weight;
 
   // Calculate weight trend for encouraging message
   const getWeightTrend = () => {
@@ -555,35 +562,95 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {/* Stats Dashboard */}
+        {currentWeight && (
+          <Card className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Current Weight</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-foreground">{Math.round(currentWeight)}</span>
+                  <span className="text-sm text-muted-foreground">lbs</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {allWeightEntries[0] && format(new Date(allWeightEntries[0].entry_date), 'MMM d')}
+                </div>
+              </div>
+
+              {startingWeight && startingWeight !== currentWeight && (
+                <div className="space-y-1">
+                  <div className="text-sm text-muted-foreground">Total Change</div>
+                  <div className={cn(
+                    "flex items-baseline gap-2",
+                    startingWeight > currentWeight ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"
+                  )}>
+                    <span className="text-3xl font-bold">
+                      {startingWeight > currentWeight ? '-' : '+'}{Math.abs(Math.round((currentWeight - startingWeight) * 10) / 10)}
+                    </span>
+                    <span className="text-sm">lbs</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Since {allWeightEntries[allWeightEntries.length - 1] && format(new Date(allWeightEntries[allWeightEntries.length - 1].entry_date), 'MMM d')}
+                  </div>
+                </div>
+              )}
+
+              {allWeightEntries.length >= 2 && (() => {
+                const recentEntries = allWeightEntries.slice(0, Math.min(4, allWeightEntries.length));
+                const daysBetween = Math.max(1, differenceInDays(
+                  new Date(recentEntries[0].entry_date),
+                  new Date(recentEntries[recentEntries.length - 1].entry_date)
+                ));
+                const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
+                const weeklyAvg = (weightChange / daysBetween) * 7;
+                
+                return (
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Weekly Trend</div>
+                    <div className={cn(
+                      "flex items-baseline gap-2",
+                      weeklyAvg < 0 ? "text-green-600 dark:text-green-400" : weeklyAvg > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                    )}>
+                      <span className="text-3xl font-bold">
+                        {weeklyAvg < 0 ? '' : '+'}{Math.round(weeklyAvg * 10) / 10}
+                      </span>
+                      <span className="text-sm">lbs/wk</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Last {recentEntries.length} entries
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">Total Logs</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-foreground">{allWeightEntries.length}</span>
+                  <span className="text-sm text-muted-foreground">entries</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {allWeightEntries.length > 0 && (() => {
+                    const daysSinceFirst = differenceInDays(
+                      new Date(),
+                      new Date(allWeightEntries[allWeightEntries.length - 1].entry_date)
+                    );
+                    return `${daysSinceFirst} days tracked`;
+                  })()}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-foreground">Weight Progress</h2>
+            <h2 className="text-xl font-semibold text-foreground">Weight Chart</h2>
             <Button onClick={() => setShowLogModal(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Log Weight
             </Button>
           </div>
-
-          {dataLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-16 w-48" />
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-10 w-16" />
-                ))}
-              </div>
-            </div>
-          ) : currentWeight ? (
-            <div className="flex items-baseline gap-6">
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold text-foreground">{currentWeight}</span>
-                  <span className="text-xl text-muted-foreground">lbs</span>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">Current</div>
-              </div>
-            </div>
-          ) : null}
 
           <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
@@ -756,7 +823,7 @@ export const ProgressScreen = () => {
             {dataLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : compounds.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {(() => {
                   // Calculate timeline range: earliest start date to now
                   const now = new Date();
@@ -771,12 +838,17 @@ export const ProgressScreen = () => {
                   const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                   
                   const MEDICATION_COLORS = [
-                    '#FF6F61', '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EC4899'
+                    'hsl(var(--primary))',
+                    '#8B5CF6',
+                    '#3B82F6',
+                    '#10B981',
+                    '#F59E0B',
+                    '#EC4899'
                   ];
                   
                   return (
                     <>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {compounds.map((compound, idx) => {
                           const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
                           const startDate = new Date(compound.start_date);
@@ -830,22 +902,27 @@ export const ProgressScreen = () => {
                           }
                           
                           return (
-                            <div key={compound.id} className="space-y-1">
+                            <div key={compound.id} className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-medium text-foreground">{compound.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <div 
+                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <span className="text-sm font-medium text-foreground">{compound.name}</span>
                                   {isActive && (
                                     <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
                                       Active
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {format(startDate, 'MMM d, yy')} - {isActive ? 'Now' : format(endDate, 'MMM d, yy')}
+                                <span className="text-xs text-muted-foreground">
+                                  {format(startDate, 'MMM d')} - {isActive ? 'Now' : format(endDate, 'MMM d')}
                                 </span>
                               </div>
                               
-                              <div className="relative h-5 bg-background/50 rounded-sm overflow-hidden">
+                              {/* Thin line timeline */}
+                              <div className="relative h-1 bg-background/50 rounded-full overflow-hidden">
                                 {periods.map((period, periodIdx) => {
                                   const periodStartDays = Math.floor((period.start.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                                   const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
@@ -858,14 +935,11 @@ export const ProgressScreen = () => {
                                   return (
                                     <div
                                       key={periodIdx}
-                                      className={`absolute h-full transition-all ${
-                                        isActive 
-                                          ? 'bg-gradient-to-r from-primary to-primary/80' 
-                                          : 'bg-muted-foreground/40'
-                                      }`}
+                                      className="absolute h-full transition-all rounded-full"
                                       style={{
                                         left: `${leftPercent}%`,
                                         width: `${widthPercent}%`,
+                                        backgroundColor: isActive ? color : 'hsl(var(--muted-foreground) / 0.3)',
                                       }}
                                       title={`${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`}
                                     />
@@ -878,16 +952,16 @@ export const ProgressScreen = () => {
                       </div>
                       
                       {/* Timeline labels */}
-                      <div className="relative h-5 mt-2 pt-2 border-t border-border/50">
+                      <div className="relative pt-4 border-t border-border/50 mt-2">
                         <div className="flex justify-between text-[10px] text-muted-foreground">
                           {(() => {
-                            const numLabels = Math.min(8, Math.ceil(totalDays / 30));
+                            const numLabels = Math.min(6, Math.ceil(totalDays / 30));
                             const labels = [];
                             
                             for (let i = 0; i < numLabels; i++) {
                               const date = new Date(timelineStart);
                               date.setDate(date.getDate() + (i * Math.floor(totalDays / (numLabels - 1))));
-                              labels.push(format(date, 'MMM yyyy'));
+                              labels.push(format(date, 'MMM yy'));
                             }
                             
                             return labels.map((label, idx) => (
