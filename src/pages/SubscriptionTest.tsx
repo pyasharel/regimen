@@ -71,13 +71,17 @@ export const SubscriptionTest = () => {
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold">Test Scenarios</h2>
         <div className="space-y-2 text-sm">
-          <p>✅ No subscription + 0 compounds = Should allow adding first compound</p>
-          <p>✅ No subscription + 1 compound = Should block adding second compound</p>
-          <p>✅ No subscription + try edit = Should block editing</p>
-          <p>✅ Active subscription = Should allow unlimited compounds</p>
-          <p>✅ Trial active = Should allow unlimited compounds</p>
-          <p>✅ Dismiss paywall = Should show preview mode banner</p>
-          <p>✅ Preview mode 2 minutes = Should show paywall again</p>
+          <p className="font-bold text-[#FF6F61]">Preview Mode (Non-Subscriber):</p>
+          <p>✅ Should allow: Add 1 compound</p>
+          <p>✅ Should allow: Edit that 1 compound freely</p>
+          <p>✅ Should allow: View in calendar, dose calculations</p>
+          <p>❌ Should block: Adding 2nd compound → Paywall</p>
+          <p>❌ Should block: After 2 minutes → Paywall</p>
+          
+          <p className="font-bold text-[#8B5CF6] mt-4">Subscribed (Active or Trial):</p>
+          <p>✅ Should allow: Unlimited compounds</p>
+          <p>✅ Should allow: Edit any compound</p>
+          <p>✅ Should allow: All premium features</p>
         </div>
       </Card>
 
@@ -90,7 +94,7 @@ export const SubscriptionTest = () => {
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" />
-            <span>EditCompoundScreen blocks all non-subscribers</span>
+            <span>Preview users can edit their 1 compound</span>
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" />

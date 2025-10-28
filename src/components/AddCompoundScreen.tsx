@@ -175,16 +175,41 @@ export const AddCompoundScreen = () => {
   const [canProceed, setCanProceed] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
 
-  // Check if user can add compound (preview mode or subscribed)
+  // Check if user can add/edit compound
   useEffect(() => {
     if (isEditing) {
-      // Editing requires subscription
-      if (!isSubscribed) {
-        setShowPaywall(true);
-        setCanProceed(false);
-      } else {
-        setCanProceed(true);
-      }
+      // For editing: Allow if subscribed OR if they only have 1 compound (preview mode)
+      const checkEditPermission = async () => {
+        if (isSubscribed) {
+          setCanProceed(true);
+          return;
+        }
+
+        // For non-subscribers, check compound count
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setCanProceed(false);
+          setShowPaywall(true);
+          return;
+        }
+
+        const { count } = await supabase
+          .from('compounds')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        // Allow editing if they only have 1 compound (preview mode)
+        if (count === 1) {
+          setCanProceed(true);
+        } else if (count && count > 1) {
+          // Safety check - shouldn't happen, but block if they have multiple
+          setCanProceed(false);
+          setShowPaywall(true);
+        } else {
+          setCanProceed(true);
+        }
+      };
+      checkEditPermission();
     } else {
       // Adding new compound
       const checkAccess = async () => {

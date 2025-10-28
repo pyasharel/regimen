@@ -12,6 +12,7 @@ interface SubscriptionContextType {
   refreshSubscription: () => Promise<void>;
   canAddCompound: () => Promise<boolean>;
   markPreviewCompoundAdded: () => Promise<void>;
+  getCompoundCount: () => Promise<number>;
   previewModeCompoundAdded: boolean;
 }
 
@@ -70,10 +71,43 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const canAddCompound = async (): Promise<boolean> => {
-    if (isSubscribed) return true;
+    console.log('[canAddCompound] Checking...', { isSubscribed });
+    
+    if (isSubscribed) {
+      console.log('[canAddCompound] ✅ Subscribed - unlimited');
+      return true;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) {
+      console.log('[canAddCompound] ❌ No user');
+      return false;
+    }
+
+    const { count, error } = await supabase
+      .from('compounds')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    console.log('[canAddCompound] Compound count:', count);
+
+    if (error) {
+      console.error('[canAddCompound] Error:', error);
+      return false;
+    }
+
+    if (count === 0 && !previewModeCompoundAdded) {
+      console.log('[canAddCompound] ✅ First compound allowed');
+      return true;
+    }
+
+    console.log('[canAddCompound] ❌ Blocked - already has compound(s)');
+    return false;
+  };
+
+  const getCompoundCount = async (): Promise<number> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
 
     const { count, error } = await supabase
       .from('compounds')
@@ -81,15 +115,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       .eq('user_id', user.id);
 
     if (error) {
-      console.error('Error checking compound count:', error);
-      return false;
+      console.error('Error getting compound count:', error);
+      return 0;
     }
 
-    if (count === 0 && !previewModeCompoundAdded) {
-      return true;
-    }
-
-    return false;
+    return count || 0;
   };
 
   const markPreviewCompoundAdded = async () => {
@@ -134,6 +164,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         refreshSubscription,
         canAddCompound,
         markPreviewCompoundAdded,
+        getCompoundCount,
       }}
     >
       {children}

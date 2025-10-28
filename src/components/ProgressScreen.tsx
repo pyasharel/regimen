@@ -5,13 +5,11 @@ import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp, Trash2 } from "lucide-react";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PremiumModal } from "@/components/PremiumModal";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInDays } from "date-fns";
 import { useStreaks } from "@/hooks/useStreaks";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Camera } from '@capacitor/camera';
@@ -67,8 +66,8 @@ export const ProgressScreen = () => {
   const [photoDate, setPhotoDate] = useState<Date>(new Date());
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const { isSubscribed } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
   
@@ -134,18 +133,6 @@ export const ProgressScreen = () => {
   });
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
-
-  // Premium status check
-  useEffect(() => {
-    const checkPremium = () => {
-      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
-      setIsPremium(premiumStatus);
-    };
-    
-    checkPremium();
-    window.addEventListener('storage', checkPremium);
-    return () => window.removeEventListener('storage', checkPremium);
-  }, []);
 
 
   const handleLogWeight = async () => {
@@ -332,8 +319,8 @@ export const ProgressScreen = () => {
   };
 
   const handleCapturePhoto = async () => {
-    if (!isPremium) {
-      toast.error('Photo upload is a premium feature');
+    if (!isSubscribed) {
+      setShowPaywall(true);
       return;
     }
 
@@ -357,8 +344,8 @@ export const ProgressScreen = () => {
   };
 
   const handleSelectPhoto = async () => {
-    if (!isPremium) {
-      toast.error('Photo upload is a premium feature');
+    if (!isSubscribed) {
+      setShowPaywall(true);
       return;
     }
 
@@ -558,9 +545,6 @@ export const ProgressScreen = () => {
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
               REGIMEN
             </h1>
-            {isPremium && (
-              <PremiumDiamond className="h-5 w-5 text-primary" />
-            )}
           </div>
         </div>
       </header>
@@ -733,12 +717,11 @@ export const ProgressScreen = () => {
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
             <Button 
-              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+              onClick={() => isSubscribed ? setShowPhotoModal(true) : setShowPaywall(true)} 
               size="sm" 
               variant="ghost"
               className="text-primary hover:text-primary hover:bg-primary/10"
             >
-              {!isPremium && <PremiumDiamond className="w-3 h-3 mr-1.5" />}
               <Plus className="w-4 h-4 mr-1.5" />
               Add Photo
             </Button>
@@ -788,29 +771,14 @@ export const ProgressScreen = () => {
                 </Button>
               )}
             </>
-          ) : (
+          ) : photoEntries.length === 0 ? (
             <>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="flex-shrink-0">
-                  <div className="w-24 h-32 bg-card border-2 border-dashed border-border hover:border-primary/50 transition-colors flex items-center justify-center relative group rounded-lg">
-                      <CameraIcon className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
-                      <div className="absolute top-2 right-2">
-                        <PremiumDiamond className="w-4 h-4 text-primary/70" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="text-center">
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowPremiumModal(true)}>
-                  <PremiumDiamond className="w-4 h-4" />
-                  Unlock Premium to Upload Photos
-                </Button>
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">No photos yet</p>
+                <p className="text-xs mt-1">Start tracking your transformation</p>
               </div>
             </>
-          )}
+          ) : null}
         </Card>
 
         <div className="space-y-4">
@@ -1142,8 +1110,8 @@ export const ProgressScreen = () => {
         </DialogContent>
       </Dialog>
 
-      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
-      <PhotoPreviewModal 
+      <SubscriptionPaywall open={showPaywall} onOpenChange={setShowPaywall} />
+      <PhotoPreviewModal
         open={!!previewPhoto}
         onClose={() => setPreviewPhoto(null)}
         photoUrl={previewPhoto?.url || ''}

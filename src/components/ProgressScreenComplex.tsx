@@ -5,20 +5,20 @@ import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
 import { Scale, TrendingDown, TrendingUp, Camera, CameraIcon as CameraIconLucide, ArrowRight } from "lucide-react";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PremiumModal } from "@/components/PremiumModal";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { toast } from "sonner";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
@@ -54,12 +54,10 @@ export const ProgressScreen = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | 'ALL'>('1M');
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string; id: string } | null>(null);
-  const [isPremium] = useState(() => 
-    localStorage.getItem('testPremiumMode') === 'true'
-  );
+  const { isSubscribed } = useSubscription();
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [weight, setWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [entryDate, setEntryDate] = useState<Date>(new Date());
@@ -682,7 +680,7 @@ export const ProgressScreen = () => {
               <h3 className="text-sm font-semibold text-foreground">Visual Progress</h3>
             </div>
             <div className="flex gap-2">
-              {photoEntries.length >= 2 && isPremium && (
+              {photoEntries.length >= 2 && isSubscribed && (
                 <Button 
                   onClick={() => navigate('/progress/compare')}
                   size="sm"
@@ -693,12 +691,12 @@ export const ProgressScreen = () => {
                 </Button>
               )}
               <Button 
-                onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+                onClick={() => isSubscribed ? setShowPhotoModal(true) : setShowPaywall(true)} 
                 size="sm"
                 variant="default"
               >
                 <CameraIconLucide className="w-3 h-3 mr-1" />
-                {isPremium ? "Upload Photo" : "Unlock Premium"}
+                {isSubscribed ? "Upload Photo" : "Subscribe"}
               </Button>
             </div>
           </div>
@@ -731,19 +729,6 @@ export const ProgressScreen = () => {
                   </div>
                 );
               })}
-            </div>
-          ) : !isPremium ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="flex-shrink-0">
-                  <Card className="w-32 h-40 bg-card border-2 border-dashed border-border hover:border-primary/50 hover:shadow-[0_0_20px_rgba(255,111,97,0.15)] transition-all duration-300 flex items-center justify-center relative group cursor-pointer">
-                    <CameraIconLucide className="w-8 h-8 text-muted-foreground/40 group-hover:text-primary/60 transition-colors" />
-                    <div className="absolute top-2 right-2">
-                      <PremiumDiamond className="w-4 h-4 text-primary/70" />
-                    </div>
-                  </Card>
-                </div>
-              ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -899,10 +884,10 @@ export const ProgressScreen = () => {
         />
       )}
 
-      {/* Premium Modal */}
-      <PremiumModal 
-        open={showPremiumModal} 
-        onOpenChange={setShowPremiumModal} 
+      {/* Subscription Paywall */}
+      <SubscriptionPaywall 
+        open={showPaywall} 
+        onOpenChange={setShowPaywall} 
       />
     </div>
   );

@@ -36,8 +36,7 @@ export const useAppStateSync = () => {
             ...dose,
             compound_name: dose.compounds?.name || 'Medication'
           }));
-          const isPremium = localStorage.getItem('testPremiumMode') === 'true';
-          await scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
+          await scheduleAllUpcomingDoses(dosesWithCompoundName);
           
           // Also reschedule cycle reminders
           await rescheduleAllCycleReminders();

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { WeeklyDigestSettings } from "@/components/WeeklyDigestSettings";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -15,7 +15,7 @@ import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
-  const [isPremium, setIsPremium] = useState(false);
+  const { isSubscribed } = useSubscription();
   
   // Notification states
   const [doseReminders, setDoseReminders] = useState(true);
@@ -30,9 +30,6 @@ export const NotificationsSettings = () => {
   const [weightDay, setWeightDay] = useState<string>("1"); // 1 = Monday
 
   useEffect(() => {
-    const savedPremium = localStorage.getItem('testPremiumMode') === 'true';
-    setIsPremium(savedPremium);
-    
     // Load saved preferences
     const savedCycleReminders = localStorage.getItem('cycleReminders');
     setCycleReminders(savedCycleReminders !== 'false');
@@ -69,8 +66,8 @@ export const NotificationsSettings = () => {
 
   const handlePhotoRemindersToggle = (checked: boolean) => {
     triggerHaptic();
-    if (checked && !isPremium) {
-      toast.error("Photo reminders are a premium feature");
+    if (checked && !isSubscribed) {
+      toast.error("Photo reminders require subscription");
       return;
     }
     setPhotoReminders(checked);
@@ -102,10 +99,6 @@ export const NotificationsSettings = () => {
 
   const handleCycleRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
-    if (checked && !isPremium) {
-      toast.error("Cycle reminders are a premium feature");
-      return;
-    }
     setCycleReminders(checked);
     localStorage.setItem('cycleReminders', String(checked));
 
@@ -207,7 +200,6 @@ export const NotificationsSettings = () => {
               <div>
                 <Label className="font-semibold flex items-center gap-2">
                   Cycle Change Reminders
-                  {!isPremium && <PremiumDiamond className="h-4 w-4 text-primary" />}
                 </Label>
                 <p className="text-sm text-muted-foreground">Get notified before cycle transitions</p>
               </div>
@@ -229,7 +221,6 @@ export const NotificationsSettings = () => {
               <div>
                 <Label className="font-semibold flex items-center gap-2">
                   Progress Photo Reminders
-                  {!isPremium && <PremiumDiamond className="h-4 w-4 text-primary" />}
                 </Label>
                 <p className="text-sm text-muted-foreground">Track your transformation</p>
               </div>

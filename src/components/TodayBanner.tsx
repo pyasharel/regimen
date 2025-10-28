@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Bell, Camera, Crown } from 'lucide-react';
+import { X, Bell, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { cn } from '@/lib/utils';
 
 type BannerType = 
   | 'enable-notifications'
-  | 'premium-upgrade'
   | 'photo-feature';
 
 interface BannerConfig {
@@ -20,6 +20,7 @@ interface BannerConfig {
 
 export const TodayBanner = () => {
   const navigate = useNavigate();
+  const { isSubscribed } = useSubscription();
   const [currentBanner, setCurrentBanner] = useState<BannerConfig | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
 
@@ -33,7 +34,6 @@ export const TodayBanner = () => {
     const notificationPermissionAsked = localStorage.getItem('notificationPermissionAsked');
     const notificationPermissionDenied = localStorage.getItem('notificationPermissionDenied') === 'true';
     const hasUploadedPhoto = localStorage.getItem('hasUploadedPhoto') === 'true';
-    const isPremium = localStorage.getItem('testPremiumMode') === 'true';
     
     const daysSinceSignup = signupDate 
       ? Math.floor((Date.now() - new Date(signupDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -52,7 +52,7 @@ export const TodayBanner = () => {
         action: 'Enable Notifications',
         link: '/settings/notifications',
         shouldShow: () => 
-          !isPremium &&
+          !isSubscribed &&
           notificationPermissionDenied && 
           daysSinceNotificationDenial >= 14 &&
           !dismissedBanners.includes('enable-notifications')
@@ -65,29 +65,17 @@ export const TodayBanner = () => {
         action: 'Learn More',
         link: '/progress',
         shouldShow: () => 
-          isPremium &&
+          isSubscribed &&
           !hasUploadedPhoto && 
           daysSinceSignup >= 7 &&
           !dismissedBanners.includes('photo-feature')
-      },
-      {
-        id: 'premium-upgrade',
-        title: 'Unlock Premium Features',
-        description: 'Get unlimited photo tracking and advanced insights',
-        icon: Crown,
-        action: 'Upgrade',
-        link: '/settings',
-        shouldShow: () => 
-          !isPremium &&
-          daysSinceSignup >= 3 &&
-          !dismissedBanners.includes('premium-upgrade')
       }
     ];
 
     // Find the first banner that should be shown
     const bannerToShow = banners.find(b => b.shouldShow());
     setCurrentBanner(bannerToShow || null);
-  }, []);
+  }, [isSubscribed]);
 
   const handleDismiss = () => {
     if (!currentBanner) return;
