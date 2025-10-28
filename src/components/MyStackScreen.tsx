@@ -397,10 +397,18 @@ export const MyStackScreen = () => {
                         // For one-time cycles that have ended, don't show status
                         if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
                         
-                        // Format cycle pattern display
+                        // Format cycle pattern display - show in months if >= 4 weeks
+                        const formatCyclePeriod = (weeks: number) => {
+                          if (weeks >= 4 && weeks % 4 === 0) {
+                            const months = weeks / 4;
+                            return `${months} ${months === 1 ? 'month' : 'months'}`;
+                          }
+                          return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+                        };
+                        
                         const cyclePattern = compound.cycle_weeks_off 
-                          ? `${compound.cycle_weeks_on}w on, ${compound.cycle_weeks_off}w off`
-                          : `${compound.cycle_weeks_on}w duration`;
+                          ? `${formatCyclePeriod(compound.cycle_weeks_on)} on, ${formatCyclePeriod(compound.cycle_weeks_off)} off`
+                          : `${formatCyclePeriod(compound.cycle_weeks_on)} duration`;
                         
                         return (
                           <div className="mt-3 pt-3 border-t border-border/50">

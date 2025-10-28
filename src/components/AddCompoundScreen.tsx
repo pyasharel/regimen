@@ -214,7 +214,8 @@ export const AddCompoundScreen = () => {
         setEnableCycle(true);
         const weeksOn = editingCompound.cycle_weeks_on || 4;
         // Auto-detect if it's in months (if divisible by 4 and >= 4)
-        if (weeksOn >= 4 && weeksOn % 4 === 0) {
+        const shouldUseMonths = weeksOn >= 4 && weeksOn % 4 === 0;
+        if (shouldUseMonths) {
           setCycleTimeUnit('months');
           setCycleWeeksOn(weeksOn / 4);
         } else {
@@ -225,7 +226,8 @@ export const AddCompoundScreen = () => {
         if (editingCompound.cycle_weeks_off) {
           setCycleMode('continuous');
           const weeksOff = editingCompound.cycle_weeks_off;
-          if (weeksOff >= 4 && weeksOff % 4 === 0 && cycleTimeUnit === 'months') {
+          // Use months for off period if on period is in months
+          if (shouldUseMonths && weeksOff >= 4 && weeksOff % 4 === 0) {
             setCycleWeeksOff(weeksOff / 4);
           } else {
             setCycleWeeksOff(weeksOff);

@@ -137,12 +137,12 @@ export const TodayScreen = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      // Get regular scheduled doses for the selected date
+      // Get regular scheduled doses for the selected date (only from active compounds)
       const { data: dosesData, error: dosesError } = await supabase
         .from('doses')
         .select(`
           *,
-          compounds (name, schedule_type)
+          compounds (name, schedule_type, is_active)
         `)
         .eq('scheduled_date', dateStr);
 
@@ -177,8 +177,9 @@ export const TodayScreen = () => {
         compounds: { name: compound.name, schedule_type: 'As Needed' }
       })) || [];
 
+      // Filter out doses from inactive compounds
       const formattedDoses = [
-        ...(dosesData?.map(d => ({
+        ...(dosesData?.filter(d => d.compounds?.is_active !== false).map(d => ({
           ...d,
           compound_name: d.compounds?.name,
           schedule_type: d.compounds?.schedule_type
