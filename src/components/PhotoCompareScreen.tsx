@@ -21,7 +21,7 @@ import { format } from "date-fns";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import logoGradient from "@/assets/logo-gradient.png";
+import logoHorizontal from "@/assets/logo-regimen-horizontal-final.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 
 interface PhotoEntry {
@@ -44,6 +44,8 @@ export default function PhotoCompareScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<PhotoEntry | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [showAllPhotosView, setShowAllPhotosView] = useState(false);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,15 +86,132 @@ export default function PhotoCompareScreen() {
     return data.publicUrl;
   };
 
-  const handlePhotoSelection = (photo: PhotoEntry, type: 'before' | 'after') => {
-    setSelectedPhotos(prev => ({ 
-      ...prev, 
+  const handlePhotoSelection = async (photo: PhotoEntry, type: 'before' | 'after') => {
+    const newSelection = { 
+      ...selectedPhotos, 
       [type]: { 
         url: getPhotoUrl(photo.photo_url), 
         date: photo.entry_date 
       } 
-    }));
+    };
+    setSelectedPhotos(newSelection);
     setShowPhotoSelector(null);
+    
+    // Generate preview if both photos are now selected
+    if (newSelection.before && newSelection.after) {
+      await generatePreview(newSelection);
+    }
+  };
+
+  const generatePreview = async (photos: typeof selectedPhotos) => {
+    if (!photos.before || !photos.after) return;
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const beforeImg = new Image();
+    const afterImg = new Image();
+    beforeImg.crossOrigin = "anonymous";
+    afterImg.crossOrigin = "anonymous";
+
+    beforeImg.src = photos.before.url;
+    afterImg.src = photos.after.url;
+
+    await Promise.all([
+      new Promise(resolve => beforeImg.onload = resolve),
+      new Promise(resolve => afterImg.onload = resolve)
+    ]);
+
+    // Create a side-by-side comparison - Instagram friendly 1080x1080
+    const targetWidth = 1080;
+    const targetHeight = 1080;
+    
+    const halfWidth = targetWidth / 2;
+    const padding = 40;
+    const labelSpace = 80;
+    const bottomSpace = 60;
+    
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const beforeAspect = beforeImg.width / beforeImg.height;
+    const afterAspect = afterImg.width / afterImg.height;
+    
+    const availableHeight = targetHeight - labelSpace - bottomSpace - padding;
+    const availableWidth = halfWidth - padding;
+    
+    let beforeWidth = availableWidth;
+    let beforeHeight = beforeWidth / beforeAspect;
+    if (beforeHeight > availableHeight) {
+      beforeHeight = availableHeight;
+      beforeWidth = beforeHeight * beforeAspect;
+    }
+    
+    let afterWidth = availableWidth;
+    let afterHeight = afterWidth / afterAspect;
+    if (afterHeight > availableHeight) {
+      afterHeight = availableHeight;
+      afterWidth = afterHeight * afterAspect;
+    }
+    
+    const beforeX = (halfWidth - beforeWidth) / 2;
+    const afterX = halfWidth + (halfWidth - afterWidth) / 2;
+    const imageY = labelSpace + padding;
+    
+    ctx.drawImage(beforeImg, beforeX, imageY, beforeWidth, beforeHeight);
+    ctx.drawImage(afterImg, afterX, imageY, afterWidth, afterHeight);
+    
+    ctx.strokeStyle = '#333333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(halfWidth, labelSpace);
+    ctx.lineTo(halfWidth, targetHeight - bottomSpace);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#FF6F61';
+    ctx.font = 'bold 32px Inter, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BEFORE', halfWidth / 2, 45);
+    ctx.fillText('AFTER', halfWidth + halfWidth / 2, 45);
+    
+    ctx.fillStyle = '#AAAAAA';
+    ctx.font = '18px Inter, -apple-system, sans-serif';
+    ctx.fillText(format(new Date(photos.before.date), 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(format(new Date(photos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
+    
+    const logo = new Image();
+    logo.crossOrigin = "anonymous";
+    logo.src = logoHorizontal;
+    
+    await new Promise(resolve => {
+      logo.onload = () => {
+        const logoWidth = 120;
+        const logoHeight = (logo.height / logo.width) * logoWidth;
+        const logoX = canvas.width - logoWidth - 20;
+        const logoY = canvas.height - logoHeight - 20;
+        
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+        ctx.globalAlpha = 1.0;
+        resolve(true);
+      };
+      logo.onerror = () => {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = 0.7;
+        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('REGIMEN', canvas.width - 20, canvas.height - 35);
+        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
+        ctx.globalAlpha = 1.0;
+        resolve(true);
+      };
+    });
+
+    setPreviewImageUrl(canvas.toDataURL('image/png'));
   };
 
   const handleDeletePhoto = async () => {
@@ -307,27 +426,17 @@ export default function PhotoCompareScreen() {
     // Add logo and watermark in bottom right corner
     const logo = new Image();
     logo.crossOrigin = "anonymous";
-    // Use the final logo icon
-    logo.src = logoGradient;
+    logo.src = logoHorizontal;
     
     await new Promise(resolve => {
       logo.onload = () => {
-        const logoWidth = 100;
+        const logoWidth = 120;
         const logoHeight = (logo.height / logo.width) * logoWidth;
         const logoX = canvas.width - logoWidth - 20;
-        const logoY = canvas.height - logoHeight - 35;
+        const logoY = canvas.height - logoHeight - 20;
         
-        // Draw logo with slight transparency
-        ctx.globalAlpha = 0.6;
+        ctx.globalAlpha = 0.9;
         ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
-        ctx.globalAlpha = 1.0;
-        
-        // Add text watermark
-        ctx.fillStyle = '#FFFFFF';
-        ctx.globalAlpha = 0.7;
-        ctx.font = 'bold 16px Inter, -apple-system, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
@@ -471,37 +580,16 @@ export default function PhotoCompareScreen() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* All Photos Carousel */}
+        {/* View All Photos Button */}
         {availablePhotos.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">All Photos</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth" style={{ scrollSnapType: 'x mandatory' }}>
-              {availablePhotos.map((photo, index) => {
-                // Parse as local date to avoid timezone shifts
-                const [year, month, day] = photo.entry_date.split('-').map(Number);
-                const localDate = new Date(year, month - 1, day);
-                
-                return (
-                  <div 
-                    key={photo.id} 
-                    className="flex-shrink-0 snap-center cursor-pointer"
-                    onClick={() => {
-                      setPreviewPhoto(photo.id);
-                    }}
-                  >
-                    <img
-                      src={getPhotoUrl(photo.photo_url)}
-                      alt={`Progress from ${format(localDate, 'MMM d, yyyy')}`}
-                      className="h-32 w-32 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors"
-                    />
-                    <p className="text-xs text-center text-muted-foreground mt-1">
-                      {format(localDate, 'MMM d')}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowAllPhotosView(true)}
+          >
+            <ImageIcon className="w-4 h-4 mr-2" />
+            View All Photos ({availablePhotos.length})
+          </Button>
         )}
 
         {/* Photo Selection */}
@@ -561,11 +649,16 @@ export default function PhotoCompareScreen() {
           </Card>
         </div>
 
-        {/* Share Button */}
-        {selectedPhotos.before && selectedPhotos.after && (
-          <div className="space-y-3">
-            <div className="text-center text-sm text-muted-foreground">
-              Ready to share your transformation
+        {/* Preview and Share */}
+        {selectedPhotos.before && selectedPhotos.after && previewImageUrl && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Preview</h3>
+              <img 
+                src={previewImageUrl} 
+                alt="Comparison preview" 
+                className="w-full rounded-lg border-2 border-border"
+              />
             </div>
             <Button
               onClick={handleShare}
@@ -620,30 +713,6 @@ export default function PhotoCompareScreen() {
                         </p>
                       </div>
                     </div>
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="h-8 w-8 shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadPhoto(getPhotoUrl(photo.photo_url), photo.entry_date);
-                      }}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="h-8 w-8 shadow-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPhotoToDelete(photo);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </Card>
               );
             })}
@@ -668,23 +737,15 @@ export default function PhotoCompareScreen() {
               className="w-full justify-start h-14"
               onClick={() => handleShareOption('download')}
             >
-              <Download className="h-5 w-5 mr-3" />
+              <Download className="h-5 w-5 mr-3 text-primary" />
               Download Image
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start h-14"
-              onClick={() => handleShareOption('copy')}
-            >
-              <Copy className="h-5 w-5 mr-3" />
-              Copy to Clipboard
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start h-14"
               onClick={() => handleShareOption('native')}
             >
-              <Share2 className="h-5 w-5 mr-3" />
+              <Share2 className="h-5 w-5 mr-3 text-primary" />
               Share to Apps
             </Button>
           </div>
@@ -719,6 +780,78 @@ export default function PhotoCompareScreen() {
           onDelete={handleDeletePhotoFromPreview}
         />
       )}
+
+      {/* All Photos View Dialog */}
+      <Dialog open={showAllPhotosView} onOpenChange={setShowAllPhotosView}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Photos</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            {availablePhotos.map((photo) => {
+              const [year, month, day] = photo.entry_date.split('-').map(Number);
+              const localDate = new Date(year, month - 1, day);
+              
+              return (
+                <Card
+                  key={photo.id}
+                  className="relative group overflow-hidden"
+                >
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setPreviewPhoto(photo.id);
+                      setShowAllPhotosView(false);
+                    }}
+                  >
+                    <img
+                      src={getPhotoUrl(photo.photo_url)}
+                      alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                      className="w-full aspect-square object-cover"
+                    />
+                    <div className="p-3 text-center bg-card">
+                      <p className="text-sm font-medium">
+                        {format(localDate, 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-10 w-10 shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadPhoto(getPhotoUrl(photo.photo_url), photo.entry_date);
+                      }}
+                    >
+                      <Download className="h-5 w-5 text-primary" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="h-10 w-10 shadow-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoToDelete(photo);
+                        setShowAllPhotosView(false);
+                      }}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+          {availablePhotos.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No photos yet. Add photos from the Progress screen to get started.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
