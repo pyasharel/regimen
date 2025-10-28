@@ -1,7 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
-import { PremiumModal } from "@/components/PremiumModal";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,22 +163,42 @@ export const AddCompoundScreen = () => {
   // Active status
   const [isActive, setIsActive] = useState(true);
   
-  // Premium feature - check from Settings
-  const [isPremium, setIsPremium] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  // Subscription checks
+  const { 
+    canAddCompound, 
+    isSubscribed, 
+    markPreviewCompoundAdded,
+    previewModeCompoundAdded 
+  } = useSubscription();
+  
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [canProceed, setCanProceed] = useState(false);
+  const [showPreviewTimer, setShowPreviewTimer] = useState(false);
 
-  // Check premium status from localStorage (set in Settings)
+  // Check if user can add compound (preview mode or subscribed)
   useEffect(() => {
-    const checkPremium = () => {
-      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
-      setIsPremium(premiumStatus);
-    };
-    
-    checkPremium();
-    // Listen for changes to premium status
-    window.addEventListener('storage', checkPremium);
-    return () => window.removeEventListener('storage', checkPremium);
-  }, []);
+    if (isEditing) {
+      // Editing requires subscription
+      if (!isSubscribed) {
+        setShowPaywall(true);
+        setCanProceed(false);
+      } else {
+        setCanProceed(true);
+      }
+    } else {
+      // Adding new compound
+      const checkAccess = async () => {
+        const allowed = await canAddCompound();
+        if (!allowed) {
+          setShowPaywall(true);
+          setCanProceed(false);
+        } else {
+          setCanProceed(true);
+        }
+      };
+      checkAccess();
+    }
+  }, [isEditing, isSubscribed]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -483,8 +504,8 @@ export const AddCompoundScreen = () => {
 
       // Generate doses based on number of doses per day
       const timesToGenerate = numberOfDoses === 2 
-        ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
-        : (isPremium ? [customTime] : ['08:00']);
+        ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
+        : (isSubscribed ? [customTime] : ['08:00']);
 
       timesToGenerate.forEach(time => {
         doses.push({
@@ -557,8 +578,8 @@ export const AddCompoundScreen = () => {
             concentration: concentration ? parseFloat(concentration) : null,
           schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
           time_of_day: numberOfDoses === 2 
-            ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
-            : (isPremium ? [customTime] : ['08:00']),
+            ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
+            : (isSubscribed ? [customTime] : ['08:00']),
           schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
@@ -610,7 +631,7 @@ export const AddCompoundScreen = () => {
                 ...dose,
                 compound_name: dose.compounds?.name || 'Medication'
               }));
-              scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
+            scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
             }
           });
 
@@ -647,8 +668,8 @@ export const AddCompoundScreen = () => {
             concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
             time_of_day: numberOfDoses === 2 
-              ? (isPremium ? [customTime, customTime2] : ['08:00', '20:00'])
-              : (isPremium ? [customTime] : ['08:00']),
+              ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
+              : (isSubscribed ? [customTime] : ['08:00']),
             schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
@@ -704,7 +725,7 @@ export const AddCompoundScreen = () => {
               ...dose,
               compound_name: dose.compounds?.name || 'Medication'
             }));
-            scheduleAllUpcomingDoses(dosesWithCompoundName, isPremium);
+            scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
           }
         });
     } catch (error) {
@@ -1160,7 +1181,7 @@ export const AddCompoundScreen = () => {
               </div>
 
               {/* Time(s) - Compact layout */}
-              {isPremium ? (
+              {isSubscribed ? (
                 <>
                   {numberOfDoses === 1 ? (
                     <div className="flex items-center justify-between py-2">
@@ -1201,11 +1222,10 @@ export const AddCompoundScreen = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setShowPremiumModal(true)}
+                      onClick={() => setShowPaywall(true)}
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
-                      <PremiumDiamond className="h-3 w-3" />
-                      <span className="underline">Custom times</span>
+                      🔒 <span className="underline">Custom times</span>
                     </button>
                   </div>
                 </div>
@@ -1274,14 +1294,13 @@ export const AddCompoundScreen = () => {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
-              {!isPremium && (
+              {!isSubscribed && (
                 <button
                   type="button"
-                  onClick={() => setShowPremiumModal(true)}
+                  onClick={() => setShowPaywall(true)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
-                  <PremiumDiamond className="h-3 w-3" />
-                  <span className="underline">Premium</span>
+                  🔒 <span className="underline">Subscribe</span>
                 </button>
               )}
             </div>
@@ -1293,12 +1312,18 @@ export const AddCompoundScreen = () => {
             <Switch
               id="cycle"
               checked={enableCycle}
-              onCheckedChange={(checked) => !isPremium || setEnableCycle(checked)}
-              disabled={!isPremium}
+              onCheckedChange={(checked) => {
+                if (!isSubscribed) {
+                  setShowPaywall(true);
+                } else {
+                  setEnableCycle(checked);
+                }
+              }}
+              disabled={!isSubscribed}
             />
           </div>
 
-          {enableCycle && isPremium && (
+          {enableCycle && isSubscribed && (
             <div className="space-y-4">
               <div className="flex gap-2">
                 <button
@@ -1424,7 +1449,30 @@ export const AddCompoundScreen = () => {
         </div>
       </div>
 
-      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
+      {!canProceed && !isSubscribed && (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <SubscriptionPaywall 
+            open={showPaywall}
+            onOpenChange={(open) => {
+              setShowPaywall(open);
+              if (!open) {
+                navigate(-1);
+              }
+            }}
+            message={isEditing ? "Subscribe to edit your compounds and access all features" : "Subscribe to add unlimited compounds and unlock all features"}
+          />
+        </div>
+      )}
+      
+      {showPreviewTimer && !isSubscribed && (
+        <PreviewModeTimer onTimerStart={() => console.log('Preview timer started')} />
+      )}
+      
+      <SubscriptionPaywall 
+        open={showPaywall && canProceed}
+        onOpenChange={setShowPaywall}
+        message="Subscribe to unlock all features"
+      />
     </div>
   );
 };

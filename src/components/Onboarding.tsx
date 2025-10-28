@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 
 const GOAL_OPTIONS = [
   "Weight Loss",
@@ -29,6 +30,7 @@ export const Onboarding = () => {
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [selectedChallenges, setSelectedChallenges] = useState<string[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const navigate = useNavigate();
 
   const toggleGoal = (goal: string) => {
@@ -94,7 +96,8 @@ export const Onboarding = () => {
           .eq("user_id", user.id);
       }
       
-      navigate('/today');
+      // Show paywall after onboarding
+      setShowPaywall(true);
     } catch (error) {
       console.error("Error completing onboarding:", error);
       toast.error("Failed to save preferences");
@@ -279,6 +282,12 @@ export const Onboarding = () => {
           </Button>
         </div>
       </div>
+      
+      <SubscriptionPaywall 
+        open={showPaywall}
+        onOpenChange={setShowPaywall}
+        onDismiss={() => navigate('/today')}
+      />
     </div>
   );
 };

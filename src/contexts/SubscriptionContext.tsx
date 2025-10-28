@@ -11,6 +11,7 @@ interface SubscriptionContextType {
   isLoading: boolean;
   refreshSubscription: () => Promise<void>;
   canAddCompound: () => Promise<boolean>;
+  markPreviewCompoundAdded: () => Promise<void>;
   previewModeCompoundAdded: boolean;
 }
 
@@ -69,24 +70,38 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const canAddCompound = async (): Promise<boolean> => {
-    // If subscribed, unlimited compounds
     if (isSubscribed) return true;
 
-    // Check compound count
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('compounds')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
-    // Allow first compound in preview mode
+    if (error) {
+      console.error('Error checking compound count:', error);
+      return false;
+    }
+
     if (count === 0 && !previewModeCompoundAdded) {
       return true;
     }
 
     return false;
+  };
+
+  const markPreviewCompoundAdded = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('profiles')
+      .update({ preview_mode_compound_added: true })
+      .eq('user_id', user.id);
+
+    setPreviewModeCompoundAdded(true);
   };
 
   useEffect(() => {
@@ -114,10 +129,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         subscriptionType,
         subscriptionEndDate,
         trialEndDate,
+        previewModeCompoundAdded,
         isLoading,
         refreshSubscription,
         canAddCompound,
-        previewModeCompoundAdded,
+        markPreviewCompoundAdded,
       }}
     >
       {children}

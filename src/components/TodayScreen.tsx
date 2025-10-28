@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Plus, Calendar as CalendarIcon, Sun, Moon } from "lucide-react";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
+import { PreviewModeBanner } from "@/components/PreviewModeBanner";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,11 +46,14 @@ export const TodayScreen = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
-  const [isPremium, setIsPremium] = useState(() => localStorage.getItem('testPremiumMode') === 'true');
   const [userName, setUserName] = useState<string | null>(null);
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // Subscription state
+  const { isSubscribed } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -78,16 +83,6 @@ export const TodayScreen = () => {
     
     // Initialize engagement notifications
     initializeEngagementNotifications();
-    
-    // Check premium status
-    const checkPremium = () => {
-      const premiumStatus = localStorage.getItem('testPremiumMode') === 'true';
-      setIsPremium(premiumStatus);
-    };
-    
-    checkPremium();
-    window.addEventListener('storage', checkPremium);
-    return () => window.removeEventListener('storage', checkPremium);
   }, [selectedDate]);
 
 
@@ -479,6 +474,9 @@ export const TodayScreen = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      {!isSubscribed && (
+        <PreviewModeBanner onUpgrade={() => setShowPaywall(true)} />
+      )}
       <style>{`
         @keyframes draw-check {
           0% {
@@ -547,14 +545,11 @@ export const TodayScreen = () => {
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-              REGIMEN
-            </h1>
-            {isPremium && (
-              <PremiumDiamond className="h-5 w-5 text-primary" />
-            )}
-          </div>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
         </div>
       </header>
 
@@ -730,46 +725,44 @@ export const TodayScreen = () => {
           )
         ) : (
           <>
-            {isPremium ? (
-              // Premium: Show time-of-day sections
-              (() => {
-                const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
-                
-                // Group doses by time of day
-                const morningDoses = scheduledDoses.filter(d => {
-                  const time = d.scheduled_time;
-                  if (time === 'Morning') return true;
-                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                  if (timeMatch) {
-                    const hours = parseInt(timeMatch[1]);
-                    return hours >= 6 && hours < 12;
-                  }
-                  return false;
-                });
+            {(() => {
+              // Group doses by time of day
+              const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
+              
+              const morningDoses = scheduledDoses.filter(d => {
+                const time = d.scheduled_time;
+                if (time === 'Morning') return true;
+                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                if (timeMatch) {
+                  const hours = parseInt(timeMatch[1]);
+                  return hours >= 6 && hours < 12;
+                }
+                return false;
+              });
 
-                const afternoonDoses = scheduledDoses.filter(d => {
-                  const time = d.scheduled_time;
-                  if (time === 'Afternoon') return true;
-                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                  if (timeMatch) {
-                    const hours = parseInt(timeMatch[1]);
-                    return hours >= 12 && hours < 18;
-                  }
-                  return false;
-                });
+              const afternoonDoses = scheduledDoses.filter(d => {
+                const time = d.scheduled_time;
+                if (time === 'Afternoon') return true;
+                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                if (timeMatch) {
+                  const hours = parseInt(timeMatch[1]);
+                  return hours >= 12 && hours < 18;
+                }
+                return false;
+              });
 
-                const eveningDoses = scheduledDoses.filter(d => {
-                  const time = d.scheduled_time;
-                  if (time === 'Evening') return true;
-                  const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
-                  if (timeMatch) {
-                    const hours = parseInt(timeMatch[1]);
-                    return hours >= 18 || hours < 6;
-                  }
-                  return false;
-                });
+              const eveningDoses = scheduledDoses.filter(d => {
+                const time = d.scheduled_time;
+                if (time === 'Evening') return true;
+                const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+                if (timeMatch) {
+                  const hours = parseInt(timeMatch[1]);
+                  return hours >= 18 || hours < 6;
+                }
+                return false;
+              });
 
-                const renderDoseCard = (dose: typeof doses[0]) => (
+              const renderDoseCard = (dose: typeof doses[0]) => (
                   <div
                     key={dose.id}
                     ref={(el) => {
@@ -899,108 +892,7 @@ export const TodayScreen = () => {
                     )}
                   </>
                 );
-              })()
-            ) : (
-              // Free: Show simple running list
-              (() => {
-                const scheduledDoses = doses.filter(d => d.schedule_type !== 'As Needed');
-
-                const renderDoseCard = (dose: typeof doses[0]) => (
-                  <div
-                    key={dose.id}
-                    ref={(el) => {
-                      if (el) cardRefs.current.set(dose.id, el);
-                      else cardRefs.current.delete(dose.id);
-                    }}
-                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
-                      dose.taken
-                        ? 'bg-card border-border'
-                        : 'bg-primary border-primary shadow-sm'
-                    }`}
-                    style={{
-                      opacity: dose.taken ? 0.85 : 1,
-                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                  >
-                    {/* Golden shine for day complete only */}
-                    {showDayComplete && dose.taken && (
-                      <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
-                          backgroundSize: '200% 100%',
-                          animation: 'golden-shine 0.3s ease-out'
-                        }}
-                      />
-                    )}
-                    
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          {/* Medication name */}
-                          <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white'
-                          }`}>
-                            {dose.compound_name}
-                          </h3>
-                          
-                          {/* Dosage badge with all info */}
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-300 ${
-                            dose.taken 
-                              ? 'bg-muted text-muted-foreground' 
-                              : 'bg-white/15 text-white/90 backdrop-blur-sm'
-                          }`}>
-                            {formatDose(dose.dose_amount, dose.dose_unit)}
-                            {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
-                            {dose.calculated_ml && ` • Draw ${dose.calculated_ml} mL`}
-                          </span>
-                        </div>
-                        
-                        {/* Check button */}
-                        <button
-                          onClick={() => toggleDose(dose.id, dose.taken)}
-                          disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
-                            dose.taken
-                              ? 'bg-success border-success'
-                              : 'border-white/40 hover:border-white active:scale-95'
-                          }`}
-                          style={{
-                            ...(animatingDoses.has(dose.id) && dose.taken ? {
-                              animation: 'checkbox-check 0.2s ease-out'
-                            } : {})
-                          }}
-                        >
-                          {dose.taken && (
-                            <svg
-                              className="h-full w-full text-white"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray="24"
-                              strokeDashoffset="0"
-                              style={{
-                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
-                              }}
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-
-                return (
-                  <div className="space-y-3">
-                    {scheduledDoses.map(renderDoseCard)}
-                  </div>
-                );
-              })()
-            )}
+              })()}
 
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (

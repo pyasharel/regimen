@@ -26,6 +26,7 @@ import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { HealthSyncSettings } from "./components/settings/HealthSyncSettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { SubscriptionTest } from "./pages/SubscriptionTest";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
             <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
             <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
+            <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
