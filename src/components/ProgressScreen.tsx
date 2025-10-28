@@ -69,7 +69,7 @@ export const ProgressScreen = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
-  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+  const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
   
   const { isEnabled: healthSyncEnabled, syncWeightFromHealth, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
@@ -232,11 +232,59 @@ export const ProgressScreen = () => {
       if (error) throw error;
 
       toast.success('Entry deleted successfully');
-      setDeleteEntryId(null);
+      setEditingEntry(null);
       refetchEntries();
     } catch (error) {
       console.error('Error deleting entry:', error);
       toast.error('Failed to delete entry');
+    }
+  };
+
+  const handleUpdateEntry = async () => {
+    if (!editingEntry) return;
+    
+    setLoading(true);
+    try {
+      const dateStr = format(editingEntry.date, 'yyyy-MM-dd');
+      
+      const { error } = await supabase
+        .from('progress_entries')
+        .update({
+          entry_date: dateStr,
+          metrics: { weight: editingEntry.weight, unit: editingEntry.unit }
+        })
+        .eq('id', editingEntry.id);
+
+      if (error) throw error;
+
+      toast.success('Entry updated successfully');
+      setEditingEntry(null);
+      refetchEntries();
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      toast.error('Failed to update entry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDotClick = (data: any) => {
+    const entry = weightEntries.find(e => {
+      const [year, month, day] = e.entry_date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      return format(localDate, 'MMM d') === data.date;
+    });
+    
+    if (entry) {
+      const [year, month, day] = entry.entry_date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      
+      setEditingEntry({
+        id: entry.id,
+        weight: entry.metrics?.weight || 0,
+        date: localDate,
+        unit: entry.metrics?.unit || 'lbs'
+      });
     }
   };
 
@@ -564,8 +612,8 @@ export const ProgressScreen = () => {
                     dataKey="weight" 
                     stroke="hsl(var(--primary))" 
                     strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ fill: 'hsl(var(--primary))', r: 4, cursor: 'pointer' }}
+                    activeDot={{ r: 6, cursor: 'pointer', onClick: handleDotClick }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -575,46 +623,6 @@ export const ProgressScreen = () => {
               </div>
             )}
           </Card>
-
-          {/* Weight Entry List */}
-          {weightEntries.length > 0 && (
-            <Card className="p-4">
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">Weight Entries</h3>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {weightEntries.slice().reverse().map((entry) => {
-                    const [year, month, day] = entry.entry_date.split('-').map(Number);
-                    const localDate = new Date(year, month - 1, day);
-                    const weightValue = entry.metrics?.weight || 0;
-                    
-                    return (
-                      <div 
-                        key={entry.id} 
-                        className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-foreground">
-                            {format(localDate, 'MMM d, yyyy')}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {weightValue} {entry.metrics?.unit || 'lbs'}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteEntryId(entry.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </Card>
-          )}
         </div>
 
         <div className="space-y-4">
@@ -1013,25 +1021,91 @@ export const ProgressScreen = () => {
         onDateUpdate={refetchEntries}
       />
 
-      <AlertDialog open={!!deleteEntryId} onOpenChange={(open) => !open && setDeleteEntryId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Weight Entry</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this weight entry? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteEntryId && handleDeleteEntry(deleteEntryId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Edit Weight Entry Dialog */}
+      <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Weight Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-between text-left font-normal",
+                      !editingEntry?.date && "text-muted-foreground"
+                    )}
+                  >
+                    <span className="text-muted-foreground">Entry Date</span>
+                    <span>{editingEntry?.date && format(editingEntry.date, "MMM d, yyyy")}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editingEntry?.date}
+                    onSelect={(date) => date && setEditingEntry(prev => prev ? {...prev, date} : null)}
+                    disabled={(date) => date > new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Weight</Label>
+              <Input
+                type="number"
+                step="0.1"
+                value={editingEntry?.weight || ''}
+                onChange={(e) => setEditingEntry(prev => 
+                  prev ? {...prev, weight: parseFloat(e.target.value) || 0} : null
+                )}
+                placeholder="Enter weight"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              <Select
+                value={editingEntry?.unit}
+                onValueChange={(value: "lbs" | "kg") => 
+                  setEditingEntry(prev => prev ? {...prev, unit: value} : null)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lbs">lbs</SelectItem>
+                  <SelectItem value="kg">kg</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="destructive"
+                onClick={() => editingEntry && handleDeleteEntry(editingEntry.id)}
+                className="flex-1"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+              <Button
+                onClick={handleUpdateEntry}
+                disabled={loading || !editingEntry?.weight}
+                className="flex-1"
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
