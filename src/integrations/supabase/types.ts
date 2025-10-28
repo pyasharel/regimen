@@ -165,7 +165,15 @@ export type Database = {
           goals: string[] | null
           id: string
           onboarding_completed: boolean | null
+          preview_mode_compound_added: boolean | null
+          stripe_customer_id: string | null
+          subscription_end_date: string | null
+          subscription_start_date: string | null
+          subscription_status: string | null
+          subscription_type: string | null
           terms_accepted_at: string | null
+          trial_end_date: string | null
+          trial_start_date: string | null
           updated_at: string | null
           user_id: string
         }
@@ -176,7 +184,15 @@ export type Database = {
           goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
+          preview_mode_compound_added?: boolean | null
+          stripe_customer_id?: string | null
+          subscription_end_date?: string | null
+          subscription_start_date?: string | null
+          subscription_status?: string | null
+          subscription_type?: string | null
           terms_accepted_at?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -187,7 +203,15 @@ export type Database = {
           goals?: string[] | null
           id?: string
           onboarding_completed?: boolean | null
+          preview_mode_compound_added?: boolean | null
+          stripe_customer_id?: string | null
+          subscription_end_date?: string | null
+          subscription_start_date?: string | null
+          subscription_status?: string | null
+          subscription_type?: string | null
           terms_accepted_at?: string | null
+          trial_end_date?: string | null
+          trial_start_date?: string | null
           updated_at?: string | null
           user_id?: string
         }
