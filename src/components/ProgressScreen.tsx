@@ -651,7 +651,7 @@ export const ProgressScreen = () => {
             <Button 
               onClick={() => setShowLogModal(true)} 
               size="sm" 
-              variant="default"
+              variant="outline"
             >
               <Plus className="w-4 h-4 mr-1.5" />
               Log Weight
@@ -734,7 +734,7 @@ export const ProgressScreen = () => {
             <Button 
               onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
               size="sm" 
-              variant="default"
+              variant="outline"
             >
               {!isPremium && <PremiumDiamond className="w-3 h-3 mr-1.5" />}
               <Plus className="w-4 h-4 mr-1.5" />

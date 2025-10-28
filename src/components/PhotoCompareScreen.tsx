@@ -21,7 +21,7 @@ import { format } from "date-fns";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import logoHorizontal from "@/assets/logo-regimen-horizontal-final.png";
+import logoSquare from "@/assets/logo-regimen-square.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 
 interface PhotoEntry {
@@ -180,32 +180,30 @@ export default function PhotoCompareScreen() {
     
     ctx.fillStyle = '#AAAAAA';
     ctx.font = '18px Inter, -apple-system, sans-serif';
-    ctx.fillText(format(new Date(photos.before.date), 'MMM d, yyyy'), halfWidth / 2, 72);
-    ctx.fillText(format(new Date(photos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
+    ctx.fillText(format(new Date(photos.before.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(format(new Date(photos.after.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
     
     const logo = new Image();
     logo.crossOrigin = "anonymous";
-    logo.src = logoHorizontal;
+    logo.src = logoSquare;
     
     await new Promise(resolve => {
       logo.onload = () => {
-        const logoWidth = 120;
-        const logoHeight = (logo.height / logo.width) * logoWidth;
-        const logoX = canvas.width - logoWidth - 20;
-        const logoY = canvas.height - logoHeight - 20;
+        const logoSize = 80;
+        const logoX = (canvas.width - logoSize) / 2;
+        const logoY = canvas.height - logoSize - 30;
         
         ctx.globalAlpha = 0.9;
-        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
       logo.onerror = () => {
         ctx.fillStyle = '#FFFFFF';
         ctx.globalAlpha = 0.7;
-        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText('REGIMEN', canvas.width - 20, canvas.height - 35);
-        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
+        ctx.font = 'bold 16px Inter, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('REGIMEN', canvas.width / 2, canvas.height - 25);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
@@ -420,23 +418,22 @@ export default function PhotoCompareScreen() {
     // Add date stamps
     ctx.fillStyle = '#AAAAAA';
     ctx.font = '18px Inter, -apple-system, sans-serif';
-    ctx.fillText(format(new Date(selectedPhotos.before.date), 'MMM d, yyyy'), halfWidth / 2, 72);
-    ctx.fillText(format(new Date(selectedPhotos.after.date), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
+    ctx.fillText(format(new Date(selectedPhotos.before.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(format(new Date(selectedPhotos.after.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
     
-    // Add logo and watermark in bottom right corner
+    // Add logo centered at the bottom between the two photos
     const logo = new Image();
     logo.crossOrigin = "anonymous";
-    logo.src = logoHorizontal;
+    logo.src = logoSquare;
     
     await new Promise(resolve => {
       logo.onload = () => {
-        const logoWidth = 120;
-        const logoHeight = (logo.height / logo.width) * logoWidth;
-        const logoX = canvas.width - logoWidth - 20;
-        const logoY = canvas.height - logoHeight - 20;
+        const logoSize = 80;
+        const logoX = (canvas.width - logoSize) / 2;
+        const logoY = canvas.height - logoSize - 30;
         
         ctx.globalAlpha = 0.9;
-        ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
@@ -444,10 +441,9 @@ export default function PhotoCompareScreen() {
       logo.onerror = () => {
         ctx.fillStyle = '#FFFFFF';
         ctx.globalAlpha = 0.7;
-        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText('REGIMEN', canvas.width - 20, canvas.height - 35);
-        ctx.fillText('getregimen.app', canvas.width - 20, canvas.height - 12);
+        ctx.font = 'bold 16px Inter, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('REGIMEN', canvas.width / 2, canvas.height - 25);
         ctx.globalAlpha = 1.0;
         resolve(true);
       };
@@ -580,96 +576,158 @@ export default function PhotoCompareScreen() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* View All Photos Button */}
+        {/* All Photos Gallery */}
         {availablePhotos.length > 0 && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setShowAllPhotosView(true)}
-          >
-            <ImageIcon className="w-4 h-4 mr-2" />
-            View All Photos ({availablePhotos.length})
-          </Button>
-        )}
-
-        {/* Photo Selection */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4">
-            <h3 className="font-semibold text-center mb-3 text-foreground">Before</h3>
-            {selectedPhotos.before ? (
-              <div className="relative">
-                <img 
-                  src={selectedPhotos.before.url} 
-                  alt="Before" 
-                  className="w-full h-64 object-cover rounded-lg mb-2"
-                />
-                <p className="text-xs text-center text-muted-foreground mb-3">
-                  {format(new Date(selectedPhotos.before.date), 'MMM d, yyyy')}
-                </p>
-              </div>
-            ) : (
-              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
-                Select a photo
-              </div>
-            )}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowPhotoSelector('before')}
-            >
-              {selectedPhotos.before ? 'Change Photo' : 'Select Photo'}
-            </Button>
-          </Card>
-
-          <Card className="p-4">
-            <h3 className="font-semibold text-center mb-3 text-foreground">After</h3>
-            {selectedPhotos.after ? (
-              <div className="relative">
-                <img 
-                  src={selectedPhotos.after.url} 
-                  alt="After" 
-                  className="w-full h-64 object-cover rounded-lg mb-2"
-                />
-                <p className="text-xs text-center text-muted-foreground mb-3">
-                  {format(new Date(selectedPhotos.after.date), 'MMM d, yyyy')}
-                </p>
-              </div>
-            ) : (
-              <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
-                Select a photo
-              </div>
-            )}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowPhotoSelector('after')}
-            >
-              {selectedPhotos.after ? 'Change Photo' : 'Select Photo'}
-            </Button>
-          </Card>
-        </div>
-
-        {/* Preview and Share */}
-        {selectedPhotos.before && selectedPhotos.after && previewImageUrl && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Preview</h3>
-              <img 
-                src={previewImageUrl} 
-                alt="Comparison preview" 
-                className="w-full rounded-lg border-2 border-border"
-              />
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold">All Photos</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {availablePhotos.map((photo) => {
+                const [year, month, day] = photo.entry_date.split('-').map(Number);
+                const localDate = new Date(year, month - 1, day);
+                
+                return (
+                  <Card
+                    key={photo.id}
+                    className="relative group overflow-hidden"
+                  >
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => setPreviewPhoto(photo.id)}
+                    >
+                      <img
+                        src={getPhotoUrl(photo.photo_url)}
+                        alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                        className="w-full aspect-square object-cover"
+                      />
+                      <div className="p-2 text-center bg-card">
+                        <p className="text-xs font-medium">
+                          {format(localDate, 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-9 w-9 shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadPhoto(getPhotoUrl(photo.photo_url), photo.entry_date);
+                        }}
+                      >
+                        <Download className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="h-9 w-9 shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhotoToDelete(photo);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
-            <Button
-              onClick={handleShare}
-              className="w-full"
-              size="lg"
-            >
-              <Share2 className="h-5 w-5 mr-2" />
-              Share Comparison
-            </Button>
           </div>
         )}
+
+        {/* Compare Progress Header */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Compare Your Progress</h2>
+          
+          {/* Photo Selection or Preview */}
+          {!previewImageUrl ? (
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="p-4">
+                <h3 className="font-semibold text-center mb-3 text-foreground">Before</h3>
+                {selectedPhotos.before ? (
+                  <div className="relative">
+                    <img 
+                      src={selectedPhotos.before.url} 
+                      alt="Before" 
+                      className="w-full h-64 object-cover rounded-lg mb-2"
+                    />
+                    <p className="text-xs text-center text-muted-foreground mb-3">
+                      {format(new Date(selectedPhotos.before.date + 'T00:00:00'), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
+                    Select a photo
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowPhotoSelector('before')}
+                >
+                  {selectedPhotos.before ? 'Change Photo' : 'Select Photo'}
+                </Button>
+              </Card>
+
+              <Card className="p-4">
+                <h3 className="font-semibold text-center mb-3 text-foreground">After</h3>
+                {selectedPhotos.after ? (
+                  <div className="relative">
+                    <img 
+                      src={selectedPhotos.after.url} 
+                      alt="After" 
+                      className="w-full h-64 object-cover rounded-lg mb-2"
+                    />
+                    <p className="text-xs text-center text-muted-foreground mb-3">
+                      {format(new Date(selectedPhotos.after.date + 'T00:00:00'), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full h-64 bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-sm">
+                    Select a photo
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowPhotoSelector('after')}
+                >
+                  {selectedPhotos.after ? 'Change Photo' : 'Select Photo'}
+                </Button>
+              </Card>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <img 
+                  src={previewImageUrl} 
+                  alt="Comparison preview" 
+                  className="w-full rounded-lg border-2 border-border"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPreviewImageUrl(null);
+                    setSelectedPhotos({ before: null, after: null });
+                  }}
+                  className="flex-1"
+                >
+                  Change Photos
+                </Button>
+                <Button
+                  onClick={handleShare}
+                  className="flex-1"
+                >
+                  <Share2 className="h-5 w-5 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Photo Selector Dialog */}
