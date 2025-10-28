@@ -645,29 +645,18 @@ export const ProgressScreen = () => {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowLogModal(true)} 
-            size="sm" 
-            variant="outline"
-            className="flex-1"
-          >
-            Log Weight
-          </Button>
-          <Button 
-            onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
-            size="sm" 
-            variant="outline"
-            className="flex-1"
-          >
-            {!isPremium && <PremiumDiamond className="w-3 h-3 mr-1.5" />}
-            Add Photo
-          </Button>
-        </div>
-
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Weight Chart</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-foreground">Weight Chart</h2>
+            <Button 
+              onClick={() => setShowLogModal(true)} 
+              size="sm" 
+              variant="outline"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Log Weight
+            </Button>
+          </div>
 
           <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
@@ -742,6 +731,15 @@ export const ProgressScreen = () => {
         <Card className="p-4 bg-card border border-border space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
+            <Button 
+              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+              size="sm" 
+              variant="outline"
+            >
+              {!isPremium && <PremiumDiamond className="w-3 h-3 mr-1.5" />}
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Photo
+            </Button>
           </div>
 
           {dataLoading ? (
@@ -779,23 +777,13 @@ export const ProgressScreen = () => {
               </div>
 
               {photoEntries.length > 0 && (
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => navigate("/progress/compare")}
-                  >
-                    View All & Compare
-                  </Button>
-                  <Button 
-                    onClick={() => navigate('/progress/insights')}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Insights
-                  </Button>
-                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate("/progress/compare")}
+                >
+                  View All & Compare
+                </Button>
               )}
             </>
           ) : (
@@ -824,7 +812,7 @@ export const ProgressScreen = () => {
         </Card>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Treatment Timeline</h2>
+          <h2 className="text-lg font-semibold text-foreground">Medication Timeline</h2>
           
           <Card className="p-6 bg-card border border-border">
             {dataLoading ? (
@@ -863,8 +851,16 @@ export const ProgressScreen = () => {
                       <div className="space-y-4">
                         {compounds.map((compound, idx) => {
                           const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
-                          const startDate = new Date(compound.start_date);
-                          const endDate = compound.end_date ? new Date(compound.end_date) : now;
+                          // Parse dates properly to avoid timezone issues
+                          const [startYear, startMonth, startDay] = compound.start_date.split('-').map(Number);
+                          const startDate = new Date(startYear, startMonth - 1, startDay);
+                          
+                          let endDate = now;
+                          if (compound.end_date) {
+                            const [endYear, endMonth, endDay] = compound.end_date.split('-').map(Number);
+                            endDate = new Date(endYear, endMonth - 1, endDay);
+                          }
+                          
                           const isActive = compound.is_active && (!compound.end_date || endDate >= now);
                           
                           // Calculate all on/off periods if has cycles
