@@ -412,9 +412,9 @@ export const MyStackScreen = () => {
                         
                         return (
                           <div className="mt-3 pt-3 border-t border-border/50">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className={`h-2 w-2 rounded-full ${
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                   cycleStatus.currentPhase === 'on' 
                                     ? 'bg-primary animate-pulse' 
                                     : 'bg-muted-foreground'
@@ -426,11 +426,11 @@ export const MyStackScreen = () => {
                                 }`}>
                                   {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
                                 </span>
                               </div>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                                 {cyclePattern}
                               </span>
                             </div>

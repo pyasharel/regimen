@@ -27,6 +27,14 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
   const weeksOff = compound.cycle_weeks_off || 0;
   const isOnOffCycle = weeksOff > 0;
   
+  // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
+  const convertWeeksToDays = (weeks: number) => {
+    if (weeks >= 4 && weeks % 4 === 0) {
+      return (weeks / 4) * 30; // Treat as months
+    }
+    return weeks * 7;
+  };
+  
   // Generate cycle periods for display
   const segments: { start: Date; end: Date; isOn: boolean }[] = [];
   let currentDate = new Date(startDate);
@@ -34,7 +42,8 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
   
   while (currentDate < sixMonthsFromStart && segments.length < 20) {
     const periodWeeks = isOnPeriod ? weeksOn : weeksOff;
-    const periodEnd = addDays(currentDate, periodWeeks * 7);
+    const periodDays = convertWeeksToDays(periodWeeks);
+    const periodEnd = addDays(currentDate, periodDays);
     
     segments.push({
       start: new Date(currentDate),

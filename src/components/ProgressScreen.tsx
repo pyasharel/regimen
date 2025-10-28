@@ -841,11 +841,11 @@ export const ProgressScreen = () => {
                   // Use primary color scheme with opacity variations for clean look
                   const MEDICATION_COLORS = [
                     'hsl(var(--primary))',
-                    'hsl(var(--primary) / 0.7)',
+                    'hsl(var(--primary) / 0.8)',
+                    'hsl(var(--primary) / 0.6)',
                     'hsl(var(--primary) / 0.5)',
-                    'hsl(var(--foreground) / 0.8)',
-                    'hsl(var(--foreground) / 0.6)',
-                    'hsl(var(--foreground) / 0.4)',
+                    'hsl(var(--primary) / 0.4)',
+                    'hsl(var(--primary) / 0.3)',
                   ];
                   
                   return (
@@ -865,12 +865,22 @@ export const ProgressScreen = () => {
                           
                           const isActive = compound.is_active && (!compound.end_date || endDate >= now);
                           
+                          // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
+                          const convertWeeksToDays = (weeks: number) => {
+                            if (weeks >= 4 && weeks % 4 === 0) {
+                              return (weeks / 4) * 30; // Treat as months
+                            }
+                            return weeks * 7;
+                          };
+                          
                           // Calculate all on/off periods if has cycles
                           const periods: Array<{ start: Date; end: Date; isOn: boolean }> = [];
                           
                           if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
                             const cycleWeeksOn = compound.cycle_weeks_on;
                             const cycleWeeksOff = compound.cycle_weeks_off;
+                            const daysOn = convertWeeksToDays(cycleWeeksOn);
+                            const daysOff = convertWeeksToDays(cycleWeeksOff);
                             
                             let currentStart = startDate;
                             const finalEnd = endDate;
@@ -878,7 +888,7 @@ export const ProgressScreen = () => {
                             while (currentStart < finalEnd) {
                               // On period
                               const onEnd = new Date(currentStart);
-                              onEnd.setDate(onEnd.getDate() + (cycleWeeksOn * 7));
+                              onEnd.setDate(onEnd.getDate() + daysOn);
                               
                               periods.push({
                                 start: currentStart,
@@ -889,7 +899,7 @@ export const ProgressScreen = () => {
                               // Off period
                               const offStart = new Date(onEnd);
                               const offEnd = new Date(offStart);
-                              offEnd.setDate(offEnd.getDate() + (cycleWeeksOff * 7));
+                              offEnd.setDate(offEnd.getDate() + daysOff);
                               
                               if (offStart < finalEnd) {
                                 periods.push({
@@ -919,7 +929,9 @@ export const ProgressScreen = () => {
                                     className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                                     style={{ backgroundColor: color }}
                                   />
-                                  <span className="text-sm font-medium text-foreground truncate">{compound.name}</span>
+                                  <span className={`text-sm font-medium truncate ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                    {compound.name}
+                                  </span>
                                   {isActive && (
                                     <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium whitespace-nowrap flex-shrink-0">
                                       Active

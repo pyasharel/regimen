@@ -9,6 +9,10 @@ interface CycleStatus {
 
 /**
  * Calculate the current cycle status for a compound
+ * 
+ * IMPORTANT: Cycle periods are stored in weeks in the database.
+ * - 4 weeks is treated as 1 calendar month (approximately 30 days)
+ * - This provides more intuitive cycle calculations for users thinking in months
  */
 export const calculateCycleStatus = (
   startDate: string,
@@ -26,9 +30,20 @@ export const calculateCycleStatus = (
   // Calculate days since start
   const daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   
+  // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
+  // This gives users more intuitive cycle behavior
+  const convertWeeksToDays = (weeks: number) => {
+    if (weeks >= 4 && weeks % 4 === 0) {
+      // Treat as months: 4 weeks = 30 days (not 28)
+      return (weeks / 4) * 30;
+    }
+    // For non-month periods, use exact weeks
+    return weeks * 7;
+  };
+  
   // If it's a one-time duration (no off period), check if still within the on period
   if (!cycleWeeksOff || cycleWeeksOff === 0) {
-    const totalDaysOn = cycleWeeksOn * 7;
+    const totalDaysOn = convertWeeksToDays(cycleWeeksOn);
     const isStillInCycle = daysSinceStart < totalDaysOn;
     
     return {
@@ -42,8 +57,8 @@ export const calculateCycleStatus = (
   }
 
   // For recurring cycles (on/off pattern)
-  const daysOn = cycleWeeksOn * 7;
-  const daysOff = cycleWeeksOff * 7;
+  const daysOn = convertWeeksToDays(cycleWeeksOn);
+  const daysOff = convertWeeksToDays(cycleWeeksOff);
   const cycleDuration = daysOn + daysOff;
   
   // Find position within current cycle
