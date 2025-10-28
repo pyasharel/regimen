@@ -4,12 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp, Trash2 } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PremiumModal } from "@/components/PremiumModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,6 +69,7 @@ export const ProgressScreen = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   
   const { isEnabled: healthSyncEnabled, syncWeightFromHealth, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
@@ -217,6 +219,24 @@ export const ProgressScreen = () => {
       toast.error(error instanceof Error ? error.message : 'Failed to log weight');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('progress_entries')
+        .delete()
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      toast.success('Entry deleted successfully');
+      setDeleteEntryId(null);
+      refetchEntries();
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      toast.error('Failed to delete entry');
     }
   };
 
@@ -555,6 +575,46 @@ export const ProgressScreen = () => {
               </div>
             )}
           </Card>
+
+          {/* Weight Entry List */}
+          {weightEntries.length > 0 && (
+            <Card className="p-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground mb-3">Weight Entries</h3>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {weightEntries.slice().reverse().map((entry) => {
+                    const [year, month, day] = entry.entry_date.split('-').map(Number);
+                    const localDate = new Date(year, month - 1, day);
+                    const weightValue = entry.metrics?.weight || 0;
+                    
+                    return (
+                      <div 
+                        key={entry.id} 
+                        className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-foreground">
+                            {format(localDate, 'MMM d, yyyy')}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {weightValue} {entry.metrics?.unit || 'lbs'}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteEntryId(entry.id)}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -952,6 +1012,26 @@ export const ProgressScreen = () => {
         onDelete={handleDeletePhoto}
         onDateUpdate={refetchEntries}
       />
+
+      <AlertDialog open={!!deleteEntryId} onOpenChange={(open) => !open && setDeleteEntryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Weight Entry</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this weight entry? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteEntryId && handleDeleteEntry(deleteEntryId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
