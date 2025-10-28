@@ -32,16 +32,27 @@ export const SubscriptionPaywall = ({
     'LAUNCH50': { duration: 12, type: 'discount', value: 50 },
   };
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
-    if (promoCodes[code]) {
-      const promo = promoCodes[code];
-      const discountText = promo.type === 'free' 
-        ? `FREE for ${promo.duration} months!`
-        : `${promo.value}% off first year!`;
-      setAppliedPromo({ code, discount: discountText });
-      toast.success(`Promo code applied: ${discountText}`);
-    } else {
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-promo-code', {
+        body: { code }
+      });
+
+      if (error) throw error;
+      
+      if (data?.valid) {
+        const discountText = data.type === 'free' 
+          ? `FREE for ${data.duration} months!`
+          : `${data.discount}% off first year!`;
+        setAppliedPromo({ code, discount: discountText });
+        toast.success(`Promo code applied: ${discountText}`);
+      } else {
+        toast.error('Invalid promo code');
+      }
+    } catch (error) {
+      console.error('Promo validation error:', error);
       toast.error('Invalid promo code');
     }
   };

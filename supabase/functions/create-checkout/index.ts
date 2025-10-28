@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,40 +27,63 @@ serve(async (req) => {
     const { plan, promoCode } = await req.json();
     
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
+      apiVersion: "2023-10-16",
     });
 
-    // Check if customer exists
+    // Check if customer exists or create new one
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+    } else {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { supabase_user_id: user.id }
+      });
+      customerId = customer.id;
+      
+      await supabaseClient
+        .from('profiles')
+        .update({ stripe_customer_id: customerId })
+        .eq('user_id', user.id);
     }
 
     // Price IDs - replace with actual Stripe price IDs
-    const priceId = plan === 'annual' ? 'price_annual_placeholder' : 'price_monthly_placeholder';
+    const monthlyPriceId = Deno.env.get("STRIPE_MONTHLY_PRICE_ID") || "price_monthly_placeholder";
+    const annualPriceId = Deno.env.get("STRIPE_ANNUAL_PRICE_ID") || "price_annual_placeholder";
+    const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
 
-    const session = await stripe.checkout.sessions.create({
+    // Build session parameters
+    const sessionParams: any = {
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${req.headers.get("origin")}/today?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/today`,
       subscription_data: {
         trial_period_days: 14,
         metadata: {
-          user_id: user.id,
+          supabase_user_id: user.id,
           promo_code: promoCode || '',
         },
       },
       allow_promotion_codes: true,
-    });
+    };
+
+    // If promo code provided, try to apply it
+    if (promoCode) {
+      const promoCodes = await stripe.promotionCodes.list({
+        code: promoCode.toUpperCase(),
+        active: true,
+        limit: 1,
+      });
+      
+      if (promoCodes.data.length > 0) {
+        sessionParams.discounts = [{ promotion_code: promoCodes.data[0].id }];
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

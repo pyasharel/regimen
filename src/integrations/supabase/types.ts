@@ -164,9 +164,11 @@ export type Database = {
           full_name: string | null
           goals: string[] | null
           id: string
+          last_payment_attempt: string | null
           onboarding_completed: boolean | null
           preview_mode_compound_added: boolean | null
           stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           subscription_end_date: string | null
           subscription_start_date: string | null
           subscription_status: string | null
@@ -183,9 +185,11 @@ export type Database = {
           full_name?: string | null
           goals?: string[] | null
           id?: string
+          last_payment_attempt?: string | null
           onboarding_completed?: boolean | null
           preview_mode_compound_added?: boolean | null
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_end_date?: string | null
           subscription_start_date?: string | null
           subscription_status?: string | null
@@ -202,9 +206,11 @@ export type Database = {
           full_name?: string | null
           goals?: string[] | null
           id?: string
+          last_payment_attempt?: string | null
           onboarding_completed?: boolean | null
           preview_mode_compound_added?: boolean | null
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_end_date?: string | null
           subscription_start_date?: string | null
           subscription_status?: string | null

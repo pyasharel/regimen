@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2, Bell, Activity } from "lucide-react";
-import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
-import { PremiumModal } from "@/components/PremiumModal";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
+import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 
 // Version info - update these when bumping versions in capacitor.config.ts
 const APP_VERSION = '0.1.2';
@@ -21,37 +20,17 @@ export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [soundEnabled, setSoundEnabled] = useState(true);
-  
-  // Test mode toggle for premium features
-  const [testPremium, setTestPremium] = useState(false);
-  const isPremium = testPremium; // In production, this would check actual subscription status
 
-  // Load settings from localStorage on mount
   useEffect(() => {
-    const savedPremium = localStorage.getItem('testPremiumMode') === 'true';
-    setTestPremium(savedPremium);
-    
     const savedSound = localStorage.getItem('soundEnabled');
     setSoundEnabled(savedSound !== 'false');
   }, []);
 
-  const togglePremium = (checked: boolean) => {
-    setTestPremium(checked);
-    localStorage.setItem('testPremiumMode', String(checked));
-    // Trigger storage event for other components
-    window.dispatchEvent(new Event('storage'));
-  };
-
   const handleSignOut = async () => {
     try {
-      // Clear React Query cache
       await queryClient.clear();
-      
-      // Clear localStorage
-      localStorage.removeItem('testPremiumMode');
       
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
@@ -155,71 +134,17 @@ export const SettingsScreen = () => {
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Settings</h2>
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="absolute left-1/2 -translate-x-1/2">
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
               REGIMEN
             </h1>
-            {isPremium && (
-              <PremiumDiamond className="h-5 w-5 text-primary" />
-            )}
           </div>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
-        {/* Test Mode Toggle - For Beta Testing */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="test-premium" className="font-semibold flex items-center gap-2">
-                <PremiumDiamond className="h-4 w-4 text-primary" />
-                Test Premium Mode
-              </Label>
-              <p className="text-sm text-muted-foreground">Enable premium features for testing</p>
-            </div>
-            <Switch
-              id="test-premium"
-              checked={testPremium}
-              onCheckedChange={togglePremium}
-            />
-          </div>
-        </div>
-
-        {/* Premium Banner - Only show if user is NOT premium */}
-        {!isPremium && (
-          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-secondary p-6 shadow-[var(--shadow-premium)]">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20">
-                <PremiumDiamond className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-white">Unlock Premium</h2>
-                <ul className="mt-3 space-y-2 text-sm text-white/90">
-                  <li className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                    Custom notification times
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                    Advanced scheduling
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                    AI photo analysis
-                  </li>
-                </ul>
-                <Button 
-                  onClick={() => setShowPremiumModal(true)}
-                  variant="secondary" 
-                  className="mt-4 bg-white text-primary hover:bg-white/90"
-                  size="sm"
-                >
-                  Start 14-Day Free Trial
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Subscription Section */}
+        <SettingsSubscriptionSection />
 
         {/* Settings List */}
         <div className="space-y-3">
@@ -343,8 +268,6 @@ export const SettingsScreen = () => {
       </div>
 
       <BottomNavigation />
-      
-      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 };

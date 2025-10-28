@@ -8,6 +8,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -43,6 +44,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <SubscriptionBanners />
             {isOpen && weekData && (
               <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
             )}
