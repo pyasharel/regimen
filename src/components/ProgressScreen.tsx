@@ -268,24 +268,54 @@ export const ProgressScreen = () => {
     }
   };
 
-  const handleDotClick = (data: any) => {
-    const entry = weightEntries.find(e => {
-      const [year, month, day] = e.entry_date.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day);
-      return format(localDate, 'MMM d') === data.date;
-    });
+  const CustomDot = (props: any) => {
+    const { cx, cy, index } = props;
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={5}
+        fill="hsl(var(--primary))"
+        stroke="none"
+        cursor="pointer"
+        onClick={() => handleDotClick(index)}
+        style={{ cursor: 'pointer' }}
+      />
+    );
+  };
+
+  const CustomActiveDot = (props: any) => {
+    const { cx, cy, index } = props;
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={7}
+        fill="hsl(var(--primary))"
+        stroke="hsl(var(--background))"
+        strokeWidth={2}
+        cursor="pointer"
+        onClick={() => handleDotClick(index)}
+        style={{ cursor: 'pointer' }}
+      />
+    );
+  };
+
+  const handleDotClick = (index: number) => {
+    if (index === undefined || index < 0 || index >= weightEntries.length) return;
     
-    if (entry) {
-      const [year, month, day] = entry.entry_date.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day);
-      
-      setEditingEntry({
-        id: entry.id,
-        weight: entry.metrics?.weight || 0,
-        date: localDate,
-        unit: entry.metrics?.unit || 'lbs'
-      });
-    }
+    const entry = weightEntries[index];
+    if (!entry) return;
+    
+    const [year, month, day] = entry.entry_date.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day);
+    
+    setEditingEntry({
+      id: entry.id,
+      weight: entry.metrics?.weight || 0,
+      date: localDate,
+      unit: entry.metrics?.unit || 'lbs'
+    });
   };
 
   const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
@@ -612,8 +642,8 @@ export const ProgressScreen = () => {
                     dataKey="weight" 
                     stroke="hsl(var(--primary))" 
                     strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--primary))', r: 4, cursor: 'pointer' }}
-                    activeDot={{ r: 6, cursor: 'pointer', onClick: handleDotClick }}
+                    dot={<CustomDot />}
+                    activeDot={<CustomActiveDot />}
                   />
                 </LineChart>
               </ResponsiveContainer>

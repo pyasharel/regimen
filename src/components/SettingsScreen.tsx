@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
+import { useQueryClient } from "@tanstack/react-query";
 
 // Version info - update these when bumping versions in capacitor.config.ts
 const APP_VERSION = '0.1.2';
@@ -19,6 +20,7 @@ const APP_BUILD = '4';
 export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -44,12 +46,22 @@ export const SettingsScreen = () => {
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Failed to sign out");
-    } else {
+    try {
+      // Clear React Query cache
+      await queryClient.clear();
+      
+      // Clear localStorage
+      localStorage.removeItem('testPremiumMode');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       toast.success("Signed out successfully");
       navigate("/auth");
+    } catch (error) {
+      console.error('Sign out error:', error);
+      toast.error("Failed to sign out");
     }
   };
 
