@@ -130,7 +130,7 @@ export default function PhotoCompareScreen() {
     const halfWidth = targetWidth / 2;
     const padding = 40;
     const labelSpace = 80;
-    const bottomSpace = 60;
+    const bottomSpace = 50;
     
     canvas.width = targetWidth;
     canvas.height = targetHeight;
@@ -428,11 +428,11 @@ export default function PhotoCompareScreen() {
     
     await new Promise(resolve => {
       logo.onload = () => {
-        const logoSize = 80;
+        const logoSize = 120;
         const logoX = (canvas.width - logoSize) / 2;
-        const logoY = canvas.height - logoSize - 30;
+        const logoY = canvas.height - logoSize - 20;
         
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.95;
         ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
         ctx.globalAlpha = 1.0;
         resolve(true);
@@ -441,7 +441,7 @@ export default function PhotoCompareScreen() {
       logo.onerror = () => {
         ctx.fillStyle = '#FFFFFF';
         ctx.globalAlpha = 0.7;
-        ctx.font = 'bold 16px Inter, -apple-system, sans-serif';
+        ctx.font = 'bold 18px Inter, -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('REGIMEN', canvas.width / 2, canvas.height - 25);
         ctx.globalAlpha = 1.0;
@@ -586,9 +586,9 @@ export default function PhotoCompareScreen() {
                 const localDate = new Date(year, month - 1, day);
                 
                 return (
-                  <Card
+                  <div
                     key={photo.id}
-                    className="relative group overflow-hidden"
+                    className="relative group"
                   >
                     <div 
                       className="cursor-pointer"
@@ -597,39 +597,39 @@ export default function PhotoCompareScreen() {
                       <img
                         src={getPhotoUrl(photo.photo_url)}
                         alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
-                        className="w-full aspect-square object-cover"
+                        className="w-full aspect-square object-cover rounded-lg"
                       />
-                      <div className="p-2 text-center bg-card">
-                        <p className="text-xs font-medium">
+                      <div className="mt-1.5 text-center">
+                        <p className="text-xs font-medium text-muted-foreground">
                           {format(localDate, 'MMM d, yyyy')}
                         </p>
                       </div>
                     </div>
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         size="icon"
                         variant="secondary"
-                        className="h-9 w-9 shadow-lg"
+                        className="h-7 w-7 shadow-md bg-background/90 backdrop-blur-sm hover:bg-background"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadPhoto(getPhotoUrl(photo.photo_url), photo.entry_date);
                         }}
                       >
-                        <Download className="h-4 w-4 text-primary" />
+                        <Download className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         size="icon"
-                        variant="destructive"
-                        className="h-9 w-9 shadow-lg"
+                        variant="secondary"
+                        className="h-7 w-7 shadow-md bg-background/90 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           setPhotoToDelete(photo);
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                  </Card>
+                  </div>
                 );
               })}
             </div>
