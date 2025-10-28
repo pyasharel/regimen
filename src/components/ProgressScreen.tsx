@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInDays } from "date-fns";
+import { useStreaks } from "@/hooks/useStreaks";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Camera } from '@capacitor/camera';
@@ -479,6 +480,9 @@ export const ProgressScreen = () => {
   const currentWeight = allWeightEntries[0]?.metrics?.weight;
   const startingWeight = allWeightEntries[allWeightEntries.length - 1]?.metrics?.weight;
   const previousWeight = allWeightEntries[1]?.metrics?.weight;
+  
+  // Get streak data
+  const { data: streakData } = useStreaks();
 
   // Calculate weight trend for encouraging message
   const getWeightTrend = () => {
@@ -561,96 +565,135 @@ export const ProgressScreen = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
-        {/* Stats Dashboard */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Stats Dashboard - 4 Cards Grid */}
         {currentWeight && (
-          <Card className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Current Weight</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-foreground">{Math.round(currentWeight)}</span>
-                  <span className="text-sm text-muted-foreground">lbs</span>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Current Weight Card */}
+            <Card className="p-4 bg-card border border-border">
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Current Weight</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold text-foreground">{Math.round(currentWeight)}</span>
+                  <span className="text-xs text-muted-foreground">lbs</span>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-[10px] text-muted-foreground">
                   {allWeightEntries[0] && format(new Date(allWeightEntries[0].entry_date), 'MMM d')}
                 </div>
+                <Button 
+                  onClick={() => setShowLogModal(true)} 
+                  size="sm" 
+                  variant="outline"
+                  className="w-full h-7 text-xs mt-2"
+                >
+                  Log Weight
+                </Button>
               </div>
+            </Card>
 
-              {startingWeight && startingWeight !== currentWeight && (
-                <div className="space-y-1">
-                  <div className="text-sm text-muted-foreground">Total Change</div>
-                  <div className={cn(
-                    "flex items-baseline gap-2",
-                    startingWeight > currentWeight ? "text-green-600 dark:text-green-400" : "text-blue-600 dark:text-blue-400"
-                  )}>
-                    <span className="text-3xl font-bold">
+            {/* Total Change Card */}
+            {startingWeight && startingWeight !== currentWeight && (
+              <Card className="p-4 bg-card border border-border">
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Change</div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={cn(
+                      "text-2xl font-bold",
+                      startingWeight > currentWeight ? "text-success" : "text-primary"
+                    )}>
                       {startingWeight > currentWeight ? '-' : '+'}{Math.abs(Math.round((currentWeight - startingWeight) * 10) / 10)}
                     </span>
-                    <span className="text-sm">lbs</span>
+                    <span className="text-xs text-muted-foreground">lbs</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[10px] text-muted-foreground">
                     Since {allWeightEntries[allWeightEntries.length - 1] && format(new Date(allWeightEntries[allWeightEntries.length - 1].entry_date), 'MMM d')}
                   </div>
                 </div>
-              )}
+              </Card>
+            )}
 
-              {allWeightEntries.length >= 2 && (() => {
-                const recentEntries = allWeightEntries.slice(0, Math.min(4, allWeightEntries.length));
-                const daysBetween = Math.max(1, differenceInDays(
-                  new Date(recentEntries[0].entry_date),
-                  new Date(recentEntries[recentEntries.length - 1].entry_date)
-                ));
-                const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
-                const weeklyAvg = (weightChange / daysBetween) * 7;
-                
-                return (
-                  <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">Weekly Trend</div>
-                    <div className={cn(
-                      "flex items-baseline gap-2",
-                      weeklyAvg < 0 ? "text-green-600 dark:text-green-400" : weeklyAvg > 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
-                    )}>
-                      <span className="text-3xl font-bold">
+            {/* Weekly Trend Card */}
+            {allWeightEntries.length >= 2 && (() => {
+              const recentEntries = allWeightEntries.slice(0, Math.min(4, allWeightEntries.length));
+              const daysBetween = Math.max(1, differenceInDays(
+                new Date(recentEntries[0].entry_date),
+                new Date(recentEntries[recentEntries.length - 1].entry_date)
+              ));
+              const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
+              const weeklyAvg = (weightChange / daysBetween) * 7;
+              
+              return (
+                <Card className="p-4 bg-card border border-border">
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Weekly Trend</div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={cn(
+                        "text-2xl font-bold",
+                        weeklyAvg < -0.1 ? "text-success" : weeklyAvg > 0.1 ? "text-primary" : "text-muted-foreground"
+                      )}>
                         {weeklyAvg < 0 ? '' : '+'}{Math.round(weeklyAvg * 10) / 10}
                       </span>
-                      <span className="text-sm">lbs/wk</span>
+                      <span className="text-xs text-muted-foreground">lbs/wk</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-[10px] text-muted-foreground">
                       Last {recentEntries.length} entries
                     </div>
                   </div>
-                );
-              })()}
+                </Card>
+              );
+            })()}
 
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">Total Logs</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-foreground">{allWeightEntries.length}</span>
-                  <span className="text-sm text-muted-foreground">entries</span>
+            {/* Current Streak Card */}
+            <Card className="p-4 bg-card border border-border">
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Current Streak</div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold text-primary">{streakData?.current_streak || 0}</span>
+                  <span className="text-xs text-muted-foreground">days</span>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {allWeightEntries.length > 0 && (() => {
-                    const daysSinceFirst = differenceInDays(
-                      new Date(),
-                      new Date(allWeightEntries[allWeightEntries.length - 1].entry_date)
-                    );
-                    return `${daysSinceFirst} days tracked`;
-                  })()}
+                <div className="text-[10px] text-muted-foreground">
+                  Best: {streakData?.longest_streak || 0} days
                 </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Latest Photo Quick Action */}
+        {photoEntries.length > 0 && (
+          <Card className="p-4 bg-card border border-border">
+            <div className="flex items-center gap-4">
+              <div 
+                className="w-20 h-24 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                onClick={() => setPreviewPhoto({ url: getPhotoUrl(photoEntries[0].photo_url!), id: photoEntries[0].id })}
+              >
+                <img
+                  src={getPhotoUrl(photoEntries[0].photo_url!)}
+                  alt="Latest progress"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Latest Photo</div>
+                <div className="text-sm font-medium text-foreground mb-2">
+                  {format(new Date(photoEntries[0].entry_date), 'MMM d, yyyy')}
+                </div>
+                <Button 
+                  onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+                  size="sm" 
+                  variant="outline"
+                  className="h-7 text-xs"
+                >
+                  {!isPremium && <PremiumDiamond className="w-3 h-3 mr-1.5" />}
+                  Add New Photo
+                </Button>
               </div>
             </div>
           </Card>
         )}
 
         <div className="space-y-4">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-foreground">Weight Chart</h2>
-            <Button onClick={() => setShowLogModal(true)} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Log Weight
-            </Button>
-          </div>
+          <h2 className="text-lg font-semibold text-foreground">Weight Chart</h2>
 
           <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
             {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
@@ -724,17 +767,19 @@ export const ProgressScreen = () => {
 
         <div className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-foreground">Visual Progress</h2>
-            <Button 
-              onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
-              size="sm"
-              variant={isPremium ? "default" : "outline"}
-              className={!isPremium ? "gap-2" : ""}
-            >
-              {!isPremium && <PremiumDiamond className="w-4 h-4" />}
-              <CameraIcon className="w-4 h-4 mr-2" />
-              {isPremium ? "Upload Photo" : "Unlock"}
-            </Button>
+            <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
+            {photoEntries.length === 0 && (
+              <Button 
+                onClick={() => isPremium ? setShowPhotoModal(true) : setShowPremiumModal(true)} 
+                size="sm"
+                variant={isPremium ? "default" : "outline"}
+                className={!isPremium ? "gap-2" : ""}
+              >
+                {!isPremium && <PremiumDiamond className="w-4 h-4" />}
+                <CameraIcon className="w-4 h-4 mr-2" />
+                {isPremium ? "Upload Photo" : "Unlock"}
+              </Button>
+            )}
           </div>
 
           {dataLoading ? (
@@ -817,33 +862,38 @@ export const ProgressScreen = () => {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Medication Journey</h2>
+          <h2 className="text-lg font-semibold text-foreground">Medication Journey</h2>
           
-          <Card className="p-6 bg-muted/30">
+          <Card className="p-6 bg-card border border-border">
             {dataLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : compounds.length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-6 max-h-96 overflow-y-auto">
                 {(() => {
-                  // Calculate timeline range: earliest start date to now
+                  // Calculate timeline range: limit to last 18 months for cleaner view
                   const now = new Date();
+                  const eighteenMonthsAgo = new Date(now);
+                  eighteenMonthsAgo.setMonth(now.getMonth() - 18);
+                  
                   const earliestStart = compounds.reduce((earliest, compound) => {
                     const startDate = new Date(compound.start_date);
                     return startDate < earliest ? startDate : earliest;
                   }, now);
                   
-                  const timelineStart = new Date(earliestStart);
+                  // Use 18 months ago or earliest start, whichever is more recent
+                  const timelineStart = earliestStart > eighteenMonthsAgo ? earliestStart : eighteenMonthsAgo;
                   timelineStart.setDate(1); // Start of that month
                   const timelineEnd = now;
                   const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                   
+                  // Use monochromatic color scheme with opacity variations
                   const MEDICATION_COLORS = [
                     'hsl(var(--primary))',
-                    '#8B5CF6',
-                    '#3B82F6',
-                    '#10B981',
-                    '#F59E0B',
-                    '#EC4899'
+                    'hsl(var(--primary) / 0.8)',
+                    'hsl(var(--secondary))',
+                    'hsl(var(--secondary) / 0.8)',
+                    'hsl(var(--accent))',
+                    'hsl(var(--accent) / 0.8)',
                   ];
                   
                   return (
@@ -922,9 +972,13 @@ export const ProgressScreen = () => {
                               </div>
                               
                               {/* Thin line timeline */}
-                              <div className="relative h-1 bg-background/50 rounded-full overflow-hidden">
+                              <div className="relative h-0.5 bg-muted rounded-full overflow-hidden">
                                 {periods.map((period, periodIdx) => {
-                                  const periodStartDays = Math.floor((period.start.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                                  // Only render periods within the visible timeline
+                                  if (period.end < timelineStart) return null;
+                                  
+                                  const visibleStart = period.start < timelineStart ? timelineStart : period.start;
+                                  const periodStartDays = Math.floor((visibleStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                                   const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
                                   
                                   const leftPercent = Math.max(0, (periodStartDays / totalDays) * 100);
@@ -935,11 +989,12 @@ export const ProgressScreen = () => {
                                   return (
                                     <div
                                       key={periodIdx}
-                                      className="absolute h-full transition-all rounded-full"
+                                      className="absolute h-full transition-all"
                                       style={{
                                         left: `${leftPercent}%`,
                                         width: `${widthPercent}%`,
-                                        backgroundColor: isActive ? color : 'hsl(var(--muted-foreground) / 0.3)',
+                                        backgroundColor: color,
+                                        opacity: isActive ? 1 : 0.4,
                                       }}
                                       title={`${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`}
                                     />
