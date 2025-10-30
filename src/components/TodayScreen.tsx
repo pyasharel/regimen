@@ -3,7 +3,6 @@ import { Plus, Calendar as CalendarIcon, Sun, Moon } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
-import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef } from "react";
@@ -474,9 +473,6 @@ export const TodayScreen = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-      {!isSubscribed && (
-        <PreviewModeBanner onUpgrade={() => setShowPaywall(true)} />
-      )}
       <style>{`
         @keyframes draw-check {
           0% {

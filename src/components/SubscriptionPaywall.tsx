@@ -115,12 +115,13 @@ export const SubscriptionPaywall = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" hideClose>
         {/* Header */}
         <div className="relative p-6 pb-4">
           <button
             onClick={handleClose}
             className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close"
           >
             <X size={24} />
           </button>
