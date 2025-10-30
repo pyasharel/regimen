@@ -7,8 +7,9 @@ import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
-import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
+import { DevSubscriptionToggle } from "@/components/DevSubscriptionToggle";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -34,22 +35,22 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
+  const { setMockState } = useSubscription();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SubscriptionProvider>
-        <BrowserRouter>
-          <AnalyticsWrapper />
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <SubscriptionBanners />
-            {isOpen && weekData && (
-              <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
-            )}
-            <Routes>
+    <>
+      <AnalyticsWrapper />
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <SubscriptionBanners />
+        <DevSubscriptionToggle onMockStateChange={setMockState} />
+        {isOpen && weekData && (
+          <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
+        )}
+        <Routes>
             <Route path="/" element={<Splash />} />
             <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
@@ -74,7 +75,17 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
-      </BrowserRouter>
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SubscriptionProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
       </SubscriptionProvider>
     </QueryClientProvider>
   );

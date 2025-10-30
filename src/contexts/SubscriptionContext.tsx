@@ -14,6 +14,7 @@ interface SubscriptionContextType {
   markPreviewCompoundAdded: () => Promise<void>;
   getCompoundCount: () => Promise<number>;
   previewModeCompoundAdded: boolean;
+  setMockState: (state: 'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled') => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -35,8 +36,68 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [previewModeCompoundAdded, setPreviewModeCompoundAdded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [mockState, setMockState] = useState<'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled'>('none');
+
+  // Apply mock state for development testing
+  const applyMockState = (state: typeof mockState) => {
+    if (state === 'none') return; // Use real data
+    
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const fifteenDaysFromNow = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+    
+    switch (state) {
+      case 'preview':
+        setIsSubscribed(false);
+        setSubscriptionStatus('none');
+        setSubscriptionType(null);
+        setSubscriptionEndDate(null);
+        setTrialEndDate(null);
+        break;
+      case 'trialing':
+        setIsSubscribed(true);
+        setSubscriptionStatus('trialing');
+        setSubscriptionType('monthly');
+        setTrialEndDate(sevenDaysFromNow.toISOString());
+        setSubscriptionEndDate(null);
+        break;
+      case 'active':
+        setIsSubscribed(true);
+        setSubscriptionStatus('active');
+        setSubscriptionType('monthly');
+        setSubscriptionEndDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString());
+        setTrialEndDate(null);
+        break;
+      case 'past_due':
+        setIsSubscribed(false);
+        setSubscriptionStatus('past_due');
+        setSubscriptionType('monthly');
+        setSubscriptionEndDate(null);
+        setTrialEndDate(null);
+        break;
+      case 'canceled':
+        setIsSubscribed(true);
+        setSubscriptionStatus('canceled');
+        setSubscriptionType('annual');
+        setSubscriptionEndDate(fifteenDaysFromNow.toISOString());
+        setTrialEndDate(null);
+        break;
+    }
+  };
+
+  useEffect(() => {
+    if (mockState !== 'none') {
+      applyMockState(mockState);
+    }
+  }, [mockState]);
 
   const refreshSubscription = async () => {
+    // Don't fetch real data if we're in mock mode
+    if (mockState !== 'none') {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -165,6 +226,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         canAddCompound,
         markPreviewCompoundAdded,
         getCompoundCount,
+        setMockState,
       }}
     >
       {children}
