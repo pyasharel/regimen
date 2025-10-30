@@ -10,6 +10,8 @@ import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { DevSubscriptionToggle } from "@/components/DevSubscriptionToggle";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { useState } from "react";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -38,6 +40,7 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   return (
     <>
@@ -45,7 +48,10 @@ const AppContent = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <SubscriptionBanners subscriptionStatus={subscriptionStatus} />
+        <SubscriptionBanners 
+          subscriptionStatus={subscriptionStatus}
+          onUpgrade={() => setShowPaywall(true)}
+        />
         <DevSubscriptionToggle onMockStateChange={setMockState} />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
@@ -75,6 +81,11 @@ const AppContent = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
+        
+        <SubscriptionPaywall 
+          open={showPaywall}
+          onOpenChange={setShowPaywall}
+        />
     </>
   );
 };

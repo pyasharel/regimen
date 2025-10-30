@@ -6,9 +6,10 @@ import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
+  onUpgrade: () => void;
 }
 
-export const SubscriptionBanners = ({ subscriptionStatus }: SubscriptionBannersProps) => {
+export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
   const { trialEndDate, subscriptionEndDate } = useSubscription();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
@@ -138,7 +139,7 @@ export const SubscriptionBanners = ({ subscriptionStatus }: SubscriptionBannersP
 
   // Show preview mode banner only when truly in preview/none state
   if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
-    return <PreviewModeBanner onUpgrade={() => {}} />;
+    return <PreviewModeBanner onUpgrade={onUpgrade} />;
   }
 
   return null;

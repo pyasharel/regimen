@@ -20,12 +20,12 @@ export const DevSubscriptionToggle = ({ onMockStateChange }: DevSubscriptionTogg
   if (!isDev) return null;
 
   const states: { value: MockState; label: string; description: string }[] = [
-    { value: 'none', label: 'Real Data', description: 'Use actual subscription data' },
-    { value: 'preview', label: 'Preview Mode', description: 'Not subscribed, no trial' },
-    { value: 'trialing', label: 'Trial Active', description: '7 days remaining' },
-    { value: 'active', label: 'Active Sub', description: 'Monthly subscription active' },
-    { value: 'past_due', label: 'Past Due', description: 'Payment failed' },
-    { value: 'canceled', label: 'Canceled', description: '15 days access remaining' },
+    { value: 'none', label: 'Real Data', description: 'Uses your actual Stripe subscription status' },
+    { value: 'preview', label: 'Preview Mode', description: 'No subscription - shows upgrade prompts' },
+    { value: 'trialing', label: 'Free Trial', description: 'Active trial period' },
+    { value: 'active', label: 'Active Subscription', description: 'Paid subscription active' },
+    { value: 'past_due', label: 'Payment Failed', description: 'Subscription past due - shows payment prompt' },
+    { value: 'canceled', label: 'Canceled (Grace Period)', description: 'Canceled but still has access until period ends' },
   ];
 
   const handleStateChange = (state: MockState) => {
