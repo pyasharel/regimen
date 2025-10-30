@@ -133,39 +133,39 @@ export const SubscriptionPaywall = ({
         <div className="px-6 space-y-8">
           {/* Timeline */}
           <div className="space-y-6 relative pl-10">
-            <div className="absolute left-[15px] top-6 bottom-6 w-[2px] bg-[#E5E5E5]" />
+            <div className="absolute left-[15px] top-6 bottom-6 w-[2px] bg-border" />
             
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-[#FF6F61] flex items-center justify-center text-2xl">
-                🔓
+              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-[16px] text-[#1A1A1A] dark:text-white">TODAY</h3>
-                <p className="text-[14px] text-[#4A4A4A] dark:text-gray-300 mt-1">
+                <h3 className="font-bold text-[16px] text-foreground">TODAY</h3>
+                <p className="text-[14px] text-muted-foreground mt-1">
                   Unlock all features like compound tracking, dose calculations & reminders
                 </p>
               </div>
             </div>
 
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-[#FF6F61] flex items-center justify-center text-2xl">
-                🔔
+              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-[16px] text-[#1A1A1A] dark:text-white">IN 13 DAYS</h3>
-                <p className="text-[14px] text-[#4A4A4A] dark:text-gray-300 mt-1">
+                <h3 className="font-bold text-[16px] text-foreground">IN 13 DAYS</h3>
+                <p className="text-[14px] text-muted-foreground mt-1">
                   We'll send a reminder that your trial is ending soon
                 </p>
               </div>
             </div>
 
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-[#FF6F61] flex items-center justify-center text-2xl">
-                👑
+              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
-                <h3 className="font-bold text-[16px] text-[#1A1A1A] dark:text-white">IN 14 DAYS - BILLING STARTS</h3>
-                <p className="text-[14px] text-[#4A4A4A] dark:text-gray-300 mt-1">
+                <h3 className="font-bold text-[16px] text-foreground">IN 14 DAYS - BILLING STARTS</h3>
+                <p className="text-[14px] text-muted-foreground mt-1">
                   You'll be charged {selectedPlan === 'annual' ? '$39.99/year' : '$4.99/month'}. Cancel anytime.
                 </p>
               </div>
@@ -178,21 +178,21 @@ export const SubscriptionPaywall = ({
               onClick={() => setSelectedPlan('monthly')}
               className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col ${
                 selectedPlan === 'monthly'
-                  ? 'border-[#FF6F61] bg-[#FFF5F3] dark:bg-[#FF6F61]/10 shadow-[0_4px_12px_rgba(255,111,97,0.15)]'
-                  : 'border-[#E5E5E5] bg-white dark:bg-card'
+                  ? 'border-primary bg-primary/5 shadow-lg'
+                  : 'border-border bg-card'
               }`}
             >
               <div className="flex-1 space-y-2">
-                <p className="text-[14px] text-[#8A8A8A]">Monthly</p>
-                <p className="text-[24px] font-bold text-[#1A1A1A] dark:text-white">$4.99/mo</p>
-                <p className="text-[12px] text-[#8A8A8A]">Billed monthly</p>
+                <p className="text-[14px] text-muted-foreground">Monthly</p>
+                <p className="text-[24px] font-bold text-foreground">$4.99/mo</p>
+                <p className="text-[12px] text-muted-foreground">Billed monthly</p>
               </div>
               <div className="flex justify-center">
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'monthly' ? 'border-[#FF6F61]' : 'border-[#E5E5E5]'
+                  selectedPlan === 'monthly' ? 'border-primary' : 'border-border'
                 }`}>
                   {selectedPlan === 'monthly' && (
-                    <div className="w-3 h-3 rounded-full bg-[#FF6F61]" />
+                    <div className="w-3 h-3 rounded-full bg-primary" />
                   )}
                 </div>
               </div>
@@ -202,25 +202,25 @@ export const SubscriptionPaywall = ({
               onClick={() => setSelectedPlan('annual')}
               className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col relative ${
                 selectedPlan === 'annual'
-                  ? 'border-[#FF6F61] bg-[#FFF5F3] dark:bg-[#FF6F61]/10 shadow-[0_4px_12px_rgba(255,111,97,0.15)]'
-                  : 'border-[#E5E5E5] bg-white dark:bg-card'
+                  ? 'border-primary bg-primary/5 shadow-lg'
+                  : 'border-border bg-card'
               }`}
             >
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#FF6F61] rounded text-white text-[12px] font-bold whitespace-nowrap">
-                ⭐ BEST VALUE
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-primary rounded-full text-primary-foreground text-[11px] font-semibold whitespace-nowrap">
+                BEST VALUE
               </div>
               <div className="flex-1 space-y-2 mt-2">
-                <p className="text-[14px] text-[#8A8A8A]">Annual</p>
-                <p className="text-[24px] font-bold text-[#1A1A1A] dark:text-white">$39.99/yr</p>
-                <p className="text-[16px] font-medium text-[#FF6F61]">$3.33/mo</p>
+                <p className="text-[14px] text-muted-foreground">Annual</p>
+                <p className="text-[24px] font-bold text-foreground">$39.99/yr</p>
+                <p className="text-[16px] font-medium text-primary">$3.33/mo</p>
                 <p className="text-[14px] font-medium text-[#8B5CF6]">Save 33%</p>
               </div>
               <div className="flex justify-center">
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'annual' ? 'border-[#FF6F61]' : 'border-[#E5E5E5]'
+                  selectedPlan === 'annual' ? 'border-primary' : 'border-border'
                 }`}>
                   {selectedPlan === 'annual' && (
-                    <div className="w-3 h-3 rounded-full bg-[#FF6F61]" />
+                    <div className="w-3 h-3 rounded-full bg-primary" />
                   )}
                 </div>
               </div>
@@ -228,8 +228,8 @@ export const SubscriptionPaywall = ({
           </div>
 
           {/* No Payment Due */}
-          <div className="flex items-center gap-2 text-[#4A4A4A] dark:text-gray-300">
-            <span className="text-[#8B5CF6] text-[16px]">✓</span>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
             <span className="text-[16px]">No Payment Due Now</span>
           </div>
 
@@ -261,13 +261,16 @@ export const SubscriptionPaywall = ({
               </div>
             )}
             {appliedPromo && (
-              <div className="bg-[#F3E8FF] dark:bg-[#8B5CF6]/10 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-[14px] text-[#8B5CF6]">
-                  ✓ Code {appliedPromo.code} applied - {appliedPromo.discount}
-                </span>
+              <div className="bg-[#8B5CF6]/10 rounded-lg p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
+                  <span className="text-[14px] text-[#8B5CF6] font-medium">
+                    Code {appliedPromo.code} applied - {appliedPromo.discount}
+                  </span>
+                </div>
                 <button
                   onClick={() => setAppliedPromo(null)}
-                  className="text-[12px] text-[#8B5CF6] underline"
+                  className="text-[12px] text-[#8B5CF6] underline hover:no-underline"
                 >
                   Remove
                 </button>
@@ -280,7 +283,7 @@ export const SubscriptionPaywall = ({
             <Button
               onClick={handleStartTrial}
               disabled={isLoading}
-              className="w-full bg-[#FF6F61] hover:bg-[#E55A50] text-white text-[16px] font-semibold py-4 h-auto rounded-xl"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl"
             >
               {getButtonText()}
             </Button>

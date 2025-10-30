@@ -18,26 +18,33 @@ export const SubscriptionBanners = () => {
     const daysRemaining = calculateDaysRemaining(trialEndDate);
     
     return (
-      <div className="bg-[hsl(var(--warning-light))] border-b border-[hsl(var(--warning))] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span className="text-[14px] font-medium text-[hsl(var(--warning-foreground))]">
-            🎉 Trial: {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <a 
-            href="/settings" 
-            className="text-[14px] text-primary hover:underline font-medium"
-          >
-            Manage →
-          </a>
-          <button
-            onClick={() => setDismissed('trial')}
-            className="text-[hsl(var(--warning-foreground))] hover:opacity-70"
-          >
-            <X className="h-4 w-4" />
-          </button>
+      <div className="bg-primary/5 border-b border-primary/20 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex-shrink-0 w-1.5 h-8 bg-primary rounded-full" />
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-foreground">
+                Free Trial Active
+              </p>
+              <p className="text-[12px] text-muted-foreground">
+                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a 
+              href="/settings" 
+              className="text-[13px] text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              Manage
+            </a>
+            <button
+              onClick={() => setDismissed('trial')}
+              className="w-6 h-6 rounded-md hover:bg-muted/80 flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -45,26 +52,33 @@ export const SubscriptionBanners = () => {
 
   if (subscriptionStatus === 'past_due' && dismissed !== 'past_due') {
     return (
-      <div className="bg-[hsl(var(--destructive-light))] border-b border-[hsl(var(--destructive))] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-destructive" />
-          <span className="text-[14px] font-medium text-destructive">
-            ⚠️ Payment failed. Update payment method to continue access.
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <a 
-            href="/settings" 
-            className="text-[14px] text-destructive hover:underline font-medium"
-          >
-            Fix Now
-          </a>
-          <button
-            onClick={() => setDismissed('past_due')}
-            className="text-destructive hover:opacity-70"
-          >
-            <X className="h-4 w-4" />
-          </button>
+      <div className="bg-destructive/5 border-b border-destructive/20 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 flex-1">
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-destructive">
+                Payment Failed
+              </p>
+              <p className="text-[12px] text-destructive/80">
+                Update payment method to continue access
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a 
+              href="/settings" 
+              className="text-[13px] text-destructive hover:text-destructive/80 font-medium transition-colors"
+            >
+              Fix Now
+            </a>
+            <button
+              onClick={() => setDismissed('past_due')}
+              className="w-6 h-6 rounded-md hover:bg-destructive/10 flex items-center justify-center transition-colors text-destructive"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -81,26 +95,33 @@ export const SubscriptionBanners = () => {
       });
       
       return (
-        <div className="bg-[hsl(var(--secondary-light))] border-b border-[hsl(var(--secondary))] px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Info className="h-5 w-5 text-secondary" />
-            <span className="text-[14px] font-medium text-secondary-foreground">
-              ℹ️ Subscription ends on {endDate}. Resubscribe to keep access.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <a 
-              href="/settings" 
-              className="text-[14px] text-secondary hover:underline font-medium"
-            >
-              Resubscribe
-            </a>
-            <button
-              onClick={() => setDismissed('canceled')}
-              className="text-secondary-foreground hover:opacity-70"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        <div className="bg-muted/30 border-b border-border px-4 py-3">
+          <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+            <div className="flex items-center gap-3 flex-1">
+              <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-medium text-foreground">
+                  Subscription Ending
+                </p>
+                <p className="text-[12px] text-muted-foreground">
+                  Access until {endDate}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a 
+                href="/settings" 
+                className="text-[13px] text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                Resubscribe
+              </a>
+              <button
+                onClick={() => setDismissed('canceled')}
+                className="w-6 h-6 rounded-md hover:bg-muted/80 flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       );
