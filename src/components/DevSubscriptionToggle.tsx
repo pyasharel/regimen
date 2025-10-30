@@ -51,12 +51,12 @@ export const DevSubscriptionToggle = ({ onMockStateChange }: DevSubscriptionTogg
         </Button>
       </SheetTrigger>
       
-      <SheetContent side="bottom" className="h-[80vh]">
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col">
         <SheetHeader>
           <SheetTitle>Developer: Subscription State Preview</SheetTitle>
         </SheetHeader>
         
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 space-y-3 overflow-y-auto flex-1 pr-2">
           {states.map((state) => (
             <button
               key={state.value}

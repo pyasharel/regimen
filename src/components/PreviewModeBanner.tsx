@@ -10,6 +10,12 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
 
   if (isDismissed) return null;
 
+  const handleSubscribeClick = () => {
+    if (onUpgrade) {
+      onUpgrade();
+    }
+  };
+
   return (
     <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm border-b border-border/50 px-4 py-3">
       <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
@@ -21,7 +27,7 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
             </p>
             <p className="text-[12px] text-muted-foreground truncate">
               <button
-                onClick={onUpgrade}
+                onClick={handleSubscribeClick}
                 className="text-[#8B5CF6] hover:text-[#7C3AED] font-medium transition-colors"
               >
                 Subscribe

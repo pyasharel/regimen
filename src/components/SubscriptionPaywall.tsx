@@ -120,7 +120,7 @@ export const SubscriptionPaywall = ({
         <div className="relative p-6 pb-4">
           <button
             onClick={handleClose}
-            className="absolute top-4 left-4 text-[#8A8A8A] hover:text-foreground transition-colors"
+            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X size={24} />
           </button>
@@ -133,10 +133,10 @@ export const SubscriptionPaywall = ({
         <div className="px-6 space-y-8">
           {/* Timeline */}
           <div className="space-y-6 relative pl-10">
-            <div className="absolute left-[15px] top-6 bottom-6 w-[2px] bg-border" />
+            <div className="absolute left-[11px] top-[24px] bottom-[24px] w-[2px] bg-border" />
             
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
@@ -148,7 +148,7 @@ export const SubscriptionPaywall = ({
             </div>
 
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
@@ -160,7 +160,7 @@ export const SubscriptionPaywall = ({
             </div>
 
             <div className="relative">
-              <div className="absolute -left-10 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
                 <div className="w-3 h-3 rounded-full bg-primary" />
               </div>
               <div>
@@ -247,7 +247,7 @@ export const SubscriptionPaywall = ({
                 <Input
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  placeholder="OCTOPUS3"
+                  placeholder="Enter code"
                   className="uppercase"
                 />
                 <div className="flex gap-2">
