@@ -22,7 +22,14 @@ export const SettingsSubscriptionSection = () => {
     try {
       const { data, error } = await supabase.functions.invoke('create-portal-session');
       
-      if (error) throw error;
+      if (error) {
+        // Mock portal for testing without Stripe
+        if (error.message?.includes('No customer found')) {
+          toast.info('Stripe not configured yet. This will open the billing portal when Stripe is connected.');
+          return;
+        }
+        throw error;
+      }
       
       if (data?.url) {
         window.open(data.url, '_blank');
@@ -84,21 +91,16 @@ export const SettingsSubscriptionSection = () => {
               </div>
             </div>
             
-            <div className="text-[13px] text-muted-foreground space-y-0.5">
-              <p>Next billing {formatDate(subscriptionEndDate)}</p>
-              <p className="text-[12px]">
-                {subscriptionType === 'annual' ? '$39.99/year ($3.33/mo)' : '$4.99/month'}
-              </p>
+            <div className="text-[13px] text-muted-foreground">
+              <p>Renews {formatDate(subscriptionEndDate)}</p>
             </div>
             
-            <Button
+            <button
               onClick={handleManageSubscription}
-              variant="outline"
-              size="sm"
-              className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+              className="text-[13px] text-primary hover:text-primary/80 underline transition-colors"
             >
-              Manage Subscription
-            </Button>
+              Manage billing
+            </button>
           </CardContent>
         </Card>
         
@@ -139,30 +141,18 @@ export const SettingsSubscriptionSection = () => {
               </div>
             </div>
             
-            <div className="text-[13px] text-muted-foreground space-y-0.5">
+            <div className="text-[13px] text-muted-foreground">
               <p>Trial ends {formatDate(trialEndDate)}</p>
-              <p className="text-[12px]">
-                Then {subscriptionType === 'annual' ? '$39.99/year' : '$4.99/month'}
-              </p>
             </div>
             
-            <Button
+            <button
               onClick={handleManageSubscription}
-              variant="outline"
-              size="sm"
-              className="w-full border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+              className="text-[13px] text-primary hover:text-primary/80 underline transition-colors"
             >
-              Manage Subscription
-            </Button>
+              Manage trial
+            </button>
           </CardContent>
         </Card>
-        
-        <button
-          onClick={handleManageSubscription}
-          className="text-[13px] text-muted-foreground hover:text-destructive underline transition-colors"
-        >
-          Cancel Trial
-        </button>
       </div>
     );
   }

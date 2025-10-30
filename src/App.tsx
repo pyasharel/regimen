@@ -37,7 +37,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
-  const { setMockState } = useSubscription();
+  const { setMockState, subscriptionStatus } = useSubscription();
 
   return (
     <>
@@ -45,7 +45,7 @@ const AppContent = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <SubscriptionBanners />
+        <SubscriptionBanners subscriptionStatus={subscriptionStatus} />
         <DevSubscriptionToggle onMockStateChange={setMockState} />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />

@@ -1,11 +1,26 @@
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { X, AlertCircle, Info } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 
-export const SubscriptionBanners = () => {
-  const { subscriptionStatus, trialEndDate, subscriptionEndDate } = useSubscription();
-  const [dismissed, setDismissed] = useState<string | null>(null);
+interface SubscriptionBannersProps {
+  subscriptionStatus: string;
+}
+
+export const SubscriptionBanners = ({ subscriptionStatus }: SubscriptionBannersProps) => {
+  const { trialEndDate, subscriptionEndDate } = useSubscription();
+  const [dismissed, setDismissed] = useState<string | null>(() => {
+    return sessionStorage.getItem('dismissedBanner');
+  });
+
+  useEffect(() => {
+    if (dismissed) {
+      sessionStorage.setItem('dismissedBanner', dismissed);
+    } else {
+      sessionStorage.removeItem('dismissedBanner');
+    }
+  }, [dismissed]);
 
   const calculateDaysRemaining = (endDate: string | null) => {
     if (!endDate) return 0;
@@ -94,10 +109,10 @@ export const SubscriptionBanners = () => {
               <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-[13px] font-medium text-foreground">
-                  Subscription Ending
+                  Subscription Ends {endDate}
                 </p>
                 <p className="text-[12px] text-muted-foreground">
-                  Access until {endDate}
+                  {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
                 </p>
               </div>
             </div>
@@ -106,7 +121,7 @@ export const SubscriptionBanners = () => {
                 onClick={handleResubscribe}
                 className="text-[13px] text-primary hover:text-primary/80 font-medium transition-colors"
               >
-                Resubscribe
+                Renew
               </button>
               <button
                 onClick={() => setDismissed('canceled')}
@@ -119,6 +134,11 @@ export const SubscriptionBanners = () => {
         </div>
       );
     }
+  }
+
+  // Show preview mode banner only when truly in preview/none state
+  if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
+    return <PreviewModeBanner onUpgrade={() => {}} />;
   }
 
   return null;
