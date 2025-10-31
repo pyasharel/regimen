@@ -251,34 +251,6 @@ export default function EmailTest() {
             </CardContent>
           </Card>
 
-          {/* Trial Ending */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-primary" />
-                Trial Ending
-              </CardTitle>
-              <CardDescription>
-                Reminder sent before trial expires
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={sendTrialEndingEmail}
-                disabled={loading === "trial"}
-                className="w-full"
-              >
-                {loading === "trial" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Send Trial Ending"
-                )}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Instructions */}

@@ -61,13 +61,13 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://helloregimen.com/settings" style="background-color: #dc3545; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                <a href="https://getregimen.app/settings" style="background-color: #dc3545; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
                   Update Payment Method
                 </a>
               </div>
 
               <p style="color: #484848; font-size: 14px; text-align: center; margin: 16px 0;">
-                Or view your invoice: <a href="${invoiceUrl}" style="color: #8B5CF6; text-decoration: underline;">View Invoice</a>
+                Or view your invoice: <a href="${invoiceUrl}" style="color: #FF6B6B; text-decoration: underline;">View Invoice</a>
               </p>
 
               <div style="margin: 32px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
