@@ -23,9 +23,11 @@ export const SettingsSubscriptionSection = () => {
       const { data, error } = await supabase.functions.invoke('create-portal-session');
       
       if (error) {
-        // Mock portal for testing without Stripe
-        if (error.message?.includes('No customer found')) {
-          toast.info('Stripe not configured yet. This will open the billing portal when Stripe is connected.');
+        const errorMessage = error.message || JSON.stringify(error);
+        
+        // Handle Stripe not being fully configured
+        if (errorMessage.includes('No customer found') || errorMessage.includes('No configuration provided')) {
+          toast.info('Stripe billing portal is not yet configured. This feature will be available once payment integration is complete.');
           return;
         }
         throw error;
@@ -34,9 +36,16 @@ export const SettingsSubscriptionSection = () => {
       if (data?.url) {
         window.open(data.url, '_blank');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Portal error:', error);
-      toast.error('Failed to open subscription management');
+      const errorMessage = error.message || JSON.stringify(error);
+      
+      // Final catch for configuration errors
+      if (errorMessage.includes('No configuration provided')) {
+        toast.info('Stripe billing portal is not yet configured. This feature will be available once payment integration is complete.');
+      } else {
+        toast.error('Failed to open subscription management');
+      }
     }
   };
 
