@@ -61,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${updatePaymentUrl}" style="background-color: #dc3545; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                <a href="https://helloregimen.com/settings" style="background-color: #dc3545; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
                   Update Payment Method
                 </a>
               </div>
