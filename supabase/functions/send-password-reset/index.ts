@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${resetLink}" style="background-color: #8B5CF6; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                <a href="https://helloregimen.com/auth?mode=recovery&token=${resetLink}" style="background-color: #8B5CF6; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
                   Reset Password
                 </a>
               </div>

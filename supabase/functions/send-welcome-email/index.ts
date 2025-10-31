@@ -35,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
         <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f6f9fc;">
           <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
             <div style="background-color: #ffffff; border-radius: 8px; padding: 40px;">
-              <h1 style="color: #1a1a1a; font-size: 28px; font-weight: bold; margin: 0 0 24px; line-height: 1.3;">Welcome to Regimen, ${fullName}! 🎉</h1>
+              <h1 style="color: #1a1a1a; font-size: 28px; font-weight: bold; margin: 0 0 24px; line-height: 1.3;">Welcome to Regimen, ${fullName}! 💪</h1>
               
               <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
                 We're excited to have you on board! Regimen is your personal health companion for tracking compounds, logging doses, and measuring progress.
@@ -44,22 +44,37 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 32px 0;">
                 <h2 style="color: #1a1a1a; font-size: 20px; font-weight: 600; margin: 0 0 16px;">Here's what you can do:</h2>
                 <ul style="margin: 0; padding: 0; list-style: none;">
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">📊 Track your daily doses with smart reminders</li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">💊 Manage multiple compounds with custom schedules</li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">📸 Document progress with photos and metrics</li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">🔥 Build streaks and stay motivated</li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8;">📈 Visualize your journey with insights</li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px; padding-left: 24px; position: relative;">
+                    <span style="position: absolute; left: 0; color: #8B5CF6; font-weight: bold;">•</span>
+                    Track your daily doses with smart reminders
+                  </li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px; padding-left: 24px; position: relative;">
+                    <span style="position: absolute; left: 0; color: #8B5CF6; font-weight: bold;">•</span>
+                    Manage multiple compounds with custom schedules
+                  </li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px; padding-left: 24px; position: relative;">
+                    <span style="position: absolute; left: 0; color: #8B5CF6; font-weight: bold;">•</span>
+                    Document progress with photos and metrics
+                  </li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px; padding-left: 24px; position: relative;">
+                    <span style="position: absolute; left: 0; color: #8B5CF6; font-weight: bold;">•</span>
+                    Build streaks and stay motivated
+                  </li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; padding-left: 24px; position: relative;">
+                    <span style="position: absolute; left: 0; color: #8B5CF6; font-weight: bold;">•</span>
+                    Visualize your journey with insights
+                  </li>
                 </ul>
               </div>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://helloregimen.com/today" style="background-color: #8B5CF6; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                <a href="https://helloregimen.com" style="background-color: #8B5CF6; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
                   Get Started Now
                 </a>
               </div>
 
               <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                Need help? Just reply to this email and we'll be happy to assist you.
+                Need help? Email us at <a href="mailto:support@helloregimen.com" style="color: #8B5CF6; text-decoration: none;">support@helloregimen.com</a>
               </p>
 
               <p style="color: #8a8a8a; font-size: 14px; line-height: 1.6; margin: 32px 0 0;">
