@@ -8,8 +8,8 @@ import {
   Preview,
   Text,
   Section,
-} from 'npm:@react-email/components@0.0.22'
-import * as React from 'npm:react@18.3.1'
+} from 'https://esm.sh/@react-email/components@0.0.22'
+import * as React from 'https://esm.sh/react@18.3.1'
 
 interface TrialEndingEmailProps {
   fullName: string;
@@ -28,7 +28,7 @@ export const TrialEndingEmail = ({
 }: TrialEndingEmailProps) => (
   <Html>
     <Head />
-    <Preview>Your Regimen trial ends in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}</Preview>
+    <Preview>{`Your Regimen trial ends in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Your trial is ending soon</Heading>

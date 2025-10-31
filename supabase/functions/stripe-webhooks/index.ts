@@ -138,7 +138,7 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
       status: 200,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Webhook error:", err.message);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
