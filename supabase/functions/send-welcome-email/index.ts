@@ -1,8 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import React from "https://esm.sh/react@18.3.1";
-import { renderAsync } from "https://esm.sh/@react-email/components@0.0.22";
-import { WelcomeEmail } from "../_templates/welcome-email.tsx";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -27,11 +24,59 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[WELCOME-EMAIL] Sending welcome email to: ${email}`);
 
-    const html = await renderAsync(
-      React.createElement(WelcomeEmail, {
-        fullName: fullName || "there",
-      })
-    );
+    // Simple HTML email without React Email for now
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background-color: #f6f9fc;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <div style="background-color: #ffffff; border-radius: 8px; padding: 40px;">
+              <h1 style="color: #1a1a1a; font-size: 28px; font-weight: bold; margin: 0 0 24px; line-height: 1.3;">Welcome to Regimen, ${fullName}! 🎉</h1>
+              
+              <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                We're excited to have you on board! Regimen is your personal health companion for tracking compounds, logging doses, and measuring progress.
+              </p>
+
+              <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 32px 0;">
+                <h2 style="color: #1a1a1a; font-size: 20px; font-weight: 600; margin: 0 0 16px;">Here's what you can do:</h2>
+                <ul style="margin: 0; padding: 0; list-style: none;">
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">📊 Track your daily doses with smart reminders</li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">💊 Manage multiple compounds with custom schedules</li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">📸 Document progress with photos and metrics</li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">🔥 Build streaks and stay motivated</li>
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8;">📈 Visualize your journey with insights</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="https://helloregimen.com/today" style="background-color: #8B5CF6; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                  Get Started Now
+                </a>
+              </div>
+
+              <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                Need help? Just reply to this email and we'll be happy to assist you.
+              </p>
+
+              <p style="color: #8a8a8a; font-size: 14px; line-height: 1.6; margin: 32px 0 0;">
+                Stay consistent,<br>
+                The Regimen Team
+              </p>
+
+              <div style="margin-top: 32px; padding: 16px; background-color: #fef3cd; border-radius: 6px; border-left: 3px solid #f0ad4e;">
+                <p style="color: #8a8a8a; font-size: 12px; line-height: 1.5; margin: 0;">
+                  <strong>Important:</strong> Regimen is a tracking tool only and does not provide medical advice. Always consult with healthcare professionals regarding your health decisions.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
 
     const emailResponse = await resend.emails.send({
       from: "Regimen <hello@mail.helloregimen.com>",
