@@ -14,13 +14,22 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
+    // Check if this is a password reset callback
+    const mode = searchParams.get("mode");
+    if (mode === "reset") {
+      setIsResettingPassword(true);
+      return;
+    }
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -30,13 +39,15 @@ export default function Auth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResettingPassword(true);
+      } else if (session) {
         await checkOnboardingStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const checkOnboardingStatus = async (userId: string) => {
     try {
@@ -57,6 +68,36 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!password || password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) throw error;
+      
+      toast.success("Password updated successfully! Redirecting...");
+      setTimeout(() => navigate("/today"), 1500);
+    } catch (error: any) {
+      console.error("Password update error:", error);
+      toast.error(error.message || "Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -68,14 +109,8 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const resetLink = `${window.location.origin}/auth?reset=true`;
-      
-      // Send custom password reset email
-      const { error } = await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email,
-          resetLink
-        }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
       });
 
       if (error) throw error;
@@ -170,18 +205,86 @@ export default function Auth() {
         <div className="text-center mb-8">
           <img src={logo} alt="Regimen Logo" className="h-24 mx-auto mb-6 dark:invert-0 invert" />
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {isForgotPassword ? "Reset Password" : isSignUp ? "Create Account" : "Welcome Back"}
+            {isResettingPassword 
+              ? "Set New Password" 
+              : isForgotPassword 
+                ? "Reset Password" 
+                : isSignUp 
+                  ? "Create Account" 
+                  : "Welcome Back"}
           </h1>
           <p className="text-muted-foreground">
-            {isForgotPassword
-              ? "Enter your email to receive a password reset link"
-              : isSignUp 
-                ? "Sign up to track your health progress" 
-                : "Sign in to continue to your dashboard"}
+            {isResettingPassword
+              ? "Enter your new password below"
+              : isForgotPassword
+                ? "Enter your email to receive a password reset link"
+                : isSignUp 
+                  ? "Sign up to track your health progress" 
+                  : "Sign in to continue to your dashboard"}
           </p>
         </div>
 
-        {isForgotPassword ? (
+        {isResettingPassword ? (
+          <form onSubmit={handleResetPassword} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                  minLength={6}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+                required
+                minLength={6}
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating password...
+                </>
+              ) : (
+                "Update Password"
+              )}
+            </Button>
+          </form>
+        ) : isForgotPassword ? (
           <form onSubmit={handleForgotPassword} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

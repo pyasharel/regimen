@@ -40,7 +40,7 @@ export const WelcomeEmail = ({ fullName }: WelcomeEmailProps) => (
 
         <Section style={ctaSection}>
           <Link
-            href="https://helloregimen.com/today"
+            href="https://getregimen.app/today"
             style={button}
           >
             Get Started Now

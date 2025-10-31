@@ -22,8 +22,8 @@ export const AccountSettings = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
@@ -115,22 +115,27 @@ export const AccountSettings = () => {
     }
   };
 
-  const handlePasswordUpdate = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-    
-    setLoading(true);
+  const handlePasswordReset = async () => {
+    setSendingReset(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        toast.error("No email found for this account");
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+
       if (error) throw error;
-      toast.success("Password updated successfully");
-      setNewPassword("");
+      
+      toast.success("Password reset email sent! Check your inbox.");
     } catch (error: any) {
-      toast.error(error.message || "Failed to update password");
+      console.error("Password reset error:", error);
+      toast.error(error.message || "Failed to send reset email");
     } finally {
-      setLoading(false);
+      setSendingReset(false);
     }
   };
 
@@ -214,17 +219,18 @@ export const AccountSettings = () => {
             <Lock className="h-4 w-4 text-secondary" />
             <h2 className="text-sm font-semibold">Password</h2>
           </div>
-          <div className="flex gap-2">
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              className="flex-1"
-            />
-            <Button onClick={handlePasswordUpdate} disabled={loading || !newPassword} size="sm" className="whitespace-nowrap">
-              {loading ? "..." : "Update"}
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              For security, we'll send you an email with a link to reset your password.
+            </p>
+            <Button 
+              onClick={handlePasswordReset} 
+              disabled={sendingReset} 
+              size="sm" 
+              variant="outline"
+              className="w-full"
+            >
+              {sendingReset ? "Sending..." : "Send Password Reset Email"}
             </Button>
           </div>
         </div>
