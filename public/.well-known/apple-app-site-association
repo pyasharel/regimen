@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "HFAH6FUZA5.com.regimen.app",
+        "paths": [
+          "/today",
+          "/progress",
+          "/stack",
+          "/settings",
+          "/auth"
+        ]
+      }
+    ]
+  }
+}
