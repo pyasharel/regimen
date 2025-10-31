@@ -68,8 +68,14 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
+      const resetLink = `${window.location.origin}/auth?reset=true`;
+      
+      // Send custom password reset email
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email,
+          resetLink
+        }
       });
 
       if (error) throw error;
@@ -119,6 +125,20 @@ export default function Auth() {
         });
 
         if (error) throw error;
+        
+        // Send welcome email
+        try {
+          await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              email,
+              fullName: fullName.trim()
+            }
+          });
+        } catch (emailError) {
+          console.error('Welcome email error:', emailError);
+          // Don't block signup if email fails
+        }
+        
         // Account created - onAuthStateChange will handle navigation
       } else {
         const { error } = await supabase.auth.signInWithPassword({
