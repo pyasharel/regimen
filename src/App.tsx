@@ -34,6 +34,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
+import EmailTest from "./pages/EmailTest";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const AppContent = () => {
             <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
             <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
             <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
+            <Route path="/email-test" element={<EmailTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
