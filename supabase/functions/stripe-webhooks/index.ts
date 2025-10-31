@@ -92,6 +92,7 @@ serve(async (req) => {
           const userId = subscription.metadata.supabase_user_id;
           
           if (userId) {
+            // Update subscription status
             await supabaseClient
               .from('profiles')
               .update({
@@ -99,6 +100,34 @@ serve(async (req) => {
                 last_payment_attempt: new Date().toISOString(),
               })
               .eq('user_id', userId);
+
+            // Get user details and send payment failed email
+            const { data: profile } = await supabaseClient
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', userId)
+              .single();
+
+            const customer = await stripe.customers.retrieve(invoice.customer as string);
+            const customerEmail = (customer as any).email;
+
+            if (customerEmail) {
+              const amount = (invoice.amount_due / 100).toFixed(2);
+              const currency = invoice.currency;
+              
+              await supabaseClient.functions.invoke('send-payment-failed', {
+                body: {
+                  email: customerEmail,
+                  fullName: profile?.full_name || 'there',
+                  amount,
+                  currency,
+                  invoiceUrl: invoice.hosted_invoice_url || '',
+                  updatePaymentUrl: `${Deno.env.get('SUPABASE_URL')}/settings`,
+                }
+              });
+              
+              console.log(`[WEBHOOK] Payment failed email sent to ${customerEmail}`);
+            }
           }
         }
         break;
