@@ -3,6 +3,7 @@ import { X, AlertCircle, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
+import { useLocation } from "react-router-dom";
 
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
@@ -10,10 +11,16 @@ interface SubscriptionBannersProps {
 }
 
 export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
+  const location = useLocation();
   const { trialEndDate, subscriptionEndDate } = useSubscription();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
   });
+
+  // Don't show any banners on auth pages
+  if (location.pathname === '/auth' || location.pathname === '/') {
+    return null;
+  }
 
   useEffect(() => {
     if (dismissed) {
