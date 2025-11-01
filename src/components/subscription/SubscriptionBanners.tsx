@@ -17,8 +17,9 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     return sessionStorage.getItem('dismissedBanner');
   });
 
-  // Don't show any banners on auth pages
-  if (location.pathname === '/auth' || location.pathname === '/') {
+  // Don't show any banners on auth, onboarding, or landing pages
+  const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
+  if (hideOnRoutes.includes(location.pathname)) {
     return null;
   }
 
