@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Trash2, User } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Trash2, User, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,9 +23,12 @@ export const AccountSettings = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -35,9 +39,14 @@ export const AccountSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Check if user signed in with Google
+      const provider = user.app_metadata?.provider || user.user_metadata?.provider;
+      setIsGoogleUser(provider === 'google');
+      setEmail(user.email || '');
+
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, avatar_url')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -48,6 +57,9 @@ export const AccountSettings = () => {
 
       if (profile?.full_name) {
         setFullName(profile.full_name);
+      }
+      if (profile?.avatar_url) {
+        setAvatarUrl(profile.avatar_url);
       }
       setProfileLoaded(true);
     } catch (error) {
@@ -139,6 +151,60 @@ export const AccountSettings = () => {
     }
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be less than 2MB");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      toast.success("Profile picture updated!");
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      toast.error(error.message || "Failed to upload profile picture");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setLoading(true);
     try {
@@ -170,6 +236,47 @@ export const AccountSettings = () => {
       </header>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Profile Picture Section */}
+        <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2">
+            <Camera className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Profile Picture</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={avatarUrl || undefined} />
+              <AvatarFallback className="text-lg">
+                {fullName ? fullName.charAt(0).toUpperCase() : email.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                disabled={uploadingAvatar}
+                className="hidden"
+                id="avatar-upload"
+              />
+              <label htmlFor="avatar-upload">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingAvatar}
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                  asChild
+                >
+                  <span>{uploadingAvatar ? "Uploading..." : "Change Picture"}</span>
+                </Button>
+              </label>
+              <p className="text-xs text-muted-foreground mt-2">
+                {isGoogleUser ? "Using your Google profile picture" : "JPG, PNG or GIF. Max 2MB."}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Name Section - Compact */}
         <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
           <div className="flex items-center gap-2">
@@ -213,27 +320,29 @@ export const AccountSettings = () => {
           </div>
         </div>
 
-        {/* Password Section - Compact */}
-        <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
-          <div className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-secondary" />
-            <h2 className="text-sm font-semibold">Password</h2>
+        {/* Password Section - Only show for non-Google users */}
+        {!isGoogleUser && (
+          <div className="space-y-3 p-4 rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-secondary" />
+              <h2 className="text-sm font-semibold">Password</h2>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                For security, we'll send you an email with a link to reset your password.
+              </p>
+              <Button 
+                onClick={handlePasswordReset} 
+                disabled={sendingReset} 
+                size="sm" 
+                variant="outline"
+                className="w-full"
+              >
+                {sendingReset ? "Sending..." : "Send Password Reset Email"}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              For security, we'll send you an email with a link to reset your password.
-            </p>
-            <Button 
-              onClick={handlePasswordReset} 
-              disabled={sendingReset} 
-              size="sm" 
-              variant="outline"
-              className="w-full"
-            >
-              {sendingReset ? "Sending..." : "Send Password Reset Email"}
-            </Button>
-          </div>
-        </div>
+        )}
 
         {/* Delete Account Section - Red and subtle */}
         <div className="mt-8 pt-6 border-t border-border">

@@ -159,6 +159,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           challenges: string[] | null
           created_at: string | null
           full_name: string | null
@@ -178,8 +179,10 @@ export type Database = {
           trial_start_date: string | null
           updated_at: string | null
           user_id: string
+          welcome_email_sent: boolean | null
         }
         Insert: {
+          avatar_url?: string | null
           challenges?: string[] | null
           created_at?: string | null
           full_name?: string | null
@@ -199,8 +202,10 @@ export type Database = {
           trial_start_date?: string | null
           updated_at?: string | null
           user_id: string
+          welcome_email_sent?: boolean | null
         }
         Update: {
+          avatar_url?: string | null
           challenges?: string[] | null
           created_at?: string | null
           full_name?: string | null
@@ -220,6 +225,7 @@ export type Database = {
           trial_start_date?: string | null
           updated_at?: string | null
           user_id?: string
+          welcome_email_sent?: boolean | null
         }
         Relationships: []
       }

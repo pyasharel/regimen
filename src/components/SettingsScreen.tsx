@@ -6,6 +6,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
@@ -22,11 +23,34 @@ export const SettingsScreen = () => {
   const queryClient = useQueryClient();
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
   useEffect(() => {
     const savedSound = localStorage.getItem('soundEnabled');
     setSoundEnabled(savedSound !== 'false');
+    loadUserProfile();
   }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url, full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setAvatarUrl(profile.avatar_url);
+        setUserName(profile.full_name || user.email?.split('@')[0] || 'User');
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -139,6 +163,15 @@ export const SettingsScreen = () => {
               REGIMEN
             </h1>
           </div>
+          <Avatar 
+            className="h-9 w-9 cursor-pointer" 
+            onClick={() => navigate('/settings/account')}
+          >
+            <AvatarImage src={avatarUrl || undefined} />
+            <AvatarFallback className="text-xs">
+              {userName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
         </div>
       </header>
 

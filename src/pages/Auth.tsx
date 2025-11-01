@@ -54,9 +54,32 @@ export default function Auth() {
     try {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_completed")
+        .select("onboarding_completed, welcome_email_sent, full_name")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
+
+      // Send welcome email if not sent yet
+      if (profile && !profile.welcome_email_sent) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          try {
+            await supabase.functions.invoke('send-welcome-email', {
+              body: { 
+                email: user.email,
+                fullName: profile.full_name || 'there'
+              }
+            });
+            
+            // Mark as sent
+            await supabase
+              .from('profiles')
+              .update({ welcome_email_sent: true })
+              .eq('user_id', userId);
+          } catch (emailError) {
+            console.error('Error sending welcome email:', emailError);
+          }
+        }
+      }
 
       if (profile?.onboarding_completed) {
         navigate("/today");
@@ -179,21 +202,8 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        
-        // Send welcome email
-        try {
-          await supabase.functions.invoke('send-welcome-email', {
-            body: {
-              email,
-              fullName: fullName.trim()
-            }
-          });
-        } catch (emailError) {
-          console.error('Welcome email error:', emailError);
-          // Don't block signup if email fails
-        }
-        
         // Account created - onAuthStateChange will handle navigation
+        // Welcome email will be sent in checkOnboardingStatus
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
