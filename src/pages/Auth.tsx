@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/logo-regimen-auth.png";
+import { FcGoogle } from "react-icons/fc";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -122,6 +123,24 @@ export default function Auth() {
       console.error("Password reset error:", error);
       toast.error(error.message || "Failed to send reset email");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      toast.error(error.message || "Failed to sign in with Google");
       setLoading(false);
     }
   };
@@ -402,6 +421,26 @@ export default function Auth() {
               ) : (
                 <>{isSignUp ? "Sign Up" : "Sign In"}</>
               )}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full"
+            >
+              <FcGoogle className="mr-2 h-5 w-5" />
+              Google
             </Button>
           </form>
         )}
