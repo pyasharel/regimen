@@ -71,6 +71,13 @@ export const SubscriptionPaywall = ({
           : `${data.discount}% off first year!`;
         setAppliedPromo({ code, discount: discountText });
         setShowPromoInput(false);
+        
+        // If it's a free trial promo (like BETA3), switch to monthly billing
+        if (data.type === 'free') {
+          setSelectedPlan('monthly');
+          console.log('[PROMO] Switched to monthly plan for free trial promo');
+        }
+        
         toast.success(`Promo code applied: ${discountText}`);
         console.log('[PROMO] SUCCESS! Applied:', discountText);
       } else {
@@ -127,16 +134,8 @@ export const SubscriptionPaywall = ({
       
       if (data?.url) {
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
-        const newWindow = window.open(data.url, '_blank');
-        if (newWindow) {
-          toast.success('Opening Stripe checkout...');
-          setTimeout(() => {
-            console.log('[PAYWALL] Closing paywall');
-            onOpenChange(false);
-          }, 500);
-        } else {
-          toast.error('Please allow popups to complete checkout');
-        }
+        // On mobile, directly navigate to avoid popup blockers
+        window.location.href = data.url;
       } else {
         console.error('[PAYWALL] No URL in response');
         toast.error('Checkout failed - no URL received');
@@ -173,19 +172,12 @@ export const SubscriptionPaywall = ({
 
   const getPriceText = () => {
     if (appliedPromo) {
-      // BETA3 is 3 months free
-      if (appliedPromo.code === 'BETA3') {
-        return selectedPlan === 'annual' 
-          ? `FREE for 3 months, then $39.99/year`
-          : `FREE for 3 months, then $4.99/month`;
-      }
-      // Fallback for other promo codes
+      // For free trial promos (BETA3), always show monthly pricing after free period
       const promo = promoCodes[appliedPromo.code];
       if (promo?.type === 'free') {
-        return selectedPlan === 'annual' 
-          ? `FREE for ${promo.duration} months, then $39.99/year`
-          : `FREE for ${promo.duration} months, then $4.99/month`;
+        return `FREE for ${promo.duration} months, then $4.99/month`;
       }
+      // For discount promos
       return selectedPlan === 'annual'
         ? `$20 for first year, then $39.99/year`
         : `$2.50/month for 12 months, then $4.99/month`;
