@@ -67,9 +67,14 @@ export const SubscriptionPaywall = ({
   };
 
   const handleStartTrial = async () => {
+    console.log('[PAYWALL] Start trial button clicked');
     setIsLoading(true);
+    
     try {
-      console.log('Starting checkout with plan:', selectedPlan, 'promo:', appliedPromo?.code);
+      console.log('[PAYWALL] Calling create-checkout with:', { 
+        plan: selectedPlan, 
+        promoCode: appliedPromo?.code 
+      });
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
@@ -78,33 +83,31 @@ export const SubscriptionPaywall = ({
         }
       });
 
-      console.log('Checkout response:', { data, error });
+      console.log('[PAYWALL] Checkout response:', { data, error });
 
       if (error) {
-        console.error('Checkout error details:', error);
+        console.error('[PAYWALL] Checkout error:', error);
         toast.error(`Failed to start checkout: ${error.message || 'Unknown error'}`);
+        setIsLoading(false);
         return;
       }
       
       if (data?.url) {
-        console.log('Opening checkout URL:', data.url);
-        // Open checkout in new tab
-        const checkoutWindow = window.open(data.url, '_blank');
-        if (!checkoutWindow) {
-          toast.error('Please allow popups to complete checkout');
-        } else {
-          toast.success('Opening checkout in new tab...');
-          // Close the paywall modal after opening checkout
-          setTimeout(() => {
-            onOpenChange(false);
-          }, 500);
-        }
+        console.log('[PAYWALL] Got checkout URL, opening in new tab');
+        window.open(data.url, '_blank');
+        toast.success('Opening checkout...');
+        
+        // Close paywall after a brief delay
+        setTimeout(() => {
+          console.log('[PAYWALL] Closing paywall modal');
+          onOpenChange(false);
+        }, 500);
       } else {
-        console.error('No checkout URL in response:', data);
+        console.error('[PAYWALL] No URL in response:', data);
         toast.error('No checkout URL received');
       }
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error('[PAYWALL] Exception:', error);
       toast.error(`Error: ${error.message || 'Failed to start checkout'}`);
     } finally {
       setIsLoading(false);

@@ -287,13 +287,14 @@ export const Onboarding = () => {
       <SubscriptionPaywall 
         open={showPaywall}
         onOpenChange={(open) => {
+          console.log('[ONBOARDING] Paywall onOpenChange:', open);
           setShowPaywall(open);
-          // When closing the paywall (open = false), navigate after a brief delay
+          
+          // When the paywall closes, navigate to /today
           if (!open) {
-            setTimeout(() => {
-              console.log('Paywall closed - navigating to /today');
-              navigate('/today', { replace: true });
-            }, 100);
+            console.log('[ONBOARDING] Paywall closed, navigating to /today');
+            // Use window.location for a hard navigation to ensure clean state
+            window.location.href = '/today';
           }
         }}
       />
