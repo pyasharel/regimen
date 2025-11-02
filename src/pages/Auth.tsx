@@ -25,8 +25,6 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    let hasCheckedOnboarding = false;
-
     // Check if this is a password reset callback
     const mode = searchParams.get("mode");
     if (mode === "reset") {
@@ -39,24 +37,25 @@ export default function Auth() {
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !hasCheckedOnboarding) {
-        hasCheckedOnboarding = true;
+      if (session) {
         checkOnboardingStatus(session.user.id);
       } else {
         setCheckingAuth(false);
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes - DO NOT navigate inside this callback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
         setCheckingAuth(false);
       } else if (event === 'SIGNED_OUT') {
         setCheckingAuth(false);
-      } else if (session && !hasCheckedOnboarding) {
-        hasCheckedOnboarding = true;
-        await checkOnboardingStatus(session.user.id);
+      } else if (event === 'SIGNED_IN' && session) {
+        // Use setTimeout to defer navigation outside the callback
+        setTimeout(() => {
+          checkOnboardingStatus(session.user.id);
+        }, 0);
       }
     });
 
@@ -71,41 +70,49 @@ export default function Auth() {
         .eq("user_id", userId)
         .maybeSingle();
 
-      // Send welcome email if not sent yet
+      // Send welcome email if not sent yet - ONLY if it hasn't been sent
       if (profile && !profile.welcome_email_sent) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) {
-          try {
-            await supabase.functions.invoke('send-welcome-email', {
-              body: { 
-                email: user.email,
-                fullName: profile.full_name || 'there'
-              }
-            });
-            
-            // Mark as sent
-            await supabase
-              .from('profiles')
-              .update({ welcome_email_sent: true })
-              .eq('user_id', userId);
-          } catch (emailError) {
-            console.error('Error sending welcome email:', emailError);
-          }
+          // Use setTimeout to prevent multiple calls
+          setTimeout(async () => {
+            try {
+              await supabase.functions.invoke('send-welcome-email', {
+                body: { 
+                  email: user.email,
+                  fullName: profile.full_name || 'there'
+                }
+              });
+              
+              // Mark as sent
+              await supabase
+                .from('profiles')
+                .update({ welcome_email_sent: true })
+                .eq('user_id', userId);
+            } catch (emailError) {
+              console.error('Error sending welcome email:', emailError);
+            }
+          }, 100);
         }
       }
 
-      // Stop checking auth before navigating
+      // Stop checking auth
       setCheckingAuth(false);
 
-      if (profile?.onboarding_completed) {
-        navigate("/today", { replace: true });
-      } else {
-        navigate("/onboarding", { replace: true });
-      }
+      // Navigate using setTimeout to avoid race conditions
+      setTimeout(() => {
+        if (profile?.onboarding_completed) {
+          navigate("/today", { replace: true });
+        } else {
+          navigate("/onboarding", { replace: true });
+        }
+      }, 100);
     } catch (error) {
       console.error("Error checking onboarding status:", error);
       setCheckingAuth(false);
-      navigate("/onboarding", { replace: true });
+      setTimeout(() => {
+        navigate("/onboarding", { replace: true });
+      }, 100);
     }
   };
 

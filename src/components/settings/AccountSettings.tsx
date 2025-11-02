@@ -312,19 +312,34 @@ export const AccountSettings = () => {
             <Mail className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold">Email Address</h2>
           </div>
-          <div className="flex gap-2">
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="flex-1"
-            />
-            <Button onClick={handleEmailUpdate} disabled={loading || !email} size="sm" className="whitespace-nowrap">
-              {loading ? "..." : "Update"}
-            </Button>
-          </div>
+          {isGoogleUser ? (
+            <div className="space-y-2">
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                disabled
+                className="flex-1 bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your email is managed by Google and cannot be changed here. Update it in your Google Account settings.
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="flex-1"
+              />
+              <Button onClick={handleEmailUpdate} disabled={loading || !email} size="sm" className="whitespace-nowrap">
+                {loading ? "..." : "Update"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Password Section - Only show for non-Google users */}
