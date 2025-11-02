@@ -26,10 +26,7 @@ export const SubscriptionPaywall = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const promoCodes: Record<string, {duration: number, type: 'free' | 'discount', value: number}> = {
-    'BETA6': { duration: 6, type: 'free', value: 100 },
-    'VIP6': { duration: 6, type: 'free', value: 100 },
-    'OCTOPUS3': { duration: 3, type: 'free', value: 100 },
-    'LAUNCH50': { duration: 12, type: 'discount', value: 50 },
+    'BETA3': { duration: 3, type: 'free', value: 100 },
   };
 
   const handleApplyPromo = async () => {
