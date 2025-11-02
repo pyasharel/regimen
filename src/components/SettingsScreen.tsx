@@ -61,7 +61,7 @@ export const SettingsScreen = () => {
       if (error) throw error;
       
       toast.success("Signed out successfully");
-      navigate("/auth");
+      navigate("/auth", { replace: true });
     } catch (error) {
       console.error('Sign out error:', error);
       toast.error("Failed to sign out");

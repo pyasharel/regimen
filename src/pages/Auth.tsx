@@ -17,7 +17,7 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(false); // Changed default to false
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,15 +25,17 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    let hasCheckedOnboarding = false; // Prevent multiple checks
+    let hasCheckedOnboarding = false;
 
     // Check if this is a password reset callback
     const mode = searchParams.get("mode");
     if (mode === "reset") {
       setIsResettingPassword(true);
-      setCheckingAuth(false);
       return;
     }
+
+    // Start checking auth
+    setCheckingAuth(true);
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,6 +51,9 @@ export default function Auth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
+        setCheckingAuth(false);
+      } else if (event === 'SIGNED_OUT') {
+        setCheckingAuth(false);
       } else if (session && !hasCheckedOnboarding) {
         hasCheckedOnboarding = true;
         await checkOnboardingStatus(session.user.id);
