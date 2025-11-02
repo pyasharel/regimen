@@ -37,20 +37,25 @@ export const SubscriptionPaywall = ({
         body: { code }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Promo validation error:', error);
+        toast.error('Failed to validate promo code');
+        return;
+      }
       
       if (data?.valid) {
         const discountText = data.type === 'free' 
           ? `FREE for ${data.duration} months!`
           : `${data.discount}% off first year!`;
         setAppliedPromo({ code, discount: discountText });
+        setShowPromoInput(false);
         toast.success(`Promo code applied: ${discountText}`);
       } else {
         toast.error('Invalid promo code');
       }
     } catch (error) {
       console.error('Promo validation error:', error);
-      toast.error('Invalid promo code');
+      toast.error('Failed to validate promo code');
     }
   };
 

@@ -33,13 +33,14 @@ export default function Auth() {
     }
 
     let hasProcessedSession = false;
+    let processingPromise: Promise<void> | null = null;
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !hasProcessedSession) {
+      if (session && !hasProcessedSession && !processingPromise) {
         hasProcessedSession = true;
         setCheckingAuth(true);
-        checkOnboardingStatus(session.user.id);
+        processingPromise = checkOnboardingStatus(session.user.id);
       } else {
         setCheckingAuth(false);
       }
@@ -53,10 +54,11 @@ export default function Auth() {
       } else if (event === 'SIGNED_OUT') {
         setCheckingAuth(false);
         hasProcessedSession = false;
-      } else if (event === 'SIGNED_IN' && session && !hasProcessedSession) {
+        processingPromise = null;
+      } else if (event === 'SIGNED_IN' && session && !hasProcessedSession && !processingPromise) {
         hasProcessedSession = true;
         setCheckingAuth(true);
-        checkOnboardingStatus(session.user.id);
+        processingPromise = checkOnboardingStatus(session.user.id);
       }
     });
 
@@ -71,25 +73,29 @@ export default function Auth() {
         .eq("user_id", userId)
         .single();
 
-      // Send welcome email if not sent yet
-      if (!profile.welcome_email_sent) {
+      // Send welcome email if not sent yet (with optimistic flag update)
+      if (!profile?.welcome_email_sent) {
+        // Mark as sent immediately to prevent duplicates
+        await supabase
+          .from('profiles')
+          .update({ welcome_email_sent: true })
+          .eq('user_id', userId);
+
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) {
-          // Send email in background
+          // Send email in background - don't await
           supabase.functions.invoke('send-welcome-email', {
             body: { 
               email: user.email,
-              fullName: profile.full_name || 'there'
+              fullName: profile?.full_name || 'there'
             }
-          }).then(() => {
-            // Mark as sent
-            supabase
-              .from('profiles')
-              .update({ welcome_email_sent: true })
-              .eq('user_id', userId)
-              .then(() => {});
           }).catch((emailError) => {
             console.error('Error sending welcome email:', emailError);
+            // Revert the flag if email fails
+            supabase
+              .from('profiles')
+              .update({ welcome_email_sent: false })
+              .eq('user_id', userId);
           });
         }
       }
