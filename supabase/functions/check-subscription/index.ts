@@ -97,9 +97,12 @@ serve(async (req) => {
     const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
     const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
     
-    // Determine subscription type from price
+    // Determine subscription type from price ID
     const priceId = subscription.items.data[0].price.id;
-    const subscriptionType = priceId.includes('annual') ? 'annual' : 'monthly';
+    // Price IDs from create-checkout function
+    const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
+    const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
+    const subscriptionType = priceId === annualPriceId ? 'annual' : 'monthly';
 
     let mappedStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' = 'none';
     

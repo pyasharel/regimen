@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -37,6 +37,7 @@ export const TodayScreen = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [doses, setDoses] = useState<Dose[]>([]);
   
   // Track engagement for first dose notification
@@ -51,8 +52,9 @@ export const TodayScreen = () => {
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // Subscription state
-  const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading, refreshSubscription } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
+  const [verifyingSubscription, setVerifyingSubscription] = useState(false);
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -74,6 +76,56 @@ export const TodayScreen = () => {
   };
 
   const weekDays = getWeekDays();
+
+  // Check for post-checkout verification
+  useEffect(() => {
+    const verifyCheckout = async () => {
+      const sessionId = searchParams.get('session_id');
+      
+      if (sessionId) {
+        console.log('[POST-CHECKOUT] Detected session_id:', sessionId);
+        setVerifyingSubscription(true);
+        
+        try {
+          // Call check-subscription to verify and update subscription status
+          const { data, error } = await supabase.functions.invoke('check-subscription');
+          
+          if (error) {
+            console.error('[POST-CHECKOUT] Error verifying subscription:', error);
+            toast({
+              title: "Verification Error",
+              description: "We're having trouble verifying your subscription. Please refresh the page.",
+              variant: "destructive"
+            });
+          } else {
+            console.log('[POST-CHECKOUT] Subscription verified:', data);
+            
+            // Refresh the subscription context
+            await refreshSubscription();
+            
+            // Show success message
+            if (data?.subscribed) {
+              toast({
+                title: "Welcome to Premium! 🎉",
+                description: data.status === 'trialing' 
+                  ? "Your 14-day free trial has started. Enjoy unlimited access!"
+                  : "Your subscription is now active. Enjoy unlimited access!",
+              });
+            }
+          }
+        } catch (error) {
+          console.error('[POST-CHECKOUT] Exception during verification:', error);
+        } finally {
+          // Remove session_id from URL
+          searchParams.delete('session_id');
+          setSearchParams(searchParams, { replace: true });
+          setVerifyingSubscription(false);
+        }
+      }
+    };
+    
+    verifyCheckout();
+  }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
   useEffect(() => {
     loadDoses();
@@ -473,6 +525,25 @@ export const TodayScreen = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      {/* Subscription Verification Overlay */}
+      {verifyingSubscription && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center space-y-4 px-4">
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 border-4 border-primary/30 rounded-full" />
+              <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
+              <CheckCircle className="absolute inset-0 m-auto w-8 h-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Verifying Subscription</h3>
+              <p className="text-sm text-muted-foreground">
+                Just a moment while we activate your premium access...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <style>{`
         @keyframes draw-check {
           0% {
