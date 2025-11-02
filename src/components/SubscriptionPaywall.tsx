@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -25,26 +25,43 @@ export const SubscriptionPaywall = ({
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Debug: Log when component mounts/opens
+  useEffect(() => {
+    if (open) {
+      console.log('[PAYWALL] Component opened/mounted');
+      console.log('[PAYWALL] Supabase client check:', {
+        hasSupabase: typeof supabase !== 'undefined',
+        hasFunctions: typeof supabase?.functions !== 'undefined',
+        canInvoke: typeof supabase?.functions?.invoke === 'function'
+      });
+    }
+  }, [open]);
+
   const promoCodes: Record<string, {duration: number, type: 'free' | 'discount', value: number}> = {
     'BETA3': { duration: 3, type: 'free', value: 100 },
   };
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
+    
+    console.log('[PROMO] ========== APPLY PROMO STARTED ==========');
+    console.log('[PROMO] Code:', code);
+    console.log('[PROMO] Supabase client:', typeof supabase);
+    
     setIsLoading(true);
     
     try {
-      console.log('Validating promo code:', code);
+      console.log('[PROMO] Calling validate-promo-code function...');
+      
       const { data, error } = await supabase.functions.invoke('validate-promo-code', {
         body: { code }
       });
 
-      console.log('Promo validation response:', { data, error });
+      console.log('[PROMO] Response received:', JSON.stringify({ data, error }, null, 2));
 
       if (error) {
-        console.error('Promo validation error:', error);
+        console.error('[PROMO] ERROR:', error);
         toast.error(`Failed to validate promo code: ${error.message || 'Unknown error'}`);
-        setIsLoading(false);
         return;
       }
       
@@ -55,14 +72,17 @@ export const SubscriptionPaywall = ({
         setAppliedPromo({ code, discount: discountText });
         setShowPromoInput(false);
         toast.success(`Promo code applied: ${discountText}`);
+        console.log('[PROMO] SUCCESS! Applied:', discountText);
       } else {
+        console.log('[PROMO] Invalid code');
         toast.error('Invalid promo code. Please check and try again.');
       }
     } catch (error: any) {
-      console.error('Promo validation error:', error);
+      console.error('[PROMO] EXCEPTION:', error);
       toast.error(`Error: ${error.message || 'Failed to validate promo code'}`);
     } finally {
       setIsLoading(false);
+      console.log('[PROMO] ========== END ==========');
     }
   };
 
@@ -73,6 +93,8 @@ export const SubscriptionPaywall = ({
       appliedPromo: appliedPromo?.code,
       isLoading 
     });
+    console.log('[PAYWALL] Supabase client:', typeof supabase);
+    console.log('[PAYWALL] Supabase functions:', typeof supabase.functions);
     
     if (isLoading) {
       console.log('[PAYWALL] Already loading, ignoring click');
@@ -82,7 +104,11 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      console.log('[PAYWALL] Invoking create-checkout function...');
+      console.log('[PAYWALL] About to invoke create-checkout...');
+      console.log('[PAYWALL] Request body:', { 
+        plan: selectedPlan,
+        promoCode: appliedPromo?.code 
+      });
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
@@ -96,7 +122,6 @@ export const SubscriptionPaywall = ({
       if (error) {
         console.error('[PAYWALL] ERROR:', error);
         toast.error(`Checkout failed: ${error.message || 'Unknown error'}`);
-        setIsLoading(false);
         return;
       }
       
@@ -118,6 +143,11 @@ export const SubscriptionPaywall = ({
       }
     } catch (error: any) {
       console.error('[PAYWALL] EXCEPTION:', error);
+      console.error('[PAYWALL] Exception details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       toast.error(`Error: ${error.message || 'Checkout failed'}`);
     } finally {
       setIsLoading(false);
