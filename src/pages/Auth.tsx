@@ -32,35 +32,36 @@ export default function Auth() {
       return;
     }
 
-    // Start checking auth
-    setCheckingAuth(true);
+    let hasProcessedSession = false;
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !hasProcessedSession) {
+        hasProcessedSession = true;
+        setCheckingAuth(true);
         checkOnboardingStatus(session.user.id);
       } else {
         setCheckingAuth(false);
       }
     });
 
-    // Listen for auth changes - DO NOT navigate inside this callback
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
         setCheckingAuth(false);
       } else if (event === 'SIGNED_OUT') {
         setCheckingAuth(false);
-      } else if (event === 'SIGNED_IN' && session) {
-        // Use setTimeout to defer navigation outside the callback
-        setTimeout(() => {
-          checkOnboardingStatus(session.user.id);
-        }, 0);
+        hasProcessedSession = false;
+      } else if (event === 'SIGNED_IN' && session && !hasProcessedSession) {
+        hasProcessedSession = true;
+        setCheckingAuth(true);
+        checkOnboardingStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, searchParams]);
+  }, [searchParams]);
 
   const checkOnboardingStatus = async (userId: string) => {
     try {
@@ -68,51 +69,42 @@ export default function Auth() {
         .from("profiles")
         .select("onboarding_completed, welcome_email_sent, full_name")
         .eq("user_id", userId)
-        .maybeSingle();
+        .single();
 
-      // Send welcome email if not sent yet - ONLY if it hasn't been sent
-      if (profile && !profile.welcome_email_sent) {
+      // Send welcome email if not sent yet
+      if (!profile.welcome_email_sent) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) {
-          // Use setTimeout to prevent multiple calls
-          setTimeout(async () => {
-            try {
-              await supabase.functions.invoke('send-welcome-email', {
-                body: { 
-                  email: user.email,
-                  fullName: profile.full_name || 'there'
-                }
-              });
-              
-              // Mark as sent
-              await supabase
-                .from('profiles')
-                .update({ welcome_email_sent: true })
-                .eq('user_id', userId);
-            } catch (emailError) {
-              console.error('Error sending welcome email:', emailError);
+          // Send email in background
+          supabase.functions.invoke('send-welcome-email', {
+            body: { 
+              email: user.email,
+              fullName: profile.full_name || 'there'
             }
-          }, 100);
+          }).then(() => {
+            // Mark as sent
+            supabase
+              .from('profiles')
+              .update({ welcome_email_sent: true })
+              .eq('user_id', userId)
+              .then(() => {});
+          }).catch((emailError) => {
+            console.error('Error sending welcome email:', emailError);
+          });
         }
       }
 
-      // Stop checking auth
-      setCheckingAuth(false);
-
-      // Navigate using setTimeout to avoid race conditions
-      setTimeout(() => {
-        if (profile?.onboarding_completed) {
-          navigate("/today", { replace: true });
-        } else {
-          navigate("/onboarding", { replace: true });
-        }
-      }, 100);
+      // Navigate immediately
+      if (profile?.onboarding_completed) {
+        navigate("/today", { replace: true });
+      } else {
+        navigate("/onboarding", { replace: true });
+      }
     } catch (error) {
       console.error("Error checking onboarding status:", error);
+      navigate("/onboarding", { replace: true });
+    } finally {
       setCheckingAuth(false);
-      setTimeout(() => {
-        navigate("/onboarding", { replace: true });
-      }, 100);
     }
   };
 
