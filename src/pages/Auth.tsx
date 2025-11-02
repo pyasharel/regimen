@@ -254,13 +254,15 @@ export default function Auth() {
   };
 
   // Show loading state while checking auth OR if user is already authenticated
-  // This prevents flash of login form after OAuth
+  // This prevents flash of login form after OAuth by showing loader until redirect happens
   if (checkingAuth || session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Setting up your account...</p>
+          <p className="text-muted-foreground">
+            {session ? 'Redirecting to your account...' : 'Setting up your account...'}
+          </p>
         </div>
       </div>
     );

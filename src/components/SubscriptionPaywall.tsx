@@ -83,15 +83,24 @@ export const SubscriptionPaywall = ({
       if (error) {
         console.error('Checkout error details:', error);
         toast.error(`Failed to start checkout: ${error.message || 'Unknown error'}`);
-        setIsLoading(false);
         return;
       }
       
       if (data?.url) {
         console.log('Opening checkout URL:', data.url);
-        window.open(data.url, '_blank');
-        toast.success('Opening checkout...');
+        // Open checkout in new tab
+        const checkoutWindow = window.open(data.url, '_blank');
+        if (!checkoutWindow) {
+          toast.error('Please allow popups to complete checkout');
+        } else {
+          toast.success('Opening checkout in new tab...');
+          // Close the paywall modal after opening checkout
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 500);
+        }
       } else {
+        console.error('No checkout URL in response:', data);
         toast.error('No checkout URL received');
       }
     } catch (error: any) {
