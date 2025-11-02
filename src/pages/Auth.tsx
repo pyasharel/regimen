@@ -17,6 +17,7 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,6 +29,7 @@ export default function Auth() {
     const mode = searchParams.get("mode");
     if (mode === "reset") {
       setIsResettingPassword(true);
+      setCheckingAuth(false);
       return;
     }
 
@@ -35,6 +37,8 @@ export default function Auth() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         checkOnboardingStatus(session.user.id);
+      } else {
+        setCheckingAuth(false);
       }
     });
 
@@ -227,6 +231,18 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">

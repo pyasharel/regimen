@@ -51,7 +51,7 @@ export const TodayScreen = () => {
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // Subscription state
-  const { isSubscribed } = useSubscription();
+  const { isSubscribed, isLoading: subscriptionLoading } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
   // Generate week days - keep the current week stable
@@ -443,7 +443,7 @@ export const TodayScreen = () => {
     audio.play().catch(err => console.log('Sound play failed:', err));
   };
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     return (
       <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
