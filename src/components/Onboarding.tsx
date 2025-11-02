@@ -286,11 +286,15 @@ export const Onboarding = () => {
       
       <SubscriptionPaywall 
         open={showPaywall}
-        onOpenChange={setShowPaywall}
-        onDismiss={() => {
-          console.log('Paywall dismissed - navigating to app');
-          setShowPaywall(false);
-          navigate('/today', { replace: true });
+        onOpenChange={(open) => {
+          setShowPaywall(open);
+          // When closing the paywall (open = false), navigate after a brief delay
+          if (!open) {
+            setTimeout(() => {
+              console.log('Paywall closed - navigating to /today');
+              navigate('/today', { replace: true });
+            }, 100);
+          }
         }}
       />
     </div>

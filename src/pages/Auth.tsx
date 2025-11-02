@@ -253,8 +253,8 @@ export default function Auth() {
     }
   };
 
-  // Show loading state immediately when there's a session to prevent flash
-  if (session || checkingAuth) {
+  // Show loading while checking auth OR if we have a session (prevents auth screen flash)
+  if (checkingAuth || session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
