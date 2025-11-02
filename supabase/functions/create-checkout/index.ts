@@ -48,9 +48,9 @@ serve(async (req) => {
         .eq('user_id', user.id);
     }
 
-    // Price IDs - replace with actual Stripe price IDs
-    const monthlyPriceId = Deno.env.get("STRIPE_MONTHLY_PRICE_ID") || "price_monthly_placeholder";
-    const annualPriceId = Deno.env.get("STRIPE_ANNUAL_PRICE_ID") || "price_annual_placeholder";
+    // Price IDs from Stripe
+    const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
+    const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
 
     // Build session parameters
