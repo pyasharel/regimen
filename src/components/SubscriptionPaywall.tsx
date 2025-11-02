@@ -338,19 +338,19 @@ export const SubscriptionPaywall = ({
 
           {/* CTA Button */}
           <div className="space-y-3 pb-6">
-            <Button
+            <button
               type="button"
               onClick={(e) => {
+                console.log('[PAYWALL] ===== RAW BUTTON CLICKED =====');
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('[PAYWALL] Button clicked!');
                 handleStartTrial();
               }}
               disabled={isLoading}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Processing...' : getButtonText()}
-            </Button>
+            </button>
             
             <p className="text-center text-[14px] text-[#8A8A8A]">
               {getPriceText()}
