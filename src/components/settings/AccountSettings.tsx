@@ -208,18 +208,25 @@ export const AccountSettings = () => {
   const handleDeleteAccount = async () => {
     setLoading(true);
     try {
-      // Delete user data first
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-      // Delete compounds and doses
-      await supabase.from('compounds').delete().eq('user_id', user.id);
-      await supabase.from('doses').delete().eq('user_id', user.id);
+      // Call edge function to delete account (requires service role key)
+      const { error } = await supabase.functions.invoke('delete-account', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
       
       toast.success("Account deleted successfully");
+      
+      // Sign out and redirect
       await supabase.auth.signOut();
-      navigate("/auth");
+      navigate("/auth", { replace: true });
     } catch (error: any) {
+      console.error("Delete account error:", error);
       toast.error(error.message || "Failed to delete account");
     } finally {
       setLoading(false);
