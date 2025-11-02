@@ -67,14 +67,22 @@ export const SubscriptionPaywall = ({
   };
 
   const handleStartTrial = async () => {
-    console.log('[PAYWALL] Start trial button clicked');
+    console.log('[PAYWALL] ========== START TRIAL CLICKED ==========');
+    console.log('[PAYWALL] Current state:', { 
+      selectedPlan, 
+      appliedPromo: appliedPromo?.code,
+      isLoading 
+    });
+    
+    if (isLoading) {
+      console.log('[PAYWALL] Already loading, ignoring click');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      console.log('[PAYWALL] Calling create-checkout with:', { 
-        plan: selectedPlan, 
-        promoCode: appliedPromo?.code 
-      });
+      console.log('[PAYWALL] Invoking create-checkout function...');
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
@@ -83,34 +91,37 @@ export const SubscriptionPaywall = ({
         }
       });
 
-      console.log('[PAYWALL] Checkout response:', { data, error });
+      console.log('[PAYWALL] Response received:', JSON.stringify({ data, error }, null, 2));
 
       if (error) {
-        console.error('[PAYWALL] Checkout error:', error);
-        toast.error(`Failed to start checkout: ${error.message || 'Unknown error'}`);
+        console.error('[PAYWALL] ERROR:', error);
+        toast.error(`Checkout failed: ${error.message || 'Unknown error'}`);
         setIsLoading(false);
         return;
       }
       
       if (data?.url) {
-        console.log('[PAYWALL] Got checkout URL, opening in new tab');
-        window.open(data.url, '_blank');
-        toast.success('Opening checkout...');
-        
-        // Close paywall after a brief delay
-        setTimeout(() => {
-          console.log('[PAYWALL] Closing paywall modal');
-          onOpenChange(false);
-        }, 500);
+        console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
+        const newWindow = window.open(data.url, '_blank');
+        if (newWindow) {
+          toast.success('Opening Stripe checkout...');
+          setTimeout(() => {
+            console.log('[PAYWALL] Closing paywall');
+            onOpenChange(false);
+          }, 500);
+        } else {
+          toast.error('Please allow popups to complete checkout');
+        }
       } else {
-        console.error('[PAYWALL] No URL in response:', data);
-        toast.error('No checkout URL received');
+        console.error('[PAYWALL] No URL in response');
+        toast.error('Checkout failed - no URL received');
       }
     } catch (error: any) {
-      console.error('[PAYWALL] Exception:', error);
-      toast.error(`Error: ${error.message || 'Failed to start checkout'}`);
+      console.error('[PAYWALL] EXCEPTION:', error);
+      toast.error(`Error: ${error.message || 'Checkout failed'}`);
     } finally {
       setIsLoading(false);
+      console.log('[PAYWALL] ========== END ==========');
     }
   };
 
@@ -328,11 +339,17 @@ export const SubscriptionPaywall = ({
           {/* CTA Button */}
           <div className="space-y-3 pb-6">
             <Button
-              onClick={handleStartTrial}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[PAYWALL] Button clicked!');
+                handleStartTrial();
+              }}
               disabled={isLoading}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl"
             >
-              {getButtonText()}
+              {isLoading ? 'Processing...' : getButtonText()}
             </Button>
             
             <p className="text-center text-[14px] text-[#8A8A8A]">
