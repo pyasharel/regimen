@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Check, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -27,6 +28,7 @@ const CHALLENGE_OPTIONS = [
 
 export const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [fullName, setFullName] = useState("");
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [selectedChallenges, setSelectedChallenges] = useState<string[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -54,18 +56,24 @@ export const Onboarding = () => {
       // Splash screen - just move to next step
       setCurrentStep(1);
     } else if (currentStep === 1) {
-      if (selectedGoals.length === 0) {
-        toast.error("Please select at least one goal");
+      if (!fullName.trim()) {
+        toast.error("Please enter your name");
         return;
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (selectedChallenges.length === 0) {
-        toast.error("Please select at least one challenge");
+      if (selectedGoals.length === 0) {
+        toast.error("Please select at least one goal");
         return;
       }
       setCurrentStep(3);
     } else if (currentStep === 3) {
+      if (selectedChallenges.length === 0) {
+        toast.error("Please select at least one challenge");
+        return;
+      }
+      setCurrentStep(4);
+    } else if (currentStep === 4) {
       if (!termsAccepted) {
         toast.error("Please accept the terms to continue");
         return;
@@ -87,13 +95,16 @@ export const Onboarding = () => {
       if (user) {
         await supabase
           .from("profiles")
-          .update({ 
+          .upsert({ 
+            user_id: user.id,
+            full_name: fullName.trim(),
             onboarding_completed: true,
             goals: selectedGoals,
             challenges: selectedChallenges,
             terms_accepted_at: new Date().toISOString()
-          })
-          .eq("user_id", user.id);
+          }, {
+            onConflict: 'user_id'
+          });
       }
       
       // Show paywall after onboarding
@@ -138,8 +149,27 @@ export const Onboarding = () => {
             </div>
           )}
 
-          {/* Step 1: Goals */}
+          {/* Step 1: Name */}
           {currentStep === 1 && (
+            <>
+              <div className="space-y-2 text-center">
+                <h1 className="text-3xl font-bold">What's your name?</h1>
+                <p className="text-muted-foreground">Let's personalize your experience</p>
+              </div>
+              
+              <Input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter your full name"
+                autoFocus
+                className="text-base h-12"
+              />
+            </>
+          )}
+
+          {/* Step 2: Goals */}
+          {currentStep === 2 && (
             <>
               <div className="space-y-2 text-center">
                 <h1 className="text-3xl font-bold">What are your goals?</h1>
@@ -169,8 +199,8 @@ export const Onboarding = () => {
             </>
           )}
 
-          {/* Step 2: Challenges */}
-          {currentStep === 2 && (
+          {/* Step 3: Challenges */}
+          {currentStep === 3 && (
             <>
               <div className="space-y-2 text-center">
                 <h1 className="text-3xl font-bold">What are your challenges?</h1>
@@ -202,8 +232,8 @@ export const Onboarding = () => {
             </>
           )}
 
-          {/* Step 3: Terms Acceptance */}
-          {currentStep === 3 && (
+          {/* Step 4: Terms Acceptance */}
+          {currentStep === 4 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
                 <h1 className="text-3xl font-bold">Important Disclaimer</h1>
@@ -261,7 +291,7 @@ export const Onboarding = () => {
         <div className="w-full max-w-md mx-auto space-y-6">
           {/* Progress dots */}
           <div className="flex justify-center gap-2">
-            {[0, 1, 2, 3].map((index) => (
+            {[0, 1, 2, 3, 4].map((index) => (
               <div
                 key={index}
                 className={`h-2 rounded-full transition-all ${
@@ -276,17 +306,24 @@ export const Onboarding = () => {
             onClick={handleNext} 
             className="w-full" 
             size="lg"
-            disabled={currentStep === 3 && !termsAccepted}
+            disabled={currentStep === 4 && !termsAccepted}
           >
-            {currentStep === 3 ? "Get Started" : currentStep === 2 ? "Next" : "Next"}
+            {currentStep === 4 ? "Get Started" : "Next"}
           </Button>
         </div>
       </div>
       
       <SubscriptionPaywall 
         open={showPaywall}
-        onOpenChange={setShowPaywall}
-        onDismiss={() => navigate('/today')}
+        onOpenChange={(open) => {
+          setShowPaywall(open);
+          // Only navigate when fully closed
+          if (!open) {
+            setTimeout(() => {
+              navigate('/today', { replace: true });
+            }, 100);
+          }
+        }}
       />
     </div>
   );
