@@ -31,15 +31,20 @@ export const SubscriptionPaywall = ({
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
+    setIsLoading(true);
     
     try {
+      console.log('Validating promo code:', code);
       const { data, error } = await supabase.functions.invoke('validate-promo-code', {
         body: { code }
       });
 
+      console.log('Promo validation response:', { data, error });
+
       if (error) {
         console.error('Promo validation error:', error);
-        toast.error('Failed to validate promo code');
+        toast.error(`Failed to validate promo code: ${error.message || 'Unknown error'}`);
+        setIsLoading(false);
         return;
       }
       
@@ -51,17 +56,21 @@ export const SubscriptionPaywall = ({
         setShowPromoInput(false);
         toast.success(`Promo code applied: ${discountText}`);
       } else {
-        toast.error('Invalid promo code');
+        toast.error('Invalid promo code. Please check and try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Promo validation error:', error);
-      toast.error('Failed to validate promo code');
+      toast.error(`Error: ${error.message || 'Failed to validate promo code'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleStartTrial = async () => {
     setIsLoading(true);
     try {
+      console.log('Starting checkout with plan:', selectedPlan, 'promo:', appliedPromo?.code);
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan: selectedPlan,
@@ -69,14 +78,25 @@ export const SubscriptionPaywall = ({
         }
       });
 
-      if (error) throw error;
+      console.log('Checkout response:', { data, error });
+
+      if (error) {
+        console.error('Checkout error details:', error);
+        toast.error(`Failed to start checkout: ${error.message || 'Unknown error'}`);
+        setIsLoading(false);
+        return;
+      }
       
       if (data?.url) {
+        console.log('Opening checkout URL:', data.url);
         window.open(data.url, '_blank');
+        toast.success('Opening checkout...');
+      } else {
+        toast.error('No checkout URL received');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Checkout error:', error);
-      toast.error('Failed to start checkout');
+      toast.error(`Error: ${error.message || 'Failed to start checkout'}`);
     } finally {
       setIsLoading(false);
     }
@@ -254,10 +274,15 @@ export const SubscriptionPaywall = ({
                   className="uppercase"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={handleApplyPromo} size="sm" className="bg-[#FF6F61] hover:bg-[#E55A50]">
-                    Apply Code
+                  <Button 
+                    onClick={handleApplyPromo} 
+                    size="sm" 
+                    className="bg-[#FF6F61] hover:bg-[#E55A50]"
+                    disabled={isLoading || !promoCode.trim()}
+                  >
+                    {isLoading ? 'Applying...' : 'Apply Code'}
                   </Button>
-                  <Button onClick={() => setShowPromoInput(false)} variant="ghost" size="sm">
+                  <Button onClick={() => setShowPromoInput(false)} variant="ghost" size="sm" disabled={isLoading}>
                     Cancel
                   </Button>
                 </div>

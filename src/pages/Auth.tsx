@@ -17,7 +17,8 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(false); // Changed default to false
+  const [checkingAuth, setCheckingAuth] = useState(false);
+  const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,6 +38,7 @@ export default function Auth() {
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       if (session && !hasProcessedSession && !processingPromise) {
         hasProcessedSession = true;
         setCheckingAuth(true);
@@ -48,6 +50,7 @@ export default function Auth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
         setCheckingAuth(false);
@@ -250,13 +253,14 @@ export default function Auth() {
     }
   };
 
-  // Show loading state while checking auth
-  if (checkingAuth) {
+  // Show loading state while checking auth OR if user is already authenticated
+  // This prevents flash of login form after OAuth
+  if (checkingAuth || session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Setting up your account...</p>
         </div>
       </div>
     );
