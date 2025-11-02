@@ -85,14 +85,18 @@ export default function Auth() {
         }
       }
 
+      // Stop checking auth before navigating
+      setCheckingAuth(false);
+
       if (profile?.onboarding_completed) {
-        navigate("/today");
+        navigate("/today", { replace: true });
       } else {
-        navigate("/onboarding");
+        navigate("/onboarding", { replace: true });
       }
     } catch (error) {
       console.error("Error checking onboarding status:", error);
-      navigate("/onboarding");
+      setCheckingAuth(false);
+      navigate("/onboarding", { replace: true });
     }
   };
 

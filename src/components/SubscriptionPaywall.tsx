@@ -300,11 +300,11 @@ export const SubscriptionPaywall = ({
             </p>
 
             <div className="text-center text-[12px] text-[#8A8A8A]">
-              <span className="underline cursor-pointer hover:text-[#FF6F61]">Terms</span>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Terms</a>
               {' • '}
-              <span className="underline cursor-pointer hover:text-[#FF6F61]">Privacy</span>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Privacy</a>
               {' • '}
-              <span className="underline cursor-pointer hover:text-[#FF6F61]">Restore</span>
+              <button onClick={() => toast.info('Restore purchases feature coming soon')} className="underline cursor-pointer hover:text-[#FF6F61]">Restore</button>
             </div>
           </div>
         </div>
