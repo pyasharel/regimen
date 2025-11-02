@@ -201,7 +201,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        refreshSubscription();
+        setTimeout(() => {
+          refreshSubscription();
+        }, 0);
       } else {
         setIsSubscribed(false);
         setSubscriptionStatus('none');
@@ -210,6 +212,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
