@@ -35,6 +35,8 @@ import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
 import EmailTest from "./pages/EmailTest";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,8 @@ const AppContent = () => {
             <Route path="/" element={<Splash />} />
             <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
