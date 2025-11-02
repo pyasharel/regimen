@@ -288,8 +288,9 @@ export const Onboarding = () => {
         open={showPaywall}
         onOpenChange={setShowPaywall}
         onDismiss={() => {
-          // Stay on onboarding - user can complete signup without subscription
-          console.log('Paywall dismissed - staying on onboarding');
+          console.log('Paywall dismissed - navigating to app');
+          setShowPaywall(false);
+          navigate('/today', { replace: true });
         }}
       />
     </div>

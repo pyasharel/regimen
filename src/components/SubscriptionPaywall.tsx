@@ -129,8 +129,15 @@ export const SubscriptionPaywall = ({
 
   const getPriceText = () => {
     if (appliedPromo) {
+      // BETA3 is 3 months free
+      if (appliedPromo.code === 'BETA3') {
+        return selectedPlan === 'annual' 
+          ? `FREE for 3 months, then $39.99/year`
+          : `FREE for 3 months, then $4.99/month`;
+      }
+      // Fallback for other promo codes
       const promo = promoCodes[appliedPromo.code];
-      if (promo.type === 'free') {
+      if (promo?.type === 'free') {
         return selectedPlan === 'annual' 
           ? `FREE for ${promo.duration} months, then $39.99/year`
           : `FREE for ${promo.duration} months, then $4.99/month`;
