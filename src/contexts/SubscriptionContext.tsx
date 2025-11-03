@@ -91,12 +91,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [mockState]);
 
+  // Prevent concurrent refreshes
+  const refreshingRef = { current: false };
+
   const refreshSubscription = async () => {
+    // Prevent concurrent calls
+    if (refreshingRef.current) {
+      console.log('[SubscriptionContext] Already refreshing, skipping...');
+      return;
+    }
+
     // Don't fetch real data if we're in mock mode
     if (mockState !== 'none') {
       setIsLoading(false);
       return;
     }
+
+    refreshingRef.current = true;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -114,15 +125,20 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           console.log('[SubscriptionContext] Calling check-subscription...');
-          await supabase.functions.invoke('check-subscription', {
+          const { data, error } = await supabase.functions.invoke('check-subscription', {
             headers: {
               Authorization: `Bearer ${session.access_token}`
             }
           });
-          console.log('[SubscriptionContext] check-subscription completed');
+          
+          if (error) {
+            console.error('[SubscriptionContext] check-subscription error:', error);
+          } else {
+            console.log('[SubscriptionContext] check-subscription response:', data);
+          }
           
           // Wait a bit to ensure database update propagates
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       } catch (error) {
         console.error('Error checking subscription with Stripe:', error);
@@ -155,6 +171,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error fetching subscription:', error);
     } finally {
       setIsLoading(false);
+      refreshingRef.current = false;
     }
   };
 

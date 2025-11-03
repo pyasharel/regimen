@@ -68,14 +68,25 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    const subscriptions = await stripe.subscriptions.list({
+    // Fetch active or trialing subscriptions first
+    const activeSubscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "all",
+      status: "active",
       limit: 1,
     });
 
-    if (subscriptions.data.length === 0) {
-      logStep("No subscription found");
+    const trialingSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "trialing",
+      limit: 1,
+    });
+
+    // Combine and sort by created date (newest first)
+    const allSubs = [...activeSubscriptions.data, ...trialingSubscriptions.data]
+      .sort((a, b) => b.created - a.created);
+
+    if (allSubs.length === 0) {
+      logStep("No active or trialing subscription found");
       await supabaseClient
         .from('profiles')
         .update({ 
@@ -92,10 +103,34 @@ serve(async (req) => {
       });
     }
 
-    const subscription = subscriptions.data[0];
+    const subscription = allSubs[0];
     const status = subscription.status;
-    const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+    logStep("Processing subscription", { 
+      id: subscription.id, 
+      status, 
+      current_period_end: subscription.current_period_end,
+      trial_end: subscription.trial_end 
+    });
+
+    // Safely convert timestamps to ISO strings
+    let subscriptionEnd: string | null = null;
+    let trialEnd: string | null = null;
+
+    try {
+      if (subscription.current_period_end) {
+        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
+    } catch (e) {
+      logStep("Error converting subscription end date", { error: String(e), value: subscription.current_period_end });
+    }
+
+    try {
+      if (subscription.trial_end) {
+        trialEnd = new Date(subscription.trial_end * 1000).toISOString();
+      }
+    } catch (e) {
+      logStep("Error converting trial end date", { error: String(e), value: subscription.trial_end });
+    }
     
     // Determine subscription type from price ID
     const priceId = subscription.items.data[0].price.id;
