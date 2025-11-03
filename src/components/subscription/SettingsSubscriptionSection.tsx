@@ -36,9 +36,11 @@ export const SettingsSubscriptionSection = () => {
         console.error('Portal session error:', error);
         const errorMessage = error.message || JSON.stringify(error);
         
-        // Handle Stripe not being fully configured
-        if (errorMessage.includes('No customer found') || errorMessage.includes('No configuration provided')) {
-          toast.info('Stripe billing portal is not yet configured. This feature will be available once payment integration is complete.');
+        // Handle Stripe portal not configured
+        if (errorMessage.includes('No configuration provided') || errorMessage.includes('No customer found')) {
+          toast.error('Stripe Customer Portal needs setup first. Configure it in your Stripe Dashboard → Settings → Billing → Customer Portal', {
+            duration: 6000
+          });
           return;
         }
         throw error;
@@ -53,7 +55,9 @@ export const SettingsSubscriptionSection = () => {
       
       // Final catch for configuration errors
       if (errorMessage.includes('No configuration provided')) {
-        toast.info('Stripe billing portal is not yet configured. This feature will be available once payment integration is complete.');
+        toast.error('Stripe Customer Portal needs setup. Visit Stripe Dashboard → Settings → Billing → Customer Portal', {
+          duration: 6000
+        });
       } else {
         toast.error('Failed to open subscription management');
       }
