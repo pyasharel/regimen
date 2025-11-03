@@ -177,6 +177,15 @@ export const SettingsSubscriptionSection = () => {
             </button>
           </CardContent>
         </Card>
+        
+        <button
+          onClick={handleRestorePurchases}
+          disabled={isRestoring}
+          className="text-[13px] text-muted-foreground hover:text-primary underline transition-colors flex items-center gap-1.5"
+        >
+          {isRestoring && <Loader2 className="h-3 w-3 animate-spin" />}
+          Restore Purchases
+        </button>
       </div>
     );
   }

@@ -79,7 +79,8 @@ export const SubscriptionTest = () => {
       }
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { plan: 'annual', promoCode: '' }
       });
       
       if (error) throw error;
