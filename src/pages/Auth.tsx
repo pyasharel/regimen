@@ -33,35 +33,23 @@ export default function Auth() {
       return;
     }
 
-    let hasProcessedSession = false;
-    let processingPromise: Promise<void> | null = null;
-
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session && !hasProcessedSession && !processingPromise) {
-        hasProcessedSession = true;
+      if (session) {
         setCheckingAuth(true);
-        processingPromise = checkOnboardingStatus(session.user.id);
-      } else {
-        setCheckingAuth(false);
+        checkOnboardingStatus(session.user.id);
       }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
-        setCheckingAuth(false);
+      } else if (event === 'SIGNED_IN' && session) {
+        setCheckingAuth(true);
+        checkOnboardingStatus(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setCheckingAuth(false);
-        hasProcessedSession = false;
-        processingPromise = null;
-      } else if (event === 'SIGNED_IN' && session && !hasProcessedSession && !processingPromise) {
-        hasProcessedSession = true;
-        setCheckingAuth(true);
-        processingPromise = checkOnboardingStatus(session.user.id);
       }
     });
 
@@ -261,8 +249,8 @@ export default function Auth() {
     }
   };
 
-  // Show loading while checking auth OR if we have a session (prevents auth screen flash)
-  if (checkingAuth || session) {
+  // Show loading while checking auth
+  if (checkingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

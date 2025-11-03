@@ -108,7 +108,21 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(user);
 
-      // Fetch profile with subscription info
+      // First verify subscription with Stripe to ensure database is up to date
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.functions.invoke('check-subscription', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error checking subscription with Stripe:', error);
+      }
+
+      // Then fetch the updated profile with subscription info
       const { data: profile } = await supabase
         .from('profiles')
         .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added')
@@ -199,24 +213,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     refreshSubscription();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // On sign-in, verify subscription with Stripe first
-        if (event === 'SIGNED_IN') {
-          try {
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            if (currentSession) {
-              await supabase.functions.invoke('check-subscription', {
-                headers: {
-                  Authorization: `Bearer ${currentSession.access_token}`
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Error checking subscription on sign-in:', error);
-          }
-        }
-        
         setTimeout(() => {
           refreshSubscription();
         }, 0);
