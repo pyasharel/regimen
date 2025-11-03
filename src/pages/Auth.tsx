@@ -69,8 +69,10 @@ export default function Auth() {
 
       if (profileError) {
         console.error("[Auth] Error fetching profile:", profileError);
-        setCheckingAuth(false);
-        navigate("/onboarding", { replace: true });
+        setTimeout(() => {
+          setCheckingAuth(false);
+          navigate("/onboarding", { replace: true });
+        }, 100);
         return;
       }
 
@@ -100,21 +102,23 @@ export default function Auth() {
         }
       }
 
-      // Clear checking state BEFORE navigation
-      setCheckingAuth(false);
-      
-      // Navigate
-      if (profile?.onboarding_completed) {
-        console.log('[Auth] Navigating to /today');
-        navigate("/today", { replace: true });
-      } else {
-        console.log('[Auth] Navigating to /onboarding');
-        navigate("/onboarding", { replace: true });
-      }
+      // Use setTimeout to ensure React processes state updates before navigation
+      setTimeout(() => {
+        setCheckingAuth(false);
+        if (profile?.onboarding_completed) {
+          console.log('[Auth] Navigating to /today');
+          navigate("/today", { replace: true });
+        } else {
+          console.log('[Auth] Navigating to /onboarding');
+          navigate("/onboarding", { replace: true });
+        }
+      }, 100);
     } catch (error) {
       console.error("[Auth] Error in checkOnboardingStatus:", error);
-      setCheckingAuth(false);
-      navigate("/onboarding", { replace: true });
+      setTimeout(() => {
+        setCheckingAuth(false);
+        navigate("/onboarding", { replace: true });
+      }, 100);
     }
   };
 
