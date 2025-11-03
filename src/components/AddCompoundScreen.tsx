@@ -48,7 +48,7 @@ const COMMON_PEPTIDES = [
   "Sigumir", "Chonluten", "Chelohart", "Libidon", "Vesugen",
   
   // Mitochondrial & Longevity
-  "5-Amino-1MQ", "Glutathione", "NAD+", "NMN", "Urolithin A",
+  "5-Amino-1MQ", "Glutathione", "NMN", "Urolithin A",
   
   // GLP-1 Agonists (Weight Loss)
   "Semaglutide (Ozempic/Wegovy)", "Tirzepatide (Mounjaro/Zepbound)",
@@ -122,7 +122,7 @@ export const AddCompoundScreen = () => {
 
   // Dosage
   const [intendedDose, setIntendedDose] = useState("");
-  const [doseUnit, setDoseUnit] = useState("mcg");
+  const [doseUnit, setDoseUnit] = useState("mg");
 
   // Calculator state
   const [showCalculator, setShowCalculator] = useState(false);
@@ -1003,38 +1003,55 @@ export const AddCompoundScreen = () => {
               </div>
 
 
-              {displayIU && (
-                <>
-                  <div className={cn(
-                    "border-2 rounded-lg p-4 text-center",
-                    getWarning()?.startsWith("❌") 
-                      ? "bg-destructive/10 border-destructive" 
-                      : "bg-card border-secondary"
-                  )}>
-                    <div className="text-3xl font-bold text-primary">{displayIU} units</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      on a 100-unit insulin syringe
-                    </div>
-                    {getWarning() && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-center">{getWarning()}</span>
+              {/* Show result or helpful error message */}
+              {vialSize && bacWater && intendedDose ? (
+                displayIU ? (
+                  <>
+                    <div className={cn(
+                      "border-2 rounded-lg p-4 text-center",
+                      getWarning()?.startsWith("❌") 
+                        ? "bg-destructive/10 border-destructive" 
+                        : "bg-card border-secondary"
+                    )}>
+                      <div className="text-3xl font-bold text-primary">{displayIU} units</div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        on a 100-unit insulin syringe
                       </div>
-                    )}
+                      {getWarning() && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-center">{getWarning()}</span>
+                        </div>
+                      )}
+                      
+                      {/* Show the calculation breakdown for transparency */}
+                      <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground space-y-1">
+                        <div>Concentration: {((parseFloat(vialSize) * (vialUnit === 'mg' ? 1000 : 1)) / parseFloat(bacWater)).toFixed(0)} mcg/mL</div>
+                        <div>Volume: {parseFloat((parseFloat(displayIU) / 100).toFixed(3))} mL</div>
+                      </div>
+                    </div>
                     
-                    {/* Show the calculation breakdown for transparency */}
-                    <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground space-y-1">
-                      <div>Concentration: {((parseFloat(vialSize) * (vialUnit === 'mg' ? 1000 : 1)) / parseFloat(bacWater)).toFixed(0)} mcg/mL</div>
-                      <div>Volume: {parseFloat((parseFloat(displayIU) / 100).toFixed(3))} mL</div>
+                    {/* Medical disclaimer - only shown when calculation is displayed */}
+                    <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>Always verify your calculations before use</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="border-2 border-destructive/50 rounded-lg p-4 bg-destructive/10">
+                    <div className="flex items-start gap-2 text-destructive">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1 text-sm">
+                        <div className="font-semibold">Cannot calculate</div>
+                        <div>Your dose ({intendedDose}{doseUnit}) exceeds the total peptide in the vial ({vialSize}{vialUnit}). Please check your inputs.</div>
+                      </div>
                     </div>
                   </div>
-                  
-                  {/* Medical disclaimer - only shown when calculation is displayed */}
-                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Always verify your calculations before use</span>
-                  </div>
-                </>
+                )
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-2">
+                  Enter all values above to see calculation
+                </div>
               )}
             </div>
           )}
