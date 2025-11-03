@@ -35,6 +35,7 @@ export default function Auth() {
 
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       if (session) {
         setCheckingAuth(true);
         checkOnboardingStatus(session.user.id);
@@ -42,19 +43,28 @@ export default function Auth() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
-      } else if (event === 'SIGNED_IN' && session) {
+        setCheckingAuth(false);
+      } else if (event === 'SIGNED_IN' && currentSession) {
         setCheckingAuth(true);
-        checkOnboardingStatus(session.user.id);
+        // Small delay to ensure subscription context is ready
+        setTimeout(() => {
+          checkOnboardingStatus(currentSession.user.id);
+        }, 100);
       } else if (event === 'SIGNED_OUT') {
         setCheckingAuth(false);
+        setSession(null);
+        // Ensure we're on the auth page
+        navigate("/auth", { replace: true });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   const checkOnboardingStatus = async (userId: string) => {
     try {

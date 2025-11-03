@@ -103,6 +103,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       if (!user) {
         setIsSubscribed(false);
         setSubscriptionStatus('none');
+        setIsLoading(false);
         return;
       }
 
@@ -112,24 +113,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          console.log('[SubscriptionContext] Calling check-subscription...');
           await supabase.functions.invoke('check-subscription', {
             headers: {
               Authorization: `Bearer ${session.access_token}`
             }
           });
+          console.log('[SubscriptionContext] check-subscription completed');
+          
+          // Wait a bit to ensure database update propagates
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       } catch (error) {
         console.error('Error checking subscription with Stripe:', error);
       }
 
       // Then fetch the updated profile with subscription info
-      const { data: profile } = await supabase
+      console.log('[SubscriptionContext] Fetching profile...');
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added')
         .eq('user_id', user.id)
         .single();
 
+      if (profileError) {
+        console.error('[SubscriptionContext] Profile fetch error:', profileError);
+      }
+
       if (profile) {
+        console.log('[SubscriptionContext] Profile data:', profile);
         const status = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
         setSubscriptionStatus(status);
         setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
@@ -137,6 +149,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         setTrialEndDate(profile.trial_end_date);
         setPreviewModeCompoundAdded(profile.preview_mode_compound_added || false);
         setIsSubscribed(status === 'active' || status === 'trialing');
+        console.log('[SubscriptionContext] Updated state:', { status, isSubscribed: status === 'active' || status === 'trialing' });
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);
@@ -213,12 +226,21 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     refreshSubscription();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[SubscriptionContext] Auth event:', event);
       if (session?.user) {
-        setTimeout(() => {
+        // Refresh immediately on sign in
+        if (event === 'SIGNED_IN') {
+          console.log('[SubscriptionContext] User signed in, refreshing subscription...');
           refreshSubscription();
-        }, 0);
+        } else {
+          // For other events, use a small delay
+          setTimeout(() => {
+            refreshSubscription();
+          }, 100);
+        }
       } else {
+        console.log('[SubscriptionContext] No session, resetting state');
         setIsSubscribed(false);
         setSubscriptionStatus('none');
         setIsLoading(false);
