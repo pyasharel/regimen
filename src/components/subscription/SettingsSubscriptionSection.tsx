@@ -20,9 +20,20 @@ export const SettingsSubscriptionSection = () => {
 
   const handleManageSubscription = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('create-portal-session');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please sign in to manage your subscription');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) {
+        console.error('Portal session error:', error);
         const errorMessage = error.message || JSON.stringify(error);
         
         // Handle Stripe not being fully configured

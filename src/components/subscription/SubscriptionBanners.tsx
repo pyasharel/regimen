@@ -44,7 +44,17 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   if (subscriptionStatus === 'past_due' && dismissed !== 'past_due') {
     const handleFixNow = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('create-portal-session');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          window.location.href = '/settings';
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('create-portal-session', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
         if (error) throw error;
         if (data?.url) {
           window.location.href = data.url;
@@ -100,7 +110,17 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
       const handleResubscribe = async () => {
         try {
-          const { data, error } = await supabase.functions.invoke('create-portal-session');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            window.location.href = '/settings';
+            return;
+          }
+
+          const { data, error } = await supabase.functions.invoke('create-portal-session', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
           if (error) throw error;
           if (data?.url) {
             window.location.href = data.url;
