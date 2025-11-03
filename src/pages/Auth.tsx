@@ -26,45 +26,28 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // Check if this is a password reset callback
     const mode = searchParams.get("mode");
     if (mode === "reset") {
       setIsResettingPassword(true);
-      setCheckingAuth(false);
       return;
     }
 
-    // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      console.log('[Auth] Initial session check:', session ? 'Has session' : 'No session');
       if (session) {
-        setCheckingAuth(true);
         checkOnboardingStatus(session.user.id);
-      } else {
-        setCheckingAuth(false);
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      console.log('[Auth] Auth state changed:', event);
       setSession(currentSession);
       
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
-        setCheckingAuth(false);
       } else if (event === 'SIGNED_IN' && currentSession) {
-        setCheckingAuth(true);
-        // Small delay to ensure subscription context is ready
-        setTimeout(() => {
-          checkOnboardingStatus(currentSession.user.id);
-        }, 100);
+        checkOnboardingStatus(currentSession.user.id);
       } else if (event === 'SIGNED_OUT') {
-        console.log('[Auth] User signed out, staying on auth page');
-        setCheckingAuth(false);
         setSession(null);
-        // Ensure we stay on auth page - this handles Safari navigation issues
         if (window.location.pathname !== '/auth') {
           navigate("/auth", { replace: true });
         }
@@ -86,18 +69,15 @@ export default function Auth() {
 
       if (profileError) {
         console.error("[Auth] Error fetching profile:", profileError);
-        // If profile doesn't exist, go to onboarding
-        console.log('[Auth] Navigating to onboarding (no profile)');
-        navigate("/onboarding", { replace: true });
         setCheckingAuth(false);
+        navigate("/onboarding", { replace: true });
         return;
       }
 
       console.log('[Auth] Profile loaded:', { onboarding_completed: profile.onboarding_completed });
 
-      // Send welcome email if not sent yet (with optimistic flag update)
+      // Send welcome email if not sent yet
       if (!profile?.welcome_email_sent) {
-        // Mark as sent immediately to prevent duplicates
         await supabase
           .from('profiles')
           .update({ welcome_email_sent: true })
@@ -105,7 +85,6 @@ export default function Auth() {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) {
-          // Send email in background - don't await
           supabase.functions.invoke('send-welcome-email', {
             body: { 
               email: user.email,
@@ -113,7 +92,6 @@ export default function Auth() {
             }
           }).catch((emailError) => {
             console.error('Error sending welcome email:', emailError);
-            // Revert the flag if email fails
             supabase
               .from('profiles')
               .update({ welcome_email_sent: false })
@@ -122,25 +100,21 @@ export default function Auth() {
         }
       }
 
-      // Navigate immediately - use timeout to ensure React can process state changes
-      setTimeout(() => {
-        if (profile?.onboarding_completed) {
-          console.log('[Auth] Navigating to /today');
-          navigate("/today", { replace: true });
-        } else {
-          console.log('[Auth] Navigating to /onboarding');
-          navigate("/onboarding", { replace: true });
-        }
-        setCheckingAuth(false);
-      }, 50);
+      // Clear checking state BEFORE navigation
+      setCheckingAuth(false);
+      
+      // Navigate
+      if (profile?.onboarding_completed) {
+        console.log('[Auth] Navigating to /today');
+        navigate("/today", { replace: true });
+      } else {
+        console.log('[Auth] Navigating to /onboarding');
+        navigate("/onboarding", { replace: true });
+      }
     } catch (error) {
       console.error("[Auth] Error in checkOnboardingStatus:", error);
-      // Always navigate somewhere to avoid blank page
-      console.log('[Auth] Navigating to onboarding (error fallback)');
-      setTimeout(() => {
-        navigate("/onboarding", { replace: true });
-        setCheckingAuth(false);
-      }, 50);
+      setCheckingAuth(false);
+      navigate("/onboarding", { replace: true });
     }
   };
 
