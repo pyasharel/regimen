@@ -70,11 +70,18 @@ export default function Auth() {
 
   const checkOnboardingStatus = async (userId: string) => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("onboarding_completed, welcome_email_sent, full_name")
         .eq("user_id", userId)
         .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        // If profile doesn't exist, go to onboarding
+        navigate("/onboarding", { replace: true });
+        return;
+      }
 
       // Send welcome email if not sent yet (with optimistic flag update)
       if (!profile?.welcome_email_sent) {
@@ -111,6 +118,7 @@ export default function Auth() {
       }
     } catch (error) {
       console.error("Error checking onboarding status:", error);
+      // Always navigate somewhere to avoid blank page
       navigate("/onboarding", { replace: true });
     } finally {
       setCheckingAuth(false);
