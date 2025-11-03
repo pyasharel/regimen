@@ -148,7 +148,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[SubscriptionContext] Fetching profile...');
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added')
+        .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date')
         .eq('user_id', user.id)
         .single();
 
@@ -158,14 +158,32 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       if (profile) {
         console.log('[SubscriptionContext] Profile data:', profile);
-        const status = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
-        setSubscriptionStatus(status);
-        setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
-        setSubscriptionEndDate(profile.subscription_end_date);
-        setTrialEndDate(profile.trial_end_date);
+        
+        // Check for active beta access
+        const betaAccessEndDate = profile.beta_access_end_date ? new Date(profile.beta_access_end_date) : null;
+        const hasBetaAccess = betaAccessEndDate && betaAccessEndDate > new Date();
+        
+        if (hasBetaAccess) {
+          console.log('[SubscriptionContext] Active beta access detected until:', betaAccessEndDate);
+          setIsSubscribed(true);
+          setSubscriptionStatus('active');
+          setSubscriptionType(null); // Beta users don't have a subscription type
+          setSubscriptionEndDate(profile.beta_access_end_date);
+          setTrialEndDate(null);
+        } else {
+          const status = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+          setSubscriptionStatus(status);
+          setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
+          setSubscriptionEndDate(profile.subscription_end_date);
+          setTrialEndDate(profile.trial_end_date);
+          setIsSubscribed(status === 'active' || status === 'trialing');
+        }
+        
         setPreviewModeCompoundAdded(profile.preview_mode_compound_added || false);
-        setIsSubscribed(status === 'active' || status === 'trialing');
-        console.log('[SubscriptionContext] Updated state:', { status, isSubscribed: status === 'active' || status === 'trialing' });
+        console.log('[SubscriptionContext] Updated state:', { 
+          status: hasBetaAccess ? 'active (beta)' : profile.subscription_status, 
+          isSubscribed: hasBetaAccess || profile.subscription_status === 'active' || profile.subscription_status === 'trialing' 
+        });
       }
     } catch (error) {
       console.error('Error fetching subscription:', error);

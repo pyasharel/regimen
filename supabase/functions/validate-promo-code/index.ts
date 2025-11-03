@@ -33,12 +33,27 @@ serve(async (req) => {
 
     const promoCode = promoCodes.data[0];
     const coupon = promoCode.coupon;
+    
+    // Determine which plan this promo applies to based on the price ID
+    const applicablePrices = promoCode.restrictions?.applicable_products || [];
+    const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
+    const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
+    
+    let planType = 'both'; // default if no restrictions
+    if (applicablePrices.length > 0) {
+      const hasMonthly = applicablePrices.includes(monthlyPriceId);
+      const hasAnnual = applicablePrices.includes(annualPriceId);
+      
+      if (hasMonthly && !hasAnnual) planType = 'monthly';
+      else if (hasAnnual && !hasMonthly) planType = 'annual';
+    }
 
     return new Response(JSON.stringify({
       valid: true,
       type: coupon.percent_off === 100 ? 'free' : 'discount',
       duration: coupon.duration_in_months || 12,
       discount: coupon.percent_off || 0,
+      planType, // Add which plan this code applies to
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

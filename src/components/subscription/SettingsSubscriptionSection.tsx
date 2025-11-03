@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Crown, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SubscriptionPaywall } from "../SubscriptionPaywall";
 
 export const SettingsSubscriptionSection = () => {
@@ -15,8 +15,31 @@ export const SettingsSubscriptionSection = () => {
     trialEndDate,
     refreshSubscription 
   } = useSubscription();
+  const [betaAccessEndDate, setBetaAccessEndDate] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+
+  // Check for beta access
+  useEffect(() => {
+    const checkBetaAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('beta_access_end_date')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profile?.beta_access_end_date) {
+        const endDate = new Date(profile.beta_access_end_date);
+        if (endDate > new Date()) {
+          setBetaAccessEndDate(profile.beta_access_end_date);
+        }
+      }
+    };
+    checkBetaAccess();
+  }, [subscriptionStatus]);
 
   const handleManageSubscription = async () => {
     try {
@@ -95,6 +118,9 @@ export const SettingsSubscriptionSection = () => {
   };
 
   if (subscriptionStatus === 'active') {
+    // Check if this is beta access
+    const isBetaAccess = betaAccessEndDate && !subscriptionType;
+    
     return (
       <div className="space-y-3">
         <h3 className="text-[12px] uppercase font-semibold text-muted-foreground tracking-wide">
@@ -107,7 +133,7 @@ export const SettingsSubscriptionSection = () => {
               <div className="flex items-center gap-2.5">
                 <Crown className="h-4.5 w-4.5 text-primary" />
                 <span className="text-[15px] font-semibold">
-                  {subscriptionType === 'annual' ? 'Annual' : 'Monthly'} Plan
+                  {isBetaAccess ? 'Beta Tester Access' : (subscriptionType === 'annual' ? 'Annual' : 'Monthly') + ' Plan'}
                 </span>
               </div>
               <div className="px-2.5 py-1 bg-primary/10 rounded-full">
@@ -116,15 +142,21 @@ export const SettingsSubscriptionSection = () => {
             </div>
             
             <div className="text-[13px] text-muted-foreground">
-              <p>Renews {formatDate(subscriptionEndDate)}</p>
+              {isBetaAccess ? (
+                <p>Access until {formatDate(betaAccessEndDate)} • No credit card required</p>
+              ) : (
+                <p>Renews {formatDate(subscriptionEndDate)}</p>
+              )}
             </div>
             
-            <button
-              onClick={handleManageSubscription}
-              className="text-[13px] text-primary hover:text-primary/80 underline transition-colors"
-            >
-              Manage billing
-            </button>
+            {!isBetaAccess && (
+              <button
+                onClick={handleManageSubscription}
+                className="text-[13px] text-primary hover:text-primary/80 underline transition-colors"
+              >
+                Manage billing
+              </button>
+            )}
           </CardContent>
         </Card>
         

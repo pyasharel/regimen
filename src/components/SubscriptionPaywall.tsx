@@ -37,8 +37,9 @@ export const SubscriptionPaywall = ({
     }
   }, [open]);
 
-  const promoCodes: Record<string, {duration: number, type: 'free' | 'discount', value: number}> = {
+  const promoCodes: Record<string, {duration: number, type: 'free' | 'discount' | 'beta', value: number}> = {
     'BETA3': { duration: 3, type: 'free', value: 100 },
+    'BETATESTER': { duration: 90, type: 'beta', value: 100 },
   };
 
   const handleApplyPromo = async () => {
@@ -46,11 +47,40 @@ export const SubscriptionPaywall = ({
     
     console.log('[PROMO] ========== APPLY PROMO STARTED ==========');
     console.log('[PROMO] Code:', code);
-    console.log('[PROMO] Supabase client:', typeof supabase);
     
     setIsLoading(true);
     
     try {
+      // Check if it's a beta code first (BETATESTER)
+      if (code === 'BETATESTER') {
+        console.log('[PROMO] Beta code detected, activating beta access...');
+        
+        const { data, error } = await supabase.functions.invoke('activate-beta-access', {
+          body: { code }
+        });
+
+        console.log('[PROMO] Beta activation response:', JSON.stringify({ data, error }, null, 2));
+
+        if (error) {
+          console.error('[PROMO] Beta activation ERROR:', error);
+          toast.error(`Failed to activate beta access: ${error.message || 'Unknown error'}`);
+          return;
+        }
+
+        if (data?.valid) {
+          if (data.alreadyActive) {
+            toast.success('Beta access already active!');
+          } else if (data.activated) {
+            toast.success('Beta access activated! Enjoy 90 days free - no credit card required.');
+          }
+          // Close the modal and refresh subscription
+          onOpenChange(false);
+          window.location.reload(); // Refresh to update subscription status
+          return;
+        }
+      }
+
+      // Otherwise try Stripe promo code
       console.log('[PROMO] Calling validate-promo-code function...');
       
       const { data, error } = await supabase.functions.invoke('validate-promo-code', {
@@ -72,13 +102,19 @@ export const SubscriptionPaywall = ({
         setAppliedPromo({ code, discount: discountText });
         setShowPromoInput(false);
         
-        // If it's a free trial promo (like BETA3), switch to monthly billing
-        if (data.type === 'free') {
+        // Auto-switch plan based on promo code compatibility
+        if (data.planType === 'monthly') {
           setSelectedPlan('monthly');
-          console.log('[PROMO] Switched to monthly plan for free trial promo');
+          console.log('[PROMO] Auto-switched to monthly plan (code only works with monthly)');
+          toast.success(`Promo code applied: ${discountText} - Switched to monthly plan`);
+        } else if (data.planType === 'annual') {
+          setSelectedPlan('annual');
+          console.log('[PROMO] Auto-switched to annual plan (code only works with annual)');
+          toast.success(`Promo code applied: ${discountText} - Switched to annual plan`);
+        } else {
+          toast.success(`Promo code applied: ${discountText}`);
         }
         
-        toast.success(`Promo code applied: ${discountText}`);
         console.log('[PROMO] SUCCESS! Applied:', discountText);
       } else {
         console.log('[PROMO] Invalid code');
