@@ -81,15 +81,27 @@ serve(async (req) => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + BETA_DURATION_DAYS);
 
-    const { error: updateError } = await supabaseClient
+    console.log('[ACTIVATE-BETA] Attempting to update user:', user.id);
+    console.log('[ACTIVATE-BETA] Setting beta_access_end_date to:', endDate.toISOString());
+
+    const { data: updateData, error: updateError } = await supabaseClient
       .from('profiles')
       .update({ 
         beta_access_end_date: endDate.toISOString(),
       })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select();
+
+    console.log('[ACTIVATE-BETA] Update result:', { data: updateData, error: updateError });
 
     if (updateError) {
+      console.error('[ACTIVATE-BETA] Update error:', updateError);
       throw updateError;
+    }
+
+    if (!updateData || updateData.length === 0) {
+      console.error('[ACTIVATE-BETA] No rows updated! User may not have a profile.');
+      throw new Error('Failed to update profile - user profile may not exist');
     }
 
     console.log('[ACTIVATE-BETA] Beta access activated until:', endDate);
