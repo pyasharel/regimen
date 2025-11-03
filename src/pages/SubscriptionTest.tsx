@@ -3,6 +3,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const SubscriptionTest = () => {
   const { 
@@ -43,7 +44,53 @@ export const SubscriptionTest = () => {
       .eq('user_id', user.id);
 
     await refreshSubscription();
-    alert('Preview mode reset!');
+    toast.success('Preview mode reset!');
+  };
+
+  const cancelSubscription = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast.info('Manage subscription in Stripe Portal');
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast.error('Failed to open portal');
+    }
+  };
+
+  const startNewSubscription = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast.info('Complete checkout in new tab');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to create checkout');
+    }
   };
 
   return (
@@ -66,6 +113,22 @@ export const SubscriptionTest = () => {
           <Button onClick={refreshSubscription}>Refresh Status</Button>
           <Button onClick={resetPreviewMode} variant="destructive">Reset Preview Mode</Button>
         </div>
+      </Card>
+
+      <Card className="p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Real Stripe Controls</h2>
+        <p className="text-sm text-muted-foreground">Manage your actual Stripe subscription</p>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={cancelSubscription} variant="outline">
+            Manage/Cancel Subscription
+          </Button>
+          <Button onClick={startNewSubscription} variant="default">
+            Start New Subscription
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Opens Stripe Portal/Checkout in new tab. Cancel subscription there to return to preview mode.
+        </p>
       </Card>
 
       <Card className="p-6 space-y-4">

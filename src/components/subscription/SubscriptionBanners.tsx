@@ -11,17 +11,12 @@ interface SubscriptionBannersProps {
 }
 
 export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
+  // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
   const { trialEndDate, subscriptionEndDate } = useSubscription();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
   });
-
-  // Don't show any banners on auth, onboarding, or landing pages
-  const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
-  if (hideOnRoutes.includes(location.pathname)) {
-    return null;
-  }
 
   useEffect(() => {
     if (dismissed) {
@@ -30,6 +25,12 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       sessionStorage.removeItem('dismissedBanner');
     }
   }, [dismissed]);
+
+  // Don't show any banners on auth, onboarding, or landing pages
+  const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
+  if (hideOnRoutes.includes(location.pathname)) {
+    return null;
+  }
 
   const calculateDaysRemaining = (endDate: string | null) => {
     if (!endDate) return 0;
