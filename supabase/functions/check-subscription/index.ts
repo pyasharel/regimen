@@ -49,13 +49,15 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No customer found, updating unsubscribed state");
       
+      // Don't touch beta_access_end_date - only update Stripe-related fields
       await supabaseClient
         .from('profiles')
         .update({ 
           subscription_status: 'none',
           subscription_type: null,
           subscription_end_date: null,
-          trial_end_date: null
+          trial_end_date: null,
+          stripe_customer_id: null
         })
         .eq('user_id', user.id);
 
@@ -87,6 +89,8 @@ serve(async (req) => {
 
     if (allSubs.length === 0) {
       logStep("No active or trialing subscription found");
+      
+      // Don't touch beta_access_end_date - only update Stripe-related fields
       await supabaseClient
         .from('profiles')
         .update({ 
