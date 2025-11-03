@@ -88,7 +88,8 @@ serve(async (req) => {
           promo_code: promoCode || '',
         },
       },
-      allow_promotion_codes: true,
+      // Only add allow_promotion_codes if no specific promo is being applied
+      ...(promoCode ? {} : { allow_promotion_codes: true })
     };
 
     // If promo code provided, try to apply it
