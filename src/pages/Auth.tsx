@@ -105,19 +105,15 @@ export default function Auth() {
       // Use setTimeout to ensure React processes state updates before navigation
       setTimeout(() => {
         setCheckingAuth(false);
-        if (profile?.onboarding_completed) {
-          console.log('[Auth] Navigating to /today');
-          navigate("/today", { replace: true });
-        } else {
-          console.log('[Auth] Navigating to /onboarding');
-          navigate("/onboarding", { replace: true });
-        }
+        // Skip onboarding for beta - navigate directly to /today
+        console.log('[Auth] Navigating to /today');
+        navigate("/today", { replace: true });
       }, 100);
     } catch (error) {
       console.error("[Auth] Error in checkOnboardingStatus:", error);
       setTimeout(() => {
         setCheckingAuth(false);
-        navigate("/onboarding", { replace: true });
+        navigate("/today", { replace: true });
       }, 100);
     }
   };
