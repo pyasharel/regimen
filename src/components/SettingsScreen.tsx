@@ -12,10 +12,7 @@ import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
-
-// Version info - update these when bumping versions in capacitor.config.ts
-const APP_VERSION = '0.1.2';
-const APP_BUILD = '4';
+import { appVersion, appBuild } from "../../capacitor.config";
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -296,7 +293,7 @@ export const SettingsScreen = () => {
 
         {/* Version Number */}
         <div className="text-center text-xs text-muted-foreground/60 mt-4">
-          Version {APP_VERSION} {Capacitor.isNativePlatform() && `(Build ${APP_BUILD})`}
+          Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
         </div>
       </div>
 
