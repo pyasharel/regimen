@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Mail, ExternalLink } from "lucide-react";
+import { appVersion, appBuild } from "../../../capacitor.config";
 
 export const HelpSettings = () => {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ export const HelpSettings = () => {
 
         {/* App Version */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>Regimen v1.0.0</p>
+          <p>Regimen v{appVersion} (Build {appBuild})</p>
           <p className="mt-1">© 2025 All rights reserved</p>
         </div>
       </div>
