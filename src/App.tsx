@@ -9,7 +9,6 @@ import { useAppStateSync } from "@/hooks/useAppStateSync";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
-import { DevSubscriptionToggle } from "@/components/DevSubscriptionToggle";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { useState } from "react";
 import { Onboarding } from "./components/Onboarding";
@@ -55,7 +54,6 @@ const AppContent = () => {
           subscriptionStatus={subscriptionStatus}
           onUpgrade={() => setShowPaywall(true)}
         />
-        <DevSubscriptionToggle onMockStateChange={setMockState} />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
         )}
