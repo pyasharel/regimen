@@ -51,10 +51,6 @@
 	<string>We need photo library access to let you select progress photos</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need permission to save photos to your library</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>We need access to read your health data to track your progress</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>We need access to update your health data</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

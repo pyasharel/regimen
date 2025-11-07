@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
@@ -63,8 +62,6 @@ export const ProgressScreen = () => {
   const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [photoEntryDate, setPhotoEntryDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
-
-  const { isEnabled: healthSyncEnabled, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
   // Fetch ALL progress entries (weight + photos)
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -255,17 +252,7 @@ export const ProgressScreen = () => {
         if (error) throw error;
       }
 
-      // Save to Health if enabled
-      if (healthSyncEnabled) {
-        const success = await saveWeightToHealth(weightLbs);
-        if (success) {
-          toast.success("Weight logged and synced to Health!");
-        } else {
-          toast.success("Weight logged!");
-        }
-      } else {
-        toast.success("Weight logged!");
-      }
+      toast.success("Weight logged!");
 
       await refetchEntries();
       setShowLogModal(false);

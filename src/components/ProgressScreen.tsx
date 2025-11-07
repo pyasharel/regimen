@@ -26,7 +26,6 @@ import { Camera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { CycleTimeline } from "@/components/CycleTimeline";
 
@@ -70,8 +69,6 @@ export const ProgressScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
-  
-  const { isEnabled: healthSyncEnabled, syncWeightFromHealth, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
   // Cached data fetching with React Query
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -154,11 +151,6 @@ export const ProgressScreen = () => {
 
       const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
 
-      // Request health permissions if not already granted
-      if (healthSyncEnabled) {
-        await requestPermission();
-      }
-
       // Check if entry exists for this date
       const dateStr = format(entryDate, 'yyyy-MM-dd');
       const { data: existingEntry } = await supabase
@@ -191,11 +183,6 @@ export const ProgressScreen = () => {
       }
 
       if (error) throw error;
-
-      // Sync to health app if enabled
-      if (healthSyncEnabled) {
-        await saveWeightToHealth(weightInLbs);
-      }
 
       toast.success('Weight logged successfully');
       setShowLogModal(false);

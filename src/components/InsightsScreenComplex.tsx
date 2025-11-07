@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { useHealthIntegration } from "@/hooks/useHealthIntegration";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,8 +114,6 @@ export const InsightsScreen = () => {
   const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [photoEntryDate, setPhotoEntryDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
-
-  const { isEnabled: healthSyncEnabled, saveWeightToHealth, requestPermission } = useHealthIntegration();
 
   const MEDICATION_COLORS = [
     '#FF6F61', // coral
@@ -427,10 +424,6 @@ export const InsightsScreen = () => {
 
       const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
 
-      if (healthSyncEnabled) {
-        await requestPermission();
-      }
-
       // Check if entry exists for this date
       const dateStr = format(entryDate, 'yyyy-MM-dd');
       const { data: existingEntry } = await supabase
@@ -461,10 +454,6 @@ export const InsightsScreen = () => {
       }
 
       if (error) throw error;
-
-      if (healthSyncEnabled) {
-        await saveWeightToHealth(weightInLbs);
-      }
 
       toast.success('Weight logged successfully');
       setShowLogModal(false);
