@@ -1,5 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Version constants exported for use in components
 export const appVersion = '0.1.2';
 export const appBuild = '5';
 
