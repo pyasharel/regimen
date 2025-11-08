@@ -611,7 +611,7 @@ export const TodayScreen = () => {
       {/* Header */}
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-center">
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent tracking-tight" style={{ letterSpacing: '-0.02em' }}>
             REGIMEN
           </h1>
         </div>
@@ -833,9 +833,12 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                     className="overflow-hidden rounded-2xl border transition-all animate-fade-in relative dark:border-[#2F2F2F] dark:bg-[#1A1A1A] border-[#E5E7EB] bg-white dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] shadow-[0_1px_3px_rgba(0,0,0,0.1)] border-l-[3px] dark:border-l-[#FF6F61] border-l-[#FF6F61]"
+                    className={`overflow-hidden rounded-xl transition-all duration-300 animate-fade-in relative ${
+                      dose.taken
+                        ? 'bg-[#1A1A1A] border border-[#2A2A2A] opacity-70'
+                        : 'bg-[#FF6F61] shadow-[0_2px_12px_rgba(255,111,97,0.25)]'
+                    }`}
                     style={{
-                      opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
@@ -856,17 +859,25 @@ export const TodayScreen = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
-                          <h3 className="text-base font-bold mb-1 text-white transition-colors duration-300">
+                          <h3 className={`font-bold mb-1 transition-colors duration-300 ${
+                            dose.taken ? 'text-[#6B7280]' : 'text-white'
+                          }`} style={{ fontSize: '17px' }}>
                             {dose.compound_name}
                           </h3>
                           
                           {/* Time and dosage on same line */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs text-[#9CA3AF] transition-colors duration-300">
+                            <span className={`text-xs transition-colors duration-300 ${
+                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
+                            }`} style={{ fontSize: '14px' }}>
                               {formatTime(dose.scheduled_time)}
                             </span>
-                            <span className="text-xs text-[#9CA3AF]">•</span>
-                            <span className="text-xs font-medium text-[#9CA3AF] transition-colors duration-300">
+                            <span className={`text-xs transition-colors duration-300 ${
+                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
+                            }`}>•</span>
+                            <span className={`text-xs font-medium transition-colors duration-300 ${
+                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
+                            }`} style={{ fontSize: '14px' }}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
                               {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                               {dose.calculated_ml && ` • ${dose.calculated_ml} mL`}
@@ -878,10 +889,10 @@ export const TodayScreen = () => {
                         <button
                           onClick={() => toggleDose(dose.id, dose.taken)}
                           disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-6 w-6 rounded-full border-2 transition-all duration-200 p-3 -m-3 ${
+                          className={`flex-shrink-0 h-6 w-6 rounded-full border-2 transition-all duration-300 p-3 -m-3 ${
                             dose.taken
                               ? 'bg-[#FF6F61] border-[#FF6F61]'
-                              : 'border-white/70 bg-transparent hover:border-white active:scale-95'
+                              : 'border-white bg-transparent hover:border-white/80 active:scale-95'
                           }`}
                           style={{
                             ...(animatingDoses.has(dose.id) && dose.taken ? {
