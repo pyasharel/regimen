@@ -610,13 +610,10 @@ export const TodayScreen = () => {
       `}</style>
       {/* Header */}
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center">
           <h1 className="text-2xl font-extrabold text-foreground tracking-tight" style={{ letterSpacing: '-0.02em' }}>
             REGIMEN
           </h1>
-          <button className="text-sm text-muted-foreground">
-            [menu]
-          </button>
         </div>
       </header>
 
@@ -836,7 +833,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                     className="overflow-hidden rounded-2xl border transition-all animate-fade-in relative dark:border-[#2F2F2F] dark:bg-[#1A1A1A] border-[#E5E7EB] bg-white dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
+                     className="overflow-hidden rounded-2xl border transition-all animate-fade-in relative dark:border-[#2F2F2F] dark:bg-[#1A1A1A] border-[#E5E7EB] bg-white dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] shadow-[0_1px_3px_rgba(0,0,0,0.1)] border-l-[3px] dark:border-l-[#FF6F61] border-l-[#FF6F61]"
                     style={{
                       opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
@@ -919,7 +916,7 @@ export const TodayScreen = () => {
                     {/* Morning Section */}
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
                           Morning
                         </h4>
                         {morningDoses.map(renderDoseCard)}
@@ -929,7 +926,7 @@ export const TodayScreen = () => {
                     {/* Afternoon Section */}
                     {afternoonDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
                           Afternoon
                         </h4>
                         {afternoonDoses.map(renderDoseCard)}
@@ -939,7 +936,7 @@ export const TodayScreen = () => {
                     {/* Evening Section */}
                     {eveningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
                           Evening
                         </h4>
                         {eveningDoses.map(renderDoseCard)}
@@ -952,7 +949,7 @@ export const TodayScreen = () => {
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
               <div className="space-y-3">
-                <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
                   As Needed
                 </h4>
                 {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (
