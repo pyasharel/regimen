@@ -610,10 +610,13 @@ export const TodayScreen = () => {
       `}</style>
       {/* Header */}
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
-        <div className="flex items-center justify-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-            REGIMEN
-          </h1>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
         </div>
       </header>
 
@@ -833,12 +836,13 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-xl transition-all duration-300 animate-fade-in relative ${
+                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
                       dose.taken
-                        ? 'bg-[#1A1A1A] border border-[#2A2A2A] opacity-70'
-                        : 'bg-[#FF6F61] shadow-[0_2px_12px_rgba(255,111,97,0.25)]'
+                        ? 'bg-card border-border'
+                        : 'bg-primary border-primary shadow-sm'
                     }`}
                     style={{
+                      opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}
@@ -859,25 +863,25 @@ export const TodayScreen = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
-                          <h3 className={`font-bold mb-1 transition-colors duration-300 ${
-                            dose.taken ? 'text-[#6B7280]' : 'text-white'
-                          }`} style={{ fontSize: '17px' }}>
+                          <h3 className={`text-base font-bold mb-1 transition-colors duration-300 ${
+                            dose.taken ? 'text-muted-foreground' : 'text-white'
+                          }`}>
                             {dose.compound_name}
                           </h3>
                           
                           {/* Time and dosage on same line */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-xs transition-colors duration-300 ${
-                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
-                            }`} style={{ fontSize: '14px' }}>
+                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
+                            }`}>
                               {formatTime(dose.scheduled_time)}
                             </span>
                             <span className={`text-xs transition-colors duration-300 ${
-                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
+                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
                             }`}>•</span>
                             <span className={`text-xs font-medium transition-colors duration-300 ${
-                              dose.taken ? 'text-[#6B7280]' : 'text-white/90'
-                            }`} style={{ fontSize: '14px' }}>
+                              dose.taken ? 'text-muted-foreground' : 'text-white/90'
+                            }`}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
                               {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                               {dose.calculated_ml && ` • ${dose.calculated_ml} mL`}
@@ -889,10 +893,10 @@ export const TodayScreen = () => {
                         <button
                           onClick={() => toggleDose(dose.id, dose.taken)}
                           disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-6 w-6 rounded-full border-2 transition-all duration-300 p-3 -m-3 ${
+                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                             dose.taken
-                              ? 'bg-[#FF6F61] border-[#FF6F61]'
-                              : 'border-white bg-transparent hover:border-white/80 active:scale-95'
+                              ? 'bg-success border-success'
+                              : 'border-white/40 hover:border-white active:scale-95'
                           }`}
                           style={{
                             ...(animatingDoses.has(dose.id) && dose.taken ? {
@@ -927,7 +931,7 @@ export const TodayScreen = () => {
                     {/* Morning Section */}
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
                           Morning
                         </h4>
                         {morningDoses.map(renderDoseCard)}
@@ -936,8 +940,8 @@ export const TodayScreen = () => {
 
                     {/* Afternoon Section */}
                     {afternoonDoses.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
+                      <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
                           Afternoon
                         </h4>
                         {afternoonDoses.map(renderDoseCard)}
@@ -946,8 +950,8 @@ export const TodayScreen = () => {
 
                     {/* Evening Section */}
                     {eveningDoses.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
+                      <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
                           Evening
                         </h4>
                         {eveningDoses.map(renderDoseCard)}
@@ -959,8 +963,8 @@ export const TodayScreen = () => {
 
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider px-1 mt-8 mb-3 text-[#FF6F61]">
+              <div className="mt-6 space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
                   As Needed
                 </h4>
                 {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (
