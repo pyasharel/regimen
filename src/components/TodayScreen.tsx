@@ -839,12 +839,15 @@ export const TodayScreen = () => {
                     className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
                       dose.taken
                         ? 'bg-card border-border'
-                        : 'bg-primary border-primary shadow-sm'
+                        : 'bg-primary border-primary'
                     }`}
                     style={{
                       opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      ...(dose.taken ? {} : {
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
+                      })
                     }}
                   >
                     {/* Golden shine for day complete only */}
@@ -863,7 +866,7 @@ export const TodayScreen = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
-                          <h3 className={`text-base font-bold mb-1 transition-colors duration-300 ${
+                          <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
                             dose.taken ? 'text-muted-foreground' : 'text-white'
                           }`}>
                             {dose.compound_name}
@@ -871,15 +874,15 @@ export const TodayScreen = () => {
                           
                           {/* Time and dosage on same line */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs transition-colors duration-300 ${
+                            <span className={`text-xs font-semibold transition-colors duration-300 ${
                               dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
                             }`}>
                               {formatTime(dose.scheduled_time)}
                             </span>
-                            <span className={`text-xs transition-colors duration-300 ${
+                            <span className={`text-xs font-semibold transition-colors duration-300 ${
                               dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
-                            }`}>•</span>
-                            <span className={`text-xs font-medium transition-colors duration-300 ${
+                            }`} style={{ marginLeft: '1px', marginRight: '1px' }}>•</span>
+                            <span className={`text-xs font-semibold transition-colors duration-300 ${
                               dose.taken ? 'text-muted-foreground' : 'text-white/90'
                             }`}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
