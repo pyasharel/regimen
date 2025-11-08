@@ -611,12 +611,12 @@ export const TodayScreen = () => {
       {/* Header */}
       <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-                REGIMEN
-              </h1>
-            </div>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+            REGIMEN
+          </h1>
+          <button className="text-sm text-muted-foreground">
+            [menu]
+          </button>
         </div>
       </header>
 
@@ -836,7 +836,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className="overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] transition-all animate-fade-in relative"
+                     className="overflow-hidden rounded-2xl border transition-all animate-fade-in relative dark:border-[#2F2F2F] dark:bg-[#1A1A1A] border-[#E5E7EB] bg-white dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
                     style={{
                       opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
@@ -881,7 +881,7 @@ export const TodayScreen = () => {
                         <button
                           onClick={() => toggleDose(dose.id, dose.taken)}
                           disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                          className={`flex-shrink-0 h-6 w-6 rounded-full border-2 transition-all duration-200 p-3 -m-3 ${
                             dose.taken
                               ? 'bg-[#FF6F61] border-[#FF6F61]'
                               : 'border-white/70 bg-transparent hover:border-white active:scale-95'
@@ -919,7 +919,7 @@ export const TodayScreen = () => {
                     {/* Morning Section */}
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
                           Morning
                         </h4>
                         {morningDoses.map(renderDoseCard)}
@@ -928,8 +928,8 @@ export const TodayScreen = () => {
 
                     {/* Afternoon Section */}
                     {afternoonDoses.length > 0 && (
-                      <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
                           Afternoon
                         </h4>
                         {afternoonDoses.map(renderDoseCard)}
@@ -938,8 +938,8 @@ export const TodayScreen = () => {
 
                     {/* Evening Section */}
                     {eveningDoses.length > 0 && (
-                      <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
                           Evening
                         </h4>
                         {eveningDoses.map(renderDoseCard)}
@@ -951,8 +951,8 @@ export const TodayScreen = () => {
 
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1 mt-8 mb-3">
                   As Needed
                 </h4>
                 {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (
