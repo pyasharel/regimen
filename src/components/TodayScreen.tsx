@@ -836,11 +836,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
-                      dose.taken
-                        ? 'bg-card border-border'
-                        : 'bg-primary border-primary shadow-sm'
-                    }`}
+                    className="overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] transition-all animate-fade-in relative"
                     style={{
                       opacity: dose.taken ? 0.85 : 1,
                       transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
@@ -863,25 +859,17 @@ export const TodayScreen = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
-                          <h3 className={`text-base font-bold mb-1 transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white'
-                          }`}>
+                          <h3 className="text-base font-bold mb-1 text-white transition-colors duration-300">
                             {dose.compound_name}
                           </h3>
                           
                           {/* Time and dosage on same line */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
-                            }`}>
+                            <span className="text-xs text-[#9CA3AF] transition-colors duration-300">
                               {formatTime(dose.scheduled_time)}
                             </span>
-                            <span className={`text-xs transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
-                            }`}>•</span>
-                            <span className={`text-xs font-medium transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground' : 'text-white/90'
-                            }`}>
+                            <span className="text-xs text-[#9CA3AF]">•</span>
+                            <span className="text-xs font-medium text-[#9CA3AF] transition-colors duration-300">
                               {formatDose(dose.dose_amount, dose.dose_unit)}
                               {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                               {dose.calculated_ml && ` • ${dose.calculated_ml} mL`}
@@ -895,8 +883,8 @@ export const TodayScreen = () => {
                           disabled={animatingDoses.has(dose.id)}
                           className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                             dose.taken
-                              ? 'bg-success border-success'
-                              : 'border-white/40 hover:border-white active:scale-95'
+                              ? 'bg-[#FF6F61] border-[#FF6F61]'
+                              : 'border-white/70 bg-transparent hover:border-white active:scale-95'
                           }`}
                           style={{
                             ...(animatingDoses.has(dose.id) && dose.taken ? {
