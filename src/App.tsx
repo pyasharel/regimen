@@ -28,7 +28,6 @@ import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SubscriptionTest } from "./pages/SubscriptionTest";
-import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
@@ -58,7 +57,6 @@ const AppContent = () => {
         )}
         <Routes>
             <Route path="/" element={<Splash />} />
-            <Route path="/landing" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
