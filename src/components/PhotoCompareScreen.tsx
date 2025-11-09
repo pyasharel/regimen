@@ -21,7 +21,7 @@ import { format } from "date-fns";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
-import logoSquare from "@/assets/logo-regimen-square.png";
+import logoSquare from "@/assets/logo-regimen-vertical-new.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 
 interface PhotoEntry {
