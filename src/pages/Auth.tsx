@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import logo from "@/assets/logo-regimen-auth.png";
+import logo from "@/assets/logo-regimen-auth-vertical.png";
 import { FcGoogle } from "react-icons/fc";
 
 export default function Auth() {
