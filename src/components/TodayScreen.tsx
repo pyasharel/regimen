@@ -627,7 +627,7 @@ export const TodayScreen = () => {
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
               {greeting.text}{userName ? `, ${userName}` : ''}
             </h2>
-            <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary" />
+            <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[pulse_4s_ease-in-out_infinite]" />
           </div>
           <StreakBadge />
         </div>
