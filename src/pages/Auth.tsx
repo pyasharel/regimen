@@ -270,7 +270,7 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <img src={logo} alt="Regimen Logo" className="h-24 mx-auto mb-6" />
+          <img src={logo} alt="Regimen Logo" className="h-[115px] mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2">
             {isResettingPassword 
               ? "Set New Password" 
