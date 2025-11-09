@@ -11,6 +11,7 @@ export const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        gradient: "bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] text-white font-bold hover:opacity-90",
       },
       size: {
         default: "min-h-[44px] px-6 py-3",
