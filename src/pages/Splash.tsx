@@ -32,7 +32,7 @@ export default function Splash() {
           <img 
             src={logoVertical} 
             alt="REGIMEN" 
-            className="h-32 w-auto animate-splash-logo"
+            className="h-44 w-auto animate-splash-logo"
           />
         </div>
 
