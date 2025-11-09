@@ -286,7 +286,7 @@ export default function Auth() {
               : isForgotPassword
                 ? "Enter your email to receive a password reset link"
                 : isSignUp 
-                  ? "Sign up to track your health progress" 
+                  ? "Join thousands optimizing their health" 
                   : "Sign in to continue to your dashboard"}
           </p>
         </div>
