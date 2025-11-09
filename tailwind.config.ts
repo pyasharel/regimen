@@ -86,7 +86,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "splash-logo": "splash-logo 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "splash-logo": "splash-logo 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
       },
     },
   },
