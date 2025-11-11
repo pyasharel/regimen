@@ -10,6 +10,7 @@ import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { useState } from "react";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
@@ -41,9 +42,11 @@ const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   return (
     <>
+      {showSplash && <AnimatedSplash onComplete={() => setShowSplash(false)} />}
       <AnalyticsWrapper />
       <TooltipProvider>
         <Toaster />
