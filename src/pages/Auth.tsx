@@ -34,13 +34,13 @@ export default function Auth() {
       return;
     }
 
-    // Initialize Google Auth for both web and native
-    GoogleAuth.initialize({
-      clientId: Capacitor.isNativePlatform() 
-        ? undefined // Native uses the client ID from capacitor.config.ts
-        : '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
-      scopes: ['profile', 'email'],
-    });
+    // Initialize Google Auth for web only
+    if (!Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize({
+        clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+      });
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
