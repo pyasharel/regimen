@@ -182,28 +182,34 @@ export default function Auth() {
     try {
       setLoading(true);
       
-      // Use HTTPS redirect URL for both web and native (universal links)
-      const redirectUrl = `${window.location.origin}/auth`;
+      const isNative = Capacitor.isNativePlatform();
+      const redirectUrl = isNative 
+        ? 'regimen-auth://auth/callback'
+        : `${window.location.origin}/auth`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: Capacitor.isNativePlatform(),
+          skipBrowserRedirect: isNative,
         }
       });
 
       if (error) throw error;
 
-      // For native apps, open OAuth in in-app browser
-      if (Capacitor.isNativePlatform() && data?.url) {
+      if (isNative && data?.url) {
         await Browser.open({ 
           url: data.url,
-          presentationStyle: 'popover'
+          presentationStyle: 'popover',
+          toolbarColor: '#000000'
         });
         
         Browser.addListener('browserFinished', () => {
           setLoading(false);
+        });
+        
+        Browser.addListener('browserPageLoaded', () => {
+          console.log('OAuth page loaded');
         });
       }
     } catch (error: any) {
