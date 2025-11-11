@@ -64,7 +64,7 @@
 			<string>app.lovable.348ffbbac09744d8bbbea7cee13c09a9</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>regimen-auth</string>
+				<string>app.lovable.348ffbbac09744d8bbbea7cee13c09a9</string>
 			</array>
 		</dict>
 	</array>
