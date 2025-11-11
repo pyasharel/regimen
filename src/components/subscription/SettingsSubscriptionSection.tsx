@@ -13,7 +13,8 @@ export const SettingsSubscriptionSection = () => {
     subscriptionType, 
     subscriptionEndDate, 
     trialEndDate,
-    refreshSubscription 
+    refreshSubscription,
+    isLoading: subscriptionLoading
   } = useSubscription();
   const [betaAccessEndDate, setBetaAccessEndDate] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -218,6 +219,22 @@ export const SettingsSubscriptionSection = () => {
           {isRestoring && <Loader2 className="h-3 w-3 animate-spin" />}
           Restore Purchases
         </button>
+      </div>
+    );
+  }
+
+  // Show loading skeleton while subscription is loading
+  if (subscriptionLoading) {
+    return (
+      <div className="space-y-3">
+        <h3 className="text-[12px] uppercase font-semibold text-muted-foreground tracking-wide">
+          SUBSCRIPTION
+        </h3>
+        <Card className="border-muted-foreground/20">
+          <CardContent className="p-4">
+            <div className="h-20 animate-pulse bg-muted/20 rounded" />
+          </CardContent>
+        </Card>
       </div>
     );
   }

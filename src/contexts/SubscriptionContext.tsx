@@ -150,7 +150,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         .from('profiles')
         .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('[SubscriptionContext] Profile fetch error:', profileError);

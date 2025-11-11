@@ -166,8 +166,10 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
   }
 
-  // Show preview mode banner only when truly in preview/none state
-  if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
+  // Show preview mode banner only when truly in preview/none state AND subscription is fully loaded
+  const { isLoading } = useSubscription();
+  
+  if (!isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none')) {
     return <PreviewModeBanner onUpgrade={onUpgrade} />;
   }
 
