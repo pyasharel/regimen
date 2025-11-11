@@ -10,8 +10,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/logo-regimen-vertical-new.png";
 import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
-import { App } from "@capacitor/app";
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -33,6 +32,11 @@ export default function Auth() {
     if (mode === "reset") {
       setIsResettingPassword(true);
       return;
+    }
+
+    // Initialize Google Auth for web
+    if (!Capacitor.isNativePlatform()) {
+      GoogleAuth.initialize();
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,53 +61,8 @@ export default function Auth() {
       }
     });
 
-    // Handle universal link OAuth callback for native apps
-    let appListener: any;
-    if (Capacitor.isNativePlatform()) {
-      appListener = App.addListener('appUrlOpen', async (event) => {
-        console.log('Universal link received:', event.url);
-        
-        // Check if this is an OAuth callback (contains auth tokens in URL)
-        if (event.url.includes('/auth') && event.url.includes('#access_token=')) {
-          try {
-            const url = new URL(event.url);
-            const fragment = url.hash.substring(1);
-            const params = new URLSearchParams(fragment);
-            
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            
-            if (accessToken && refreshToken) {
-              console.log('Setting session from universal link tokens');
-              const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-              
-              if (error) {
-                console.error('Error setting session:', error);
-                toast.error(error.message || "Authentication failed");
-              } else {
-                console.log('Session set successfully from universal link');
-                // Close the OAuth browser
-                await Browser.close();
-                setLoading(false);
-              }
-            }
-          } catch (error) {
-            console.error('Error processing universal link:', error);
-            toast.error("Failed to complete authentication");
-            setLoading(false);
-          }
-        }
-      });
-    }
-
     return () => {
       subscription.unsubscribe();
-      if (appListener) {
-        appListener.remove();
-      }
     };
   }, [searchParams, navigate]);
 
@@ -229,38 +188,34 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      console.log('Starting native Google Sign-In');
       
-      // Use HTTPS universal link for both native and web
-      const redirectUrl = 'https://getregimin.app/auth';
+      // Use native Google Sign-In SDK
+      const googleUser = await GoogleAuth.signIn();
+      console.log('Google user obtained:', { email: googleUser.email });
+      
+      if (!googleUser.authentication?.idToken) {
+        throw new Error('No ID token received from Google');
+      }
 
-      console.log('Starting OAuth with redirect:', redirectUrl);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Sign in to Supabase with the Google ID token
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: Capacitor.isNativePlatform(),
-        }
+        token: googleUser.authentication.idToken,
       });
 
       if (error) throw error;
-
-      if (Capacitor.isNativePlatform() && data?.url) {
-        console.log('Opening OAuth URL in browser');
-        await Browser.open({ 
-          url: data.url,
-          presentationStyle: 'popover',
-          toolbarColor: '#000000'
-        });
-        
-        Browser.addListener('browserFinished', () => {
-          console.log('Browser closed by user');
-          setLoading(false);
-        });
-      }
+      
+      console.log('Successfully signed in with Google');
+      // onAuthStateChange will handle navigation
     } catch (error: any) {
       console.error("Google sign-in error:", error);
-      toast.error(error.message || "Failed to sign in with Google");
+      if (error.message?.includes('popup_closed_by_user') || error.message?.includes('canceled')) {
+        // User cancelled - don't show error
+        console.log('User cancelled Google sign-in');
+      } else {
+        toast.error(error.message || "Failed to sign in with Google");
+      }
       setLoading(false);
     }
   };
