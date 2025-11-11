@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/logo-regimen-vertical-new.png";
 import { FcGoogle } from "react-icons/fc";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -179,14 +181,35 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
+      
+      // For native apps, use custom deep link scheme
+      const isNative = Capacitor.isNativePlatform();
+      const redirectUrl = isNative 
+        ? 'com.regimen.app://auth'  // Deep link for native app
+        : `${window.location.origin}/auth`;
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth`,
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: isNative, // Skip redirect on native - we'll handle it
         }
       });
 
       if (error) throw error;
+
+      // For native apps, open the OAuth URL in in-app browser
+      if (isNative && data?.url) {
+        await Browser.open({ 
+          url: data.url,
+          presentationStyle: 'popover' // iOS style
+        });
+        
+        // Listen for the app to return from OAuth
+        Browser.addListener('browserFinished', () => {
+          setLoading(false);
+        });
+      }
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       toast.error(error.message || "Failed to sign in with Google");
