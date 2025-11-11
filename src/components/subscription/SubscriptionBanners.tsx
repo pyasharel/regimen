@@ -13,7 +13,7 @@ interface SubscriptionBannersProps {
 export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
-  const { trialEndDate, subscriptionEndDate } = useSubscription();
+  const { trialEndDate, subscriptionEndDate, isLoading } = useSubscription();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
   });
@@ -167,8 +167,6 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   }
 
   // Show preview mode banner only when truly in preview/none state AND subscription is fully loaded
-  const { isLoading } = useSubscription();
-  
   if (!isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none')) {
     return <PreviewModeBanner onUpgrade={onUpgrade} />;
   }
