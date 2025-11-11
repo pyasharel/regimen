@@ -57,14 +57,14 @@ export default function Auth() {
       }
     });
 
-    // Handle deep link OAuth callback for native apps
+    // Handle universal link OAuth callback for native apps
     let appListener: any;
     if (Capacitor.isNativePlatform()) {
       appListener = App.addListener('appUrlOpen', async (event) => {
-        console.log('Deep link received:', event.url);
+        console.log('Universal link received:', event.url);
         
-        // Check if this is an OAuth callback
-        if (event.url.includes('#access_token=')) {
+        // Check if this is an OAuth callback (contains auth tokens in URL)
+        if (event.url.includes('/auth') && event.url.includes('#access_token=')) {
           try {
             const url = new URL(event.url);
             const fragment = url.hash.substring(1);
@@ -74,7 +74,7 @@ export default function Auth() {
             const refreshToken = params.get('refresh_token');
             
             if (accessToken && refreshToken) {
-              console.log('Setting session from deep link tokens');
+              console.log('Setting session from universal link tokens');
               const { data, error } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken,
@@ -84,13 +84,16 @@ export default function Auth() {
                 console.error('Error setting session:', error);
                 toast.error(error.message || "Authentication failed");
               } else {
-                console.log('Session set successfully');
+                console.log('Session set successfully from universal link');
                 // Close the OAuth browser
                 await Browser.close();
+                setLoading(false);
               }
             }
           } catch (error) {
-            console.error('Error processing deep link:', error);
+            console.error('Error processing universal link:', error);
+            toast.error("Failed to complete authentication");
+            setLoading(false);
           }
         }
       });
@@ -227,11 +230,8 @@ export default function Auth() {
     try {
       setLoading(true);
       
-      const isNative = Capacitor.isNativePlatform();
-      // Use custom scheme for native, HTTPS for web
-      const redirectUrl = isNative 
-        ? 'app.lovable.348ffbbac09744d8bbbea7cee13c09a9://auth/callback'
-        : `${window.location.origin}/auth`;
+      // Use HTTPS universal link for both native and web
+      const redirectUrl = 'https://getregimin.app/auth';
 
       console.log('Starting OAuth with redirect:', redirectUrl);
 
@@ -239,13 +239,13 @@ export default function Auth() {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: isNative,
+          skipBrowserRedirect: Capacitor.isNativePlatform(),
         }
       });
 
       if (error) throw error;
 
-      if (isNative && data?.url) {
+      if (Capacitor.isNativePlatform() && data?.url) {
         console.log('Opening OAuth URL in browser');
         await Browser.open({ 
           url: data.url,
@@ -253,9 +253,8 @@ export default function Auth() {
           toolbarColor: '#000000'
         });
         
-        // Listener will be handled by App.addListener in useEffect
         Browser.addListener('browserFinished', () => {
-          console.log('Browser finished');
+          console.log('Browser closed by user');
           setLoading(false);
         });
       }
