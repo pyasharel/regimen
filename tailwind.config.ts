@@ -74,8 +74,12 @@ export default {
         },
         "splash-logo": {
           "0%": { 
-            transform: "scale(0.8)",
+            transform: "scale(0.7)",
             opacity: "0"
+          },
+          "50%": {
+            transform: "scale(1.05)",
+            opacity: "1"
           },
           "100%": { 
             transform: "scale(1)",
@@ -86,7 +90,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "splash-logo": "splash-logo 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "splash-logo": "splash-logo 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
       },
     },
   },

@@ -15,10 +15,10 @@ export default function Splash() {
       if (session) {
         navigate("/today");
       } else {
-        // Start animation and show content after 1.8 seconds
+        // Start animation and show content after 2.2 seconds
         const timer = setTimeout(() => {
           setShowContent(true);
-        }, 1800);
+        }, 2200);
         return () => clearTimeout(timer);
       }
     });
