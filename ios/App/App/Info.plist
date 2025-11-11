@@ -57,16 +57,5 @@
 	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>We need permission to send you medication reminders</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.regimen.app</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.regimen.app</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>
