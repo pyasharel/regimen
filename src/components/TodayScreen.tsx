@@ -627,18 +627,7 @@ export const TodayScreen = () => {
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
               {greeting.text}{userName ? `, ${userName}` : ''}
             </h2>
-            <div className="relative">
-              <greeting.Icon 
-                className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 animate-[pulse_4s_ease-in-out_infinite]"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%))',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  filter: 'drop-shadow(0 0 8px rgba(255, 111, 97, 0.3))'
-                }}
-              />
-            </div>
+            <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[pulse_4s_ease-in-out_infinite]" />
           </div>
           <StreakBadge />
         </div>
@@ -1062,11 +1051,8 @@ export const TodayScreen = () => {
       {/* FAB Button */}
       <button
         onClick={() => navigate("/add-compound")}
-        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
-        style={{ 
-          bottom: 'calc(5.5rem + env(safe-area-inset-bottom))',
-          background: 'linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%))'
-        }}
+        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
+        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
       >
         <Plus className="h-6 w-6 text-white" />
       </button>
