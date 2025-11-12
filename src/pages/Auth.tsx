@@ -191,26 +191,49 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      console.log('Starting native Google Sign-In');
       
-      // Use native Google Sign-In SDK
-      const googleUser = await GoogleAuth.signIn();
-      console.log('Google user obtained:', { email: googleUser.email });
+      // Detect if running on native platform
+      const isNative = Capacitor.isNativePlatform();
+      console.log('Platform:', isNative ? 'native' : 'web');
       
-      if (!googleUser.authentication?.idToken) {
-        throw new Error('No ID token received from Google');
+      if (isNative) {
+        // Native: Use Google Auth SDK
+        console.log('Starting native Google Sign-In');
+        const googleUser = await GoogleAuth.signIn();
+        console.log('Google user obtained:', { email: googleUser.email });
+        
+        if (!googleUser.authentication?.idToken) {
+          throw new Error('No ID token received from Google');
+        }
+
+        // Sign in to Supabase with the Google ID token
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: googleUser.authentication.idToken,
+        });
+
+        if (error) throw error;
+        console.log('Successfully signed in with Google');
+      } else {
+        // Web: Use OAuth flow
+        console.log('Starting web Google Sign-In');
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/today`,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
+        });
+
+        if (error) throw error;
+        // OAuth will redirect, so we keep loading state
+        return;
       }
-
-      // Sign in to Supabase with the Google ID token
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: googleUser.authentication.idToken,
-      });
-
-      if (error) throw error;
       
-      console.log('Successfully signed in with Google');
-      // onAuthStateChange will handle navigation
+      // onAuthStateChange will handle navigation for native
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       if (error.message?.includes('popup_closed_by_user') || error.message?.includes('canceled')) {
