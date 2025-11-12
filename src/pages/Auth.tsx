@@ -42,20 +42,23 @@ export default function Auth() {
       });
     }
 
+    // Check for existing session and redirect immediately
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       if (session) {
-        checkOnboardingStatus(session.user.id);
+        console.log('[Auth] Existing session found, redirecting to /today');
+        navigate("/today", { replace: true });
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log('[Auth] Auth state changed:', event, !!currentSession);
       setSession(currentSession);
       
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
       } else if (event === 'SIGNED_IN' && currentSession) {
-        checkOnboardingStatus(currentSession.user.id);
+        console.log('[Auth] User signed in, redirecting to /today');
+        navigate("/today", { replace: true });
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         if (window.location.pathname !== '/auth') {
