@@ -34,8 +34,8 @@ export default function Auth() {
       return;
     }
 
-    // Initialize Google Auth for web only
-    if (!Capacitor.isNativePlatform()) {
+    // Initialize Google Auth for native only
+    if (Capacitor.isNativePlatform()) {
       GoogleAuth.initialize({
         clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
         scopes: ['profile', 'email'],
