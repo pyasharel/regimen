@@ -71,7 +71,7 @@ export const ProgressScreen = () => {
   const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
 
   // Cached data fetching with React Query
-  const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
+  const { data: entries = [], isLoading: entriesLoading, isError: entriesError, refetch: refetchEntries } = useQuery({
     queryKey: ['progress-entries'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -83,14 +83,18 @@ export const ProgressScreen = () => {
         .eq('user_id', user.id)
         .order('entry_date', { ascending: true }); // Oldest to newest for timeline view
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching progress entries:', error);
+        return [];
+      }
       return data as ProgressEntry[];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+    retry: 1,
   });
 
-  const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
+  const { data: compounds = [], isLoading: compoundsLoading, isError: compoundsError } = useQuery({
     queryKey: ['compounds-progress'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -102,12 +106,16 @@ export const ProgressScreen = () => {
         .eq('user_id', user.id)
         .order('start_date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching compounds:', error);
+        return [];
+      }
       return data as Compound[];
     },
+    retry: 1,
   });
 
-  const { data: recentDoses = [], isLoading: dosesLoading } = useQuery({
+  const { data: recentDoses = [], isLoading: dosesLoading, isError: dosesError } = useQuery({
     queryKey: ['recent-doses'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -124,12 +132,17 @@ export const ProgressScreen = () => {
         .order('taken_at', { ascending: false })
         .limit(10);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching doses:', error);
+        return [];
+      }
       return data || [];
     },
+    retry: 1,
   });
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
+  const hasError = entriesError || compoundsError || dosesError;
 
 
   const handleLogWeight = async () => {
@@ -522,6 +535,17 @@ export const ProgressScreen = () => {
     }
   };
 
+  // Log component state for debugging
+  useEffect(() => {
+    console.log('[ProgressScreen] Component mounted/updated', {
+      dataLoading,
+      hasError,
+      entriesCount: entries.length,
+      compoundsCount: compounds.length,
+      dosesCount: recentDoses.length
+    });
+  }, [dataLoading, hasError, entries.length, compounds.length, recentDoses.length]);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
@@ -537,6 +561,14 @@ export const ProgressScreen = () => {
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Error Message */}
+        {hasError && (
+          <Card className="p-4 bg-destructive/10 border-destructive/20">
+            <p className="text-sm text-destructive">
+              There was an error loading your progress data. Please try refreshing the page.
+            </p>
+          </Card>
+        )}
         {/* Stats Dashboard - 4 Compact Cards Grid */}
         {currentWeight && (
           <div className="grid grid-cols-2 gap-2">
