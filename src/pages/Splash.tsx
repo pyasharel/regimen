@@ -11,32 +11,52 @@ export default function Splash() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
+    let failsafeTimer: NodeJS.Timeout | null = null;
+    let hasNavigated = false;
+    
+    console.log('[Splash] Component mounted, checking session');
+    
+    // Failsafe: Always show content after 3 seconds if nothing else happens
+    failsafeTimer = setTimeout(() => {
+      console.log('[Splash] Failsafe triggered - showing content regardless');
+      setShowContent(true);
+    }, 3000);
     
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !hasNavigated) {
         console.log('[Splash] Session found, navigating to /today');
+        hasNavigated = true;
+        if (failsafeTimer) clearTimeout(failsafeTimer);
         navigate("/today");
-      } else {
+      } else if (!session) {
         console.log('[Splash] No session, showing content in 2.2s');
         // Start animation and show content after 2.2 seconds
         timer = setTimeout(() => {
           console.log('[Splash] Timer fired, showing content');
+          if (failsafeTimer) clearTimeout(failsafeTimer);
           setShowContent(true);
         }, 2200);
       }
     }).catch((error) => {
       console.error('[Splash] Session check error:', error);
       // Show content even if session check fails
-      timer = setTimeout(() => {
-        setShowContent(true);
-      }, 2200);
+      if (!timer) {
+        timer = setTimeout(() => {
+          if (failsafeTimer) clearTimeout(failsafeTimer);
+          setShowContent(true);
+        }, 2200);
+      }
     });
 
     return () => {
       if (timer) {
         console.log('[Splash] Cleaning up timer');
         clearTimeout(timer);
+      }
+      if (failsafeTimer) {
+        console.log('[Splash] Cleaning up failsafe timer');
+        clearTimeout(failsafeTimer);
       }
     };
   }, [navigate]);
