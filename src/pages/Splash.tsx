@@ -10,18 +10,35 @@ export default function Splash() {
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        console.log('[Splash] Session found, navigating to /today');
         navigate("/today");
       } else {
+        console.log('[Splash] No session, showing content in 2.2s');
         // Start animation and show content after 2.2 seconds
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
+          console.log('[Splash] Timer fired, showing content');
           setShowContent(true);
         }, 2200);
-        return () => clearTimeout(timer);
       }
+    }).catch((error) => {
+      console.error('[Splash] Session check error:', error);
+      // Show content even if session check fails
+      timer = setTimeout(() => {
+        setShowContent(true);
+      }, 2200);
     });
+
+    return () => {
+      if (timer) {
+        console.log('[Splash] Cleaning up timer');
+        clearTimeout(timer);
+      }
+    };
   }, [navigate]);
 
   return (
@@ -67,21 +84,27 @@ export default function Splash() {
 
             {/* CTA Buttons */}
             <div className="space-y-3 pt-4 animate-fade-in">
-              <Button 
-                variant="gradient"
-                className="w-full h-[56px] text-[18px] rounded-xl"
-                onClick={() => navigate("/auth?mode=signup")}
-              >
-                Get Started
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                className="w-full"
-                onClick={() => navigate("/auth?mode=signin")}
-              >
-                Already have an account? Sign In
-              </Button>
+            <Button 
+              variant="gradient"
+              className="w-full h-[56px] text-[18px] rounded-xl"
+              onClick={() => {
+                console.log('[Splash] Get Started clicked, navigating to /auth?mode=signup');
+                navigate("/auth?mode=signup");
+              }}
+            >
+              Get Started
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                console.log('[Splash] Sign In clicked, navigating to /auth?mode=signin');
+                navigate("/auth?mode=signin");
+              }}
+            >
+              Already have an account? Sign In
+            </Button>
             </div>
           </>
         )}
