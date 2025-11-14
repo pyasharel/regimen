@@ -3,24 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import wordmark from "@/assets/regimen-wordmark-transparent.png";
+import { Capacitor } from "@capacitor/core";
 
 
 export default function Splash() {
   const navigate = useNavigate();
   const [showContent, setShowContent] = useState(false);
+  const isNative = Capacitor.isNativePlatform();
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     let failsafeTimer: NodeJS.Timeout | null = null;
     let hasNavigated = false;
     
-    console.log('[Splash] Component mounted, checking session');
+    console.log('[Splash] Component mounted, checking session, isNative:', isNative);
     
-    // Failsafe: Always show content after 3 seconds if nothing else happens
+    // Failsafe: Show content faster on native (1s) vs web (3s)
+    const failsafeDelay = isNative ? 1000 : 3000;
     failsafeTimer = setTimeout(() => {
       console.log('[Splash] Failsafe triggered - showing content regardless');
       setShowContent(true);
-    }, 3000);
+    }, failsafeDelay);
     
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,24 +31,26 @@ export default function Splash() {
         console.log('[Splash] Session found, navigating to /today');
         hasNavigated = true;
         if (failsafeTimer) clearTimeout(failsafeTimer);
-        navigate("/today");
+        navigate("/today", { replace: true });
       } else if (!session) {
-        console.log('[Splash] No session, showing content in 2.2s');
-        // Start animation and show content after 2.2 seconds
+        // Skip animation on native, show content immediately
+        const contentDelay = isNative ? 0 : 2200;
+        console.log('[Splash] No session, showing content after', contentDelay, 'ms');
         timer = setTimeout(() => {
           console.log('[Splash] Timer fired, showing content');
           if (failsafeTimer) clearTimeout(failsafeTimer);
           setShowContent(true);
-        }, 2200);
+        }, contentDelay);
       }
     }).catch((error) => {
       console.error('[Splash] Session check error:', error);
-      // Show content even if session check fails
+      // Show content immediately on native, with delay on web
       if (!timer) {
+        const contentDelay = isNative ? 0 : 2200;
         timer = setTimeout(() => {
           if (failsafeTimer) clearTimeout(failsafeTimer);
           setShowContent(true);
-        }, 2200);
+        }, contentDelay);
       }
     });
 
@@ -64,12 +69,12 @@ export default function Splash() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 safe-top safe-bottom">
       <div className="w-full max-w-md text-center space-y-8">
-        {/* Logo/Brand */}
+        {/* Logo/Brand - Skip animation on native */}
         <div className="flex justify-center mb-8">
           <img 
             src={wordmark} 
             alt="REGIMEN" 
-            className="w-[220px] h-auto animate-splash-logo"
+            className={`w-[220px] h-auto ${isNative ? '' : 'animate-splash-logo'}`}
           />
         </div>
 

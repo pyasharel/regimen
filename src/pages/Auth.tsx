@@ -322,28 +322,35 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <img src={logo} alt="Regimen Logo" className="h-[115px] mx-auto mb-6" />
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            {isResettingPassword 
-              ? "Set New Password" 
-              : isForgotPassword 
-                ? "Reset Password" 
-                : isSignUp 
-                  ? "Create Account" 
-                  : "Welcome Back"}
-          </h1>
-          <p className="text-muted-foreground">
-            {isResettingPassword
-              ? "Enter your new password below"
-              : isForgotPassword
-                ? "Enter your email to receive a password reset link"
-                : isSignUp 
-                  ? "Join thousands optimizing their health" 
-                  : "Sign in to continue to your dashboard"}
-          </p>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-top safe-bottom overflow-y-auto">
+      <Card className="w-full max-w-md border-border my-4">
+        <div className="p-6 space-y-6">
+          {/* Logo */}
+          <div className="flex justify-center pt-2">
+            <img src={logo} alt="REGIMEN" className="h-20 w-auto" />
+          </div>
+
+          {/* Title */}
+          <div className="text-center space-y-1">
+            <h1 className="text-xl font-bold">
+              {isResettingPassword
+                ? "Reset Password"
+                : isForgotPassword
+                ? "Forgot Password"
+                : isSignUp
+                ? "Create Account"
+                : "Welcome Back"}
+            </h1>
+            <p className="text-muted-foreground text-xs">
+              {isResettingPassword
+                ? "Enter your new password"
+                : isForgotPassword
+                ? "We'll send you a reset link"
+                : isSignUp
+                ? "Join thousands optimizing their health"
+                : "Sign in to continue"}
+            </p>
+          </div>
         </div>
 
         {isResettingPassword ? (
