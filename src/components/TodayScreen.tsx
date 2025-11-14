@@ -4,6 +4,7 @@ import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,9 +53,15 @@ export const TodayScreen = () => {
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // Subscription state
-  const { isSubscribed, isLoading: subscriptionLoading, refreshSubscription } = useSubscription();
+  const { 
+    isSubscribed, 
+    isLoading: subscriptionLoading, 
+    refreshSubscription,
+    previewModeCompoundAdded 
+  } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
+  const [showPreviewTimer, setShowPreviewTimer] = useState(false);
 
   // Generate week days - keep the current week stable
   const getWeekDays = () => {
@@ -76,6 +83,32 @@ export const TodayScreen = () => {
   };
 
   const weekDays = getWeekDays();
+
+  // Start preview timer if user has added compound but not subscribed
+  useEffect(() => {
+    const checkPreviewMode = async () => {
+      if (isSubscribed || !previewModeCompoundAdded) {
+        setShowPreviewTimer(false);
+        return;
+      }
+
+      // Check if user has any compounds
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count } = await supabase
+        .from('compounds')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (count && count > 0) {
+        console.log('[TodayScreen] 🎯 User in preview mode with compound, starting timer');
+        setShowPreviewTimer(true);
+      }
+    };
+
+    checkPreviewMode();
+  }, [isSubscribed, previewModeCompoundAdded]);
 
   // Check for post-checkout verification
   useEffect(() => {
@@ -1058,6 +1091,16 @@ export const TodayScreen = () => {
       </button>
 
       <BottomNavigation />
+
+      {/* Preview Mode Timer */}
+      {showPreviewTimer && !isSubscribed && (
+        <PreviewModeTimer 
+          onTimerStart={() => console.log('[TodayScreen] ⏱️ Preview timer started')}
+          onPaywallDismiss={() => {
+            console.log('[TodayScreen] User dismissed preview paywall');
+          }}
+        />
+      )}
     </div>
   );
 };

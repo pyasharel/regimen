@@ -218,15 +218,15 @@ export default function Auth() {
         if (error) throw error;
         console.log('Successfully signed in with Google');
       } else {
-        // Web: Use OAuth flow
-        console.log('Starting web Google Sign-In');
+        // Web: Use OAuth flow with forced account selection
+        console.log('Starting web Google Sign-In with account picker');
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: `${window.location.origin}/today`,
             queryParams: {
               access_type: 'offline',
-              prompt: 'consent',
+              prompt: 'select_account', // Force account picker every time
             }
           }
         });
