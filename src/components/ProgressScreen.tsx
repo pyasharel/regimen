@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getSignedUrl } from "@/utils/storageUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -76,6 +77,7 @@ export const ProgressScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
 
   // Cached data fetching with React Query
   const { data: entries = [], isLoading: entriesLoading, isError: entriesError, refetch: refetchEntries } = useQuery({
@@ -150,6 +152,20 @@ export const ProgressScreen = () => {
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
   const hasError = entriesError || compoundsError || dosesError;
+  
+  // Preload signed URLs for all photos
+  useEffect(() => {
+    const loadPhotoUrls = async () => {
+      const photoEntries = entries.filter(e => e.photo_url);
+      const urls: Record<string, string> = {};
+      await Promise.all(photoEntries.map(async (entry) => {
+        const signedUrl = await getSignedUrl('progress-photos', entry.photo_url);
+        if (signedUrl) urls[entry.photo_url] = signedUrl;
+      }));
+      setPhotoUrls(urls);
+    };
+    if (entries.length > 0) loadPhotoUrls();
+  }, [entries]);
   
   console.log('[ProgressScreen] Data status:', { dataLoading, hasError, entriesCount: entries.length });
 
@@ -516,10 +532,7 @@ export const ProgressScreen = () => {
     .sort((a, b) => a.fullDate.localeCompare(b.fullDate)); // Sort chronologically
 
   const getPhotoUrl = (photoPath: string) => {
-    const { data } = supabase.storage
-      .from('progress-photos')
-      .getPublicUrl(photoPath);
-    return data.publicUrl;
+    return photoUrls[photoPath] || '';
   };
 
   const handleDeletePhoto = async (entryId: string) => {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedUrl } from "@/utils/storageUtils";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Flame } from "lucide-react";
@@ -53,6 +54,7 @@ export const ProgressScreen = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | 'ALL'>('1M');
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; date: string; id: string } | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const { isSubscribed } = useSubscription();
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -123,6 +125,29 @@ export const ProgressScreen = () => {
   const { data: stats } = useStreaks();
 
   const isLoading = entriesLoading || compoundsLoading || dosesLoading;
+
+  // Preload signed URLs for all photos
+  useEffect(() => {
+    const loadPhotoUrls = async () => {
+      const photoEntries = entries.filter(e => e.photo_url);
+      const urls: Record<string, string> = {};
+      
+      await Promise.all(
+        photoEntries.map(async (entry) => {
+          const signedUrl = await getSignedUrl('progress-photos', entry.photo_url);
+          if (signedUrl) {
+            urls[entry.photo_url] = signedUrl;
+          }
+        })
+      );
+      
+      setPhotoUrls(urls);
+    };
+    
+    if (entries.length > 0) {
+      loadPhotoUrls();
+    }
+  }, [entries]);
 
   // Calculate date range
   const cutoffDate = useMemo(() => {
@@ -197,11 +222,7 @@ export const ProgressScreen = () => {
   }, [weightEntries]);
 
   const getPhotoUrl = (photoPath: string) => {
-    if (!photoPath) return null;
-    const { data } = supabase.storage
-      .from('progress-photos')
-      .getPublicUrl(photoPath);
-    return data.publicUrl;
+    return photoUrls[photoPath] || null;
   };
 
   const handleLogWeight = async () => {

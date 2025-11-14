@@ -24,11 +24,13 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import logoSquare from "@/assets/logo-regimen-vertical-new.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
+import { getSignedUrl } from "@/utils/storageUtils";
 
 interface PhotoEntry {
   id: string;
   photo_url: string;
   entry_date: string;
+  signedUrl?: string; // Cached signed URL
 }
 
 export default function PhotoCompareScreen() {
@@ -69,7 +71,15 @@ export default function PhotoCompareScreen() {
       return;
     }
 
-    setAvailablePhotos(data || []);
+    // Generate signed URLs for all photos
+    const photosWithUrls = await Promise.all(
+      (data || []).map(async (photo) => ({
+        ...photo,
+        signedUrl: await getSignedUrl('progress-photos', photo.photo_url) || ''
+      }))
+    );
+
+    setAvailablePhotos(photosWithUrls);
     
     // Auto-scroll to the right (newest photo) after loading
     setTimeout(() => {
@@ -81,17 +91,17 @@ export default function PhotoCompareScreen() {
   };
 
   const getPhotoUrl = (photoPath: string) => {
-    const { data } = supabase.storage
-      .from('progress-photos')
-      .getPublicUrl(photoPath);
-    return data.publicUrl;
+    // Find cached signed URL
+    const photo = availablePhotos.find(p => p.photo_url === photoPath);
+    return photo?.signedUrl || '';
   };
 
   const handlePhotoSelection = async (photo: PhotoEntry, type: 'before' | 'after') => {
-    const newSelection = { 
+    const url = photo.signedUrl || '';
+    const newSelection = {
       ...selectedPhotos, 
       [type]: { 
-        url: getPhotoUrl(photo.photo_url), 
+        url: url || '', 
         date: photo.entry_date 
       } 
     };
