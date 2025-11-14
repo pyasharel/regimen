@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getSignedUrl } from "@/utils/storageUtils";
 
 export const AccountSettings = () => {
   const navigate = useNavigate();
@@ -182,20 +183,20 @@ export const AccountSettings = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
+      // Get signed URL (store the path, not the signed URL)
+      const avatarPath = fileName;
 
-      // Update profile
+      // Update profile with the file path
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: avatarPath })
         .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl);
+      // Generate signed URL for display
+      const signedUrl = await getSignedUrl('avatars', avatarPath);
+      setAvatarUrl(signedUrl || avatarPath);
       toast.success("Profile picture updated!");
     } catch (error: any) {
       console.error('Avatar upload error:', error);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedUrls } from "@/utils/storageUtils";
 
 interface WeeklyDigestData {
   startDate: Date;
@@ -110,12 +111,16 @@ export const useWeeklyDigest = () => {
     });
 
     // Get photos from the last 7 days
-    const recentPhotos = (entries || [])
-      .filter((entry: any) => entry.category === 'photo' && entry.photo_url)
-      .map((entry: any) => ({
-        date: entry.entry_date,
-        url: supabase.storage.from('progress-photos').getPublicUrl(entry.photo_url).data.publicUrl,
-      }));
+    const photoEntries = (entries || [])
+      .filter((entry: any) => entry.category === 'photo' && entry.photo_url);
+    
+    const photoPaths = photoEntries.map((entry: any) => entry.photo_url);
+    const photoUrls = await getSignedUrls('progress-photos', photoPaths);
+    
+    const recentPhotos = photoEntries.map((entry: any, index: number) => ({
+      date: entry.entry_date,
+      url: photoUrls[index] || '',
+    }));
 
     // Get weight data from the last 7 days
     const weightEntries = (entries || [])
