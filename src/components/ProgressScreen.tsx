@@ -54,6 +54,30 @@ type Compound = {
   created_at: string;
 };
 
+// Helper function to safely parse dates
+const safeParseDate = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return date;
+  } catch {
+    return null;
+  }
+};
+
+// Helper function to safely format dates
+const safeFormatDate = (dateString: string | Date | null | undefined, formatStr: string): string => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = typeof dateString === 'string' ? safeParseDate(dateString) : dateString;
+    if (!date || isNaN(date.getTime())) return 'N/A';
+    return format(date, formatStr);
+  } catch {
+    return 'N/A';
+  }
+};
+
 export const ProgressScreen = () => {
   console.log('[ProgressScreen] Component rendering');
   
@@ -795,7 +819,7 @@ export const ProgressScreen = () => {
                         />
                       </div>
                       <div className="text-xs text-muted-foreground mt-2">
-                        {format(localDate, 'MMM d')}
+                        {safeFormatDate(localDate, 'MMM d')}
                       </div>
                     </div>
                   );
@@ -837,7 +861,8 @@ export const ProgressScreen = () => {
                   eighteenMonthsAgo.setMonth(now.getMonth() - 18);
                   
                   const earliestStart = compounds.reduce((earliest, compound) => {
-                    const startDate = new Date(compound.start_date);
+                    const startDate = safeParseDate(compound.start_date);
+                    if (!startDate) return earliest;
                     return startDate < earliest ? startDate : earliest;
                   }, now);
                   
@@ -862,17 +887,15 @@ export const ProgressScreen = () => {
                       <div className="space-y-4">
                         {compounds.map((compound, idx) => {
                           const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
-                          // Parse dates properly to avoid timezone issues
-                          const [startYear, startMonth, startDay] = compound.start_date.split('-').map(Number);
-                          const startDate = new Date(startYear, startMonth - 1, startDay);
                           
-                          let endDate = now;
-                          if (compound.end_date) {
-                            const [endYear, endMonth, endDay] = compound.end_date.split('-').map(Number);
-                            endDate = new Date(endYear, endMonth - 1, endDay);
-                          }
+                          // Safely parse dates
+                          const startDate = safeParseDate(compound.start_date);
+                          const endDate = compound.end_date ? safeParseDate(compound.end_date) : now;
                           
-                          const isActive = compound.is_active && (!compound.end_date || endDate >= now);
+                          // Skip compounds with invalid start dates
+                          if (!startDate) return null;
+                          
+                          const isActive = compound.is_active && (!compound.end_date || (endDate && endDate >= now));
                           
                           // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
                           const convertWeeksToDays = (weeks: number) => {
@@ -948,7 +971,7 @@ export const ProgressScreen = () => {
                                   )}
                                 </div>
                                 <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                  {format(startDate, 'MMM d')} - {isActive ? 'Now' : format(endDate, 'MMM d')}
+                                  {safeFormatDate(startDate, 'MMM d')} - {isActive ? 'Now' : safeFormatDate(endDate, 'MMM d')}
                                 </span>
                               </div>
                               
@@ -977,14 +1000,14 @@ export const ProgressScreen = () => {
                                         backgroundColor: color,
                                         opacity: isActive ? 1 : 0.4,
                                       }}
-                                      title={`${format(period.start, 'MMM d, yyyy')} - ${format(period.end, 'MMM d, yyyy')}`}
+                                      title={`${safeFormatDate(period.start, 'MMM d, yyyy')} - ${safeFormatDate(period.end, 'MMM d, yyyy')}`}
                                     />
                                   );
                                 })}
                               </div>
                             </div>
                           );
-                        })}
+                        }).filter(Boolean)} {/* Filter out null entries from invalid dates */}
                       </div>
                       
                       {/* Timeline labels */}
