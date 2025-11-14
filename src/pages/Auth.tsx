@@ -322,17 +322,17 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-top safe-bottom overflow-y-auto">
+    <div className="min-h-screen bg-background flex items-center justify-center px-6 py-8 safe-top safe-bottom overflow-y-auto">
       <Card className="w-full max-w-md border-border my-4">
-        <div className="p-6 space-y-6">
+        <div className="p-8 space-y-6">
           {/* Logo */}
           <div className="flex justify-center pt-2">
-            <img src={logo} alt="REGIMEN" className="h-20 w-auto" />
+            <img src={logo} alt="REGIMEN" className="h-16 w-auto" />
           </div>
 
           {/* Title */}
-          <div className="text-center space-y-1">
-            <h1 className="text-xl font-bold">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold">
               {isResettingPassword
                 ? "Reset Password"
                 : isForgotPassword
@@ -341,7 +341,7 @@ export default function Auth() {
                 ? "Create Account"
                 : "Welcome Back"}
             </h1>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-sm">
               {isResettingPassword
                 ? "Enter your new password"
                 : isForgotPassword
@@ -351,7 +351,9 @@ export default function Auth() {
                 : "Sign in to continue"}
             </p>
           </div>
-        </div>
+
+          <div className="px-2">
+          {/* Form Container with padding */}
 
         {isResettingPassword ? (
           <form onSubmit={handleResetPassword} className="space-y-6">
@@ -554,6 +556,7 @@ export default function Auth() {
             </Button>
           </form>
         )}
+          </div>
 
         <div className="mt-6 text-center space-y-3">
           <div className="relative">
@@ -565,32 +568,33 @@ export default function Auth() {
             </div>
           </div>
           
-          {isForgotPassword ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setIsForgotPassword(false);
-                setEmail("");
-              }}
-              className="w-full"
-              disabled={loading}
-            >
-              Back to sign in
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full"
-              disabled={loading}
-            >
-              {isSignUp 
-                ? "Already have an account? Sign in" 
-                : "Don't have an account? Sign up"}
-            </Button>
-          )}
+        {isForgotPassword ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setIsForgotPassword(false);
+              setEmail("");
+            }}
+            className="w-full"
+            disabled={loading}
+          >
+            Back to sign in
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="w-full"
+            disabled={loading}
+          >
+            {isSignUp 
+              ? "Already have an account? Sign in" 
+              : "Don't have an account? Sign up"}
+          </Button>
+        )}
+          </div>
         </div>
       </Card>
     </div>

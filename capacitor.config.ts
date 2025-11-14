@@ -15,6 +15,8 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+      iosSpinnerStyle: "small",
+      androidScaleType: "CENTER_INSIDE",
     },
     LocalNotifications: {
       smallIcon: "ic_stat_icon_config_sample",
