@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createLocalDate } from "@/utils/dateUtils";
 
 /**
  * Checks all active compounds and regenerates doses if needed
@@ -78,8 +79,11 @@ const regenerateCompoundDoses = async (compound: any) => {
  */
 const generateDoses = (compound: any) => {
   const doses = [];
-  const [year, month, day] = compound.start_date.split('-').map(Number);
-  const start = new Date(year, month - 1, day);
+  const start = createLocalDate(compound.start_date);
+  if (!start) {
+    console.error('Invalid start date:', compound.start_date);
+    return doses;
+  }
   
   if (compound.schedule_type === 'As Needed') {
     return doses;
@@ -95,10 +99,11 @@ const generateDoses = (compound: any) => {
   let daysToGenerate = maxDays;
   
   if (compound.end_date) {
-    const [endYear, endMonth, endDay] = compound.end_date.split('-').map(Number);
-    const end = new Date(endYear, endMonth - 1, endDay);
-    const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
-    daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
+    const end = createLocalDate(compound.end_date);
+    if (end) {
+      const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
+      daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
+    }
   }
   
   for (let i = 0; i < daysToGenerate; i++) {

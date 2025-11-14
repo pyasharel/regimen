@@ -1,5 +1,6 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { supabase } from "@/integrations/supabase/client";
+import { safeParseDate, createLocalDate } from "@/utils/dateUtils";
 
 interface CycleCompound {
   id: string;
@@ -25,7 +26,12 @@ export const scheduleCycleReminders = async (compound: CycleCompound): Promise<v
   // Cancel existing reminders for this compound first
   await cancelCycleReminders(compound.id);
 
-  const startDate = new Date(compound.start_date);
+  const startDate = safeParseDate(compound.start_date);
+  if (!startDate) {
+    console.error('Invalid start date for cycle reminders');
+    return;
+  }
+  
   const daysOn = compound.cycle_weeks_on * 7;
   const daysOff = compound.cycle_weeks_off ? compound.cycle_weeks_off * 7 : 0;
   const now = new Date();

@@ -36,11 +36,17 @@ export const TodayBanner = () => {
     const hasUploadedPhoto = localStorage.getItem('hasUploadedPhoto') === 'true';
     
     const daysSinceSignup = signupDate 
-      ? Math.floor((Date.now() - new Date(signupDate).getTime()) / (1000 * 60 * 60 * 24))
+      ? (() => {
+          const signupTime = new Date(signupDate).getTime();
+          return isNaN(signupTime) ? 0 : Math.floor((Date.now() - signupTime) / (1000 * 60 * 60 * 24));
+        })()
       : 0;
     
     const daysSinceNotificationDenial = notificationPermissionAsked && notificationPermissionDenied
-      ? Math.floor((Date.now() - new Date(notificationPermissionAsked).getTime()) / (1000 * 60 * 60 * 24))
+      ? (() => {
+          const askedTime = new Date(notificationPermissionAsked).getTime();
+          return isNaN(askedTime) ? 0 : Math.floor((Date.now() - askedTime) / (1000 * 60 * 60 * 24));
+        })()
       : 0;
 
     const banners: BannerConfig[] = [

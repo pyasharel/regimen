@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { createLocalDate } from "@/utils/dateUtils";
 
 interface PhotoPreviewModalProps {
   open: boolean;
@@ -43,8 +44,10 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
       if (error) throw error;
       if (data) {
         // Parse as local date to avoid timezone shifts
-        const [year, month, day] = data.entry_date.split('-').map(Number);
-        setPhotoDate(new Date(year, month - 1, day));
+        const localDate = createLocalDate(data.entry_date);
+        if (localDate) {
+          setPhotoDate(localDate);
+        }
       }
     } catch (error) {
       console.error('Error fetching photo date:', error);

@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { format } from "date-fns";
+import { safeFormatDate, createLocalDate } from "@/utils/dateUtils";
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
@@ -180,8 +181,8 @@ export default function PhotoCompareScreen() {
     
     ctx.fillStyle = '#AAAAAA';
     ctx.font = '18px Inter, -apple-system, sans-serif';
-    ctx.fillText(format(new Date(photos.before.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth / 2, 72);
-    ctx.fillText(format(new Date(photos.after.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
+    ctx.fillText(safeFormatDate(photos.before.date, 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(safeFormatDate(photos.after.date, 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
     
     const logo = new Image();
     logo.crossOrigin = "anonymous";
@@ -418,8 +419,8 @@ export default function PhotoCompareScreen() {
     // Add date stamps
     ctx.fillStyle = '#AAAAAA';
     ctx.font = '18px Inter, -apple-system, sans-serif';
-    ctx.fillText(format(new Date(selectedPhotos.before.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth / 2, 72);
-    ctx.fillText(format(new Date(selectedPhotos.after.date + 'T00:00:00'), 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
+    ctx.fillText(safeFormatDate(selectedPhotos.before.date, 'MMM d, yyyy'), halfWidth / 2, 72);
+    ctx.fillText(safeFormatDate(selectedPhotos.after.date, 'MMM d, yyyy'), halfWidth + halfWidth / 2, 72);
     
     // Add logo centered at the bottom between the two photos
     const logo = new Image();
@@ -582,8 +583,8 @@ export default function PhotoCompareScreen() {
             <h2 className="text-lg font-semibold">All Photos</h2>
             <div className="grid grid-cols-3 gap-3">
               {availablePhotos.map((photo) => {
-                const [year, month, day] = photo.entry_date.split('-').map(Number);
-                const localDate = new Date(year, month - 1, day);
+                const localDate = createLocalDate(photo.entry_date);
+                if (!localDate) return null;
                 
                 return (
                   <div
@@ -596,12 +597,12 @@ export default function PhotoCompareScreen() {
                     >
                       <img
                         src={getPhotoUrl(photo.photo_url)}
-                        alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                        alt={`Progress photo from ${safeFormatDate(localDate, 'MMM d, yyyy')}`}
                         className="w-full aspect-square object-cover rounded-lg"
                       />
                       <div className="mt-1.5 text-center">
                         <p className="text-xs font-medium text-muted-foreground">
-                          {format(localDate, 'MMM d, yyyy')}
+                          {safeFormatDate(localDate, 'MMM d, yyyy')}
                         </p>
                       </div>
                     </div>
@@ -653,7 +654,7 @@ export default function PhotoCompareScreen() {
                       className="w-full h-64 object-cover rounded-lg mb-2"
                     />
                     <p className="text-xs text-center text-muted-foreground mb-3">
-                      {format(new Date(selectedPhotos.before.date + 'T00:00:00'), 'MMM d, yyyy')}
+                      {safeFormatDate(selectedPhotos.before.date, 'MMM d, yyyy')}
                     </p>
                   </div>
                 ) : (
@@ -680,7 +681,7 @@ export default function PhotoCompareScreen() {
                       className="w-full h-64 object-cover rounded-lg mb-2"
                     />
                     <p className="text-xs text-center text-muted-foreground mb-3">
-                      {format(new Date(selectedPhotos.after.date + 'T00:00:00'), 'MMM d, yyyy')}
+                      {safeFormatDate(selectedPhotos.after.date, 'MMM d, yyyy')}
                     </p>
                   </div>
                 ) : (
@@ -748,8 +749,8 @@ export default function PhotoCompareScreen() {
               })
               .map((photo) => {
                 // Parse as local date to avoid timezone shifts
-                const [year, month, day] = photo.entry_date.split('-').map(Number);
-                const localDate = new Date(year, month - 1, day);
+                const localDate = createLocalDate(photo.entry_date);
+                if (!localDate) return null;
                 
                 return (
                   <Card
@@ -762,12 +763,12 @@ export default function PhotoCompareScreen() {
                     >
                       <img
                         src={getPhotoUrl(photo.photo_url)}
-                        alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                        alt={`Progress photo from ${safeFormatDate(localDate, 'MMM d, yyyy')}`}
                         className="w-full h-48 object-cover rounded-t-lg"
                       />
                       <div className="p-3 text-center">
                         <p className="text-sm font-medium">
-                          {format(localDate, 'MMM d, yyyy')}
+                          {safeFormatDate(localDate, 'MMM d, yyyy')}
                         </p>
                       </div>
                     </div>
@@ -847,8 +848,8 @@ export default function PhotoCompareScreen() {
           </DialogHeader>
           <div className="grid grid-cols-3 gap-4 mt-4">
             {availablePhotos.map((photo) => {
-              const [year, month, day] = photo.entry_date.split('-').map(Number);
-              const localDate = new Date(year, month - 1, day);
+              const localDate = createLocalDate(photo.entry_date);
+              if (!localDate) return null;
               
               return (
                 <Card
@@ -864,12 +865,12 @@ export default function PhotoCompareScreen() {
                   >
                     <img
                       src={getPhotoUrl(photo.photo_url)}
-                      alt={`Progress photo from ${format(localDate, 'MMM d, yyyy')}`}
+                      alt={`Progress photo from ${safeFormatDate(localDate, 'MMM d, yyyy')}`}
                       className="w-full aspect-square object-cover"
                     />
                     <div className="p-3 text-center bg-card">
                       <p className="text-sm font-medium">
-                        {format(localDate, 'MMM d, yyyy')}
+                        {safeFormatDate(localDate, 'MMM d, yyyy')}
                       </p>
                     </div>
                   </div>
