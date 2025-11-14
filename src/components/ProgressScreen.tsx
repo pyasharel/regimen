@@ -304,8 +304,11 @@ export const ProgressScreen = () => {
     const entry = weightEntries[index];
     if (!entry) return;
     
-    const [year, month, day] = entry.entry_date.split('-').map(Number);
-    const localDate = new Date(year, month - 1, day);
+    const localDate = createLocalDate(entry.entry_date);
+    if (!localDate) {
+      toast.error('Invalid entry date');
+      return;
+    }
     
     setEditingEntry({
       id: entry.id,
@@ -462,7 +465,10 @@ export const ProgressScreen = () => {
         break;
     }
     
-    return entries.filter(e => new Date(e.entry_date) >= cutoffDate);
+    return entries.filter(e => {
+      const entryDate = safeParseDate(e.entry_date);
+      return entryDate && entryDate >= cutoffDate;
+    });
   };
 
   const weightEntries = getFilteredEntries().filter(e => e.metrics?.weight);
@@ -471,7 +477,12 @@ export const ProgressScreen = () => {
   // Get all weight entries sorted by date (most recent first)
   const allWeightEntries = entries
     .filter(e => e.metrics?.weight)
-    .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
+    .sort((a, b) => {
+      const dateA = safeParseDate(b.entry_date);
+      const dateB = safeParseDate(a.entry_date);
+      if (!dateA || !dateB) return 0;
+      return dateA.getTime() - dateB.getTime();
+    });
   
   const currentWeight = allWeightEntries[0]?.metrics?.weight;
   const startingWeight = allWeightEntries[allWeightEntries.length - 1]?.metrics?.weight;
@@ -492,15 +503,16 @@ export const ProgressScreen = () => {
   const chartData = weightEntries
     .map(entry => {
       // Parse as local date to avoid timezone shifts
-      const [year, month, day] = entry.entry_date.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day);
+      const localDate = createLocalDate(entry.entry_date);
+      if (!localDate) return null;
       
       return {
-        date: format(localDate, 'MMM d'),
+        date: safeFormatDate(localDate, 'MMM d'),
         weight: Math.round(entry.metrics.weight * 10) / 10,
         fullDate: entry.entry_date
       };
     })
+    .filter(Boolean) // Remove null entries from invalid dates
     .sort((a, b) => a.fullDate.localeCompare(b.fullDate)); // Sort chronologically
 
   const getPhotoUrl = (photoPath: string) => {
@@ -632,10 +644,11 @@ export const ProgressScreen = () => {
             {/* Weekly Trend Card */}
             {allWeightEntries.length >= 2 && (() => {
               const recentEntries = allWeightEntries.slice(0, Math.min(4, allWeightEntries.length));
-              const daysBetween = Math.max(1, differenceInDays(
-                new Date(recentEntries[0].entry_date),
-                new Date(recentEntries[recentEntries.length - 1].entry_date)
-              ));
+              const firstDate = safeParseDate(recentEntries[0].entry_date);
+              const lastDate = safeParseDate(recentEntries[recentEntries.length - 1].entry_date);
+              const daysBetween = firstDate && lastDate 
+                ? Math.max(1, differenceInDays(firstDate, lastDate))
+                : 1;
               const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
               const weeklyAvg = (weightChange / daysBetween) * 7;
               
@@ -782,8 +795,8 @@ export const ProgressScreen = () => {
               <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
                 {photoEntries.map((entry) => {
                   // Parse as local date to avoid timezone shifts
-                  const [year, month, day] = entry.entry_date.split('-').map(Number);
-                  const localDate = new Date(year, month - 1, day);
+                  const localDate = createLocalDate(entry.entry_date);
+                  if (!localDate) return null;
                   
                   return (
                     <div key={entry.id} className="flex-shrink-0 text-center">
@@ -999,7 +1012,7 @@ export const ProgressScreen = () => {
                             for (let i = 0; i < numLabels; i++) {
                               const date = new Date(timelineStart);
                               date.setDate(date.getDate() + (i * Math.floor(totalDays / (numLabels - 1))));
-                              labels.push(format(date, 'MMM yy'));
+                              labels.push(safeFormatDate(date, 'MMM yy'));
                             }
                             
                             return labels.map((label, idx) => (
