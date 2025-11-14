@@ -55,6 +55,8 @@ type Compound = {
 };
 
 export const ProgressScreen = () => {
+  console.log('[ProgressScreen] Component rendering');
+  
   const navigate = useNavigate();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("1Y");
   const [showLogModal, setShowLogModal] = useState(false);
@@ -66,6 +68,8 @@ export const ProgressScreen = () => {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const { isSubscribed } = useSubscription();
+  
+  console.log('[ProgressScreen] State initialized');
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
@@ -143,6 +147,8 @@ export const ProgressScreen = () => {
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
   const hasError = entriesError || compoundsError || dosesError;
+  
+  console.log('[ProgressScreen] Data status:', { dataLoading, hasError, entriesCount: entries.length });
 
 
   const handleLogWeight = async () => {
@@ -534,18 +540,34 @@ export const ProgressScreen = () => {
       toast.error('Failed to delete photo');
     }
   };
-
-  // Log component state for debugging
-  useEffect(() => {
-    console.log('[ProgressScreen] Component mounted/updated', {
-      dataLoading,
-      hasError,
-      entriesCount: entries.length,
-      compoundsCount: compounds.length,
-      dosesCount: recentDoses.length
-    });
-  }, [dataLoading, hasError, entries.length, compounds.length, recentDoses.length]);
-
+  
+  console.log('[ProgressScreen] About to render, dataLoading:', dataLoading);
+  
+  // Show loading state
+  if (dataLoading) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+        <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
+                REGIMEN
+              </h1>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Skeleton className="w-12 h-12 rounded-full mx-auto" />
+            <p className="text-sm text-muted-foreground">Loading your progress...</p>
+          </div>
+        </div>
+        <BottomNavigation />
+      </div>
+    );
+  }
+  
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
