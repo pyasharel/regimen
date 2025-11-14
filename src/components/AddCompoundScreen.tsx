@@ -176,13 +176,14 @@ export const AddCompoundScreen = () => {
   const [canProceed, setCanProceed] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
 
-  // Check if user can add/edit compound
+  // Check if user can add/edit compound and trigger preview timer
   useEffect(() => {
     if (isEditing) {
       // For editing: Allow if subscribed OR if they only have 1 compound (preview mode)
       const checkEditPermission = async () => {
         if (isSubscribed) {
           setCanProceed(true);
+          setShowPreviewTimer(false);
           return;
         }
 
@@ -202,6 +203,11 @@ export const AddCompoundScreen = () => {
         // Allow editing if they only have 1 compound (preview mode)
         if (count === 1) {
           setCanProceed(true);
+          // Start preview timer if they have added a compound
+          if (!previewModeCompoundAdded) {
+            console.log('[AddCompound] Starting preview timer for edit');
+            setShowPreviewTimer(true);
+          }
         } else if (count && count > 1) {
           // Safety check - shouldn't happen, but block if they have multiple
           setCanProceed(false);
@@ -215,16 +221,24 @@ export const AddCompoundScreen = () => {
       // Adding new compound
       const checkAccess = async () => {
         const allowed = await canAddCompound();
+        console.log('[AddCompound] Can add compound:', allowed, 'isSubscribed:', isSubscribed);
+        
         if (!allowed) {
           setShowPaywall(true);
           setCanProceed(false);
+          setShowPreviewTimer(false);
         } else {
           setCanProceed(true);
+          // Start preview timer if not subscribed and haven't added preview compound yet
+          if (!isSubscribed && !previewModeCompoundAdded) {
+            console.log('[AddCompound] 🎯 Starting preview timer for new compound');
+            setShowPreviewTimer(true);
+          }
         }
       };
       checkAccess();
     }
-  }, [isEditing, isSubscribed]);
+  }, [isEditing, isSubscribed, previewModeCompoundAdded]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -721,6 +735,12 @@ export const AddCompoundScreen = () => {
           .insert(doses);
 
         if (dosesError) throw dosesError;
+
+        // Mark preview compound as added for non-subscribers
+        if (!isSubscribed) {
+          console.log('[AddCompound] ✅ Marking preview compound as added');
+          await markPreviewCompoundAdded();
+        }
 
         // Schedule cycle reminders if enabled
         if (enableCycle) {
@@ -1485,7 +1505,14 @@ export const AddCompoundScreen = () => {
       )}
       
       {showPreviewTimer && !isSubscribed && (
-        <PreviewModeTimer onTimerStart={() => console.log('Preview timer started')} />
+        <PreviewModeTimer 
+          onTimerStart={() => console.log('[AddCompound] ⏱️ Preview timer started')}
+          onPaywallDismiss={() => {
+            console.log('[AddCompound] User dismissed preview paywall');
+            // Navigate back when they dismiss the paywall
+            navigate('/today');
+          }}
+        />
       )}
       
       <SubscriptionPaywall 
