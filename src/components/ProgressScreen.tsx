@@ -627,7 +627,7 @@ export const ProgressScreen = () => {
                   <span className="text-[10px] text-muted-foreground">lbs</span>
                 </div>
                 <div className="text-[9px] text-muted-foreground">
-                  {allWeightEntries[0] && format(new Date(allWeightEntries[0].entry_date), 'MMM d')}
+                  {allWeightEntries[0] && safeFormatDate(allWeightEntries[0].entry_date, 'MMM d')}
                 </div>
               </div>
             </Card>
@@ -644,7 +644,7 @@ export const ProgressScreen = () => {
                     <span className="text-[10px] text-muted-foreground">lbs</span>
                   </div>
                   <div className="text-[9px] text-muted-foreground">
-                    Since {allWeightEntries[allWeightEntries.length - 1] && format(new Date(allWeightEntries[allWeightEntries.length - 1].entry_date), 'MMM d')}
+                    Since {allWeightEntries[allWeightEntries.length - 1] && safeFormatDate(allWeightEntries[allWeightEntries.length - 1].entry_date, 'MMM d')}
                   </div>
                 </div>
               </Card>
