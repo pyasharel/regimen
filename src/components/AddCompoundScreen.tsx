@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
 import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -463,8 +464,11 @@ export const AddCompoundScreen = () => {
   const generateDoses = (compoundId: string, userId: string) => {
     const doses = [];
     // Parse date in local timezone
-    const [year, month, day] = startDate.split('-').map(Number);
-    const start = new Date(year, month - 1, day);
+    const start = createLocalDate(startDate);
+    if (!start) {
+      console.error('Invalid start date');
+      return doses;
+    }
     
     // Don't generate doses for "As Needed"
     if (frequency === 'As Needed') {
@@ -481,10 +485,11 @@ export const AddCompoundScreen = () => {
     let daysToGenerate = maxDays;
     
     if (endDate) {
-      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
-      const end = new Date(endYear, endMonth - 1, endDay);
-      const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
-      daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
+      const end = createLocalDate(endDate);
+      if (end) {
+        const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
+        daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
+      }
     }
     
     for (let i = 0; i < daysToGenerate; i++) {
@@ -1287,7 +1292,7 @@ export const AddCompoundScreen = () => {
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(new Date(startDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
+                  {startDate ? safeFormatDate(startDate, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
