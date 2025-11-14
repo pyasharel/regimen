@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, differenceInDays } from "date-fns";
+import { safeParseDate, safeFormatDate, createLocalDate } from "@/utils/dateUtils";
 import { useStreaks } from "@/hooks/useStreaks";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
@@ -54,29 +55,7 @@ type Compound = {
   created_at: string;
 };
 
-// Helper function to safely parse dates
-const safeParseDate = (dateString: string | null | undefined): Date | null => {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return null;
-    return date;
-  } catch {
-    return null;
-  }
-};
-
-// Helper function to safely format dates
-const safeFormatDate = (dateString: string | Date | null | undefined, formatStr: string): string => {
-  if (!dateString) return 'N/A';
-  try {
-    const date = typeof dateString === 'string' ? safeParseDate(dateString) : dateString;
-    if (!date || isNaN(date.getTime())) return 'N/A';
-    return format(date, formatStr);
-  } catch {
-    return 'N/A';
-  }
-};
+// Remove local helpers - now using global dateUtils
 
 export const ProgressScreen = () => {
   console.log('[ProgressScreen] Component rendering');

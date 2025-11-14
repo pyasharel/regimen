@@ -1,4 +1,5 @@
-import { format, addDays, differenceInDays } from "date-fns";
+import { addDays, differenceInDays } from "date-fns";
+import { safeParseDate, safeFormatDate } from "@/utils/dateUtils";
 
 type CycleTimelineProps = {
   compound: {
@@ -18,7 +19,11 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
     return null;
   }
 
-  const startDate = new Date(compound.start_date);
+  const startDate = safeParseDate(compound.start_date);
+  if (!startDate) {
+    return null; // Invalid start date, don't render timeline
+  }
+  
   const now = new Date();
   const sixMonthsFromStart = addDays(startDate, 180);
   
@@ -105,8 +110,8 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
         
         {/* Date labels below timeline */}
         <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-          <span>{format(startDate, 'MMM d')}</span>
-          <span>{format(sixMonthsFromStart, 'MMM d')}</span>
+          <span>{safeFormatDate(startDate, 'MMM d')}</span>
+          <span>{safeFormatDate(sixMonthsFromStart, 'MMM d')}</span>
         </div>
       </div>
       
