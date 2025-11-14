@@ -534,8 +534,8 @@ export const AddCompoundScreen = () => {
 
       // Generate doses based on number of doses per day
       const timesToGenerate = numberOfDoses === 2 
-        ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
-        : (isSubscribed ? [customTime] : ['08:00']);
+        ? [customTime, customTime2]
+        : [customTime];
 
       timesToGenerate.forEach(time => {
         doses.push({
@@ -608,8 +608,8 @@ export const AddCompoundScreen = () => {
             concentration: concentration ? parseFloat(concentration) : null,
           schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
           time_of_day: numberOfDoses === 2 
-            ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
-            : (isSubscribed ? [customTime] : ['08:00']),
+            ? [customTime, customTime2]
+            : [customTime],
           schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
@@ -698,8 +698,8 @@ export const AddCompoundScreen = () => {
             concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
             time_of_day: numberOfDoses === 2 
-              ? (isSubscribed ? [customTime, customTime2] : ['08:00', '20:00'])
-              : (isSubscribed ? [customTime] : ['08:00']),
+              ? [customTime, customTime2]
+              : [customTime],
             schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
             start_date: startDate,
             end_date: endDate || null,
@@ -1227,55 +1227,35 @@ export const AddCompoundScreen = () => {
                 </div>
               </div>
 
-              {/* Time(s) - Compact layout */}
-              {isSubscribed ? (
-                <>
-                  {numberOfDoses === 1 ? (
-                    <div className="flex items-center justify-between py-2">
-                      <Label className="mb-0 text-sm flex items-center h-9">Time</Label>
-                      <IOSTimePicker
-                        value={customTime}
-                        onChange={setCustomTime}
-                        className="w-40"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between py-2">
-                        <Label className="mb-0 text-sm flex items-center h-9">First Dose</Label>
-                        <IOSTimePicker
-                          value={customTime}
-                          onChange={setCustomTime}
-                          className="w-40"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between py-2">
-                        <Label className="mb-0 text-sm flex items-center h-9">Second Dose</Label>
-                        <IOSTimePicker
-                          value={customTime2}
-                          onChange={setCustomTime2}
-                          className="w-40"
-                        />
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
+              {/* Time(s) - Always unlocked */}
+              {numberOfDoses === 1 ? (
                 <div className="flex items-center justify-between py-2">
                   <Label className="mb-0 text-sm flex items-center h-9">Time</Label>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="h-9 px-3 bg-muted border-border rounded-lg border text-xs flex items-center text-muted-foreground">
-                      {numberOfDoses === 1 ? '8:00 AM' : '8:00 AM & 8:00 PM'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPaywall(true)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                    >
-                      🔒 <span className="underline">Custom times</span>
-                    </button>
-                  </div>
+                  <IOSTimePicker
+                    value={customTime}
+                    onChange={setCustomTime}
+                    className="w-40"
+                  />
                 </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between py-2">
+                    <Label className="mb-0 text-sm flex items-center h-9">First Dose</Label>
+                    <IOSTimePicker
+                      value={customTime}
+                      onChange={setCustomTime}
+                      className="w-40"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <Label className="mb-0 text-sm flex items-center h-9">Second Dose</Label>
+                    <IOSTimePicker
+                      value={customTime2}
+                      onChange={setCustomTime2}
+                      className="w-40"
+                    />
+                  </div>
+                </>
               )}
             </>
           )}
@@ -1354,23 +1334,16 @@ export const AddCompoundScreen = () => {
             <p className="text-xs text-muted-foreground">Advanced: Automatically pause and resume this compound on a schedule</p>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-            <Label htmlFor="cycle" className="mb-0">Enable Cycle</Label>
+          <div className="flex items-center justify-between py-2">
+            <Label htmlFor="enableCycle" className="mb-0 text-sm">Enable Cycling</Label>
             <Switch
-              id="cycle"
+              id="enableCycle"
               checked={enableCycle}
-              onCheckedChange={(checked) => {
-                if (!isSubscribed) {
-                  setShowPaywall(true);
-                } else {
-                  setEnableCycle(checked);
-                }
-              }}
-              disabled={!isSubscribed}
+              onCheckedChange={setEnableCycle}
             />
           </div>
 
-          {enableCycle && isSubscribed && (
+          {enableCycle && (
             <div className="space-y-4">
               <div className="flex gap-2">
                 <button
