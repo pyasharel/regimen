@@ -324,9 +324,9 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6 py-8 safe-top safe-bottom overflow-y-auto">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8 safe-top safe-bottom overflow-y-auto">
       <Card className="w-full max-w-md border-border my-4">
-        <div className="p-8 space-y-6">
+        <div className="p-6 sm:p-8 space-y-6">
           {/* Logo */}
           <div className="flex justify-center pt-2">
             <img src={logo} alt="REGIMEN" className="h-16 w-auto" />
@@ -354,8 +354,8 @@ export default function Auth() {
             </p>
           </div>
 
-          {/* Form Container with proper padding for mobile */}
-          <div className="px-4 sm:px-6">
+          {/* Form Container with internal padding */}
+          <div className="space-y-6">
 
         {isResettingPassword ? (
           <form onSubmit={handleResetPassword} className="space-y-6">
