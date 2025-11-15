@@ -11,6 +11,7 @@ import logo from "@/assets/logo-regimen-vertical-new.png";
 import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -252,18 +253,19 @@ export default function Auth() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (isSignUp && !fullName.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    // Validate inputs with zod schema
+    try {
+      if (isSignUp) {
+        authSignUpSchema.parse({ email, password, fullName });
+      } else {
+        authSignInSchema.parse({ email, password });
+      }
+    } catch (error: any) {
+      if (error.errors?.[0]?.message) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error("Please check your input");
+      }
       return;
     }
 
@@ -352,8 +354,8 @@ export default function Auth() {
             </p>
           </div>
 
-          <div className="px-2">
-          {/* Form Container with padding */}
+          {/* Form Container with proper padding for mobile */}
+          <div className="px-4 sm:px-6">
 
         {isResettingPassword ? (
           <form onSubmit={handleResetPassword} className="space-y-6">
