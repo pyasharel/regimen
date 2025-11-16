@@ -35,13 +35,8 @@ export default function Auth() {
       return;
     }
 
-    // Initialize Google Auth for native only
-    if (Capacitor.isNativePlatform()) {
-      GoogleAuth.initialize({
-        clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
-        scopes: ['profile', 'email'],
-      });
-    }
+    // Google Auth is configured via capacitor.config.ts
+    // No need to initialize here for native platforms
 
     // Check for existing session and redirect immediately
     supabase.auth.getSession().then(({ data: { session } }) => {
