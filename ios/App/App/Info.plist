@@ -58,7 +58,7 @@
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>We need permission to send you medication reminders</string>
 	<key>GIDClientID</key>
-	<string>495863490632-lp0fckcnkiv0ktqeq2v4gout4blbl698.apps.googleusercontent.com</string>
+	<string>495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -66,7 +66,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.495863490632-lp0fckcnkiv0ktqeq2v4gout4blbl698</string>
+				<string>com.googleusercontent.apps.495863490632-pu5gu0svgcviivgr3la0c7esmakn6396</string>
 			</array>
 		</dict>
 	</array>
