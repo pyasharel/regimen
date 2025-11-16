@@ -196,7 +196,14 @@ export default function Auth() {
       console.log('Platform:', isNative ? 'native' : 'web');
       
       if (isNative) {
-        // Native: Use Google Auth SDK
+        // Native: Use Google Auth SDK - MUST initialize first
+        console.log('Initializing Google Auth');
+        await GoogleAuth.initialize({
+          clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        });
+        
         console.log('Starting native Google Sign-In');
         const googleUser = await GoogleAuth.signIn();
         console.log('Google user obtained:', { email: googleUser.email });
