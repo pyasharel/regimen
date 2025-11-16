@@ -28,15 +28,30 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+
+  // Initialize Google Auth ONCE on native platforms
+  useEffect(() => {
+    const initializeGoogleAuth = async () => {
+      if (Capacitor.isNativePlatform()) {
+        console.log('[Auth] Initializing Google Auth for native platform');
+        await GoogleAuth.initialize({
+          clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
+        });
+        console.log('[Auth] Google Auth initialized successfully');
+      }
+    };
+
+    initializeGoogleAuth();
+  }, []); // Run only once on mount
+
   useEffect(() => {
     const mode = searchParams.get("mode");
     if (mode === "reset") {
       setIsResettingPassword(true);
       return;
     }
-
-    // Google Auth is configured via capacitor.config.ts
-    // No need to initialize here for native platforms
 
     // Check for existing session and redirect immediately
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -196,14 +211,7 @@ export default function Auth() {
       console.log('Platform:', isNative ? 'native' : 'web');
       
       if (isNative) {
-        // Native: Use Google Auth SDK - MUST initialize first
-        console.log('Initializing Google Auth');
-        await GoogleAuth.initialize({
-          clientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
-          scopes: ['profile', 'email'],
-          grantOfflineAccess: true,
-        });
-        
+        // Native: Use Google Auth SDK (already initialized in useEffect)
         console.log('Starting native Google Sign-In');
         const googleUser = await GoogleAuth.signIn();
         console.log('Google user obtained:', { email: googleUser.email });
