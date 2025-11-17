@@ -1,0 +1,112 @@
+PODS:
+  - AppAuth (1.7.6):
+    - AppAuth/Core (= 1.7.6)
+    - AppAuth/ExternalUserAgent (= 1.7.6)
+  - AppAuth/Core (1.7.6)
+  - AppAuth/ExternalUserAgent (1.7.6):
+    - AppAuth/Core
+  - Capacitor (7.4.3):
+    - CapacitorCordova
+  - CapacitorApp (7.1.0):
+    - Capacitor
+  - CapacitorBrowser (7.0.2):
+    - Capacitor
+  - CapacitorCamera (7.0.2):
+    - Capacitor
+  - CapacitorCordova (7.4.3)
+  - CapacitorFilesystem (7.1.4):
+    - Capacitor
+    - IONFilesystemLib (~> 1.0.1)
+  - CapacitorHaptics (7.0.2):
+    - Capacitor
+  - CapacitorLocalNotifications (7.0.3):
+    - Capacitor
+  - CapacitorPushNotifications (7.0.3):
+    - Capacitor
+  - CapacitorShare (7.0.2):
+    - Capacitor
+  - CapacitorSplashScreen (7.0.3):
+    - Capacitor
+  - CodetrixStudioCapacitorGoogleAuth (0.0.1):
+    - Capacitor
+    - GoogleSignIn (~> 6.2.4)
+  - GoogleSignIn (6.2.4):
+    - AppAuth (~> 1.5)
+    - GTMAppAuth (~> 1.3)
+    - GTMSessionFetcher/Core (< 3.0, >= 1.1)
+  - GTMAppAuth (1.3.1):
+    - AppAuth/Core (~> 1.6)
+    - GTMSessionFetcher/Core (< 3.0, >= 1.5)
+  - GTMSessionFetcher/Core (2.3.0)
+  - IONFilesystemLib (1.0.1)
+
+DEPENDENCIES:
+  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
+  - "CapacitorBrowser (from `../../node_modules/@capacitor/browser`)"
+  - "CapacitorCamera (from `../../node_modules/@capacitor/camera`)"
+  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorFilesystem (from `../../node_modules/@capacitor/filesystem`)"
+  - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
+  - "CapacitorLocalNotifications (from `../../node_modules/@capacitor/local-notifications`)"
+  - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
+  - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
+  - "CapacitorSplashScreen (from `../../node_modules/@capacitor/splash-screen`)"
+  - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/@codetrix-studio/capacitor-google-auth`)"
+
+SPEC REPOS:
+  trunk:
+    - AppAuth
+    - GoogleSignIn
+    - GTMAppAuth
+    - GTMSessionFetcher
+    - IONFilesystemLib
+
+EXTERNAL SOURCES:
+  Capacitor:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorApp:
+    :path: "../../node_modules/@capacitor/app"
+  CapacitorBrowser:
+    :path: "../../node_modules/@capacitor/browser"
+  CapacitorCamera:
+    :path: "../../node_modules/@capacitor/camera"
+  CapacitorCordova:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorFilesystem:
+    :path: "../../node_modules/@capacitor/filesystem"
+  CapacitorHaptics:
+    :path: "../../node_modules/@capacitor/haptics"
+  CapacitorLocalNotifications:
+    :path: "../../node_modules/@capacitor/local-notifications"
+  CapacitorPushNotifications:
+    :path: "../../node_modules/@capacitor/push-notifications"
+  CapacitorShare:
+    :path: "../../node_modules/@capacitor/share"
+  CapacitorSplashScreen:
+    :path: "../../node_modules/@capacitor/splash-screen"
+  CodetrixStudioCapacitorGoogleAuth:
+    :path: "../../node_modules/@codetrix-studio/capacitor-google-auth"
+
+SPEC CHECKSUMS:
+  AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
+  Capacitor: 28d6c01026a9a3f7156529498ec1f389a2a28dbc
+  CapacitorApp: 26587c2ce485d88ddb39adb21cac64f8e481afe3
+  CapacitorBrowser: 22541e48442de44dc629c214388290d6eecc6ae9
+  CapacitorCamera: f9e54db0a18bb218a8dc360907d63aaefe9209ff
+  CapacitorCordova: 435121e81a2df4d0034f0fb11fcefab5104cfdb5
+  CapacitorFilesystem: f9bd850c41e048180e5dc0cbb90f2033ede9d2cc
+  CapacitorHaptics: b3fb2869e72c4466e18ce9ccbeb60a3d8723b3d4
+  CapacitorLocalNotifications: 0811aef56ab2e5f7f9ae72f47d3473ab50c29038
+  CapacitorPushNotifications: bdd621fbd562be34a41f4a7b1750efa000447d5a
+  CapacitorShare: be166411fa995ead2d39b104aa0aae56d8615c66
+  CapacitorSplashScreen: e388b8e0ed0e982a9d3a40417f478e7a018a8763
+  CodetrixStudioCapacitorGoogleAuth: 9dcfabfb7dd804ad6231a1513bc6e81e620cbec6
+  GoogleSignIn: 5651ce3a61e56ca864160e79b484cd9ed3f49b7a
+  GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
+  GTMSessionFetcher: 3a63d75eecd6aa32c2fc79f578064e1214dfdec2
+  IONFilesystemLib: 89258b8e3e85465da93127d25d7ce37f977e8a6f
+
+PODFILE CHECKSUM: b364172e8b45f51a372225b0dec507201adb52da
+
+COCOAPODS: 1.16.2

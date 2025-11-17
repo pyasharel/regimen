@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Regimen</string>
+        <string>Regimen</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.2</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>5</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -45,6 +45,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+<<<<<<< Updated upstream
 	<key>NSCameraUsageDescription</key>
 	<string>We need camera access to let you take progress photos for your medication journey</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -68,5 +69,7 @@
 			</array>
 		</dict>
 	</array>
+=======
+>>>>>>> Stashed changes
 </dict>
 </plist>
