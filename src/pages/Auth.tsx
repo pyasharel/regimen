@@ -35,7 +35,7 @@ export default function Auth() {
       if (Capacitor.isNativePlatform()) {
         console.log('[Auth] Initializing Google Auth for native platform');
         await GoogleAuth.initialize({
-          clientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout4blbl698.apps.googleusercontent.com',
+          clientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
