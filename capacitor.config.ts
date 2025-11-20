@@ -28,6 +28,7 @@ const config: CapacitorConfig = {
     SocialLogin: {
       google: {
         webClientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
+        iOSClientId: '495863490632-ip0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
       },
     },
   },
