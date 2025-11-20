@@ -25,11 +25,10 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
-    GoogleAuth: {
-      scopes: ['profile', 'email'],
-      serverClientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
-      iosClientId: 'YOUR_IOS_CLIENT_ID_HERE.apps.googleusercontent.com', // Add your iOS client ID from Google Cloud Console
-      forceCodeForRefreshToken: true,
+    SocialLogin: {
+      google: {
+        webClientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
+      },
     },
   },
   // Comment out server config for production native apps
