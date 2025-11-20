@@ -10,7 +10,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/logo-regimen-vertical-new.png";
 import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
 
 export default function Auth() {
@@ -31,19 +31,19 @@ export default function Auth() {
 
   // Initialize Google Auth ONCE on native platforms
   useEffect(() => {
-    const initializeGoogleAuth = async () => {
+    const initializeSocialLogin = async () => {
       if (Capacitor.isNativePlatform()) {
-        console.log('[Auth] Initializing Google Auth for native platform');
-        await GoogleAuth.initialize({
-          clientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
-          scopes: ['profile', 'email'],
-          grantOfflineAccess: true,
+        console.log('[Auth] Initializing Social Login for native platform');
+        await SocialLogin.initialize({
+          google: {
+            webClientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
+          },
         });
-        console.log('[Auth] Google Auth initialized successfully');
+        console.log('[Auth] Social Login initialized successfully');
       }
     };
 
-    initializeGoogleAuth();
+    initializeSocialLogin();
   }, []); // Run only once on mount
 
   useEffect(() => {
@@ -211,19 +211,31 @@ export default function Auth() {
       console.log('Platform:', isNative ? 'native' : 'web');
       
       if (isNative) {
-        // Native: Use Google Auth SDK (already initialized in useEffect)
-        console.log('Starting native Google Sign-In');
-        const googleUser = await GoogleAuth.signIn();
-        console.log('Google user obtained:', { email: googleUser.email });
+        // Native: Use Social Login SDK (already initialized in useEffect)
+        console.log('Starting native Google Sign-In with Social Login');
+        const result = await SocialLogin.login({
+          provider: 'google',
+          options: {
+            scopes: ['profile', 'email'],
+          },
+        });
         
-        if (!googleUser.authentication?.idToken) {
+        console.log('Social Login result:', result);
+        
+        if (result.provider !== 'google') {
+          throw new Error('Unexpected provider result');
+        }
+        
+        // Access idToken from the nested result object
+        const idToken = (result.result as any)?.idToken;
+        if (!idToken) {
           throw new Error('No ID token received from Google');
         }
 
         // Sign in to Supabase with the Google ID token
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
-          token: googleUser.authentication.idToken,
+          token: idToken,
         });
 
         if (error) throw error;
