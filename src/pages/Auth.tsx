@@ -37,7 +37,7 @@ export default function Auth() {
         await SocialLogin.initialize({
           google: {
             webClientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
-            iOSClientId: '495863490632-pu5gu0svgcviivgr3la0c7esmakn6396.apps.googleusercontent.com',
+            iOSClientId: '495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com',
           },
         });
         console.log('[Auth] Social Login initialized successfully');
