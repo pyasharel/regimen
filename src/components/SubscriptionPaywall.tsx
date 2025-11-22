@@ -179,9 +179,10 @@ export const SubscriptionPaywall = ({
           await Browser.open({ url: data.url });
           toast.success('Opening checkout...');
         } else {
-          // Web preview: Redirect in same tab to preserve session
-          console.log('[PAYWALL] Web platform detected, redirecting in same window');
-          window.location.href = data.url;
+          // Web: Open in new tab (preview iframe can't redirect to external URLs)
+          console.log('[PAYWALL] Web platform detected, opening in new tab');
+          window.open(data.url, '_blank');
+          toast.success('Opening checkout in new tab...');
         }
       } else {
         console.error('[PAYWALL] No URL in response');
