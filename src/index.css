@@ -127,6 +127,10 @@ All colors MUST be HSL.
     padding-top: env(safe-area-inset-top);
   }
   
+  .safe-top-margin {
+    margin-top: calc(env(safe-area-inset-top) + 4px);
+  }
+  
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }

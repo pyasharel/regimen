@@ -812,15 +812,21 @@ export const TodayScreen = () => {
               No doses scheduled for this date
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <button
+              onClick={() => navigate('/add-compound')}
+              className="flex flex-col items-center justify-center py-16 px-4 text-center w-full border-2 border-dashed border-border rounded-2xl bg-muted/20 active:scale-95 transition-transform"
+            >
               <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center mb-4">
                 <Plus className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-bold mb-2">No doses scheduled</h3>
-              <p className="text-sm text-muted-foreground mb-6">
+              <p className="text-sm text-muted-foreground mb-2">
                 Add your first compound to get started
               </p>
-            </div>
+              <span className="text-xs text-muted-foreground/80">
+                Tap to add your first compound
+              </span>
+            </button>
           )
         ) : (
           <>

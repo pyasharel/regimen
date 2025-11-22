@@ -17,7 +17,7 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm border-b border-border/50 px-4 py-3 safe-top">
+    <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm border-b border-border/50 px-4 py-3 safe-top-margin">
       <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex-shrink-0 w-1 h-8 bg-[#8B5CF6] rounded-full" />
