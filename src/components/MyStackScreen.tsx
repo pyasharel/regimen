@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -335,19 +334,21 @@ export const MyStackScreen = () => {
           </h2>
           
           {activeCompounds.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border rounded-2xl">
+            <button
+              onClick={() => navigate("/add-compound")}
+              className="flex flex-col items-center justify-center w-full py-12 px-4 text-center border-2 border-dashed border-border rounded-2xl bg-muted/20 active:scale-95 transition-transform"
+            >
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                 <Plus className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No active medications</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              <p className="text-sm text-muted-foreground mb-2 max-w-xs">
                 Add your first compound to start tracking your regimen
               </p>
-              <Button onClick={() => navigate("/add-compound")}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Compound
-              </Button>
-            </div>
+              <span className="text-xs text-muted-foreground/80">
+                Tap to add your first compound
+              </span>
+            </button>
           ) : (
             activeCompounds.map((compound) => (
             <div
