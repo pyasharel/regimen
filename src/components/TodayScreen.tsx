@@ -133,7 +133,9 @@ export const TodayScreen = () => {
           } else {
             console.log('[POST-CHECKOUT] Subscription verified:', data);
             
-            // Refresh the subscription context
+            // Refresh the subscription context multiple times
+            await refreshSubscription();
+            await new Promise(resolve => setTimeout(resolve, 1000));
             await refreshSubscription();
             
             // Show success message
@@ -144,6 +146,9 @@ export const TodayScreen = () => {
                   ? "Your 14-day free trial has started. Enjoy unlimited access!"
                   : "Your subscription is now active. Enjoy unlimited access!",
               });
+              
+              // Force close paywall after successful subscription
+              setShowPaywall(false);
             }
           }
         } catch (error) {
