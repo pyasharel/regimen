@@ -177,13 +177,12 @@ export const SubscriptionPaywall = ({
           // Native app: Use Capacitor Browser to open in in-app browser
           console.log('[PAYWALL] Native platform detected, using Capacitor Browser');
           await Browser.open({ url: data.url });
+          toast.success('Opening checkout...');
         } else {
-          // Web: Open in new tab
-          console.log('[PAYWALL] Web platform detected, opening in new tab');
-          window.open(data.url, '_blank');
+          // Web preview: Redirect in same tab to preserve session
+          console.log('[PAYWALL] Web platform detected, redirecting in same window');
+          window.location.href = data.url;
         }
-        
-        toast.success('Opening Stripe checkout...');
       } else {
         console.error('[PAYWALL] No URL in response');
         toast.error('Checkout failed - no URL received');
