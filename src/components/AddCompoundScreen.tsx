@@ -27,19 +27,19 @@ import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
   "AOD-9604",
-  "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide (PT-141)",
+  "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide", "PT-141",
   "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
   "DSIP", "Dihexa",
-  "Follistatin", "FTPP (Adipotide)",
-  "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF (1-29)",
+  "Follistatin", "FTPP", "Adipotide",
+  "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF 1-29",
   "HCG", "Hexarelin", "HMG",
   "IGF-1 LR3",
-  "Ipamorelin", "Ibutamoren (MK-677)",
+  "Ipamorelin", "Ibutamoren", "MK-677",
   "KPV",
   "MOTS-c", "Melanotan II",
   "NAD+", "N-Acetyl Semax", "N-Acetyl Selank",
   "P21", "PEG-MGF", "Pinealon",
-  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31 (Elamipretide)",
+  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31", "Elamipretide",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
   "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin",
   
@@ -52,22 +52,25 @@ const COMMON_PEPTIDES = [
   "5-Amino-1MQ", "Glutathione", "NMN", "Urolithin A",
   
   // GLP-1 Agonists (Weight Loss)
-  "Semaglutide (Ozempic/Wegovy)", "Tirzepatide (Mounjaro/Zepbound)",
-  "Retatrutide", "CagriSema", "Dulaglutide (Trulicity)",
-  "Liraglutide (Victoza/Saxenda)", "Rybelsus",
+  "Semaglutide", "Ozempic", "Wegovy",
+  "Tirzepatide", "Mounjaro", "Zepbound",
+  "Retatrutide", "CagriSema", 
+  "Dulaglutide", "Trulicity",
+  "Liraglutide", "Victoza", "Saxenda", 
+  "Rybelsus",
   
   // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
   "Testosterone Gel",
   
   // Anabolic Steroids
-  "Nandrolone Decanoate (Deca)", "Nandrolone Phenylpropionate (NPP)",
+  "Nandrolone Decanoate", "Deca", "Nandrolone Phenylpropionate", "NPP",
   "Trenbolone Acetate", "Trenbolone Enanthate",
-  "Boldenone Undecylenate (Equipoise)",
-  "Drostanolone Propionate (Masteron)", "Drostanolone Enanthate",
-  "Methenolone Enanthate (Primobolan)",
-  "Oxandrolone (Anavar)", "Stanozolol (Winstrol)",
-  "Oxymetholone (Anadrol)", "Methandrostenolone (Dianabol)",
+  "Boldenone Undecylenate", "Equipoise",
+  "Drostanolone Propionate", "Masteron", "Drostanolone Enanthate",
+  "Methenolone Enanthate", "Primobolan",
+  "Oxandrolone", "Anavar", "Stanozolol", "Winstrol",
+  "Oxymetholone", "Anadrol", "Methandrostenolone", "Dianabol",
   
   // Women's HRT - Estrogen
   "Estradiol", "Estradiol Valerate", "Estradiol Cypionate",
@@ -75,29 +78,29 @@ const COMMON_PEPTIDES = [
   "Premarin", "Climara", "Vivelle-Dot", "Estrace",
   
   // Women's HRT - Progesterone
-  "Progesterone (Micronized)", "Prometrium", 
-  "Medroxyprogesterone (Provera)", "Norethindrone",
+  "Progesterone", "Micronized Progesterone", "Prometrium", 
+  "Medroxyprogesterone", "Provera", "Norethindrone",
   
   // Women's HRT - Testosterone
   "Testosterone Cream", "Testosterone Pellets",
   
   // HGH & Growth Hormone
-  "Somatropin (HGH)", "Genotropin", "Humatrope", "Norditropin", "Saizen",
+  "Somatropin", "HGH", "Genotropin", "Humatrope", "Norditropin", "Saizen",
   
   // Post-Cycle Therapy (PCT) & Ancillaries
-  "Anastrozole (Arimidex)", "Letrozole (Femara)", "Exemestane (Aromasin)",
-  "Clomiphene Citrate (Clomid)", "Tamoxifen (Nolvadex)",
-  "Cabergoline (Dostinex)", "Pramipexole",
+  "Anastrozole", "Arimidex", "Letrozole", "Femara", "Exemestane", "Aromasin",
+  "Clomiphene Citrate", "Clomid", "Tamoxifen", "Nolvadex",
+  "Cabergoline", "Dostinex", "Pramipexole",
   "Finasteride", "Dutasteride",
   
   // Hair Loss Treatments
-  "Minoxidil (Oral)", "Minoxidil (Topical)",
+  "Minoxidil Oral", "Minoxidil Topical",
   
   // Performance & Cognitive Enhancement
   "Modafinil", "Armodafinil",
   
   // Injectable Vitamins & Supplements
-  "L-Carnitine", "B12 (Methylcobalamin)", "B12 (Cyanocobalamin)", 
+  "L-Carnitine", "B12", "Methylcobalamin", "Cyanocobalamin", 
   "B-Complex Injectable",
   
   // Specialty Compounds
