@@ -74,13 +74,26 @@ serve(async (req) => {
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
+    // Determine the proper origin for redirect URLs
+    // For native apps, use the deployed/preview URL instead of capacitor://localhost
+    const origin = req.headers.get("origin") || '';
+    const isNativeApp = origin.includes('capacitor://') || origin.includes('ionic://');
+    
+    // Use the referer header to get the actual web URL when in native app
+    const referer = req.headers.get("referer") || '';
+    const redirectBaseUrl = isNativeApp && referer 
+      ? new URL(referer).origin 
+      : (origin || 'https://348ffbba-c097-44d8-bbbe-a7cee13c09a9.lovableproject.com');
+    
+    console.log('[CREATE-CHECKOUT] Origin:', origin, 'Referer:', referer, 'Using redirect base:', redirectBaseUrl);
+
     // Build session parameters
     const sessionParams: any = {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/today?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/today`,
+      success_url: `${redirectBaseUrl}/today?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${redirectBaseUrl}/today`,
       subscription_data: {
         trial_period_days: 14,
         metadata: {
