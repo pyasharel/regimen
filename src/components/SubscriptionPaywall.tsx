@@ -5,6 +5,8 @@ import { X } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 interface SubscriptionPaywallProps {
   open: boolean;
@@ -170,9 +172,18 @@ export const SubscriptionPaywall = ({
       
       if (data?.url) {
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
-        // Open in new tab to preserve the app state
-        window.open(data.url, '_blank');
-        toast.success('Opening Stripe checkout in new tab...');
+        
+        if (Capacitor.isNativePlatform()) {
+          // Native app: Use Capacitor Browser to open in in-app browser
+          console.log('[PAYWALL] Native platform detected, using Capacitor Browser');
+          await Browser.open({ url: data.url });
+        } else {
+          // Web: Open in new tab
+          console.log('[PAYWALL] Web platform detected, opening in new tab');
+          window.open(data.url, '_blank');
+        }
+        
+        toast.success('Opening Stripe checkout...');
       } else {
         console.error('[PAYWALL] No URL in response');
         toast.error('Checkout failed - no URL received');
