@@ -296,7 +296,7 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -308,12 +308,6 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        
-        // Check if user already exists (auto-confirm enabled returns success but no session)
-        if (data?.user && !data?.session) {
-          throw new Error("This email is already registered. Try logging in instead.");
-        }
-        
         // Account created - onAuthStateChange will handle navigation
         // Welcome email will be sent in checkOnboardingStatus
       } else {
