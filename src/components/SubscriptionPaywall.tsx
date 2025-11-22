@@ -170,8 +170,9 @@ export const SubscriptionPaywall = ({
       
       if (data?.url) {
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
-        // On mobile, directly navigate to avoid popup blockers
-        window.location.href = data.url;
+        // Open in new tab to preserve the app state
+        window.open(data.url, '_blank');
+        toast.success('Opening Stripe checkout in new tab...');
       } else {
         console.error('[PAYWALL] No URL in response');
         toast.error('Checkout failed - no URL received');
