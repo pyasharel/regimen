@@ -820,12 +820,6 @@ export const TodayScreen = () => {
               <p className="text-sm text-muted-foreground mb-6">
                 Add your first compound to get started
               </p>
-              <button
-                onClick={() => navigate('/add-compound')}
-                className="rounded-full bg-primary px-6 py-3 text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-              >
-                Add First Compound
-              </button>
             </div>
           )
         ) : (
@@ -1087,13 +1081,16 @@ export const TodayScreen = () => {
       </div>
 
       {/* FAB Button */}
-      <button
-        onClick={() => navigate("/add-compound")}
-        className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
-        style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
-      >
-        <Plus className="h-6 w-6 text-white" />
-      </button>
+      {/* Floating Action Button - Only show when has compounds */}
+      {hasCompounds && (
+        <button
+          onClick={() => navigate("/add-compound")}
+          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
+          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </button>
+      )}
 
       <BottomNavigation />
 
