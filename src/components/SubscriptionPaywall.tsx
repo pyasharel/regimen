@@ -174,15 +174,33 @@ export const SubscriptionPaywall = ({
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
         
         if (Capacitor.isNativePlatform()) {
-          // Native app: Use Capacitor Browser to open in in-app browser
-          console.log('[PAYWALL] Native platform detected, using Capacitor Browser');
-          await Browser.open({ url: data.url });
-          toast.success('Opening checkout...');
+          // Native app: Open in external browser for proper deep link handling
+          console.log('[PAYWALL] Native platform detected, opening in system browser');
+          
+          // Add listener for when browser closes to refresh subscription
+          const listener = await Browser.addListener('browserFinished', async () => {
+            console.log('[PAYWALL] Browser closed, refreshing subscription...');
+            // Give Stripe a moment to process the payment
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+            listener.remove();
+          });
+          
+          await Browser.open({ 
+            url: data.url,
+            // iOS: This opens in SFSafariViewController which properly handles custom URL schemes
+            // Android: This opens in Chrome Custom Tabs which also handles them
+          });
+          toast.success('Complete checkout to activate your subscription');
+          
+          // Close the paywall so user can see the browser
+          onOpenChange(false);
         } else {
           // Web: Open in new tab (preview iframe can't redirect to external URLs)
           console.log('[PAYWALL] Web platform detected, opening in new tab');
           window.open(data.url, '_blank');
-          toast.success('Opening checkout in new tab...');
+          toast.success('Complete checkout in the new tab, then return here');
         }
       } else {
         console.error('[PAYWALL] No URL in response');
