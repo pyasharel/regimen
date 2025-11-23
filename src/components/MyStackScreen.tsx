@@ -336,18 +336,35 @@ export const MyStackScreen = () => {
           {activeCompounds.length === 0 ? (
             <button
               onClick={() => navigate("/add-compound")}
-              className="flex flex-col items-center justify-center w-full py-12 px-4 text-center border-2 border-dashed border-border rounded-2xl bg-muted/20 active:scale-95 transition-transform"
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 border-2 border-dashed border-primary/30 p-8 active:scale-95 transition-all shadow-lg shadow-primary/5"
             >
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Plus className="w-8 h-8 text-muted-foreground" />
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 animate-pulse" />
+              
+              {/* Content */}
+              <div className="relative z-10 flex flex-col items-center text-center">
+                {/* Icon with gradient background */}
+                <div className="relative mb-5">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent blur-xl opacity-40 animate-pulse" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-xl shadow-primary/30">
+                    <Plus className="w-10 h-10 text-white" strokeWidth={2.5} />
+                  </div>
+                </div>
+
+                {/* Text content */}
+                <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                  Build Your Stack
+                </h3>
+                <p className="text-sm text-muted-foreground/90 max-w-xs leading-relaxed mb-4">
+                  Add medications to track doses, cycles, and progress all in one place
+                </p>
+                
+                {/* CTA */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary to-accent text-white text-sm font-semibold shadow-md shadow-primary/25">
+                  <Plus className="w-4 h-4" />
+                  <span>Add Your First Compound</span>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">No active medications</h3>
-              <p className="text-sm text-muted-foreground mb-2 max-w-xs">
-                Add your first compound to start tracking your regimen
-              </p>
-              <span className="text-xs text-muted-foreground/80">
-                Tap to add your first compound
-              </span>
             </button>
           ) : (
             activeCompounds.map((compound) => (
