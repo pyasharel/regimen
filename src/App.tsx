@@ -12,6 +12,7 @@ import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanne
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { useState, useEffect } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { toast } from "sonner";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
@@ -137,15 +138,28 @@ const AnalyticsWrapper = () => {
           console.log('[DEEP-LINK] Checkout action:', checkoutAction, 'Session ID:', sessionId);
 
           if (checkoutAction === 'success') {
+            // Close the Stripe browser and return to the app UI
+            try {
+              await Browser.close();
+            } catch (e) {
+              console.warn('[DEEP-LINK] Failed to close Browser', e);
+            }
+
             // Refresh subscription status after successful checkout
             toast.success('Payment successful! Activating subscription...');
             
-            // Give Stripe webhooks a moment to process
+            // Give Stripe a moment to finalize the subscription
             setTimeout(async () => {
               await refreshSubscription();
               navigate('/today');
             }, 1500);
           } else if (checkoutAction === 'cancel') {
+            try {
+              await Browser.close();
+            } catch (e) {
+              console.warn('[DEEP-LINK] Failed to close Browser on cancel', e);
+            }
+
             toast.info('Checkout cancelled');
             navigate('/today');
           }
