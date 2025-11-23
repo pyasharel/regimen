@@ -74,11 +74,11 @@ serve(async (req) => {
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
-    // Use universal links for seamless mobile app redirect
-    // These URLs will be intercepted by iOS/Android and open the app directly
-    const successUrl = 'https://getregimen.app/checkout/success';
-    const cancelUrl = 'https://getregimen.app/checkout/cancel';
-    console.log('[CREATE-CHECKOUT] Using universal links for native checkout return');
+    // Use custom app URL scheme for native app redirect
+    // Stripe will attempt to open this URL, which brings the user back into the app
+    const successUrl = 'regimen://checkout/success';
+    const cancelUrl = 'regimen://checkout/cancel';
+    console.log('[CREATE-CHECKOUT] Using custom scheme for native checkout return');
 
     // Build session parameters
     const sessionParams: any = {
