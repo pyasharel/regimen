@@ -74,17 +74,18 @@ serve(async (req) => {
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
-    // Determine redirect base URL (always use web app URL to avoid invalid native schemes)
-    const redirectBaseUrl = 'https://348ffbba-c097-44d8-bbbe-a7cee13c09a9.lovableproject.com';
-    console.log('[CREATE-CHECKOUT] Using redirect base:', redirectBaseUrl);
+    // Use native deep link for mobile app checkout return
+    const successUrl = 'regimen://checkout/success';
+    const cancelUrl = 'regimen://checkout/cancel';
+    console.log('[CREATE-CHECKOUT] Using deep link URLs for native checkout return');
 
     // Build session parameters
     const sessionParams: any = {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${redirectBaseUrl}/today?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${redirectBaseUrl}/today`,
+      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl,
       subscription_data: {
         trial_period_days: 14,
         metadata: {
