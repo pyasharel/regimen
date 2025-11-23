@@ -174,27 +174,15 @@ export const SubscriptionPaywall = ({
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
         
         if (Capacitor.isNativePlatform()) {
-          // Native app: Open in external browser for proper deep link handling
+          // Native app: Open in system browser
+          // Universal links (https://getregimen.app/checkout/success) will automatically
+          // redirect back to the app after successful payment
           console.log('[PAYWALL] Native platform detected, opening in system browser');
           
-          // Add listener for when browser closes to refresh subscription
-          const listener = await Browser.addListener('browserFinished', async () => {
-            console.log('[PAYWALL] Browser closed, refreshing subscription...');
-            // Give Stripe a moment to process the payment
-            setTimeout(() => {
-              window.location.reload();
-            }, 1000);
-            listener.remove();
-          });
-          
-          await Browser.open({ 
-            url: data.url,
-            // iOS: This opens in SFSafariViewController which properly handles custom URL schemes
-            // Android: This opens in Chrome Custom Tabs which also handles them
-          });
+          await Browser.open({ url: data.url });
           toast.success('Complete checkout to activate your subscription');
           
-          // Close the paywall so user can see the browser
+          // Close the paywall so user sees the browser
           onOpenChange(false);
         } else {
           // Web: Open in new tab (preview iframe can't redirect to external URLs)
