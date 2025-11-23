@@ -5,6 +5,8 @@
       {
         "appID": "HFAH6FUZA5.com.regimen.app",
         "paths": [
+          "/checkout/success",
+          "/checkout/cancel",
           "/today",
           "/progress",
           "/stack",

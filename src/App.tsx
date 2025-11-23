@@ -119,27 +119,35 @@ const AnalyticsWrapper = () => {
         const url = event.url;
         console.log('[DEEP-LINK] Received URL:', url);
 
-        // Parse regimen:// URLs
-        if (url.startsWith('regimen://')) {
+        // Handle both universal links (https://getregimen.app/...) and custom scheme (regimen://...)
+        let checkoutAction = null;
+        let sessionId = null;
+
+        if (url.includes('/checkout/success')) {
+          checkoutAction = 'success';
+          // Extract session_id if present
           const urlObj = new URL(url);
-          const path = urlObj.hostname;
-          
-          if (path === 'checkout') {
-            const params = new URLSearchParams(urlObj.search);
-            const action = urlObj.pathname.replace('/', ''); // "success" or "cancel"
-            const sessionId = params.get('session_id');
+          sessionId = urlObj.searchParams.get('session_id');
+        } else if (url.includes('/checkout/cancel')) {
+          checkoutAction = 'cancel';
+        }
 
-            console.log('[DEEP-LINK] Checkout action:', action, 'Session ID:', sessionId);
+        // Handle checkout redirects
+        if (checkoutAction) {
+          console.log('[DEEP-LINK] Checkout action:', checkoutAction, 'Session ID:', sessionId);
 
-            if (action === 'success') {
-              // Refresh subscription status after successful checkout
-              toast.success('Payment successful! Updating subscription...');
+          if (checkoutAction === 'success') {
+            // Refresh subscription status after successful checkout
+            toast.success('Payment successful! Activating subscription...');
+            
+            // Give Stripe webhooks a moment to process
+            setTimeout(async () => {
               await refreshSubscription();
               navigate('/today');
-            } else if (action === 'cancel') {
-              toast.info('Checkout cancelled');
-              navigate('/today');
-            }
+            }, 1500);
+          } else if (checkoutAction === 'cancel') {
+            toast.info('Checkout cancelled');
+            navigate('/today');
           }
         }
       });
