@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
@@ -10,7 +10,9 @@ import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { App as CapacitorApp } from '@capacitor/app';
+import { toast } from "sonner";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -105,6 +107,53 @@ const App = () => {
 const AnalyticsWrapper = () => {
   useAnalytics();
   useAppStateSync(); // Auto-sync notifications when app resumes
+  const navigate = useNavigate();
+  const { refreshSubscription } = useSubscription();
+
+  useEffect(() => {
+    let listener: any;
+
+    // Handle deep links from Stripe checkout
+    const setupListener = async () => {
+      listener = await CapacitorApp.addListener('appUrlOpen', async (event) => {
+        const url = event.url;
+        console.log('[DEEP-LINK] Received URL:', url);
+
+        // Parse regimen:// URLs
+        if (url.startsWith('regimen://')) {
+          const urlObj = new URL(url);
+          const path = urlObj.hostname;
+          
+          if (path === 'checkout') {
+            const params = new URLSearchParams(urlObj.search);
+            const action = urlObj.pathname.replace('/', ''); // "success" or "cancel"
+            const sessionId = params.get('session_id');
+
+            console.log('[DEEP-LINK] Checkout action:', action, 'Session ID:', sessionId);
+
+            if (action === 'success') {
+              // Refresh subscription status after successful checkout
+              toast.success('Payment successful! Updating subscription...');
+              await refreshSubscription();
+              navigate('/today');
+            } else if (action === 'cancel') {
+              toast.info('Checkout cancelled');
+              navigate('/today');
+            }
+          }
+        }
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (listener) {
+        listener.remove();
+      }
+    };
+  }, [navigate, refreshSubscription]);
+
   return null;
 };
 
