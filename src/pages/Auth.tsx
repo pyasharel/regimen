@@ -69,8 +69,9 @@ export default function Auth() {
       if (event === 'PASSWORD_RECOVERY') {
         setIsResettingPassword(true);
       } else if (event === 'SIGNED_IN' && currentSession) {
-        console.log('[Auth] User signed in, redirecting to /today');
-        navigate("/today", { replace: true });
+        console.log('[Auth] User signed in, checking onboarding status');
+        setCheckingAuth(true);
+        checkOnboardingStatus(currentSession.user.id);
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         if (window.location.pathname !== '/auth') {
