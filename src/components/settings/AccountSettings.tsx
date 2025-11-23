@@ -153,51 +153,82 @@ export const AccountSettings = () => {
   };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error("Please upload an image file");
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image must be less than 2MB");
-      return;
-    }
-
-    setUploadingAvatar(true);
     try {
+      const file = event.target.files?.[0];
+      if (!file) {
+        console.log('No file selected');
+        return;
+      }
+
+      console.log('File selected:', file.name, file.type, file.size);
+
+      // Validate file type - be more lenient for iOS
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/heic', 'image/heif'];
+      if (!file.type.startsWith('image/') && !validTypes.includes(file.type)) {
+        toast.error("Please upload an image file");
+        return;
+      }
+
+      // Validate file size (max 5MB to allow for high-res photos)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be less than 5MB");
+        return;
+      }
+
+      setUploadingAvatar(true);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
+      console.log('Starting upload for user:', user.id);
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
+      // Get file extension, default to jpg if not available (iOS camera)
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+
+      console.log('Uploading to:', fileName);
+
+      // Upload to storage with proper content type
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: file.type || 'image/jpeg'
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
-      // Get signed URL (store the path, not the signed URL)
-      const avatarPath = fileName;
+      console.log('Upload successful:', uploadData);
 
       // Update profile with the file path
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: avatarPath })
-        .eq('user_id', user.id);
+        .upsert({ 
+          user_id: user.id,
+          avatar_url: fileName 
+        }, {
+          onConflict: 'user_id'
+        });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('Profile updated, fetching signed URL');
 
       // Generate signed URL for display
-      const signedUrl = await getSignedUrl('avatars', avatarPath);
-      setAvatarUrl(signedUrl || avatarPath);
+      const signedUrl = await getSignedUrl('avatars', fileName);
+      console.log('Signed URL:', signedUrl);
+      
+      setAvatarUrl(signedUrl || fileName);
       toast.success("Profile picture updated!");
+      
+      // Clear the file input
+      event.target.value = '';
     } catch (error: any) {
       console.error('Avatar upload error:', error);
       toast.error(error.message || "Failed to upload profile picture");
@@ -261,25 +292,23 @@ export const AccountSettings = () => {
               <input
                 type="file"
                 accept="image/*"
+                capture="environment"
                 onChange={handleAvatarUpload}
                 disabled={uploadingAvatar}
                 className="hidden"
                 id="avatar-upload"
               />
-              <label htmlFor="avatar-upload">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadingAvatar}
-                  onClick={() => document.getElementById('avatar-upload')?.click()}
-                  asChild
-                >
-                  <span>{uploadingAvatar ? "Uploading..." : "Change Picture"}</span>
-                </Button>
-              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadingAvatar}
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+              >
+                {uploadingAvatar ? "Uploading..." : "Change Picture"}
+              </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                {isGoogleUser ? "Using your Google profile picture" : "JPG, PNG or GIF. Max 2MB."}
+                {isGoogleUser ? "Using your Google profile picture" : "JPG, PNG or GIF. Max 5MB."}
               </p>
             </div>
           </div>
