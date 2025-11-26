@@ -146,8 +146,12 @@ serve(async (req) => {
 
 async function updateSubscriptionInDb(supabaseClient: any, userId: string, subscription: Stripe.Subscription) {
   const status = subscription.status;
-  const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-  const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+  const subscriptionEnd = subscription.current_period_end 
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : null;
+  const trialEnd = subscription.trial_end 
+    ? new Date(subscription.trial_end * 1000).toISOString() 
+    : null;
   
   const priceId = subscription.items.data[0].price.id;
   const subscriptionType = priceId.toLowerCase().includes('annual') || priceId.toLowerCase().includes('year') 
