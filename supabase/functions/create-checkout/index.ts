@@ -68,9 +68,9 @@ serve(async (req) => {
         .eq('user_id', user.id);
     }
 
-    // Price IDs from Stripe
-    const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
-    const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
+    // Production Price IDs from Stripe
+    const monthlyPriceId = "price_1SXdIJCSTxWkewOuuThCXMmx";
+    const annualPriceId = "price_1SXdEcCSTxWkewOumNEu40U9";
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
