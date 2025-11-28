@@ -106,27 +106,37 @@ export default function Auth() {
 
       console.log('[Auth] Profile loaded:', { onboarding_completed: profile.onboarding_completed });
 
-      // Send welcome email if not sent yet
+      // Send welcome email if not sent yet - use atomic update to prevent race condition
       if (!profile?.welcome_email_sent) {
-        await supabase
+        // Atomically update only if welcome_email_sent is still false
+        const { data: updateResult } = await supabase
           .from('profiles')
           .update({ welcome_email_sent: true })
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .eq('welcome_email_sent', false)
+          .select();
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          supabase.functions.invoke('send-welcome-email', {
-            body: { 
-              email: user.email,
-              fullName: profile?.full_name || 'there'
-            }
-          }).catch((emailError) => {
-            console.error('Error sending welcome email:', emailError);
-            supabase
-              .from('profiles')
-              .update({ welcome_email_sent: false })
-              .eq('user_id', userId);
-          });
+        // Only send email if we successfully updated (meaning we won the race)
+        if (updateResult && updateResult.length > 0) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.email) {
+            console.log('[Auth] Sending welcome email to:', user.email);
+            supabase.functions.invoke('send-welcome-email', {
+              body: { 
+                email: user.email,
+                fullName: profile?.full_name || 'there'
+              }
+            }).catch((emailError) => {
+              console.error('Error sending welcome email:', emailError);
+              // Reset flag only if email send failed
+              supabase
+                .from('profiles')
+                .update({ welcome_email_sent: false })
+                .eq('user_id', userId);
+            });
+          }
+        } else {
+          console.log('[Auth] Welcome email already sent by another process');
         }
       }
 
