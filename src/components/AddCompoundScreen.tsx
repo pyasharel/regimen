@@ -455,15 +455,15 @@ export const AddCompoundScreen = () => {
     return null;
   };
 
-  const filteredPeptides = COMMON_PEPTIDES.filter(p =>
-    p.toLowerCase().includes(name.toLowerCase())
-  ).sort((a, b) => {
-    // Prioritize matches at the beginning of the string
-    const aLower = a.toLowerCase();
-    const bLower = b.toLowerCase();
-    const searchLower = name.toLowerCase();
-    const aStartsWith = aLower.startsWith(searchLower);
-    const bStartsWith = bLower.startsWith(searchLower);
+  const filteredPeptides = Array.from(new Set(COMMON_PEPTIDES))
+    .filter(p => p.toLowerCase().includes(name.toLowerCase()))
+    .sort((a, b) => {
+      // Prioritize matches at the beginning of the string
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      const searchLower = name.toLowerCase();
+      const aStartsWith = aLower.startsWith(searchLower);
+      const bStartsWith = bLower.startsWith(searchLower);
     
     if (aStartsWith && !bStartsWith) return -1;
     if (!aStartsWith && bStartsWith) return 1;
