@@ -31,31 +31,36 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[WELCOME-EMAIL] Request received for: ${email}`);
 
-    // Check if we've already sent a welcome email to this address
-    const { data: existingEmail, error: checkError } = await supabaseClient
+    // Atomically record that we're sending this email. The UNIQUE constraint
+    // on user_email guarantees that only the first insert succeeds.
+    const { data: insertResult, error: insertError } = await supabaseClient
       .from('welcome_emails_sent')
+      .insert({ user_email: email })
       .select('sent_at')
-      .eq('user_email', email)
       .single();
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error(`[WELCOME-EMAIL] Error checking for existing email:`, checkError);
-      throw checkError;
-    }
+    if (insertError) {
+      if (insertError.code === '23505') {
+        // Another concurrent request already recorded (and is sending) this email
+        console.log(`[WELCOME-EMAIL] Email already recorded for ${email}, skipping send`);
+        return new Response(
+          JSON.stringify({ message: 'Welcome email already sent' }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        );
+      }
 
-    if (existingEmail) {
-      console.log(`[WELCOME-EMAIL] Email already sent to ${email} at ${existingEmail.sent_at}, skipping`);
+      console.error('[WELCOME-EMAIL] Error inserting welcome_emails_sent row:', insertError);
       return new Response(
-        JSON.stringify({ 
-          message: "Welcome email already sent", 
-          sent_at: existingEmail.sent_at 
-        }), 
+        JSON.stringify({ error: 'Failed to record welcome email send' }),
         {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
         }
       );
     }
@@ -147,40 +152,28 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Regimen <hello@mail.helloregimen.com>",
+      from: 'Regimen <hello@mail.helloregimen.com>',
       to: [email],
-      subject: "Welcome to Regimen! 🎉",
+      subject: 'Welcome to Regimen! 🎉',
       html,
     });
 
-    console.log("[WELCOME-EMAIL] Email sent successfully:", emailResponse);
-
-    // Record that we sent this email
-    const { error: insertError } = await supabaseClient
-      .from('welcome_emails_sent')
-      .insert({ user_email: email });
-
-    if (insertError) {
-      console.error(`[WELCOME-EMAIL] Error recording email send:`, insertError);
-      // Don't fail the request, email was sent successfully
-    } else {
-      console.log(`[WELCOME-EMAIL] Recorded email send for: ${email}`);
-    }
+    console.log('[WELCOME-EMAIL] Email sent successfully:', emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...corsHeaders,
       },
     });
   } catch (error: any) {
-    console.error("[WELCOME-EMAIL] Error:", error);
+    console.error('[WELCOME-EMAIL] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   }

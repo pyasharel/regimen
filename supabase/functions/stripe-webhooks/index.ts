@@ -61,13 +61,8 @@ serve(async (req) => {
         const userId = subscription.metadata.supabase_user_id;
         
         if (userId) {
-          await supabaseClient
-            .from('profiles')
-            .update({
-              subscription_status: 'canceled',
-              subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-            })
-            .eq('user_id', userId);
+          // Reuse the shared helper so we don't duplicate date/status logic
+          await updateSubscriptionInDb(supabaseClient, userId, subscription);
         }
         break;
       }
