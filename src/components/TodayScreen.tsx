@@ -814,32 +814,24 @@ export const TodayScreen = () => {
           ) : (
             <button
               onClick={() => navigate('/add-compound')}
-              className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 border-2 border-dashed border-primary/30 p-8 active:scale-95 transition-all shadow-lg shadow-primary/5"
+              className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all"
             >
-              {/* Animated gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-accent/5 animate-pulse" />
-              
-              {/* Content */}
-              <div className="relative z-10 flex flex-col items-center text-center">
-                {/* Icon with gradient background */}
-                <div className="relative mb-5">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent blur-xl opacity-40 animate-pulse" />
-                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-xl shadow-primary/30">
-                    <Plus className="w-10 h-10 text-white" strokeWidth={2.5} />
-                  </div>
+              <div className="flex flex-col items-center text-center">
+                {/* Simple icon */}
+                <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mb-4 shadow-sm">
+                  <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
                 </div>
 
                 {/* Text content */}
-                <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                <h3 className="text-lg font-bold mb-2 text-foreground">
                   Start Your Journey
                 </h3>
-                <p className="text-sm text-muted-foreground/90 max-w-xs leading-relaxed mb-4">
+                <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-5">
                   Track your first compound and build consistency with personalized scheduling
                 </p>
                 
                 {/* CTA */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary to-accent text-white text-sm font-semibold shadow-md shadow-primary/25">
-                  <Plus className="w-4 h-4" />
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-sm hover:shadow-md transition-shadow">
                   <span>Add Your First Compound</span>
                 </div>
               </div>
