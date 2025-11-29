@@ -812,30 +812,24 @@ export const TodayScreen = () => {
               No doses scheduled for this date
             </div>
           ) : (
-            <button
-              onClick={() => navigate('/add-compound')}
-              className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all"
-            >
-              <div className="flex flex-col items-center text-center">
-                {/* Simple icon */}
-                <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mb-4 shadow-sm">
-                  <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <button
+                onClick={() => navigate('/add-compound')}
+                className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all w-full max-w-md"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <h3 className="text-xl font-bold mb-6 text-foreground">
+                    Track Your First Compound
+                  </h3>
+                  
+                  {/* Single CTA button */}
+                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white text-base font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <Plus className="w-5 h-5" strokeWidth={2.5} />
+                    <span>Add Compound</span>
+                  </div>
                 </div>
-
-                {/* Text content */}
-                <h3 className="text-lg font-bold mb-2 text-foreground">
-                  Start Your Journey
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-5">
-                  Track your first compound and build consistency with personalized scheduling
-                </p>
-                
-                {/* CTA */}
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-sm hover:shadow-md transition-shadow">
-                  <span>Add Your First Compound</span>
-                </div>
-              </div>
-            </button>
+              </button>
+            </div>
           )
         ) : (
           <>

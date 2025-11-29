@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -85,7 +85,17 @@ export default function Auth() {
     };
   }, [searchParams, navigate]);
 
+  // Track if we've already checked onboarding for this user
+  const checkedUsers = useRef<Set<string>>(new Set());
+
   const checkOnboardingStatus = async (userId: string) => {
+    // Prevent multiple calls for the same user
+    if (checkedUsers.current.has(userId)) {
+      console.log('[Auth] Already checked onboarding for this user, skipping');
+      return;
+    }
+    checkedUsers.current.add(userId);
+
     try {
       console.log('[Auth] Checking onboarding status for user:', userId);
       
@@ -104,10 +114,14 @@ export default function Auth() {
         return;
       }
 
-      console.log('[Auth] Profile loaded:', { onboarding_completed: profile.onboarding_completed });
+      console.log('[Auth] Profile loaded:', { 
+        onboarding_completed: profile.onboarding_completed,
+        welcome_email_sent: profile.welcome_email_sent 
+      });
 
       // Send welcome email if not sent yet - use atomic update to prevent race condition
       if (!profile?.welcome_email_sent) {
+        console.log('[Auth] Attempting to send welcome email');
         // Atomically update only if welcome_email_sent is still false
         const { data: updateResult } = await supabase
           .from('profiles')
@@ -120,14 +134,14 @@ export default function Auth() {
         if (updateResult && updateResult.length > 0) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user?.email) {
-            console.log('[Auth] Sending welcome email to:', user.email);
+            console.log('[Auth] Won race condition, sending welcome email to:', user.email);
             supabase.functions.invoke('send-welcome-email', {
               body: { 
                 email: user.email,
                 fullName: profile?.full_name || 'there'
               }
             }).catch((emailError) => {
-              console.error('Error sending welcome email:', emailError);
+              console.error('[Auth] Error sending welcome email:', emailError);
               // Reset flag only if email send failed
               supabase
                 .from('profiles')
@@ -136,8 +150,10 @@ export default function Auth() {
             });
           }
         } else {
-          console.log('[Auth] Welcome email already sent by another process');
+          console.log('[Auth] Lost race condition - welcome email already sent by another process');
         }
+      } else {
+        console.log('[Auth] Welcome email already sent previously');
       }
 
       // Use setTimeout to ensure React processes state updates before navigation
