@@ -659,7 +659,7 @@ export const TodayScreen = () => {
       </header>
 
       {/* Greeting */}
-      <div className="px-4 pt-6 pb-4 flex-shrink-0">
+      <div className="px-4 pt-3 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">

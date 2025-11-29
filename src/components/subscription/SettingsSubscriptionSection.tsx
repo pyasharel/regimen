@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { SubscriptionPaywall } from "../SubscriptionPaywall";
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 export const SettingsSubscriptionSection = () => {
   const { 
@@ -71,7 +73,12 @@ export const SettingsSubscriptionSection = () => {
       }
       
       if (data?.url) {
-        window.open(data.url, '_blank');
+        // Use Capacitor Browser for native apps, window.open for web
+        if (Capacitor.isNativePlatform()) {
+          await Browser.open({ url: data.url });
+        } else {
+          window.open(data.url, '_blank');
+        }
       }
     } catch (error: any) {
       console.error('Portal error:', error);
