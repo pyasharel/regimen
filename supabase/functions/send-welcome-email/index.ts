@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -19,8 +20,45 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
   try {
     const { email, fullName }: WelcomeEmailRequest = await req.json();
+
+    console.log(`[WELCOME-EMAIL] Request received for: ${email}`);
+
+    // Check if we've already sent a welcome email to this address
+    const { data: existingEmail, error: checkError } = await supabaseClient
+      .from('welcome_emails_sent')
+      .select('sent_at')
+      .eq('user_email', email)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error(`[WELCOME-EMAIL] Error checking for existing email:`, checkError);
+      throw checkError;
+    }
+
+    if (existingEmail) {
+      console.log(`[WELCOME-EMAIL] Email already sent to ${email} at ${existingEmail.sent_at}, skipping`);
+      return new Response(
+        JSON.stringify({ 
+          message: "Welcome email already sent", 
+          sent_at: existingEmail.sent_at 
+        }), 
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+    }
 
     console.log(`[WELCOME-EMAIL] Sending welcome email to: ${email}`);
 
@@ -116,6 +154,18 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("[WELCOME-EMAIL] Email sent successfully:", emailResponse);
+
+    // Record that we sent this email
+    const { error: insertError } = await supabaseClient
+      .from('welcome_emails_sent')
+      .insert({ user_email: email });
+
+    if (insertError) {
+      console.error(`[WELCOME-EMAIL] Error recording email send:`, insertError);
+      // Don't fail the request, email was sent successfully
+    } else {
+      console.log(`[WELCOME-EMAIL] Recorded email send for: ${email}`);
+    }
 
     return new Response(JSON.stringify(emailResponse), {
       status: 200,
