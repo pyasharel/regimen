@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -250,6 +252,18 @@ export const MyStackScreen = () => {
     navigate('/add-compound', { state: { editingCompound: compound } });
   };
 
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
@@ -336,7 +350,10 @@ export const MyStackScreen = () => {
           {activeCompounds.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <button
-                onClick={() => navigate("/add-compound")}
+                onClick={() => {
+                  triggerHaptic();
+                  navigate("/add-compound");
+                }}
                 className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all w-full max-w-md"
               >
                 <div className="flex flex-col items-center text-center">
@@ -522,7 +539,10 @@ export const MyStackScreen = () => {
       {/* FAB Button - Only show when has active compounds */}
       {activeCompounds.length > 0 && (
         <button
-          onClick={() => navigate("/add-compound")}
+          onClick={() => {
+            triggerHaptic();
+            navigate("/add-compound");
+          }}
           className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
         >

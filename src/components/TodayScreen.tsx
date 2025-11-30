@@ -814,7 +814,10 @@ export const TodayScreen = () => {
           ) : (
             <div className="flex items-center justify-center min-h-[50vh]">
               <button
-                onClick={() => navigate('/add-compound')}
+                onClick={() => {
+                  triggerHaptic('light');
+                  navigate('/add-compound');
+                }}
                 className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all w-full max-w-md"
               >
                 <div className="flex flex-col items-center text-center">
@@ -1093,7 +1096,10 @@ export const TodayScreen = () => {
       {/* Floating Action Button - Only show when has compounds */}
       {hasCompounds && (
         <button
-          onClick={() => navigate("/add-compound")}
+          onClick={() => {
+            triggerHaptic('light');
+            navigate("/add-compound");
+          }}
           className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
         >
