@@ -243,207 +243,212 @@ export const SubscriptionPaywall = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0" hideClose>
-        {/* Header */}
-        <div className="relative p-6 pb-4">
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Close"
-          >
-            <X size={24} />
-          </button>
-          
-          <h1 className="text-center text-[28px] font-bold text-[#1A1A1A] dark:text-white mt-6">
-            Start your 14-day FREE trial
-          </h1>
-        </div>
-
-        <div className="px-6 space-y-8">
-          {/* Timeline */}
-          <div className="space-y-6 relative pl-10">
-            <div className="absolute left-[11px] top-[24px] bottom-[24px] w-[2px] bg-border" />
+      <DialogContent
+        className="safe-top px-4 pb-6 max-w-md max-h-[90vh] overflow-y-auto bg-transparent border-none shadow-none p-0"
+        hideClose
+      >
+        <div className="mt-3 bg-background border border-border rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
+          {/* Header */}
+          <div className="relative p-6 pb-4">
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Close"
+            >
+              <X size={24} />
+            </button>
             
-            <div className="relative">
-              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[16px] text-foreground">TODAY</h3>
-                <p className="text-[14px] text-muted-foreground mt-1">
-                  Unlock all features like compound tracking, dose calculations & reminders
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[16px] text-foreground">IN 13 DAYS</h3>
-                <p className="text-[14px] text-muted-foreground mt-1">
-                  We'll send a reminder that your trial is ending soon
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-              </div>
-              <div>
-                <h3 className="font-bold text-[16px] text-foreground">IN 14 DAYS - BILLING STARTS</h3>
-                <p className="text-[14px] text-muted-foreground mt-1">
-                  You'll be charged {selectedPlan === 'annual' ? '$39.99/year' : '$4.99/month'}. Cancel anytime.
-                </p>
-              </div>
-            </div>
+            <h1 className="text-center text-[28px] font-bold text-[#1A1A1A] dark:text-white mt-6">
+              Start your 14-day FREE trial
+            </h1>
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setSelectedPlan('monthly')}
-              className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col ${
-                selectedPlan === 'monthly'
-                  ? 'border-primary bg-primary/5 shadow-lg'
-                  : 'border-border bg-card'
-              }`}
-            >
-              <div className="flex-1 space-y-2">
-                <p className="text-[14px] text-muted-foreground">Monthly</p>
-                <p className="text-[24px] font-bold text-foreground">$4.99/mo</p>
-                <p className="text-[12px] text-muted-foreground">Billed monthly</p>
-              </div>
-              <div className="flex justify-center">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'monthly' ? 'border-primary' : 'border-border'
-                }`}>
-                  {selectedPlan === 'monthly' && (
-                    <div className="w-3 h-3 rounded-full bg-primary" />
-                  )}
+          <div className="px-6 space-y-8 pb-6">
+            {/* Timeline */}
+            <div className="space-y-6 relative pl-10">
+              <div className="absolute left-[11px] top-[24px] bottom-[24px] w-[2px] bg-border" />
+              
+              <div className="relative">
+                <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[16px] text-foreground">TODAY</h3>
+                  <p className="text-[14px] text-muted-foreground mt-1">
+                    Unlock all features like compound tracking, dose calculations & reminders
+                  </p>
                 </div>
               </div>
-            </button>
 
-            <button
-              onClick={() => setSelectedPlan('annual')}
-              className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col relative ${
-                selectedPlan === 'annual'
-                  ? 'border-primary bg-primary/5 shadow-lg'
-                  : 'border-border bg-card'
-              }`}
-            >
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-primary rounded-full text-primary-foreground text-[11px] font-semibold whitespace-nowrap">
-                BEST VALUE
-              </div>
-              <div className="flex-1 space-y-2 mt-2">
-                <p className="text-[14px] text-muted-foreground">Annual</p>
-                <p className="text-[24px] font-bold text-foreground">$39.99/yr</p>
-                <p className="text-[16px] font-medium text-primary">$3.33/mo</p>
-                <p className="text-[14px] font-medium text-[#8B5CF6]">Save 33%</p>
-              </div>
-              <div className="flex justify-center">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPlan === 'annual' ? 'border-primary' : 'border-border'
-                }`}>
-                  {selectedPlan === 'annual' && (
-                    <div className="w-3 h-3 rounded-full bg-primary" />
-                  )}
+              <div className="relative">
+                <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[16px] text-foreground">IN 13 DAYS</h3>
+                  <p className="text-[14px] text-muted-foreground mt-1">
+                    We'll send a reminder that your trial is ending soon
+                  </p>
                 </div>
               </div>
-            </button>
-          </div>
 
-          {/* No Payment Due */}
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
-            <span className="text-[16px]">No Payment Due Now</span>
-          </div>
+              <div className="relative">
+                <div className="absolute -left-10 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[16px] text-foreground">IN 14 DAYS - BILLING STARTS</h3>
+                  <p className="text-[14px] text-muted-foreground mt-1">
+                    You'll be charged {selectedPlan === 'annual' ? '$39.99/year' : '$4.99/month'}. Cancel anytime.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {/* Promo Code */}
-          <div className="space-y-2">
-            {!showPromoInput ? (
+            {/* Pricing Cards */}
+            <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => setShowPromoInput(true)}
-                className="text-[14px] text-[#4A4A4A] dark:text-gray-300 underline hover:text-[#FF6F61]"
+                onClick={() => setSelectedPlan('monthly')}
+                className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col ${
+                  selectedPlan === 'monthly'
+                    ? 'border-primary bg-primary/5 shadow-lg'
+                    : 'border-border bg-card'
+                }`}
               >
-                Have a promo code?
+                <div className="flex-1 space-y-2">
+                  <p className="text-[14px] text-muted-foreground">Monthly</p>
+                  <p className="text-[24px] font-bold text-foreground">$4.99/mo</p>
+                  <p className="text-[12px] text-muted-foreground">Billed monthly</p>
+                </div>
+                <div className="flex justify-center">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedPlan === 'monthly' ? 'border-primary' : 'border-border'
+                  }`}>
+                    {selectedPlan === 'monthly' && (
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                    )}
+                  </div>
+                </div>
               </button>
-            ) : (
-              <div className="space-y-2">
-                <Input
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  placeholder="Enter code"
-                  className="uppercase"
-                />
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleApplyPromo} 
-                    size="sm" 
-                    className="bg-[#FF6F61] hover:bg-[#E55A50]"
-                    disabled={isLoading || !promoCode.trim()}
-                  >
-                    {isLoading ? 'Applying...' : 'Apply Code'}
-                  </Button>
-                  <Button onClick={() => setShowPromoInput(false)} variant="ghost" size="sm" disabled={isLoading}>
-                    Cancel
-                  </Button>
+
+              <button
+                onClick={() => setSelectedPlan('annual')}
+                className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col relative ${
+                  selectedPlan === 'annual'
+                    ? 'border-primary bg-primary/5 shadow-lg'
+                    : 'border-border bg-card'
+                }`}
+              >
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-primary rounded-full text-primary-foreground text-[11px] font-semibold whitespace-nowrap">
+                  BEST VALUE
                 </div>
-              </div>
-            )}
-            {appliedPromo && (
-              <div className="bg-[#8B5CF6]/10 rounded-lg p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
-                  <span className="text-[14px] text-[#8B5CF6] font-medium">
-                    Code {appliedPromo.code} applied - {appliedPromo.discount}
-                  </span>
+                <div className="flex-1 space-y-2 mt-2">
+                  <p className="text-[14px] text-muted-foreground">Annual</p>
+                  <p className="text-[24px] font-bold text-foreground">$39.99/yr</p>
+                  <p className="text-[16px] font-medium text-primary">$3.33/mo</p>
+                  <p className="text-[14px] font-medium text-[#8B5CF6]">Save 33%</p>
                 </div>
+                <div className="flex justify-center">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedPlan === 'annual' ? 'border-primary' : 'border-border'
+                  }`}>
+                    {selectedPlan === 'annual' && (
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                    )}
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* No Payment Due */}
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
+              <span className="text-[16px]">No Payment Due Now</span>
+            </div>
+
+            {/* Promo Code */}
+            <div className="space-y-2">
+              {!showPromoInput ? (
                 <button
-                  onClick={() => setAppliedPromo(null)}
-                  className="text-[12px] text-[#8B5CF6] underline hover:no-underline"
+                  onClick={() => setShowPromoInput(true)}
+                  className="text-[14px] text-[#4A4A4A] dark:text-gray-300 underline hover:text-[#FF6F61]"
                 >
-                  Remove
+                  Have a promo code?
                 </button>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="uppercase"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleApplyPromo} 
+                      size="sm" 
+                      className="bg-[#FF6F61] hover:bg-[#E55A50]"
+                      disabled={isLoading || !promoCode.trim()}
+                    >
+                      {isLoading ? 'Applying...' : 'Apply Code'}
+                    </Button>
+                    <Button onClick={() => setShowPromoInput(false)} variant="ghost" size="sm" disabled={isLoading}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {appliedPromo && (
+                <div className="bg-[#8B5CF6]/10 rounded-lg p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
+                    <span className="text-[14px] text-[#8B5CF6] font-medium">
+                      Code {appliedPromo.code} applied - {appliedPromo.discount}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setAppliedPromo(null)}
+                    className="text-[12px] text-[#8B5CF6] underline hover:no-underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* CTA Button */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  console.log('[PAYWALL] ===== RAW BUTTON CLICKED =====');
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleStartTrial();
+                }}
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Processing...' : getButtonText()}
+              </button>
+              
+              <p className="text-center text-[14px] text-[#8A8A8A]">
+                {getPriceText()}
+              </p>
+
+              <p className="text-center text-[10px] text-[#8A8A8A] leading-relaxed">
+                By starting your trial, you agree to our Terms of Service and Privacy Policy. 
+                Subscription automatically renews unless canceled at least 24 hours before the end of the current period. 
+                Manage or cancel anytime in Settings.
+              </p>
+
+              <div className="text-center text-[12px] text-[#8A8A8A]">
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Terms</a>
+                {' • '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Privacy</a>
+                {' • '}
+                <button onClick={() => toast.info('Restore purchases feature coming soon')} className="underline cursor-pointer hover:text-[#FF6F61]">Restore</button>
               </div>
-            )}
-          </div>
-
-          {/* CTA Button */}
-          <div className="space-y-3 pb-6">
-            <button
-              type="button"
-              onClick={(e) => {
-                console.log('[PAYWALL] ===== RAW BUTTON CLICKED =====');
-                e.preventDefault();
-                e.stopPropagation();
-                handleStartTrial();
-              }}
-              disabled={isLoading}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[16px] font-semibold py-4 h-auto rounded-xl transition-colors disabled:opacity-50"
-            >
-              {isLoading ? 'Processing...' : getButtonText()}
-            </button>
-            
-            <p className="text-center text-[14px] text-[#8A8A8A]">
-              {getPriceText()}
-            </p>
-
-            <p className="text-center text-[10px] text-[#8A8A8A] leading-relaxed">
-              By starting your trial, you agree to our Terms of Service and Privacy Policy. 
-              Subscription automatically renews unless canceled at least 24 hours before the end of the current period. 
-              Manage or cancel anytime in Settings.
-            </p>
-
-            <div className="text-center text-[12px] text-[#8A8A8A]">
-              <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Terms</a>
-              {' • '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Privacy</a>
-              {' • '}
-              <button onClick={() => toast.info('Restore purchases feature coming soon')} className="underline cursor-pointer hover:text-[#FF6F61]">Restore</button>
             </div>
           </div>
         </div>
