@@ -147,7 +147,7 @@ export const SettingsScreen = () => {
   ];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
