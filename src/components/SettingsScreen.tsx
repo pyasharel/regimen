@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
+import { MainHeader } from "@/components/MainHeader";
 
 // Version info
 const APP_VERSION = '0.1.2';
@@ -149,14 +150,9 @@ export const SettingsScreen = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-2 mt-5 bg-background sticky top-0 flex-shrink-0 z-10">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Settings</h2>
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-              REGIMEN
-            </h1>
-          </div>
+      <MainHeader
+        title="Settings"
+        rightSlot={
           <Avatar 
             className="h-9 w-9 cursor-pointer" 
             onClick={() => navigate('/settings/account')}
@@ -166,8 +162,8 @@ export const SettingsScreen = () => {
               {userName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-        </div>
-      </header>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
         {/* Subscription Section */}
