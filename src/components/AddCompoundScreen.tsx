@@ -794,9 +794,9 @@ export const AddCompoundScreen = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex min-h-screen flex-col bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4">
+      <header className="border-b border-border px-4 py-4 mt-5">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/stack")}
