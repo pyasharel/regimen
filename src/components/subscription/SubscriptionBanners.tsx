@@ -166,12 +166,19 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
   }
 
-  // Show preview mode banner only when truly in preview/none state AND subscription is fully loaded
+  // Show preview mode banner only when truly in preview/none state
+  // ALWAYS reserve safe-area space to prevent layout shift
   const { isLoading } = useSubscription();
   
-  if (!isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none')) {
+  if (isLoading) {
+    // While loading, reserve the safe-area space to prevent layout shift
+    return <div className="safe-top" />;
+  }
+  
+  if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
     return <PreviewModeBanner onUpgrade={onUpgrade} />;
   }
 
-  return null;
+  // Even when subscribed, maintain safe-area space
+  return <div className="safe-top" />;
 };
