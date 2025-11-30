@@ -253,7 +253,7 @@ export const MyStackScreen = () => {
   if (loading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+        <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground">My Stack</h2>
             <div className="absolute left-1/2 -translate-x-1/2">
@@ -282,7 +282,7 @@ export const MyStackScreen = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background safe-top" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 bg-background/95 backdrop-blur-sm safe-top">
+      <header className="sticky top-0 z-10 border-b border-border px-4 py-2 bg-background/95 backdrop-blur-sm safe-top">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">My Stack</h2>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
