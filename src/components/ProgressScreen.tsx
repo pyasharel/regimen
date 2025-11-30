@@ -575,7 +575,7 @@ export const ProgressScreen = () => {
   if (dataLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-        <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+        <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -599,7 +599,7 @@ export const ProgressScreen = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background safe-top" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+      <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -610,7 +610,7 @@ export const ProgressScreen = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 pt-3 pb-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 pt-1 pb-6 space-y-6">
         {/* Error Message */}
         {hasError && (
           <Card className="p-4 bg-destructive/10 border-destructive/20">

@@ -536,7 +536,7 @@ export const TodayScreen = () => {
   if (loading || subscriptionLoading) {
     return (
       <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+        <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -647,7 +647,7 @@ export const TodayScreen = () => {
         }
       `}</style>
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 bg-background sticky top-0 flex-shrink-0 z-10">
+      <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
@@ -659,7 +659,7 @@ export const TodayScreen = () => {
       </header>
 
       {/* Greeting */}
-      <div className="px-4 pt-3 pb-4 flex-shrink-0">
+      <div className="px-4 pt-1 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
