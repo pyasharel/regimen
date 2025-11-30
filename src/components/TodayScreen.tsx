@@ -535,7 +535,7 @@ export const TodayScreen = () => {
 
   if (loading || subscriptionLoading) {
     return (
-      <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         <header className="border-b border-border px-4 py-2 bg-background sticky top-0 flex-shrink-0 z-10">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
@@ -562,7 +562,7 @@ export const TodayScreen = () => {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Subscription Verification Overlay */}
       {verifyingSubscription && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">
