@@ -539,7 +539,7 @@ export const TodayScreen = () => {
       <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         <MainHeader title="Today" />
         {/* Match the greeting block spacing exactly */}
-        <div className="px-4 pt-3 pb-4 flex-shrink-0">
+        <div className="px-4 pt-4 pb-4 flex-shrink-0">
           <div className="h-8 w-48 bg-muted animate-pulse rounded" />
         </div>
         {/* Rest of skeleton content */}
@@ -642,7 +642,7 @@ export const TodayScreen = () => {
       <MainHeader title="Today" />
 
       {/* Greeting */}
-      <div className="px-4 pt-3 pb-4 flex-shrink-0">
+      <div className="px-4 pt-4 pb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
