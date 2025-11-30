@@ -128,7 +128,7 @@ All colors MUST be HSL.
   }
   
   .safe-top-margin {
-    margin-top: calc(env(safe-area-inset-top) + 4px);
+    margin-top: 4px;
   }
   
   .safe-bottom {
