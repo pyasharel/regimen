@@ -546,15 +546,15 @@ export const TodayScreen = () => {
             </div>
           </div>
         </header>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="space-y-4 w-full max-w-md px-4">
-            <div className="h-8 w-48 bg-muted animate-pulse rounded mx-auto" />
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
-              ))}
-            </div>
-          </div>
+        {/* Match the greeting block spacing exactly */}
+        <div className="px-4 pt-3 pb-4 flex-shrink-0">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+        </div>
+        {/* Rest of skeleton content */}
+        <div className="flex-1 px-4 space-y-3 overflow-hidden">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
+          ))}
         </div>
         <BottomNavigation />
       </div>
