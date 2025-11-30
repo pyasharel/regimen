@@ -593,7 +593,7 @@ export const ProgressScreen = () => {
       {/* Header */}
       <MainHeader title="Progress" />
 
-      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
         {/* Error Message */}
         {hasError && (
           <Card className="p-4 bg-destructive/10 border-destructive/20">
