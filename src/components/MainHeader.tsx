@@ -7,7 +7,7 @@ interface MainHeaderProps {
 
 export const MainHeader = ({ title, rightSlot }: MainHeaderProps) => {
   return (
-    <header className="border-b border-border px-4 py-2 mt-5 bg-background sticky top-0 flex-shrink-0 z-10">
+    <header className="border-b border-border px-4 py-3 mt-6 bg-background sticky top-0 flex-shrink-0 z-10">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
