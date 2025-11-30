@@ -834,9 +834,10 @@ export const AddCompoundScreen = () => {
             {showAutocomplete && filteredPeptides.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {filteredPeptides.map((peptide) => (
-                  <button
+                   <button
                     key={peptide}
                     onClick={() => {
+                      triggerHaptic('light');
                       setName(peptide);
                       setShowAutocomplete(false);
                     }}
@@ -1482,7 +1483,10 @@ export const AddCompoundScreen = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
         <div className="p-4 max-w-2xl mx-auto">
           <Button
-            onClick={handleSave}
+            onClick={() => {
+              triggerHaptic('light');
+              handleSave();
+            }}
             disabled={saving}
             className="w-full"
             size="lg"

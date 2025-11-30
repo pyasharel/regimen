@@ -8,7 +8,8 @@ interface PreviewModeBannerProps {
 export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
   const [isDismissed, setIsDismissed] = useState(false);
 
-  if (isDismissed) return null;
+  // Always render safe-top container even when dismissed to prevent notch bleeding
+  if (isDismissed) return <div className="safe-top" />;
 
   const handleSubscribeClick = () => {
     if (onUpgrade) {

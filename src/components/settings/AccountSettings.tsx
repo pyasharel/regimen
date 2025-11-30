@@ -266,8 +266,8 @@ export const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background safe-top" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4 safe-top">
+    <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4 mt-5">
         <button onClick={() => navigate("/settings")} className="rounded-lg p-2 hover:bg-muted transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </button>
