@@ -19,6 +19,7 @@ import { StreakBadge } from "@/components/StreakBadge";
 import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
+import { MainHeader } from "@/components/MainHeader";
 
 interface Dose {
   id: string;
@@ -536,16 +537,7 @@ export const TodayScreen = () => {
   if (loading || subscriptionLoading) {
     return (
       <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        <header className="border-b border-border px-4 py-2 mt-4 bg-background sticky top-0 flex-shrink-0 z-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-                REGIMEN
-              </h1>
-            </div>
-          </div>
-        </header>
+        <MainHeader title="Today" />
         {/* Match the greeting block spacing exactly */}
         <div className="px-4 pt-3 pb-4 flex-shrink-0">
           <div className="h-8 w-48 bg-muted animate-pulse rounded" />
@@ -647,16 +639,7 @@ export const TodayScreen = () => {
         }
       `}</style>
       {/* Header */}
-      <header className="border-b border-border px-4 py-2 mt-4 bg-background sticky top-0 flex-shrink-0 z-10">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Today</h2>
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-                REGIMEN
-              </h1>
-            </div>
-        </div>
-      </header>
+      <MainHeader title="Today" />
 
       {/* Greeting */}
       <div className="px-4 pt-3 pb-4 flex-shrink-0">

@@ -30,6 +30,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { CycleTimeline } from "@/components/CycleTimeline";
+import { MainHeader } from "@/components/MainHeader";
 
 type ProgressEntry = {
   id: string;
@@ -575,16 +576,7 @@ export const ProgressScreen = () => {
   if (dataLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-        <header className="border-b border-border px-4 py-2 mt-5 bg-background sticky top-0 flex-shrink-0 z-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-                REGIMEN
-              </h1>
-            </div>
-          </div>
-        </header>
+        <MainHeader title="Progress" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <Skeleton className="w-12 h-12 rounded-full mx-auto" />
@@ -599,16 +591,7 @@ export const ProgressScreen = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
-      <header className="border-b border-border px-4 py-2 mt-5 bg-background sticky top-0 flex-shrink-0 z-10">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">Progress</h2>
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#FF6F61] to-[#8B5CF6] bg-clip-text text-transparent">
-              REGIMEN
-            </h1>
-          </div>
-        </div>
-      </header>
+      <MainHeader title="Progress" />
 
       <div className="flex-1 overflow-y-auto px-6 pt-1 pb-6 space-y-6">
         {/* Error Message */}
