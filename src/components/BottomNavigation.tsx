@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Layers, TrendingUp, Settings } from "lucide-react";
+import { Home, Layers, TrendingUp, Settings, BarChart3 } from "lucide-react";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
@@ -23,6 +23,7 @@ export const BottomNavigation = () => {
     { name: "Today", path: "/today", icon: Home },
     { name: "My Stack", path: "/stack", icon: Layers },
     { name: "Progress", path: "/progress", icon: TrendingUp },
+    { name: "Insights", path: "/insights", icon: BarChart3 },
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
