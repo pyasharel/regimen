@@ -21,6 +21,21 @@ export const useAppStateSync = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Check subscription status to enable notification actions
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_status, beta_access_end_date')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        const betaAccessEndDate = profile?.beta_access_end_date ? new Date(profile.beta_access_end_date) : null;
+        const hasBetaAccess = betaAccessEndDate && betaAccessEndDate > new Date();
+        const isSubscribed = hasBetaAccess || 
+          profile?.subscription_status === 'active' || 
+          profile?.subscription_status === 'trialing';
+        
+        console.log('📱 Subscription status for notifications:', { isSubscribed, status: profile?.subscription_status });
+
         // Check and regenerate doses if needed
         await checkAndRegenerateDoses(user.id);
 
@@ -36,12 +51,13 @@ export const useAppStateSync = () => {
             ...dose,
             compound_name: dose.compounds?.name || 'Medication'
           }));
-          await scheduleAllUpcomingDoses(dosesWithCompoundName);
+          // Pass subscription status to enable notification actions
+          await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
           
           // Also reschedule cycle reminders
           await rescheduleAllCycleReminders();
           
-          console.log('✅ Notifications synced successfully');
+          console.log('✅ Notifications synced successfully with isPremium:', isSubscribed);
         }
       } catch (error) {
         console.error('❌ Error syncing notifications:', error);

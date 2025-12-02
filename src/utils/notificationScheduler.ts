@@ -206,7 +206,9 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
       doseDateTime = new Date(year, month - 1, day, hour, 0);
     }
     
-    return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
+    // More lenient filter: include doses within next 2 minutes (to catch "just added" doses)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+    return doseDateTime > twoMinutesAgo && doseDateTime <= sevenDaysFromNow;
   });
 
   console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
