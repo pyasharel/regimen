@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
@@ -10,6 +10,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -353,114 +354,133 @@ export const MyStackScreen = () => {
               </button>
             </div>
           ) : (
-            activeCompounds.map((compound) => (
-            <div
-              key={compound.id}
-              className="overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/8 to-primary/5 shadow-md hover:shadow-lg hover:border-primary/40 transition-all animate-slide-up"
-            >
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="mt-1 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse" />
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {formatDose(compound.intended_dose, compound.dose_unit)}
-                        {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
-                        {compound.calculated_ml && ` • Draw ${compound.calculated_ml} mL`}
-                        {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}
-                      </p>
-                      
-                      {/* Cycle Status - Only show if has_cycles is true */}
-                      {compound.has_cycles && (() => {
-                        const cycleStatus = calculateCycleStatus(
-                          compound.start_date,
-                          compound.cycle_weeks_on,
-                          compound.cycle_weeks_off
-                        );
+            activeCompounds.map((compound) => {
+              const hasHalfLife = hasHalfLifeTracking(compound.name);
+              
+              return (
+              <div
+                key={compound.id}
+                className="overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/8 to-primary/5 shadow-md hover:shadow-lg hover:border-primary/40 transition-all animate-slide-up cursor-pointer"
+                onClick={() => {
+                  triggerHaptic();
+                  navigate(`/stack/${compound.id}`);
+                }}
+              >
+                <div className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-1 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
+                          {hasHalfLife && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
+                              <Activity className="h-3 w-3" />
+                              <span className="text-[10px] font-semibold">LEVELS</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {formatDose(compound.intended_dose, compound.dose_unit)}
+                          {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
+                          {compound.calculated_ml && ` • Draw ${compound.calculated_ml} mL`}
+                          {' • '}{compound.time_of_day.map(t => formatTime(t)).join(', ')}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}
+                        </p>
                         
-                        if (!cycleStatus) return null;
-                        
-                        // For one-time cycles that have ended, don't show status
-                        if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
-                        
-                        // Format cycle pattern display - show in months if >= 4 weeks
-                        const formatCyclePeriod = (weeks: number) => {
-                          if (weeks >= 4 && weeks % 4 === 0) {
-                            const months = weeks / 4;
-                            return `${months} ${months === 1 ? 'month' : 'months'}`;
-                          }
-                          return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
-                        };
-                        
-                        const cyclePattern = compound.cycle_weeks_off 
-                          ? `${formatCyclePeriod(compound.cycle_weeks_on)} on, ${formatCyclePeriod(compound.cycle_weeks_off)} off`
-                          : `${formatCyclePeriod(compound.cycle_weeks_on)} duration`;
-                        
-                        return (
-                          <div className="mt-3 pt-3 border-t border-border/50">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                                  cycleStatus.currentPhase === 'on' 
-                                    ? 'bg-primary animate-pulse' 
-                                    : 'bg-muted-foreground'
-                                }`} />
-                                <span className={`text-xs font-semibold uppercase tracking-wider ${
-                                  cycleStatus.currentPhase === 'on' 
-                                    ? 'text-primary' 
-                                    : 'text-muted-foreground'
-                                }`}>
-                                  {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
-                                </span>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                        {/* Cycle Status - Only show if has_cycles is true */}
+                        {compound.has_cycles && (() => {
+                          const cycleStatus = calculateCycleStatus(
+                            compound.start_date,
+                            compound.cycle_weeks_on,
+                            compound.cycle_weeks_off
+                          );
+                          
+                          if (!cycleStatus) return null;
+                          
+                          // For one-time cycles that have ended, don't show status
+                          if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
+                          
+                          // Format cycle pattern display - show in months if >= 4 weeks
+                          const formatCyclePeriod = (weeks: number) => {
+                            if (weeks >= 4 && weeks % 4 === 0) {
+                              const months = weeks / 4;
+                              return `${months} ${months === 1 ? 'month' : 'months'}`;
+                            }
+                            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+                          };
+                          
+                          const cyclePattern = compound.cycle_weeks_off 
+                            ? `${formatCyclePeriod(compound.cycle_weeks_on)} on, ${formatCyclePeriod(compound.cycle_weeks_off)} off`
+                            : `${formatCyclePeriod(compound.cycle_weeks_on)} duration`;
+                          
+                          return (
+                            <div className="mt-3 pt-3 border-t border-border/50">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                    cycleStatus.currentPhase === 'on' 
+                                      ? 'bg-primary animate-pulse' 
+                                      : 'bg-muted-foreground'
+                                  }`} />
+                                  <span className={`text-xs font-semibold uppercase tracking-wider ${
+                                    cycleStatus.currentPhase === 'on' 
+                                      ? 'text-primary' 
+                                      : 'text-muted-foreground'
+                                  }`}>
+                                    {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                  {cyclePattern}
                                 </span>
                               </div>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                {cyclePattern}
-                              </span>
+                              <Progress 
+                                value={cycleStatus.progressPercentage} 
+                                className="h-1.5"
+                              />
                             </div>
-                            <Progress 
-                              value={cycleStatus.progressPercentage} 
-                              className="h-1.5"
-                            />
-                          </div>
-                        );
-                      })()}
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
+                            <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(compound); }}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); markComplete(compound.id); }}>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark Inactive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => { e.stopPropagation(); deleteCompound(compound.id); }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
-                        <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(compound)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => markComplete(compound.id)}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark Inactive
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => deleteCompound(compound.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               </div>
-            </div>
-          )))}
+            );
+          }))}
         </div>
 
         {/* Inactive Compounds */}
@@ -472,7 +492,11 @@ export const MyStackScreen = () => {
           {inactiveCompounds.map((compound) => (
             <div
               key={compound.id}
-              className="overflow-hidden rounded-2xl border border-border bg-muted shadow-sm opacity-70 hover:opacity-85 transition-opacity"
+              className="overflow-hidden rounded-2xl border border-border bg-muted shadow-sm opacity-70 hover:opacity-85 transition-opacity cursor-pointer"
+              onClick={() => {
+                triggerHaptic();
+                navigate(`/stack/${compound.id}`);
+              }}
             >
               <div className="p-4">
                 <div className="flex items-start justify-between">
@@ -488,30 +512,33 @@ export const MyStackScreen = () => {
                       </p>
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
-                        <MoreVertical className="h-5 w-5 text-muted-foreground/70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(compound)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => reactivateCompound(compound.id)}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Reactivate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => deleteCompound(compound.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <button className="rounded-lg p-2 hover:bg-muted/50 transition-colors">
+                          <MoreVertical className="h-5 w-5 text-muted-foreground/70" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(compound); }}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); reactivateCompound(compound.id); }}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reactivate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => { e.stopPropagation(); deleteCompound(compound.id); }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground/30" />
+                  </div>
                 </div>
               </div>
             </div>

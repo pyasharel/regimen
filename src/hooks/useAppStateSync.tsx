@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/utils/notificationScheduler';
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
+import { runFullCleanup } from '@/utils/doseCleanup';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -35,6 +36,12 @@ export const useAppStateSync = () => {
           profile?.subscription_status === 'trialing';
         
         console.log('📱 Subscription status for notifications:', { isSubscribed, status: profile?.subscription_status });
+
+        // Run cleanup tasks first (removes duplicates and stale doses)
+        const cleanup = await runFullCleanup(user.id);
+        if (cleanup.duplicates > 0 || cleanup.stale > 0) {
+          console.log(`🧹 Cleanup complete: ${cleanup.duplicates} duplicates, ${cleanup.stale} stale doses removed`);
+        }
 
         // Check and regenerate doses if needed
         await checkAndRegenerateDoses(user.id);
