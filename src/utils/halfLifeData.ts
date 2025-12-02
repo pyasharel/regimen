@@ -140,7 +140,155 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     halfLifeHours: 36,
     category: 'peptide',
     displayName: 'HCG',
-    notes: 'Human Chorionic Gonadotropin'
+  },
+  
+  // Additional steroids
+  'testosterone': {
+    halfLifeHours: 168, // Default to enanthate-like
+    category: 'steroid',
+    displayName: 'Testosterone',
+  },
+  'sustanon': {
+    halfLifeHours: 384, // ~16 days (due to decanoate ester)
+    category: 'steroid',
+    displayName: 'Sustanon 250',
+  },
+  'deca': {
+    halfLifeHours: 360, // ~15 days
+    category: 'steroid',
+    displayName: 'Deca',
+  },
+  'anavar': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Anavar',
+  },
+  'oxandrolone': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Oxandrolone',
+  },
+  'winstrol': {
+    halfLifeHours: 9, // Oral version
+    category: 'steroid',
+    displayName: 'Winstrol',
+  },
+  'stanozolol': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Stanozolol',
+  },
+  'dianabol': {
+    halfLifeHours: 5,
+    category: 'steroid',
+    displayName: 'Dianabol',
+  },
+  'methandrostenolone': {
+    halfLifeHours: 5,
+    category: 'steroid',
+    displayName: 'Methandrostenolone',
+  },
+  'anadrol': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Anadrol',
+  },
+  'oxymetholone': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Oxymetholone',
+  },
+  'turinabol': {
+    halfLifeHours: 16,
+    category: 'steroid',
+    displayName: 'Turinabol',
+  },
+  'halotestin': {
+    halfLifeHours: 9,
+    category: 'steroid',
+    displayName: 'Halotestin',
+  },
+  'proviron': {
+    halfLifeHours: 12,
+    category: 'steroid',
+    displayName: 'Proviron',
+  },
+  'superdrol': {
+    halfLifeHours: 8,
+    category: 'steroid',
+    displayName: 'Superdrol',
+  },
+  
+  // More peptides with known half-lives
+  'bpc-157': {
+    halfLifeHours: 4,
+    category: 'peptide',
+    displayName: 'BPC-157',
+  },
+  'tb-500': {
+    halfLifeHours: 2,
+    category: 'peptide',
+    displayName: 'TB-500',
+  },
+  'thymosin beta-4': {
+    halfLifeHours: 2,
+    category: 'peptide',
+    displayName: 'Thymosin Beta-4',
+  },
+  'ipamorelin': {
+    halfLifeHours: 2,
+    category: 'peptide',
+    displayName: 'Ipamorelin',
+  },
+  'cjc-1295': {
+    halfLifeHours: 168, // With DAC
+    category: 'peptide',
+    displayName: 'CJC-1295',
+  },
+  'sermorelin': {
+    halfLifeHours: 0.2, // ~10-20 minutes
+    category: 'peptide',
+    displayName: 'Sermorelin',
+  },
+  'ghrp-6': {
+    halfLifeHours: 0.5,
+    category: 'peptide',
+    displayName: 'GHRP-6',
+  },
+  'ghrp-2': {
+    halfLifeHours: 0.5,
+    category: 'peptide',
+    displayName: 'GHRP-2',
+  },
+  'mk-677': {
+    halfLifeHours: 24,
+    category: 'peptide',
+    displayName: 'MK-677',
+  },
+  'ibutamoren': {
+    halfLifeHours: 24,
+    category: 'peptide',
+    displayName: 'Ibutamoren',
+  },
+  'pt-141': {
+    halfLifeHours: 2,
+    category: 'peptide',
+    displayName: 'PT-141',
+  },
+  'bremelanotide': {
+    halfLifeHours: 2,
+    category: 'peptide',
+    displayName: 'Bremelanotide',
+  },
+  'melanotan ii': {
+    halfLifeHours: 0.5,
+    category: 'peptide',
+    displayName: 'Melanotan II',
+  },
+  'melanotan 2': {
+    halfLifeHours: 0.5,
+    category: 'peptide',
+    displayName: 'Melanotan 2',
   },
 };
 
