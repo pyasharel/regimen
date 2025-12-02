@@ -10,7 +10,7 @@ import { getHalfLifeData } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
-import logoIcon from "@/assets/logo-regimen-icon-final.png";
+
 
 interface Compound {
   id: string;
@@ -99,10 +99,10 @@ export const CompoundDetailScreen = () => {
   const halfLifeData = compound ? getHalfLifeData(compound.name) : null;
   const takenDoses = doses.filter(d => d.taken && d.taken_at);
   
-  // Deduplicate doses by taken_at timestamp
+  // Deduplicate doses by taken_at timestamp only (more aggressive deduplication)
   const uniqueTakenDoses = takenDoses.reduce((acc, dose) => {
-    const key = `${dose.scheduled_date}-${dose.taken_at}`;
-    if (!acc.find(d => `${d.scheduled_date}-${d.taken_at}` === key)) {
+    // Use taken_at as the unique key - if same exact timestamp, it's a duplicate
+    if (!acc.find(d => d.taken_at === dose.taken_at)) {
       acc.push(dose);
     }
     return acc;
@@ -448,7 +448,7 @@ export const CompoundDetailScreen = () => {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {dose.taken_at 
-                          ? format(new Date(dose.taken_at), 'MMM d, yyyy • h:mm a')
+                          ? format(new Date(dose.taken_at + 'Z'), 'MMM d, yyyy • h:mm a')
                           : format(new Date(dose.scheduled_date + 'T00:00:00'), 'MMM d, yyyy')
                         }
                       </div>
@@ -466,11 +466,6 @@ export const CompoundDetailScreen = () => {
           )}
         </div>
 
-        {/* Subtle branding for sharing */}
-        <div className="flex items-center justify-center gap-2 pt-4 opacity-40">
-          <img src={logoIcon} alt="Regimen" className="h-4 w-4" />
-          <span className="text-xs text-muted-foreground">Regimen</span>
-        </div>
       </div>
     </div>
   );
