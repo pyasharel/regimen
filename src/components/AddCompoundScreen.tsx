@@ -26,7 +26,7 @@ import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
-  "AOD-9604",
+  "AOD-9604", "ARA-290",
   "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide", "PT-141",
   "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
   "DSIP", "Dihexa",
@@ -35,11 +35,11 @@ const COMMON_PEPTIDES = [
   "HCG", "Hexarelin", "HMG",
   "IGF-1 LR3",
   "Ipamorelin", "Ibutamoren", "MK-677",
-  "KPV",
-  "MOTS-c", "Melanotan II",
+  "Kisspeptin", "KPV",
+  "Mazdutide", "MOTS-c", "Melanotan II",
   "NAD+", "N-Acetyl Semax", "N-Acetyl Selank",
   "P21", "PEG-MGF", "Pinealon",
-  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31", "Elamipretide",
+  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31", "Elamipretide", "Survodutide",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
   "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin",
   

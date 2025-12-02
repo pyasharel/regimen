@@ -46,6 +46,22 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
   }
 };
 
+/**
+ * Generate a unique notification ID from a dose ID
+ * Uses a simple hash to convert UUID to a number within safe integer range
+ */
+const generateNotificationId = (doseId: string): number => {
+  // Simple hash function to convert UUID to a number
+  let hash = 0;
+  for (let i = 0; i < doseId.length; i++) {
+    const char = doseId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  // Ensure positive number within safe range for iOS/Android notification IDs
+  return Math.abs(hash % 2147483647) + 1; // Keep under max 32-bit signed int
+};
+
 export const scheduleDoseNotification = async (
   dose: {
     id: string;
@@ -70,7 +86,6 @@ export const scheduleDoseNotification = async (
         hour: parseInt(customTimeMatch[1]),
         minute: parseInt(customTimeMatch[2])
       };
-      console.log(`✅ Parsed custom time: ${dose.scheduled_time} -> ${time.hour}:${time.minute}`);
     } else {
       // Preset time (Morning/Afternoon/Evening)
       const timeMap: { [key: string]: { hour: number; minute: number } } = {
@@ -80,43 +95,33 @@ export const scheduleDoseNotification = async (
       };
       
       time = timeMap[dose.scheduled_time] || { hour: 8, minute: 0 };
-      console.log(`✅ Parsed preset time: ${dose.scheduled_time} -> ${time.hour}:${time.minute}`);
     }
     
-    // Create notification date
-    const notificationDate = new Date(dose.scheduled_date);
-    notificationDate.setHours(time.hour, time.minute, 0, 0);
+    // Create notification date - parse the date properly to avoid timezone issues
+    const [year, month, day] = dose.scheduled_date.split('-').map(Number);
+    const notificationDate = new Date(year, month - 1, day, time.hour, time.minute, 0, 0);
 
-    // Only schedule if in the future (with 1 minute buffer to catch notifications just created)
+    // Only schedule if in the future (with 30 second buffer)
     const now = Date.now();
-    const oneMinuteAgo = now - (60 * 1000);
-    if (notificationDate.getTime() < oneMinuteAgo) {
-      console.log('Skipping past notification:', dose.compound_name, 'at', notificationDate);
+    const bufferMs = 30 * 1000; // 30 second buffer
+    if (notificationDate.getTime() <= now - bufferMs) {
+      console.log(`⏭️ Skipping past notification: ${dose.compound_name} at ${notificationDate.toLocaleString()}`);
       return;
     }
 
-    // Get badge count for pending doses today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const { data: pendingDoses } = await supabase
-      .from('doses')
-      .select('id')
-      .eq('taken', false)
-      .gte('scheduled_date', today.toISOString().split('T')[0]);
-    
-    const badgeCount = pendingDoses?.length || 0;
+    // Generate a unique notification ID using hash
+    const notificationId = generateNotificationId(dose.id);
 
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: parseInt(dose.id.replace(/\D/g, '').substring(0, 9)), // Convert UUID to number
+          id: notificationId,
           title: 'Regimen',
           body: `Time for ${dose.compound_name} (${dose.dose_amount}${dose.dose_unit})`,
           schedule: { at: notificationDate },
-          sound: 'light_bubble_pop_regimen.m4a', // Custom sound (requires adding to native projects)
+          sound: 'light_bubble_pop_regimen.m4a',
           smallIcon: 'ic_stat_icon_config_sample',
           iconColor: '#FF6F61',
-          // Only add actions for premium users
           actionTypeId: isPremium ? 'DOSE_ACTIONS' : undefined,
           extra: {
             doseId: dose.id,
@@ -125,9 +130,7 @@ export const scheduleDoseNotification = async (
       ],
     });
 
-    console.log('✅ Successfully scheduled notification for:', dose.compound_name, 'at', notificationDate.toLocaleString());
-    console.log('   Notification ID:', parseInt(dose.id.replace(/\D/g, '').substring(0, 9)));
-    console.log('   Time until notification:', Math.round((notificationDate.getTime() - Date.now()) / 1000 / 60), 'minutes');
+    console.log(`✅ Scheduled: ${dose.compound_name} at ${notificationDate.toLocaleString()} (ID: ${notificationId})`);
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }
@@ -137,7 +140,7 @@ export const cancelDoseNotification = async (doseId: string) => {
   if (!Capacitor.isNativePlatform()) return;
 
   try {
-    const notificationId = parseInt(doseId.replace(/\D/g, '').substring(0, 9));
+    const notificationId = generateNotificationId(doseId);
     await LocalNotifications.cancel({
       notifications: [{ id: notificationId }],
     });
@@ -170,7 +173,6 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   const hasPermission = await requestNotificationPermissions();
   if (!hasPermission) {
     console.error('❌ Notification permissions NOT granted!');
-    console.log('Please enable notifications in iPhone Settings > Regimen > Notifications');
     return;
   }
   console.log('✅ Notification permissions granted');
@@ -181,26 +183,56 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
 
   // Schedule notifications for upcoming doses (next 7 days)
   const now = new Date();
-  const sevenDaysFromNow = new Date();
+  now.setSeconds(0, 0); // Normalize to start of minute
+  
+  const sevenDaysFromNow = new Date(now);
   sevenDaysFromNow.setDate(now.getDate() + 7);
 
+  // Filter to only future doses
   const upcomingDoses = doses.filter(dose => {
-    if (dose.taken) return false; // Don't schedule for already taken doses
-    const doseDate = new Date(dose.scheduled_date);
-    return doseDate >= now && doseDate <= sevenDaysFromNow;
+    if (dose.taken || dose.skipped) return false;
+    
+    // Parse the dose date and time
+    const [year, month, day] = dose.scheduled_date.split('-').map(Number);
+    const timeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
+    
+    let doseDateTime: Date;
+    if (timeMatch) {
+      doseDateTime = new Date(year, month - 1, day, parseInt(timeMatch[1]), parseInt(timeMatch[2]));
+    } else {
+      // Handle preset times
+      const timeMap: { [key: string]: number } = { 'Morning': 8, 'Afternoon': 14, 'Evening': 18 };
+      const hour = timeMap[dose.scheduled_time] || 8;
+      doseDateTime = new Date(year, month - 1, day, hour, 0);
+    }
+    
+    return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
   });
 
   console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
-  console.log(`💎 Premium status: ${isPremium ? 'Yes (actions enabled)' : 'No (actions disabled)'}`);
+  console.log(`💎 Premium status: ${isPremium ? 'Yes (actions enabled)' : 'No'}`);
 
+  // Track scheduled IDs to detect collisions
+  const scheduledIds = new Map<number, string>();
   let successCount = 0;
+  let collisionCount = 0;
+
   for (const dose of upcomingDoses) {
     try {
-      // Ensure compound_name is available
       const doseWithName = {
         ...dose,
         compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
       };
+      
+      // Check for ID collision before scheduling
+      const notificationId = generateNotificationId(dose.id);
+      if (scheduledIds.has(notificationId)) {
+        console.warn(`⚠️ ID collision detected: ${notificationId} for ${doseWithName.compound_name} (already used by ${scheduledIds.get(notificationId)})`);
+        collisionCount++;
+        // Still schedule - iOS/Android will just update the existing notification
+      }
+      scheduledIds.set(notificationId, doseWithName.compound_name);
+      
       await scheduleDoseNotification(doseWithName, isPremium);
       successCount++;
     } catch (error) {
@@ -208,15 +240,21 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
     }
   }
 
-  console.log(`✅ Successfully scheduled ${successCount}/${upcomingDoses.length} notifications`);
+  console.log(`✅ Scheduled ${successCount}/${upcomingDoses.length} notifications`);
+  if (collisionCount > 0) {
+    console.warn(`⚠️ ${collisionCount} ID collisions detected - some notifications may have been overwritten`);
+  }
   
   // Log all pending notifications for verification
   try {
     const pending = await LocalNotifications.getPending();
     console.log(`📋 Total pending notifications: ${pending.notifications.length}`);
-    pending.notifications.forEach(notif => {
-      console.log(`   - ID ${notif.id}: "${notif.title}" at ${notif.schedule?.at}`);
+    pending.notifications.slice(0, 10).forEach(notif => {
+      console.log(`   - ID ${notif.id}: scheduled for ${notif.schedule?.at}`);
     });
+    if (pending.notifications.length > 10) {
+      console.log(`   ... and ${pending.notifications.length - 10} more`);
+    }
   } catch (error) {
     console.error('Error checking pending notifications:', error);
   }
