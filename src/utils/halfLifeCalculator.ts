@@ -33,6 +33,24 @@ const calculateDecay = (
 };
 
 /**
+ * Calculate total medication level at a specific time from all doses
+ */
+const calculateLevelAtTime = (
+  doses: TakenDose[],
+  halfLifeHours: number,
+  timestamp: Date
+): number => {
+  let totalLevel = 0;
+  for (const dose of doses) {
+    const hoursElapsed = (timestamp.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
+    if (hoursElapsed >= 0) {
+      totalLevel += calculateDecay(dose.amount, halfLifeHours, hoursElapsed);
+    }
+  }
+  return totalLevel;
+};
+
+/**
  * Calculate medication levels over time based on actual taken doses
  * 
  * @param doses - Array of taken doses with timestamps
@@ -50,34 +68,46 @@ export const calculateMedicationLevels = (
 ): MedicationLevel[] => {
   if (doses.length === 0) return [];
 
-  const levels: MedicationLevel[] = [];
+  const timestamps: Set<number> = new Set();
   const intervalHours = 24 / pointsPerDay;
   
-  // Generate timestamps for the calculation period
+  // Generate regular interval timestamps
   let currentTime = new Date(startDate);
   while (currentTime <= endDate) {
-    let totalLevel = 0;
-    
-    // Sum up contributions from all doses taken before this time
-    for (const dose of doses) {
-      const hoursElapsed = (currentTime.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
-      if (hoursElapsed >= 0) {
-        totalLevel += calculateDecay(dose.amount, halfLifeHours, hoursElapsed);
-      }
-    }
-    
-    levels.push({
-      timestamp: new Date(currentTime),
-      level: 0, // Will be calculated as percentage below
-      absoluteLevel: totalLevel
-    });
-    
-    // Move to next interval
+    timestamps.add(currentTime.getTime());
     currentTime = new Date(currentTime.getTime() + intervalHours * 60 * 60 * 1000);
   }
   
+  // Add timestamps at exact dose times and just after for sharp peaks
+  for (const dose of doses) {
+    const doseTime = dose.takenAt.getTime();
+    if (doseTime >= startDate.getTime() && doseTime <= endDate.getTime()) {
+      // Add point just before dose (1 minute before)
+      timestamps.add(doseTime - 60000);
+      // Add point at dose time (peak)
+      timestamps.add(doseTime);
+      // Add point shortly after dose (5 minutes after)
+      timestamps.add(doseTime + 300000);
+      // Add point 1 hour after
+      timestamps.add(doseTime + 3600000);
+    }
+  }
+  
+  // Sort timestamps and calculate levels
+  const sortedTimestamps = Array.from(timestamps).sort((a, b) => a - b);
+  
+  const levels: MedicationLevel[] = sortedTimestamps.map(ts => {
+    const timestamp = new Date(ts);
+    const absoluteLevel = calculateLevelAtTime(doses, halfLifeHours, timestamp);
+    return {
+      timestamp,
+      level: 0, // Will be calculated as percentage below
+      absoluteLevel
+    };
+  });
+  
   // Calculate percentage levels (relative to max)
-  const maxLevel = Math.max(...levels.map(l => l.absoluteLevel), 1);
+  const maxLevel = Math.max(...levels.map(l => l.absoluteLevel), 0.001);
   for (const level of levels) {
     level.level = (level.absoluteLevel / maxLevel) * 100;
   }

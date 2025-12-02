@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, Tooltip } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
 
 
@@ -99,14 +99,21 @@ export const CompoundDetailScreen = () => {
   const halfLifeData = compound ? getHalfLifeData(compound.name) : null;
   const takenDoses = doses.filter(d => d.taken && d.taken_at);
   
-  // Deduplicate doses by taken_at timestamp only (more aggressive deduplication)
-  const uniqueTakenDoses = takenDoses.reduce((acc, dose) => {
-    // Use taken_at as the unique key - if same exact timestamp, it's a duplicate
-    if (!acc.find(d => d.taken_at === dose.taken_at)) {
-      acc.push(dose);
-    }
-    return acc;
-  }, [] as Dose[]);
+  // Deduplicate doses - if two doses are within 60 seconds of each other, they're duplicates
+  const uniqueTakenDoses = takenDoses
+    .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime())
+    .reduce((acc, dose) => {
+      const doseTime = new Date(dose.taken_at! + 'Z').getTime();
+      const isDuplicate = acc.some(d => {
+        const existingTime = new Date(d.taken_at! + 'Z').getTime();
+        return Math.abs(doseTime - existingTime) < 60000; // Within 60 seconds
+      });
+      if (!isDuplicate) {
+        acc.push(dose);
+      }
+      return acc;
+    }, [] as Dose[])
+    .sort((a, b) => new Date(b.taken_at! + 'Z').getTime() - new Date(a.taken_at! + 'Z').getTime()); // Sort newest first
 
   const takenDosesForCalc: TakenDose[] = uniqueTakenDoses.map(d => ({
     id: d.id,
@@ -127,23 +134,32 @@ export const CompoundDetailScreen = () => {
     }
   };
 
+  // Use more data points for smoother peaks/troughs visualization
+  const pointsPerDay = timeRange === '1M' ? 8 : timeRange === '3M' ? 4 : 2;
+  
   const chartData = halfLifeData && takenDosesForCalc.length > 0
     ? calculateMedicationLevels(
         takenDosesForCalc,
         halfLifeData.halfLifeHours,
         subDays(new Date(), getRangeInDays()),
         new Date(),
-        2
+        pointsPerDay
       ).map(point => ({
         date: format(point.timestamp, 'MMM d'),
         timestamp: point.timestamp.getTime(),
-        level: Math.round(point.level),
+        level: Math.round(point.level * 10) / 10, // Keep one decimal for smoother curve
         absoluteLevel: point.absoluteLevel.toFixed(2)
       }))
     : [];
 
   const totalDosesTaken = uniqueTakenDoses.length;
-  const nextScheduledDose = doses.find(d => !d.taken && new Date(d.scheduled_date) >= new Date());
+  
+  // Find next scheduled dose - compare date strings to avoid timezone issues
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const nextScheduledDose = doses
+    .filter(d => !d.taken && d.scheduled_date >= todayStr)
+    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))[0];
 
   const formatTime = (time: string) => {
     if (time === 'Morning') return '8 AM';
@@ -214,7 +230,7 @@ export const CompoundDetailScreen = () => {
       <div className="p-4 space-y-4">
         {/* Stats Grid - 2x2 layout */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Current Dose */}
+          {/* Current Dose - highlighted */}
           <div className="rounded-xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border border-primary/20 p-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Current Dose</span>
@@ -238,11 +254,6 @@ export const CompoundDetailScreen = () => {
           <div className="rounded-xl bg-card border border-border p-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Est. Level</span>
-              {halfLifeData && (
-                <div className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium uppercase">
-                  {halfLifeData.category}
-                </div>
-              )}
             </div>
             {halfLifeData && currentLevel ? (
               <>
@@ -263,16 +274,6 @@ export const CompoundDetailScreen = () => {
             )}
           </div>
 
-          {/* Total Doses */}
-          <div className="rounded-xl bg-card border border-border p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Syringe className="h-3 w-3 text-primary" />
-              <span className="text-xs text-muted-foreground">Total Doses</span>
-            </div>
-            <div className="text-xl font-bold">{totalDosesTaken}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">logged</div>
-          </div>
-
           {/* Started */}
           <div className="rounded-xl bg-card border border-border p-3">
             <div className="flex items-center gap-1.5 mb-1">
@@ -285,6 +286,16 @@ export const CompoundDetailScreen = () => {
             <div className="text-[10px] text-muted-foreground mt-0.5">
               {format(new Date(compound.start_date + 'T00:00:00'), 'yyyy')}
             </div>
+          </div>
+
+          {/* Total Doses */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Syringe className="h-3 w-3 text-primary" />
+              <span className="text-xs text-muted-foreground">Total Doses</span>
+            </div>
+            <div className="text-xl font-bold">{totalDosesTaken}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">logged</div>
           </div>
         </div>
 
@@ -336,11 +347,12 @@ export const CompoundDetailScreen = () => {
 
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
                   <defs>
                     <linearGradient id="levelGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
                   <XAxis 
@@ -378,18 +390,12 @@ export const CompoundDetailScreen = () => {
                   <Area
                     type="monotone"
                     dataKey="level"
-                    stroke="none"
-                    fill="url(#levelGradient)"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="level"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
+                    fill="url(#levelGradient)"
+                    isAnimationActive={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
