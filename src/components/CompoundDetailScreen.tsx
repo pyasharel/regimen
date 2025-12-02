@@ -1,15 +1,16 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, Activity, TrendingDown, Pencil, Syringe, BarChart3 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
-import { getHalfLifeData, hasHalfLifeTracking } from "@/utils/halfLifeData";
+import { getHalfLifeData } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, ReferenceLine, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
+import logoIcon from "@/assets/logo-regimen-icon-final.png";
 
 interface Compound {
   id: string;
@@ -38,6 +39,16 @@ interface Dose {
   taken_at: string | null;
 }
 
+const DAY_ABBREVIATIONS: Record<string, string> = {
+  'Monday': 'Mon',
+  'Tuesday': 'Tue', 
+  'Wednesday': 'Wed',
+  'Thursday': 'Thu',
+  'Friday': 'Fri',
+  'Saturday': 'Sat',
+  'Sunday': 'Sun'
+};
+
 export const CompoundDetailScreen = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -55,7 +66,6 @@ export const CompoundDetailScreen = () => {
 
   const loadCompoundData = async () => {
     try {
-      // Load compound details
       const { data: compoundData, error: compoundError } = await supabase
         .from('compounds')
         .select('*')
@@ -65,7 +75,6 @@ export const CompoundDetailScreen = () => {
       if (compoundError) throw compoundError;
       setCompound(compoundData);
 
-      // Load dose history
       const { data: dosesData, error: dosesError } = await supabase
         .from('doses')
         .select('*')
@@ -90,20 +99,26 @@ export const CompoundDetailScreen = () => {
   const halfLifeData = compound ? getHalfLifeData(compound.name) : null;
   const takenDoses = doses.filter(d => d.taken && d.taken_at);
   
-  // Convert to TakenDose format for calculations
-  const takenDosesForCalc: TakenDose[] = takenDoses.map(d => ({
+  // Deduplicate doses by taken_at timestamp
+  const uniqueTakenDoses = takenDoses.reduce((acc, dose) => {
+    const key = `${dose.scheduled_date}-${dose.taken_at}`;
+    if (!acc.find(d => `${d.scheduled_date}-${d.taken_at}` === key)) {
+      acc.push(dose);
+    }
+    return acc;
+  }, [] as Dose[]);
+
+  const takenDosesForCalc: TakenDose[] = uniqueTakenDoses.map(d => ({
     id: d.id,
     takenAt: new Date(d.taken_at!),
     amount: d.dose_amount,
     unit: d.dose_unit
   }));
 
-  // Calculate current level if half-life data available
   const currentLevel = halfLifeData && takenDosesForCalc.length > 0
     ? calculateCurrentLevel(takenDosesForCalc, halfLifeData.halfLifeHours)
     : null;
 
-  // Calculate levels for chart
   const getRangeInDays = () => {
     switch (timeRange) {
       case '1M': return 30;
@@ -118,7 +133,7 @@ export const CompoundDetailScreen = () => {
         halfLifeData.halfLifeHours,
         subDays(new Date(), getRangeInDays()),
         new Date(),
-        2 // 2 points per day (12-hour intervals)
+        2
       ).map(point => ({
         date: format(point.timestamp, 'MMM d'),
         timestamp: point.timestamp.getTime(),
@@ -127,14 +142,13 @@ export const CompoundDetailScreen = () => {
       }))
     : [];
 
-  const totalDosesTaken = takenDoses.length;
-  const lastDose = takenDoses[0];
+  const totalDosesTaken = uniqueTakenDoses.length;
   const nextScheduledDose = doses.find(d => !d.taken && new Date(d.scheduled_date) >= new Date());
 
   const formatTime = (time: string) => {
-    if (time === 'Morning') return '8:00 AM';
-    if (time === 'Afternoon') return '2:00 PM';
-    if (time === 'Evening') return '6:00 PM';
+    if (time === 'Morning') return '8 AM';
+    if (time === 'Afternoon') return '2 PM';
+    if (time === 'Evening') return '6 PM';
     
     const match = time.match(/^(\d{1,2}):(\d{2})$/);
     if (match) {
@@ -142,9 +156,19 @@ export const CompoundDetailScreen = () => {
       const minutes = match[2];
       const period = hours >= 12 ? 'PM' : 'AM';
       hours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-      return `${hours}:${minutes} ${period}`;
+      return minutes === '00' ? `${hours} ${period}` : `${hours}:${minutes} ${period}`;
     }
     return time;
+  };
+
+  const getScheduleDaysDisplay = () => {
+    if (!compound) return '';
+    if (compound.schedule_type === 'Daily') return 'Daily';
+    if (compound.schedule_type === 'Weekly') return 'Weekly';
+    if (compound.schedule_days && compound.schedule_days.length > 0) {
+      return compound.schedule_days.map(d => DAY_ABBREVIATIONS[d] || d).join(', ');
+    }
+    return compound.schedule_type;
   };
 
   if (loading) {
@@ -153,7 +177,6 @@ export const CompoundDetailScreen = () => {
         <div className="p-4 space-y-4">
           <div className="h-12 bg-muted animate-pulse rounded-lg" />
           <div className="h-48 bg-muted animate-pulse rounded-xl" />
-          <div className="h-32 bg-muted animate-pulse rounded-xl" />
         </div>
       </div>
     );
@@ -188,210 +211,186 @@ export const CompoundDetailScreen = () => {
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Current Status Card */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border border-primary/20 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-muted-foreground">Current Dose</span>
-            <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-              compound.is_active 
-                ? 'bg-primary/20 text-primary' 
-                : 'bg-muted text-muted-foreground'
-            }`}>
-              {compound.is_active ? 'Active' : 'Inactive'}
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-foreground mb-1">
-            {formatDose(compound.intended_dose, compound.dose_unit)}
-          </div>
-          {compound.calculated_iu && (
-            <p className="text-sm text-muted-foreground">
-              {compound.calculated_iu} IU • Draw {compound.calculated_ml} mL
-            </p>
-          )}
-          <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" />
-              <span>{compound.schedule_type}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              <span>{compound.time_of_day.map(t => formatTime(t)).join(', ')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Half-Life Tracking Section */}
-        {halfLifeData ? (
-          <div className="space-y-4">
-            {/* Estimated Level Card */}
-            <div className="rounded-2xl bg-card border border-border p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Estimated Levels</span>
-                </div>
-                <div className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                  {halfLifeData.category.toUpperCase()}
-                </div>
+      <div className="p-4 space-y-4">
+        {/* Stats Grid - 2x2 layout */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Current Dose */}
+          <div className="rounded-xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border border-primary/20 p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Current Dose</span>
+              <div className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                compound.is_active 
+                  ? 'bg-primary/20 text-primary' 
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                {compound.is_active ? 'Active' : 'Inactive'}
               </div>
+            </div>
+            <div className="text-xl font-bold text-foreground">
+              {formatDose(compound.intended_dose, compound.dose_unit)}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {getScheduleDaysDisplay()} • {compound.time_of_day.map(t => formatTime(t)).join(', ')}
+            </div>
+          </div>
 
-              {takenDosesForCalc.length > 0 && currentLevel ? (
-                <>
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-4xl font-bold text-primary">
-                      {Math.round(currentLevel.percentOfPeak)}%
-                    </span>
-                    <span className="text-sm text-muted-foreground">of peak</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    ~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit} estimated in system
-                  </p>
-                  
-                  {/* Half-life info */}
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                    <TrendingDown className="h-3.5 w-3.5" />
-                    <span>Half-life: ~{Math.round(halfLifeData.halfLifeHours / 24)} days</span>
-                    {halfLifeData.notes && <span>• {halfLifeData.notes}</span>}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Log doses to see estimated medication levels
-                </p>
+          {/* Estimated Level */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Est. Level</span>
+              {halfLifeData && (
+                <div className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium uppercase">
+                  {halfLifeData.category}
+                </div>
               )}
             </div>
-
-            {/* Level Chart */}
-            {chartData.length > 0 && (
-              <div className="rounded-2xl bg-card border border-border p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Level History</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {(['1M', '3M', '6M'] as const).map((range) => (
-                      <button
-                        key={range}
-                        onClick={() => setTimeRange(range)}
-                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                          timeRange === range
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
-                      >
-                        {range}
-                      </button>
-                    ))}
-                  </div>
+            {halfLifeData && currentLevel ? (
+              <>
+                <div className="text-xl font-bold text-primary">
+                  {Math.round(currentLevel.percentOfPeak)}%
                 </div>
-
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                      <defs>
-                        <linearGradient id="levelGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        domain={[0, 100]}
-                        ticks={[0, 50, 100]}
-                        tickFormatter={(v) => `${v}%`}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                                <p className="text-xs text-muted-foreground">{data.date}</p>
-                                <p className="text-sm font-semibold">{data.level}% of peak</p>
-                                <p className="text-xs text-muted-foreground">
-                                  ~{data.absoluteLevel} {compound.dose_unit}
-                                </p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="level"
-                        stroke="none"
-                        fill="url(#levelGradient)"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="level"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  ~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}
                 </div>
-              </div>
+              </>
+            ) : (
+              <>
+                <div className="text-xl font-bold text-muted-foreground">—</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {halfLifeData ? 'Log doses to track' : 'Not available'}
+                </div>
+              </>
             )}
           </div>
-        ) : (
-          /* No half-life data available */
-          <div className="rounded-2xl bg-muted/50 border border-border p-5">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Activity className="h-5 w-5" />
-              <span className="text-sm">Half-life tracking not available for this medication</span>
-            </div>
-          </div>
-        )}
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Syringe className="h-4 w-4 text-primary" />
+          {/* Total Doses */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Syringe className="h-3 w-3 text-primary" />
               <span className="text-xs text-muted-foreground">Total Doses</span>
             </div>
-            <div className="text-2xl font-bold">{totalDosesTaken}</div>
+            <div className="text-xl font-bold">{totalDosesTaken}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">logged</div>
           </div>
-          <div className="rounded-xl bg-card border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="h-4 w-4 text-primary" />
+
+          {/* Started */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Calendar className="h-3 w-3 text-primary" />
               <span className="text-xs text-muted-foreground">Started</span>
             </div>
             <div className="text-lg font-bold">
-              {format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
+              {format(new Date(compound.start_date + 'T00:00:00'), 'MMM d')}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {format(new Date(compound.start_date + 'T00:00:00'), 'yyyy')}
             </div>
           </div>
         </div>
 
-        {/* Next Dose */}
+        {/* Next Scheduled - Compact */}
         {nextScheduledDose && (
-          <div className="rounded-xl bg-primary/10 border border-primary/20 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs text-muted-foreground">Next Scheduled</span>
-                <div className="font-semibold">
-                  {format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEEE, MMM d')}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {formatTime(nextScheduledDose.scheduled_time)}
-                </div>
+          <div className="rounded-xl bg-primary/10 border border-primary/20 p-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-muted-foreground">Next Scheduled</span>
+              <div className="font-semibold text-sm">
+                {format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d')} • {formatTime(nextScheduledDose.scheduled_time)}
               </div>
-              <Clock className="h-8 w-8 text-primary/50" />
+            </div>
+            <Clock className="h-6 w-6 text-primary/50" />
+          </div>
+        )}
+
+        {/* Half-life Info - Compact */}
+        {halfLifeData && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+            <TrendingDown className="h-3.5 w-3.5" />
+            <span>Half-life: ~{Math.round(halfLifeData.halfLifeHours / 24)} days</span>
+          </div>
+        )}
+
+        {/* Level History Chart */}
+        {halfLifeData && chartData.length > 0 && (
+          <div className="rounded-2xl bg-card border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm">Level History</span>
+              </div>
+              <div className="flex gap-1">
+                {(['1M', '3M', '6M'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-full transition-colors ${
+                      timeRange === range
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                  <defs>
+                    <linearGradient id="levelGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 100]}
+                    ticks={[0, 50, 100]}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+                            <p className="text-xs text-muted-foreground">{data.date}</p>
+                            <p className="text-sm font-semibold">{data.level}% of peak</p>
+                            <p className="text-xs text-muted-foreground">
+                              ~{data.absoluteLevel} {compound.dose_unit}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="level"
+                    stroke="none"
+                    fill="url(#levelGradient)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="level"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
@@ -409,7 +408,7 @@ export const CompoundDetailScreen = () => {
           return (
             <div className="rounded-xl bg-card border border-border p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold">Cycle Status</span>
+                <span className="font-semibold text-sm">Cycle Status</span>
                 <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
                   cycleStatus.currentPhase === 'on' 
                     ? 'bg-primary/20 text-primary' 
@@ -428,15 +427,15 @@ export const CompoundDetailScreen = () => {
 
         {/* Dose History */}
         <div className="space-y-3">
-          <h3 className="font-semibold">Dose History</h3>
+          <h3 className="font-semibold text-sm">Dose History</h3>
           
-          {takenDoses.length === 0 ? (
+          {uniqueTakenDoses.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No doses logged yet
             </p>
           ) : (
             <div className="space-y-2">
-              {takenDoses.slice(0, 20).map((dose) => (
+              {uniqueTakenDoses.slice(0, 20).map((dose) => (
                 <div 
                   key={dose.id}
                   className="flex items-center justify-between p-3 rounded-xl bg-card border border-border"
@@ -444,7 +443,7 @@ export const CompoundDetailScreen = () => {
                   <div className="flex items-center gap-3">
                     <div className="h-2 w-2 rounded-full bg-primary" />
                     <div>
-                      <div className="font-medium">
+                      <div className="font-medium text-sm">
                         {formatDose(dose.dose_amount, dose.dose_unit)}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -458,13 +457,19 @@ export const CompoundDetailScreen = () => {
                   <div className="text-xs text-primary font-medium">✓ Taken</div>
                 </div>
               ))}
-              {takenDoses.length > 20 && (
+              {uniqueTakenDoses.length > 20 && (
                 <p className="text-xs text-muted-foreground text-center py-2">
                   Showing most recent 20 doses
                 </p>
               )}
             </div>
           )}
+        </div>
+
+        {/* Subtle branding for sharing */}
+        <div className="flex items-center justify-center gap-2 pt-4 opacity-40">
+          <img src={logoIcon} alt="Regimen" className="h-4 w-4" />
+          <span className="text-xs text-muted-foreground">Regimen</span>
         </div>
       </div>
     </div>
