@@ -348,11 +348,35 @@ export const TodayScreen = () => {
         // Don't allow unchecking "as needed" doses
       } else {
         // Regular scheduled dose - update it
+        // Use scheduled date/time for taken_at (not current time) to support retroactive logging
+        let takenAtTimestamp: string | null = null;
+        if (!currentStatus) {
+          // Construct timestamp from scheduled date and time
+          const scheduledDateStr = dose.scheduled_date;
+          const scheduledTime = dose.scheduled_time;
+          // Convert time format (e.g., "08:00" or "Morning" -> actual time)
+          let hours = 8, minutes = 0;
+          if (scheduledTime === 'Morning') { hours = 8; minutes = 0; }
+          else if (scheduledTime === 'Afternoon') { hours = 14; minutes = 0; }
+          else if (scheduledTime === 'Evening') { hours = 18; minutes = 0; }
+          else {
+            const timeMatch = scheduledTime.match(/^(\d{1,2}):(\d{2})$/);
+            if (timeMatch) {
+              hours = parseInt(timeMatch[1]);
+              minutes = parseInt(timeMatch[2]);
+            }
+          }
+          // Create the timestamp in local time, then convert to ISO
+          const takenDate = new Date(scheduledDateStr + 'T00:00:00');
+          takenDate.setHours(hours, minutes, 0, 0);
+          takenAtTimestamp = takenDate.toISOString();
+        }
+        
         const { error } = await supabase
           .from('doses')
           .update({
             taken: !currentStatus,
-            taken_at: !currentStatus ? new Date().toISOString() : null
+            taken_at: takenAtTimestamp
           })
           .eq('id', doseId);
 

@@ -250,29 +250,29 @@ export const CompoundDetailScreen = () => {
             </div>
           </div>
 
-          {/* Estimated Level */}
-          <div className="rounded-xl bg-card border border-border p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Est. Level</span>
-            </div>
-            {halfLifeData && currentLevel ? (
-              <>
-                <div className="text-xl font-bold text-primary">
-                  {Math.round(currentLevel.percentOfPeak)}%
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  ~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-xl font-bold text-muted-foreground">—</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {halfLifeData ? 'Log doses to track' : 'Not available'}
-                </div>
-              </>
-            )}
+        {/* Estimated Level */}
+        <div className="rounded-xl bg-card border border-border p-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-muted-foreground">Est. in System</span>
           </div>
+          {halfLifeData && currentLevel ? (
+            <>
+              <div className="text-xl font-bold text-primary">
+                ~{currentLevel.absoluteLevel.toFixed(2)}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {compound.dose_unit} remaining
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-xl font-bold text-muted-foreground">—</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {halfLifeData ? 'Log doses to track' : 'Not available'}
+              </div>
+            </>
+          )}
+        </div>
 
           {/* Started */}
           <div className="rounded-xl bg-card border border-border p-3">
@@ -377,9 +377,9 @@ export const CompoundDetailScreen = () => {
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                             <p className="text-xs text-muted-foreground">{data.date}</p>
-                            <p className="text-sm font-semibold">{data.level}% of peak</p>
+                            <p className="text-sm font-semibold">~{data.absoluteLevel} {compound.dose_unit}</p>
                             <p className="text-xs text-muted-foreground">
-                              ~{data.absoluteLevel} {compound.dose_unit}
+                              {data.level}% of peak concentration
                             </p>
                           </div>
                         );
