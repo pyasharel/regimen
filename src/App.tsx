@@ -32,6 +32,7 @@ import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SubscriptionTest } from "./pages/SubscriptionTest";
 import { InsightsScreen as NewInsightsScreen } from "./components/InsightsScreen";
+import { CompoundDetailScreen } from "./components/CompoundDetailScreen";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
@@ -67,6 +68,7 @@ const AppContent = () => {
             <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
             <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
+            <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
             <Route path="/insights" element={<ProtectedRoute><NewInsightsScreen /></ProtectedRoute>} />
             <Route path="/progress/insights" element={<ProtectedRoute><InsightsScreen /></ProtectedRoute>} />
