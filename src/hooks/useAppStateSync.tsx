@@ -46,15 +46,45 @@ export const useAppStateSync = () => {
         // Check and regenerate doses if needed
         await checkAndRegenerateDoses(user.id);
 
-        // Fetch all upcoming doses
+        // Fetch all upcoming doses - only from ACTIVE compounds
         const { data: allDoses } = await supabase
           .from('doses')
-          .select('*, compounds(name)')
+          .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
           .eq('user_id', user.id)
           .eq('taken', false);
         
         if (allDoses) {
-          const dosesWithCompoundName = allDoses.map(dose => ({
+          // Filter out doses from inactive compounds and those in off-cycle periods
+          const activeDoses = allDoses.filter(dose => {
+            // Skip if compound is inactive
+            if (dose.compounds?.is_active === false) return false;
+            
+            // Check if in off-cycle period
+            if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
+              const startDate = new Date(dose.compounds.start_date + 'T00:00:00');
+              const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+              const daysSinceStart = Math.floor((doseDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+              
+              const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+              
+              if (dose.compounds.cycle_weeks_off) {
+                // Continuous cycling
+                const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
+                const cycleLength = weeksOnInDays + weeksOffInDays;
+                const positionInCycle = daysSinceStart % cycleLength;
+                
+                // If in off period, skip this dose
+                if (positionInCycle >= weeksOnInDays) return false;
+              } else {
+                // One-time cycle - after on period, skip
+                if (daysSinceStart >= weeksOnInDays) return false;
+              }
+            }
+            
+            return true;
+          });
+          
+          const dosesWithCompoundName = activeDoses.map(dose => ({
             ...dose,
             compound_name: dose.compounds?.name || 'Medication'
           }));
