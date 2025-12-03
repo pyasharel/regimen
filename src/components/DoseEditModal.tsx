@@ -205,7 +205,6 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
           </p>
           <div className="flex flex-col gap-2 mt-4">
             <Button 
-              variant="outline" 
               onClick={saveDoseOnly}
               disabled={loading}
               className="justify-start"
@@ -213,6 +212,7 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
               This dose only
             </Button>
             <Button 
+              variant="outline"
               onClick={saveAndUpdateSchedule}
               disabled={loading}
               className="justify-start"
