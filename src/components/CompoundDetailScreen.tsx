@@ -137,20 +137,31 @@ export const CompoundDetailScreen = () => {
   // Use more data points for smoother peaks/troughs visualization
   const pointsPerDay = timeRange === '1M' ? 8 : timeRange === '3M' ? 4 : 2;
   
+  const now = new Date();
+  const nowTimestamp = now.getTime();
+  
   const chartData = halfLifeData && takenDosesForCalc.length > 0
     ? calculateMedicationLevels(
         takenDosesForCalc,
         halfLifeData.halfLifeHours,
         subDays(new Date(), getRangeInDays()),
         new Date(),
-        pointsPerDay
+        pointsPerDay,
+        true // Include future projections until clearance
       ).map(point => ({
         date: format(point.timestamp, 'MMM d'),
         timestamp: point.timestamp.getTime(),
-        level: Math.round(point.level * 10) / 10, // Keep one decimal for smoother curve
-        absoluteLevel: point.absoluteLevel.toFixed(2)
+        level: Math.round(point.level * 10) / 10,
+        absoluteLevel: point.absoluteLevel.toFixed(2),
+        isFuture: point.isFuture || false,
+        // Split data for dual-area rendering
+        pastLevel: !point.isFuture ? Math.round(point.level * 10) / 10 : null,
+        futureLevel: point.isFuture ? Math.round(point.level * 10) / 10 : null,
       }))
     : [];
+  
+  // Find the "now" index for the reference line
+  const nowIndex = chartData.findIndex(d => d.timestamp >= nowTimestamp);
 
   const totalDosesTaken = uniqueTakenDoses.length;
   
@@ -349,10 +360,15 @@ export const CompoundDetailScreen = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
                   <defs>
-                    <linearGradient id="levelGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="levelGradientPast" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
                       <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="levelGradientFuture" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.12} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <XAxis 
@@ -376,7 +392,9 @@ export const CompoundDetailScreen = () => {
                         const data = payload[0].payload;
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                            <p className="text-xs text-muted-foreground">{data.date}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
+                            </p>
                             <p className="text-sm font-semibold">~{data.absoluteLevel} {compound.dose_unit}</p>
                             <p className="text-xs text-muted-foreground">
                               {data.level}% of peak concentration
@@ -387,16 +405,50 @@ export const CompoundDetailScreen = () => {
                       return null;
                     }}
                   />
+                  {/* Past levels - solid */}
                   <Area
-                    type="monotone"
-                    dataKey="level"
+                    type="basis"
+                    dataKey="pastLevel"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    fill="url(#levelGradient)"
+                    fill="url(#levelGradientPast)"
+                    isAnimationActive={false}
+                    connectNulls={false}
+                  />
+                  {/* Future projections - lighter */}
+                  <Area
+                    type="basis"
+                    dataKey="futureLevel"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 2"
+                    fill="url(#levelGradientFuture)"
+                    isAnimationActive={false}
+                    connectNulls={false}
+                  />
+                  {/* Continuous line for visual connection */}
+                  <Area
+                    type="basis"
+                    dataKey="level"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    fill="transparent"
                     isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
+            </div>
+            
+            {/* Legend for chart */}
+            <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-primary rounded-full" />
+                <span>History</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-primary/40 rounded-full border-dashed" style={{ borderWidth: '0 0 1px 0', borderStyle: 'dashed' }} />
+                <span>Projected decay</span>
+              </div>
             </div>
           </div>
         )}

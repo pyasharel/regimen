@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -20,6 +20,13 @@ import { checkAndScheduleStreakNotifications, initializeEngagementNotifications 
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
+import { DoseEditModal } from "@/components/DoseEditModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Dose {
   id: string;
@@ -52,6 +59,10 @@ export const TodayScreen = () => {
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // Dose edit modal state
+  const [editingDose, setEditingDose] = useState<Dose | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Subscription state
   const { 
@@ -914,7 +925,33 @@ export const TodayScreen = () => {
                     )}
                     
                     <div className="p-3">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        {/* 3-dot menu for editing */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button 
+                              className={`flex-shrink-0 p-1 -ml-1 rounded-lg transition-colors ${
+                                dose.taken 
+                                  ? 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50' 
+                                  : 'text-white/50 hover:text-white hover:bg-white/10'
+                              }`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setEditingDose(dose);
+                                setShowEditModal(true);
+                              }}
+                            >
+                              Edit dose
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
                           <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
@@ -1125,6 +1162,17 @@ export const TodayScreen = () => {
           }}
         />
       )}
+
+      {/* Dose Edit Modal */}
+      <DoseEditModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingDose(null);
+        }}
+        dose={editingDose}
+        onDoseUpdated={loadDoses}
+      />
     </div>
   );
 };

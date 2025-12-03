@@ -18,6 +18,7 @@ export interface MedicationLevel {
   timestamp: Date;
   level: number; // Percentage of peak (0-100+)
   absoluteLevel: number; // Actual amount remaining
+  isFuture?: boolean; // Whether this data point is a future projection
 }
 
 /**
@@ -58,39 +59,58 @@ const calculateLevelAtTime = (
  * @param startDate - Start of the calculation period
  * @param endDate - End of the calculation period
  * @param pointsPerDay - Number of data points per day (default 4 for 6-hour intervals)
+ * @param includeFuture - Whether to include future projections until clearance
  */
 export const calculateMedicationLevels = (
   doses: TakenDose[],
   halfLifeHours: number,
   startDate: Date,
   endDate: Date,
-  pointsPerDay: number = 4
+  pointsPerDay: number = 4,
+  includeFuture: boolean = false
 ): MedicationLevel[] => {
   if (doses.length === 0) return [];
 
+  const now = new Date();
   const timestamps: Set<number> = new Set();
   const intervalHours = 24 / pointsPerDay;
   
+  // Determine actual end date - if includeFuture, extend to clearance time
+  let actualEndDate = endDate;
+  if (includeFuture && doses.length > 0) {
+    const clearanceTime = estimateClearanceTime(doses, halfLifeHours);
+    if (clearanceTime && clearanceTime > endDate) {
+      actualEndDate = clearanceTime;
+    }
+  }
+  
   // Generate regular interval timestamps
   let currentTime = new Date(startDate);
-  while (currentTime <= endDate) {
+  while (currentTime <= actualEndDate) {
     timestamps.add(currentTime.getTime());
     currentTime = new Date(currentTime.getTime() + intervalHours * 60 * 60 * 1000);
   }
   
-  // Add timestamps at exact dose times and just after for sharp peaks
+  // Add timestamps at exact dose times and just after for smoother peaks
   for (const dose of doses) {
     const doseTime = dose.takenAt.getTime();
-    if (doseTime >= startDate.getTime() && doseTime <= endDate.getTime()) {
+    if (doseTime >= startDate.getTime() && doseTime <= actualEndDate.getTime()) {
       // Add point just before dose (1 minute before)
       timestamps.add(doseTime - 60000);
       // Add point at dose time (peak)
       timestamps.add(doseTime);
-      // Add point shortly after dose (5 minutes after)
-      timestamps.add(doseTime + 300000);
-      // Add point 1 hour after
-      timestamps.add(doseTime + 3600000);
+      // Add points at intervals after dose for smoother decay curve
+      timestamps.add(doseTime + 300000);   // 5 minutes
+      timestamps.add(doseTime + 1800000);  // 30 minutes
+      timestamps.add(doseTime + 3600000);  // 1 hour
+      timestamps.add(doseTime + 7200000);  // 2 hours
+      timestamps.add(doseTime + 14400000); // 4 hours
     }
+  }
+  
+  // Add current time marker if within range
+  if (now.getTime() >= startDate.getTime() && now.getTime() <= actualEndDate.getTime()) {
+    timestamps.add(now.getTime());
   }
   
   // Sort timestamps and calculate levels
@@ -102,7 +122,8 @@ export const calculateMedicationLevels = (
     return {
       timestamp,
       level: 0, // Will be calculated as percentage below
-      absoluteLevel
+      absoluteLevel,
+      isFuture: timestamp > now
     };
   });
   
