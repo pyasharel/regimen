@@ -53,26 +53,47 @@ export const checkAndRegenerateDoses = async (userId: string) => {
  */
 const regenerateCompoundDoses = async (compound: any) => {
   try {
-    // Delete only FUTURE UNTAKEN doses (preserve taken/skipped doses)
     const today = new Date().toISOString().split('T')[0];
+    
+    // Get existing doses for today to avoid duplicates
+    const { data: existingTodayDoses } = await supabase
+      .from('doses')
+      .select('scheduled_time')
+      .eq('compound_id', compound.id)
+      .eq('scheduled_date', today);
+    
+    const existingTodayTimes = new Set(existingTodayDoses?.map(d => d.scheduled_time) || []);
+    
+    // Delete only FUTURE UNTAKEN doses (preserve taken/skipped doses)
+    // Also exclude TODAY to avoid race conditions
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
     await supabase
       .from('doses')
       .delete()
       .eq('compound_id', compound.id)
-      .gte('scheduled_date', today)
+      .gte('scheduled_date', tomorrowStr)
       .eq('taken', false)
       .eq('skipped', false);
 
-    // Generate new doses from today forward
-    const doses = generateDoses(compound);
+    // Generate new doses from tomorrow forward (today is handled separately)
+    const doses = generateDoses(compound, tomorrowStr);
     
-    if (doses.length > 0) {
+    // Also check if today needs doses (only add missing ones)
+    const todayDoses = generateDosesForDate(compound, today);
+    const missingTodayDoses = todayDoses.filter(d => !existingTodayTimes.has(d.scheduled_time));
+    
+    const allDoses = [...missingTodayDoses, ...doses];
+    
+    if (allDoses.length > 0) {
       const { error: insertError } = await supabase
         .from('doses')
-        .insert(doses);
+        .insert(allDoses);
 
       if (insertError) throw insertError;
-      console.log(`✅ Generated ${doses.length} doses for ${compound.name}`);
+      console.log(`✅ Generated ${allDoses.length} doses for ${compound.name}`);
     }
   } catch (error) {
     console.error(`Error regenerating doses for ${compound.name}:`, error);
@@ -80,12 +101,87 @@ const regenerateCompoundDoses = async (compound: any) => {
 };
 
 /**
- * Generates doses for a compound from today forward
+ * Generates doses for a single specific date
+ */
+const generateDosesForDate = (compound: any, dateStr: string) => {
+  const doses: any[] = [];
+  const start = createLocalDate(compound.start_date);
+  if (!start) return doses;
+  
+  if (compound.schedule_type === 'As Needed') return doses;
+  
+  const date = createLocalDate(dateStr);
+  if (!date) return doses;
+  
+  const dayOfWeek = date.getDay();
+  const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Date must be >= start date
+  if (daysSinceStart < 0) return doses;
+  
+  // Check end date
+  if (compound.end_date) {
+    const end = createLocalDate(compound.end_date);
+    if (end && date > end) return doses;
+  }
+  
+  // Check schedule type
+  if (compound.schedule_type === 'Specific day(s)') {
+    const scheduleDays = compound.schedule_days?.map((d: string | number) => 
+      typeof d === 'string' ? parseInt(d) : d
+    ) || [];
+    if (!scheduleDays.includes(dayOfWeek)) return doses;
+  }
+  
+  if (compound.schedule_type === 'Every X Days' || compound.schedule_type.startsWith('Every ')) {
+    let everyXDays = 1;
+    const match = compound.schedule_type.match(/Every (\d+) Days?/i);
+    if (match) {
+      everyXDays = parseInt(match[1]);
+    } else if (compound.schedule_days?.[0]) {
+      everyXDays = typeof compound.schedule_days[0] === 'string' 
+        ? parseInt(compound.schedule_days[0]) 
+        : compound.schedule_days[0];
+    }
+    if (daysSinceStart % everyXDays !== 0) return doses;
+  }
+  
+  // Check cycle logic
+  if (compound.has_cycles && compound.cycle_weeks_on) {
+    const weeksOnInDays = Math.round(compound.cycle_weeks_on * 7);
+    if (compound.cycle_weeks_off) {
+      const weeksOffInDays = Math.round(compound.cycle_weeks_off * 7);
+      const cycleLength = weeksOnInDays + weeksOffInDays;
+      const positionInCycle = daysSinceStart % cycleLength;
+      if (positionInCycle >= weeksOnInDays) return doses;
+    } else {
+      if (daysSinceStart >= weeksOnInDays) return doses;
+    }
+  }
+  
+  const times = compound.time_of_day || ['08:00'];
+  times.forEach((time: string) => {
+    doses.push({
+      compound_id: compound.id,
+      user_id: compound.user_id,
+      scheduled_date: dateStr,
+      scheduled_time: time,
+      dose_amount: compound.intended_dose,
+      dose_unit: compound.dose_unit,
+      taken: false,
+    });
+  });
+  
+  return doses;
+};
+
+/**
+ * Generates doses for a compound from a start date forward
  * Note: This is for REGENERATION only. Initial dose creation (including past dates) 
  * is handled in AddCompoundScreen.tsx
  */
-const generateDoses = (compound: any) => {
-  const doses = [];
+const generateDoses = (compound: any, fromDateStr?: string) => {
+  const doses: any[] = [];
   const start = createLocalDate(compound.start_date);
   if (!start) {
     console.error('Invalid start date:', compound.start_date);
@@ -96,10 +192,17 @@ const generateDoses = (compound: any) => {
     return doses;
   }
   
-  // For regeneration: start from today or compound start date (whichever is later)
+  // For regeneration: start from specified date, today, or compound start date (whichever is latest)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const effectiveStart = start > today ? start : today;
+  
+  let effectiveStart = start > today ? start : today;
+  if (fromDateStr) {
+    const fromDate = createLocalDate(fromDateStr);
+    if (fromDate && fromDate > effectiveStart) {
+      effectiveStart = fromDate;
+    }
+  }
   
   // Generate 60 days forward from effective start
   const maxDays = 60;
