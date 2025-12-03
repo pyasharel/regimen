@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -13,6 +13,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TimePicker } from "@/components/ui/time-picker";
 import { IOSTimePicker } from "@/components/ui/ios-time-picker";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -178,6 +188,8 @@ export const AddCompoundScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [canProceed, setCanProceed] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Check if user can add/edit compound and trigger preview timer
   useEffect(() => {
@@ -478,7 +490,7 @@ export const AddCompoundScreen = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const generateDoses = (compoundId: string, userId: string) => {
+  const generateDoses = (compoundId: string, userId: string, includesPast: boolean = false) => {
     const doses = [];
     // Parse date in local timezone
     const start = createLocalDate(startDate);
@@ -492,20 +504,28 @@ export const AddCompoundScreen = () => {
       return doses;
     }
     
-    // Start from today or start date (whichever is later) to ensure future doses exist
+    // For editing with past start dates, include past doses if requested
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const effectiveStart = start > today ? start : today;
+    const effectiveStart = includesPast ? start : (start > today ? start : today);
     
-    // Calculate end boundary (60 days from effective start or user-specified end date, whichever is sooner)
+    // Calculate end boundary (60 days from today or user-specified end date, whichever is sooner)
     const maxDays = 60;
-    let daysToGenerate = maxDays;
+    let daysToGenerate: number;
+    
+    if (includesPast && start < today) {
+      // For past dates, calculate days from start to today + 60 days forward
+      const totalDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + maxDays;
+      daysToGenerate = totalDays;
+    } else {
+      daysToGenerate = maxDays;
+    }
     
     if (endDate) {
       const end = createLocalDate(endDate);
       if (end) {
         const daysDiff = Math.floor((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
-        daysToGenerate = Math.min(maxDays, Math.max(0, daysDiff + 1));
+        daysToGenerate = Math.min(daysToGenerate, Math.max(0, daysDiff + 1));
       }
     }
     
@@ -542,8 +562,9 @@ export const AddCompoundScreen = () => {
       } else if (enableCycle && cycleMode === 'one-time') {
         // For one-time cycles, only generate for the "on" weeks
         const onPeriodDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
-        if (i >= onPeriodDays) {
-          break; // Stop generating after on period ends
+        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceStart >= onPeriodDays) {
+          continue;
         }
       }
 
@@ -581,6 +602,46 @@ export const AddCompoundScreen = () => {
       }
     } catch (err) {
       console.log('Haptic failed:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingCompound) return;
+    
+    setDeleting(true);
+    try {
+      // Delete all doses for this compound
+      const { error: dosesError } = await supabase
+        .from('doses')
+        .delete()
+        .eq('compound_id', editingCompound.id);
+
+      if (dosesError) throw dosesError;
+
+      // Delete the compound
+      const { error: compoundError } = await supabase
+        .from('compounds')
+        .delete()
+        .eq('id', editingCompound.id);
+
+      if (compoundError) throw compoundError;
+
+      triggerHaptic('medium');
+      toast({
+        title: "Compound deleted",
+        description: `${name} has been removed from your stack`
+      });
+      navigate('/stack');
+    } catch (error) {
+      console.error('Error deleting compound:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete compound",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
@@ -641,8 +702,14 @@ export const AddCompoundScreen = () => {
 
         if (updateError) throw updateError;
 
-        // Delete only FUTURE doses (preserve taken/skipped doses)
+        // Check if start date was moved earlier
+        const originalStartDate = createLocalDate(editingCompound.start_date);
+        const newStartDate = createLocalDate(startDate);
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDateMovedEarlier = originalStartDate && newStartDate && newStartDate < originalStartDate;
+
+        // Delete only FUTURE untaken doses (preserve taken/skipped doses)
         const todayStr = formatDate(today);
         const { error: deleteError } = await supabase
           .from('doses')
@@ -654,13 +721,33 @@ export const AddCompoundScreen = () => {
 
         if (deleteError) throw deleteError;
 
-        // Generate new doses from today forward
-        const doses = generateDoses(editingCompound.id, user.id);
-        const { error: dosesUpdateError } = await supabase
-          .from('doses')
-          .insert(doses);
+        // If start date moved earlier, also delete any untaken past doses from the new start date
+        // (so we can regenerate them with correct schedule)
+        if (startDateMovedEarlier && newStartDate) {
+          const newStartStr = formatDate(newStartDate);
+          const { error: pastDeleteError } = await supabase
+            .from('doses')
+            .delete()
+            .eq('compound_id', editingCompound.id)
+            .gte('scheduled_date', newStartStr)
+            .lt('scheduled_date', todayStr)
+            .eq('taken', false)
+            .eq('skipped', false);
+          
+          if (pastDeleteError) throw pastDeleteError;
+        }
 
-        if (dosesUpdateError) throw dosesUpdateError;
+        // Generate new doses - include past dates if start date was moved earlier
+        const includePast = startDateMovedEarlier && newStartDate && newStartDate < today;
+        const doses = generateDoses(editingCompound.id, user.id, includePast);
+        
+        if (doses.length > 0) {
+          const { error: dosesUpdateError } = await supabase
+            .from('doses')
+            .insert(doses);
+
+          if (dosesUpdateError) throw dosesUpdateError;
+        }
 
         // Success haptic and navigate immediately
         triggerHaptic('medium');
@@ -797,14 +884,24 @@ export const AddCompoundScreen = () => {
     <div className="flex min-h-screen flex-col bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <header className="border-b border-border px-4 py-4 mt-5">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/stack")}
-            className="rounded-lg p-2 hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/stack")}
+              className="rounded-lg p-2 hover:bg-muted transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
+          </div>
+          {isEditing && (
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              className="rounded-lg p-2 hover:bg-destructive/10 transition-colors text-destructive"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -1527,6 +1624,28 @@ export const AddCompoundScreen = () => {
         onOpenChange={setShowPaywall}
         message="Subscribe to unlock all features"
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this compound and all its dose history. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
