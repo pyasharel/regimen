@@ -746,19 +746,36 @@ export const AddCompoundScreen = () => {
         triggerHaptic('medium');
         navigate("/stack");
 
-        // Reschedule notifications in background (non-blocking)
+        // Reschedule notifications in background (non-blocking) - only for active compounds
         supabase
           .from('doses')
-          .select('*, compounds(name)')
+          .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
           .eq('user_id', user.id)
           .eq('taken', false)
           .then(({ data: allDoses }) => {
             if (allDoses) {
-              const dosesWithCompoundName = allDoses.map(dose => ({
+              // Filter active compounds and non-off-cycle doses
+              const activeDoses = allDoses.filter(dose => {
+                if (dose.compounds?.is_active === false) return false;
+                if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
+                  const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
+                  const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+                  const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+                  const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+                  if (dose.compounds.cycle_weeks_off) {
+                    const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
+                    const cycleLength = weeksOnInDays + weeksOffInDays;
+                    const positionInCycle = daysSinceStart % cycleLength;
+                    if (positionInCycle >= weeksOnInDays) return false;
+                  } else if (daysSinceStart >= weeksOnInDays) return false;
+                }
+                return true;
+              });
+              const dosesWithCompoundName = activeDoses.map(dose => ({
                 ...dose,
                 compound_name: dose.compounds?.name || 'Medication'
               }));
-            scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
+              scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
             }
           });
 
@@ -850,15 +867,32 @@ export const AddCompoundScreen = () => {
       triggerHaptic('medium');
       navigate('/today');
 
-      // Schedule notifications in background (non-blocking)
+      // Schedule notifications in background (non-blocking) - only for active compounds
       supabase
         .from('doses')
-        .select('*, compounds(name)')
+        .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
         .eq('user_id', user.id)
         .eq('taken', false)
         .then(({ data: allDoses }) => {
           if (allDoses) {
-            const dosesWithCompoundName = allDoses.map(dose => ({
+            // Filter active compounds and non-off-cycle doses
+            const activeDoses = allDoses.filter(dose => {
+              if (dose.compounds?.is_active === false) return false;
+              if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
+                const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
+                const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+                const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+                const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+                if (dose.compounds.cycle_weeks_off) {
+                  const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
+                  const cycleLength = weeksOnInDays + weeksOffInDays;
+                  const positionInCycle = daysSinceStart % cycleLength;
+                  if (positionInCycle >= weeksOnInDays) return false;
+                } else if (daysSinceStart >= weeksOnInDays) return false;
+              }
+              return true;
+            });
+            const dosesWithCompoundName = activeDoses.map(dose => ({
               ...dose,
               compound_name: dose.compounds?.name || 'Medication'
             }));
