@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -610,33 +610,26 @@ export const AddCompoundScreen = () => {
     
     setDeleting(true);
     try {
-      // Delete all doses for this compound
-      const { error: dosesError } = await supabase
-        .from('doses')
-        .delete()
-        .eq('compound_id', editingCompound.id);
-
-      if (dosesError) throw dosesError;
-
-      // Delete the compound
+      // Soft delete - set is_active to false
+      // This preserves dose history for the user's records
       const { error: compoundError } = await supabase
         .from('compounds')
-        .delete()
+        .update({ is_active: false })
         .eq('id', editingCompound.id);
 
       if (compoundError) throw compoundError;
 
       triggerHaptic('medium');
       toast({
-        title: "Compound deleted",
-        description: `${name} has been removed from your stack`
+        title: "Compound removed",
+        description: `${name} has been removed from your stack. Dose history preserved.`
       });
       navigate('/stack');
     } catch (error) {
-      console.error('Error deleting compound:', error);
+      console.error('Error removing compound:', error);
       toast({
         title: "Error",
-        description: "Failed to delete compound",
+        description: "Failed to remove compound",
         variant: "destructive"
       });
     } finally {
@@ -894,14 +887,8 @@ export const AddCompoundScreen = () => {
             </button>
             <h1 className="text-xl font-bold">{isEditing ? 'Edit Compound' : 'Add Compound'}</h1>
           </div>
-          {isEditing && (
-            <button
-              onClick={() => setShowDeleteDialog(true)}
-              className="rounded-lg p-2 hover:bg-destructive/10 transition-colors text-destructive"
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
-          )}
+          {/* Spacer to balance header */}
+          <div className="w-9" />
         </div>
       </header>
 
@@ -1574,6 +1561,16 @@ export const AddCompoundScreen = () => {
           />
         </div>
 
+        {/* Delete Compound Button - Only show when editing */}
+        {isEditing && (
+          <button
+            onClick={() => setShowDeleteDialog(true)}
+            className="w-full p-4 text-destructive hover:bg-destructive/10 rounded-lg transition-colors text-center font-medium"
+          >
+            Remove from Stack
+          </button>
+        )}
+
       </div>
 
       {/* Save Button */}
@@ -1629,9 +1626,9 @@ export const AddCompoundScreen = () => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this compound and all its dose history. This action cannot be undone.
+              This will remove the compound from your active stack. Your dose history will be preserved for your records.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1641,7 +1638,7 @@ export const AddCompoundScreen = () => {
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              {deleting ? 'Removing...' : 'Remove'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
