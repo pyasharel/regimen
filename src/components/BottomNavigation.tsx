@@ -23,7 +23,7 @@ export const BottomNavigation = () => {
     { name: "Today", path: "/today", icon: Home },
     { name: "My Stack", path: "/stack", icon: Layers },
     { name: "Progress", path: "/progress", icon: TrendingUp },
-    { name: "Insights", path: "/insights", icon: BarChart3 },
+    // { name: "Insights", path: "/insights", icon: BarChart3 }, // Hidden for beta
     { name: "Settings", path: "/settings", icon: Settings },
   ];
 
