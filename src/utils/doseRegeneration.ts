@@ -23,11 +23,13 @@ export const checkAndRegenerateDoses = async (userId: string) => {
     fourteenDaysFromNow.setDate(today.getDate() + 14);
 
     for (const compound of compounds) {
-      // Get last scheduled dose for this compound
+      // Get last scheduled dose for this compound (only untaken future doses)
       const { data: lastDose } = await supabase
         .from('doses')
         .select('scheduled_date')
         .eq('compound_id', compound.id)
+        .eq('taken', false)
+        .eq('skipped', false)
         .order('scheduled_date', { ascending: false })
         .limit(1)
         .single();
@@ -47,18 +49,21 @@ export const checkAndRegenerateDoses = async (userId: string) => {
 
 /**
  * Regenerates doses for a single compound
+ * IMPORTANT: Only deletes UNTAKEN future doses to preserve user's history
  */
 const regenerateCompoundDoses = async (compound: any) => {
   try {
-    // Delete future doses
+    // Delete only FUTURE UNTAKEN doses (preserve taken/skipped doses)
     const today = new Date().toISOString().split('T')[0];
     await supabase
       .from('doses')
       .delete()
       .eq('compound_id', compound.id)
-      .gte('scheduled_date', today);
+      .gte('scheduled_date', today)
+      .eq('taken', false)
+      .eq('skipped', false);
 
-    // Generate new doses
+    // Generate new doses from today forward
     const doses = generateDoses(compound);
     
     if (doses.length > 0) {
@@ -75,7 +80,9 @@ const regenerateCompoundDoses = async (compound: any) => {
 };
 
 /**
- * Generates doses for a compound (same logic as AddCompoundScreen)
+ * Generates doses for a compound from today forward
+ * Note: This is for REGENERATION only. Initial dose creation (including past dates) 
+ * is handled in AddCompoundScreen.tsx
  */
 const generateDoses = (compound: any) => {
   const doses = [];
@@ -89,12 +96,12 @@ const generateDoses = (compound: any) => {
     return doses;
   }
   
-  // Start from compound's actual start date to include past doses
+  // For regeneration: start from today or compound start date (whichever is later)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const effectiveStart = start;
+  const effectiveStart = start > today ? start : today;
   
-  // Generate 60 days forward
+  // Generate 60 days forward from effective start
   const maxDays = 60;
   let daysToGenerate = maxDays;
   
@@ -111,6 +118,9 @@ const generateDoses = (compound: any) => {
     date.setDate(date.getDate() + i);
     const dayOfWeek = date.getDay();
     
+    // Calculate days since ORIGINAL start date for schedule calculations
+    const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
     // Check schedule type
     if (compound.schedule_type === 'Specific day(s)') {
       const scheduleDays = compound.schedule_days?.map((d: string | number) => 
@@ -121,23 +131,43 @@ const generateDoses = (compound: any) => {
       }
     }
     
-    if (compound.schedule_type === 'Every X Days') {
-      const everyXDays = compound.schedule_days?.[0] || 1;
-      if (i % everyXDays !== 0) {
+    // For "Every X Days", check relative to original start date
+    if (compound.schedule_type === 'Every X Days' || compound.schedule_type.startsWith('Every ')) {
+      // Extract X from either format: "Every X Days" or schedule_days[0]
+      let everyXDays = 1;
+      const match = compound.schedule_type.match(/Every (\d+) Days?/i);
+      if (match) {
+        everyXDays = parseInt(match[1]);
+      } else if (compound.schedule_days?.[0]) {
+        everyXDays = typeof compound.schedule_days[0] === 'string' 
+          ? parseInt(compound.schedule_days[0]) 
+          : compound.schedule_days[0];
+      }
+      
+      // Use days since ORIGINAL start to maintain schedule continuity
+      if (daysSinceStart % everyXDays !== 0) {
         continue;
       }
     }
 
     // Check cycle logic
-    if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
-      const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (compound.has_cycles && compound.cycle_weeks_on) {
       const weeksOnInDays = Math.round(compound.cycle_weeks_on * 7);
-      const weeksOffInDays = Math.round(compound.cycle_weeks_off * 7);
-      const cycleLength = weeksOnInDays + weeksOffInDays;
-      const positionInCycle = daysSinceStart % cycleLength;
       
-      if (positionInCycle >= weeksOnInDays) {
-        continue;
+      if (compound.cycle_weeks_off) {
+        // Continuous cycle (on/off/on/off...)
+        const weeksOffInDays = Math.round(compound.cycle_weeks_off * 7);
+        const cycleLength = weeksOnInDays + weeksOffInDays;
+        const positionInCycle = daysSinceStart % cycleLength;
+        
+        if (positionInCycle >= weeksOnInDays) {
+          continue;
+        }
+      } else {
+        // One-time cycle - stop after the "on" period
+        if (daysSinceStart >= weeksOnInDays) {
+          continue;
+        }
       }
     }
 
