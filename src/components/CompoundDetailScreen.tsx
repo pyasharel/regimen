@@ -253,15 +253,15 @@ export const CompoundDetailScreen = () => {
         {/* Estimated Level */}
         <div className="rounded-xl bg-card border border-border p-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-muted-foreground">Est. in System</span>
+            <span className="text-xs text-muted-foreground">Est. Level</span>
           </div>
           {halfLifeData && currentLevel ? (
             <>
-              <div className="text-xl font-bold text-primary">
-                ~{currentLevel.absoluteLevel.toFixed(2)}
+              <div className="text-xl font-bold">
+                <span className="text-primary">~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}</span>
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5">
-                {compound.dose_unit} remaining
+                in system
               </div>
             </>
           ) : (

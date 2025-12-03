@@ -368,13 +368,13 @@ export const MyStackScreen = () => {
               >
                 <div className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="mt-1 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold text-foreground">{compound.name}</h3>
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-2">
+                          <h3 className="text-lg font-bold text-foreground leading-tight">{compound.name}</h3>
                           {hasHalfLife && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary flex-shrink-0 mt-0.5">
                               <Activity className="h-3 w-3" />
                               <span className="text-[10px] font-semibold">LEVELS</span>
                             </div>
