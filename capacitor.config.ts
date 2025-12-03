@@ -1,8 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 // Version constants exported for use in components
-export const appVersion = '0.1.2';
-export const appBuild = '5';
+// Update these values, then run: ./sync-version.sh
+export const appVersion = '1.0.0';
+export const appBuild = '2';
 
 const config: CapacitorConfig = {
   appId: 'com.regimen.app',
