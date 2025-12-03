@@ -117,7 +117,7 @@ export const CompoundDetailScreen = () => {
 
   const takenDosesForCalc: TakenDose[] = uniqueTakenDoses.map(d => ({
     id: d.id,
-    takenAt: new Date(d.taken_at!),
+    takenAt: new Date(d.taken_at! + 'Z'), // Add 'Z' to treat as UTC consistently
     amount: d.dose_amount,
     unit: d.dose_unit
   }));
