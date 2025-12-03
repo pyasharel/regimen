@@ -926,18 +926,18 @@ export const TodayScreen = () => {
                     
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
-                        {/* 3-dot menu for editing */}
+                        {/* Subtle edit menu - only appears on interaction */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button 
-                              className={`flex-shrink-0 p-1 -ml-1 rounded-lg transition-colors ${
+                              className={`flex-shrink-0 p-0.5 -ml-0.5 rounded transition-opacity ${
                                 dose.taken 
-                                  ? 'text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50' 
-                                  : 'text-white/50 hover:text-white hover:bg-white/10'
+                                  ? 'text-muted-foreground/30 hover:text-muted-foreground/60' 
+                                  : 'text-white/25 hover:text-white/50'
                               }`}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-3.5 w-3.5" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
