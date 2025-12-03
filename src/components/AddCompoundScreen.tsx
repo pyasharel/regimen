@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -1561,14 +1561,20 @@ export const AddCompoundScreen = () => {
           />
         </div>
 
-        {/* Delete Compound Button - Only show when editing */}
+        {/* Remove from Stack - Only show when editing */}
         {isEditing && (
-          <button
-            onClick={() => setShowDeleteDialog(true)}
-            className="w-full p-4 text-destructive hover:bg-destructive/10 rounded-lg transition-colors text-center font-medium"
-          >
-            Remove from Stack
-          </button>
+          <div className="pt-6 border-t border-border">
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              className="w-full flex items-center justify-center gap-2 p-4 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="text-sm">Remove from Stack</span>
+            </button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Your dose history will be preserved
+            </p>
+          </div>
         )}
 
       </div>
