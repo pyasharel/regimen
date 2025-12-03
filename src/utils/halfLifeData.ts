@@ -97,7 +97,7 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     notes: 'Nebido'
   },
   'nandrolone decanoate': {
-    halfLifeHours: 360, // ~15 days
+    halfLifeHours: 288, // ~12 days (range: 6-12 days)
     category: 'steroid',
     displayName: 'Nandrolone Decanoate',
     notes: 'Deca-Durabolin'
@@ -154,7 +154,7 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Sustanon 250',
   },
   'deca': {
-    halfLifeHours: 360, // ~15 days
+    halfLifeHours: 288, // ~12 days (range: 6-12 days)
     category: 'steroid',
     displayName: 'Deca',
   },
@@ -221,7 +221,7 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
   
   // More peptides with known half-lives
   'bpc-157': {
-    halfLifeHours: 4,
+    halfLifeHours: 5, // ~4-6 hours estimated
     category: 'peptide',
     displayName: 'BPC-157',
   },
@@ -241,9 +241,28 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Ipamorelin',
   },
   'cjc-1295': {
-    halfLifeHours: 168, // With DAC
+    halfLifeHours: 168, // ~7 days WITH DAC (without DAC: ~30 min)
     category: 'peptide',
     displayName: 'CJC-1295',
+    notes: 'With DAC modification - without DAC only ~30 min'
+  },
+  'cjc-1295 dac': {
+    halfLifeHours: 168, // ~5-8 days
+    category: 'peptide',
+    displayName: 'CJC-1295 DAC',
+    notes: 'Drug Affinity Complex extends half-life'
+  },
+  'cjc-1295 no dac': {
+    halfLifeHours: 0.5, // ~30 minutes
+    category: 'peptide',
+    displayName: 'CJC-1295 (no DAC)',
+    notes: 'Also called Mod GRF 1-29'
+  },
+  'mod grf 1-29': {
+    halfLifeHours: 0.5, // ~30 minutes
+    category: 'peptide',
+    displayName: 'Mod GRF 1-29',
+    notes: 'CJC-1295 without DAC'
   },
   'sermorelin': {
     halfLifeHours: 0.2, // ~10-20 minutes
