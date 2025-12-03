@@ -811,8 +811,12 @@ export const AddCompoundScreen = () => {
 
         if (compoundError) throw compoundError;
 
-        // Generate doses for next 30 days
-        const doses = generateDoses(compound.id, user.id);
+        // Generate doses - include past dates if start date is in the past
+        const startDateObj = createLocalDate(startDate);
+        const todayObj = new Date();
+        todayObj.setHours(0, 0, 0, 0);
+        const shouldIncludePast = startDateObj && startDateObj < todayObj;
+        const doses = generateDoses(compound.id, user.id, shouldIncludePast);
         const { error: dosesError } = await supabase
           .from('doses')
           .insert(doses);

@@ -89,10 +89,10 @@ const generateDoses = (compound: any) => {
     return doses;
   }
   
-  // Start from today or start date (whichever is later)
+  // Start from compound's actual start date to include past doses
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const effectiveStart = start > today ? start : today;
+  const effectiveStart = start;
   
   // Generate 60 days forward
   const maxDays = 60;
