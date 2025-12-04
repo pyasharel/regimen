@@ -493,11 +493,11 @@ export const CompoundDetailScreen = () => {
             <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 bg-primary rounded-full" />
-                <span>History</span>
+                <span>Current</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 bg-primary/40 rounded-full border-dashed" style={{ borderWidth: '0 0 1px 0', borderStyle: 'dashed' }} />
-                <span>Projected decay</span>
+                <span>Projected clearance</span>
               </div>
             </div>
           </div>
@@ -574,13 +574,13 @@ export const CompoundDetailScreen = () => {
           )}
         </div>
 
-        {/* Share Button */}
+        {/* Share Link */}
         <button
           onClick={handleShare}
-          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors py-2"
         >
-          <Share2 className="h-4 w-4" />
-          <span className="text-sm font-medium">Share</span>
+          <Share2 className="h-3 w-3" />
+          <span>Share {compound.name}</span>
         </button>
 
       </div>

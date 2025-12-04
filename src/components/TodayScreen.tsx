@@ -891,7 +891,36 @@ export const TodayScreen = () => {
                 return false;
               });
 
-              const renderDoseCard = (dose: typeof doses[0]) => (
+              // Check if dose is within ~2 hours of scheduled time (for pulse animation)
+              const isDoseNearScheduledTime = (dose: typeof doses[0]) => {
+                if (dose.taken) return false;
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                
+                // Only pulse for today's doses
+                if (dose.scheduled_date !== todayStr) return false;
+                
+                // Parse scheduled time
+                let scheduledHour = 8;
+                if (dose.scheduled_time === 'Morning') scheduledHour = 8;
+                else if (dose.scheduled_time === 'Afternoon') scheduledHour = 14;
+                else if (dose.scheduled_time === 'Evening') scheduledHour = 18;
+                else {
+                  const match = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
+                  if (match) scheduledHour = parseInt(match[1]);
+                }
+                
+                const currentHour = now.getHours();
+                const hourDiff = Math.abs(currentHour - scheduledHour);
+                
+                // Pulse if within 2 hours before or after
+                return hourDiff <= 2;
+              };
+              
+              const renderDoseCard = (dose: typeof doses[0]) => {
+                const shouldPulse = isDoseNearScheduledTime(dose);
+                
+                return (
                   <div
                     key={dose.id}
                     ref={(el) => {
@@ -926,32 +955,6 @@ export const TodayScreen = () => {
                     
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
-                        {/* Edit menu (3-dots) to the left */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              onClick={(e) => e.stopPropagation()}
-                              className={`flex-shrink-0 p-1 -ml-1 rounded transition-colors ${
-                                dose.taken 
-                                  ? 'text-muted-foreground/30 hover:text-muted-foreground/50' 
-                                  : 'text-white/30 hover:text-white/50'
-                              }`}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            <DropdownMenuItem onClick={(e) => { 
-                              e.stopPropagation(); 
-                              setEditingDose(dose);
-                              setShowEditModal(true);
-                            }}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit Dose
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
                           <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
@@ -980,7 +983,33 @@ export const TodayScreen = () => {
                           </div>
                         </div>
                         
-                        {/* Check button */}
+                        {/* Edit menu (3-dots) between name and checkbox */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className={`flex-shrink-0 p-1.5 rounded transition-colors ${
+                                dose.taken 
+                                  ? 'text-muted-foreground/40 hover:text-muted-foreground/60' 
+                                  : 'text-white/40 hover:text-white/60'
+                              }`}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setEditingDose(dose);
+                              setShowEditModal(true);
+                            }}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit Dose
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {/* Check button with optional pulse */}
                         <button
                           onClick={() => toggleDose(dose.id, dose.taken)}
                           disabled={animatingDoses.has(dose.id)}
@@ -988,7 +1017,7 @@ export const TodayScreen = () => {
                             dose.taken
                               ? 'bg-success border-success'
                               : 'border-white/40 hover:border-white active:scale-95'
-                          }`}
+                          } ${shouldPulse ? 'animate-gentle-pulse' : ''}`}
                           style={{
                             ...(animatingDoses.has(dose.id) && dose.taken ? {
                               animation: 'checkbox-check 0.2s ease-out'
@@ -1016,6 +1045,7 @@ export const TodayScreen = () => {
                     </div>
                   </div>
                 );
+              };
 
                 return (
                   <>
