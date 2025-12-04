@@ -12,11 +12,14 @@ interface StackShareCardProps {
 interface CompoundShareCardProps {
   name: string;
   dose: string;
-  schedule: string;
+  scheduleFrequency: string;
+  scheduleTime: string;
   startDate: string;
   totalDoses: number;
   estimatedLevel?: string;
   doseUnit?: string;
+  nextDose?: string;
+  nextDoseTime?: string;
   chartData?: Array<{
     date: string;
     level: number;
@@ -139,7 +142,7 @@ StackShareCard.displayName = 'StackShareCard';
  * Share card for Compound Detail - matches the app's actual UI
  */
 export const CompoundShareCard = React.forwardRef<HTMLDivElement, CompoundShareCardProps>(
-  ({ name, dose, schedule, startDate, totalDoses, estimatedLevel, doseUnit, chartData }, ref) => {
+  ({ name, dose, scheduleFrequency, scheduleTime, startDate, totalDoses, estimatedLevel, doseUnit, nextDose, nextDoseTime, chartData }, ref) => {
     const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
     
     const colors = isDark ? {
@@ -287,7 +290,7 @@ export const CompoundShareCard = React.forwardRef<HTMLDivElement, CompoundShareC
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
           gap: '12px',
-          marginBottom: '16px',
+          marginBottom: '12px',
         }}>
           {/* Current Dose - highlighted */}
           <div style={{
@@ -301,9 +304,6 @@ export const CompoundShareCard = React.forwardRef<HTMLDivElement, CompoundShareC
             </div>
             <div style={{ fontSize: '16px', fontWeight: 700, color: colors.text }}>
               {dose}
-            </div>
-            <div style={{ fontSize: '10px', color: colors.textMuted, marginTop: '2px' }}>
-              {schedule}
             </div>
           </div>
 
@@ -355,6 +355,50 @@ export const CompoundShareCard = React.forwardRef<HTMLDivElement, CompoundShareC
             </div>
             <div style={{ fontSize: '10px', color: colors.textMuted, marginTop: '2px' }}>
               logged
+            </div>
+          </div>
+        </div>
+
+        {/* Schedule + Next Dose Row */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '12px',
+          marginBottom: '16px',
+        }}>
+          {/* Schedule */}
+          <div style={{
+            background: colors.card,
+            border: `1px solid ${colors.border}`,
+            borderRadius: '12px',
+            padding: '12px',
+          }}>
+            <div style={{ fontSize: '10px', color: colors.textMuted, marginBottom: '4px' }}>
+              Schedule
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+              {scheduleFrequency}
+            </div>
+            <div style={{ fontSize: '10px', color: colors.textMuted, marginTop: '2px' }}>
+              {scheduleTime}
+            </div>
+          </div>
+
+          {/* Next Dose */}
+          <div style={{
+            background: nextDose ? colors.cardHighlight : colors.card,
+            border: `1px solid ${nextDose ? colors.cardHighlightBorder : colors.border}`,
+            borderRadius: '12px',
+            padding: '12px',
+          }}>
+            <div style={{ fontSize: '10px', color: colors.textMuted, marginBottom: '4px' }}>
+              Next Dose
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: nextDose ? colors.text : colors.textMuted }}>
+              {nextDose || '—'}
+            </div>
+            <div style={{ fontSize: '10px', color: colors.textMuted, marginTop: '2px' }}>
+              {nextDoseTime || 'Not scheduled'}
             </div>
           </div>
         </div>
