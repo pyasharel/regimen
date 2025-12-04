@@ -314,34 +314,31 @@ export const CompoundDetailScreen = () => {
             <div className="text-xl font-bold text-foreground">
               {formatDose(compound.intended_dose, compound.dose_unit)}
             </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
-              {getScheduleDaysDisplay()} • {compound.time_of_day.map(t => formatTime(t)).join(', ')}
-            </div>
           </div>
 
-        {/* Estimated Level */}
-        <div className="rounded-xl bg-card border border-border p-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-muted-foreground">Est. Level</span>
+          {/* Estimated Level */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Est. Level</span>
+            </div>
+            {halfLifeData && currentLevel ? (
+              <>
+                <div className="text-xl font-bold">
+                  <span className="text-primary">~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  in system
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-xl font-bold text-muted-foreground">—</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {halfLifeData ? 'Log doses to track' : 'Not available'}
+                </div>
+              </>
+            )}
           </div>
-          {halfLifeData && currentLevel ? (
-            <>
-              <div className="text-xl font-bold">
-                <span className="text-primary">~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}</span>
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                in system
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-xl font-bold text-muted-foreground">—</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                {halfLifeData ? 'Log doses to track' : 'Not available'}
-              </div>
-            </>
-          )}
-        </div>
 
           {/* Started */}
           <div className="rounded-xl bg-card border border-border p-3">
@@ -368,18 +365,47 @@ export const CompoundDetailScreen = () => {
           </div>
         </div>
 
-        {/* Next Scheduled - Compact */}
-        {nextScheduledDose && (
-          <div className="rounded-xl bg-primary/10 border border-primary/20 p-3 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] text-muted-foreground">Next Scheduled</span>
-              <div className="font-semibold text-sm">
-                {format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d')} • {formatTime(nextScheduledDose.scheduled_time)}
+        {/* Schedule + Next Dose Row */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Schedule */}
+          <div className="rounded-xl bg-card border border-border p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Calendar className="h-3 w-3 text-primary" />
+              <span className="text-xs text-muted-foreground">Schedule</span>
+            </div>
+            <div className="text-sm font-semibold">
+              {getScheduleDaysDisplay()}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {compound.time_of_day.map(t => formatTime(t)).join(', ')}
+            </div>
+          </div>
+
+          {/* Next Dose */}
+          {nextScheduledDose ? (
+            <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="h-3 w-3 text-primary" />
+                <span className="text-xs text-muted-foreground">Next Dose</span>
+              </div>
+              <div className="text-sm font-semibold">
+                {format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d')}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {formatTime(nextScheduledDose.scheduled_time)}
               </div>
             </div>
-            <Clock className="h-6 w-6 text-primary/50" />
-          </div>
-        )}
+          ) : (
+            <div className="rounded-xl bg-card border border-border p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="h-3 w-3 text-primary" />
+                <span className="text-xs text-muted-foreground">Next Dose</span>
+              </div>
+              <div className="text-sm font-semibold text-muted-foreground">—</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Not scheduled</div>
+            </div>
+          )}
+        </div>
 
         {/* Half-life Info - Compact */}
         {halfLifeData && (
@@ -602,11 +628,14 @@ export const CompoundDetailScreen = () => {
             ref={shareCardRef}
             name={compound.name}
             dose={formatDose(compound.intended_dose, compound.dose_unit)}
-            schedule={`${getScheduleDaysDisplay()} • ${compound.time_of_day.map(t => formatTime(t)).join(', ')}`}
+            scheduleFrequency={getScheduleDaysDisplay()}
+            scheduleTime={compound.time_of_day.map(t => formatTime(t)).join(', ')}
             startDate={format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
             totalDoses={totalDosesTaken}
             estimatedLevel={currentLevel ? `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` : undefined}
             doseUnit={compound.dose_unit}
+            nextDose={nextScheduledDose ? format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d') : undefined}
+            nextDoseTime={nextScheduledDose ? formatTime(nextScheduledDose.scheduled_time) : undefined}
             chartData={chartData.length > 0 ? chartData.map(d => ({ date: d.date, level: d.level, isFuture: d.isFuture })) : undefined}
           />
         </div>
