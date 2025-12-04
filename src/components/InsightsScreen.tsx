@@ -140,23 +140,26 @@ export const InsightsScreen = () => {
     const compound = compounds.find(c => c.id === selectedCompoundId);
     if (!compound) return [];
 
+    // Use scheduled_date instead of taken_at to capture retroactive updates
     const compoundDoses = doses
       .filter(d => d.compound_id === selectedCompoundId)
-      .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime());
+      .sort((a, b) => {
+        const dateA = a.scheduled_date;
+        const dateB = b.scheduled_date;
+        return dateA.localeCompare(dateB);
+      });
 
     if (compoundDoses.length === 0) return [];
 
-    const changes: DosageChange[] = [];
+    // First pass: identify ALL dosage changes (including before cutoff)
+    const allChanges: DosageChange[] = [];
     let lastDoseAmount = -1;
     let lastDoseUnit = "";
 
     compoundDoses.forEach(dose => {
-      const doseDate = parseISO(dose.taken_at!);
-      if (doseDate < cutoffDate) return;
-
-      // Only add if this is a dose change
       if (dose.dose_amount !== lastDoseAmount || dose.dose_unit !== lastDoseUnit) {
-        changes.push({
+        const doseDate = parseISO(dose.scheduled_date);
+        allChanges.push({
           date: doseDate,
           dateFormatted: format(doseDate, 'MMM d'),
           amount: dose.dose_amount,
@@ -169,7 +172,8 @@ export const InsightsScreen = () => {
       }
     });
 
-    return changes;
+    // Filter to only show changes within the time frame
+    return allChanges.filter(change => change.date >= cutoffDate);
   }, [selectedCompoundId, compounds, doses, cutoffDate]);
 
   // Prepare chart data
@@ -213,8 +217,21 @@ export const InsightsScreen = () => {
 
   // Custom dot component that shows dosage label
   const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props;
+    const { cx, cy, payload, index } = props;
     if (!cx || !cy) return null;
+    
+    // Calculate badge width based on text length
+    const badgeWidth = payload?.dosageLabel ? Math.max(45, payload.dosageLabel.length * 7 + 16) : 0;
+    const isLastPoint = index === chartData.length - 1;
+    const isFirstPoint = index === 0;
+    
+    // Adjust badge position for edge points
+    let badgeX = cx - badgeWidth / 2;
+    if (isLastPoint && payload?.dosageLabel) {
+      badgeX = cx - badgeWidth + 10; // Shift left for last point
+    } else if (isFirstPoint && payload?.dosageLabel) {
+      badgeX = cx - 10; // Shift right for first point
+    }
     
     return (
       <g>
@@ -229,16 +246,16 @@ export const InsightsScreen = () => {
           <g>
             {/* Badge background */}
             <rect
-              x={cx - 20}
+              x={badgeX}
               y={cy - 28}
-              width={40}
+              width={badgeWidth}
               height={18}
               rx={4}
               fill="hsl(var(--primary))"
             />
             {/* Badge text */}
             <text
-              x={cx}
+              x={badgeX + badgeWidth / 2}
               y={cy - 16}
               textAnchor="middle"
               fill="hsl(var(--primary-foreground))"
@@ -409,7 +426,7 @@ export const InsightsScreen = () => {
             <Card className="p-4 bg-muted/30">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={chartData} margin={{ top: 35, right: 10, left: 0, bottom: 5 }}>
+                  <LineChart data={chartData} margin={{ top: 35, right: 40, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis 
                       dataKey="date" 
