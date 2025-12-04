@@ -387,7 +387,7 @@ export const CompoundDetailScreen = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm">Level History</span>
+                <span className="font-semibold text-sm">Estimated Levels</span>
               </div>
               <div className="flex gap-1">
                 {(['1W', '1M', '3M', '6M'] as const).map((range) => (

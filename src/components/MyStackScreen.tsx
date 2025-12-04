@@ -403,16 +403,16 @@ export const MyStackScreen = () => {
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-bold text-foreground leading-tight">{compound.name}</h3>
                           {hasHalfLife && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary flex-shrink-0 mt-0.5">
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary flex-shrink-0">
                               <Activity className="h-3 w-3" />
                               <span className="text-[10px] font-semibold">LEVELS</span>
                             </div>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-1.5 text-sm text-muted-foreground">
                           {formatDose(compound.intended_dose, compound.dose_unit)}
                           {compound.calculated_iu && ` • ${compound.calculated_iu} IU`}
                           {compound.calculated_ml && ` • Draw ${compound.calculated_ml} mL`}
@@ -578,15 +578,17 @@ export const MyStackScreen = () => {
         </div>
       </div>
 
-      {/* Share Button - Only show when has active compounds */}
+      {/* Share Link - Only show when has active compounds */}
       {activeCompounds.length > 0 && (
-        <button
-          onClick={handleShareStack}
-          className="fixed left-5 flex h-11 w-11 items-center justify-center rounded-full bg-card border border-border text-muted-foreground shadow-lg transition-all hover:scale-105 active:scale-95 hover:text-foreground"
-          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
-        >
-          <Share2 className="h-5 w-5" />
-        </button>
+        <div className="px-4 pb-4">
+          <button
+            onClick={handleShareStack}
+            className="w-full flex items-center justify-center gap-2 py-2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span className="text-xs">Share Stack</span>
+          </button>
+        </div>
       )}
 
       {/* FAB Button - Only show when has active compounds */}
