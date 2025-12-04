@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, Pencil } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -926,6 +926,32 @@ export const TodayScreen = () => {
                     
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
+                        {/* Edit menu (3-dots) to the left */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className={`flex-shrink-0 p-1 -ml-1 rounded transition-colors ${
+                                dose.taken 
+                                  ? 'text-muted-foreground/30 hover:text-muted-foreground/50' 
+                                  : 'text-white/30 hover:text-white/50'
+                              }`}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setEditingDose(dose);
+                              setShowEditModal(true);
+                            }}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit Dose
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
                         <div className="flex-1 min-w-0">
                           {/* Medication name */}
                           <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
@@ -951,21 +977,6 @@ export const TodayScreen = () => {
                               {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
                               {dose.calculated_ml && ` • ${dose.calculated_ml} mL`}
                             </span>
-                            {/* Subtle edit pencil */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingDose(dose);
-                                setShowEditModal(true);
-                              }}
-                              className={`p-0.5 rounded transition-opacity ${
-                                dose.taken 
-                                  ? 'text-muted-foreground/25 hover:text-muted-foreground/50' 
-                                  : 'text-white/20 hover:text-white/40'
-                              }`}
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
                           </div>
                         </div>
                         
