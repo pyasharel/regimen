@@ -13,7 +13,7 @@ import { format, subDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { ShareCard } from "@/components/ShareCard";
+import { CompoundShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
 
 interface Compound {
@@ -598,16 +598,15 @@ export const CompoundDetailScreen = () => {
       {/* Hidden share card for image generation */}
       {compound && (
         <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <ShareCard
+          <CompoundShareCard
             ref={shareCardRef}
-            title={compound.name}
-            subtitle={getScheduleDaysDisplay()}
-            items={[
-              { name: 'Dose', detail: formatDose(compound.intended_dose, compound.dose_unit) },
-              { name: 'Started', detail: format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy') },
-              { name: 'Total doses', detail: String(totalDosesTaken) },
-              ...(currentLevel ? [{ name: 'Est. level', detail: `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` }] : []),
-            ]}
+            name={compound.name}
+            dose={formatDose(compound.intended_dose, compound.dose_unit)}
+            schedule={getScheduleDaysDisplay()}
+            times={compound.time_of_day.map(t => formatTime(t)).join(', ')}
+            startDate={format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
+            totalDoses={totalDosesTaken}
+            estimatedLevel={currentLevel ? `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` : undefined}
           />
         </div>
       )}
