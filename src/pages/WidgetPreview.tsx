@@ -2,8 +2,7 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import appIcon from '@/assets/app-icon-1024.png';
-import horizontalLogo from '@/assets/regimen-horizontal-transparent.png';
-
+import wordmarkLogo from '@/assets/regimen-wordmark-transparent.png';
 const WidgetPreview = () => {
   const navigate = useNavigate();
 
@@ -51,7 +50,7 @@ const WidgetPreview = () => {
                   className="w-[155px] h-[155px] rounded-[22px] p-3 flex flex-col justify-between"
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
-                  <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain object-left" />
+                  <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain object-left" />
                   
                   <div className="space-y-0.5">
                     <div className="text-[9px] font-medium text-[#FF6F61] uppercase tracking-wider">Next Dose</div>
@@ -73,7 +72,7 @@ const WidgetPreview = () => {
                   className="w-[155px] h-[155px] rounded-[22px] p-3 flex flex-col justify-between"
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
-                  <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain object-left" />
+                  <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain object-left" />
                   
                   <div className="space-y-0.5">
                     <div className="text-[9px] font-medium text-[#FF6F61] uppercase tracking-wider">Next Dose</div>
@@ -94,7 +93,7 @@ const WidgetPreview = () => {
                   className="w-[155px] h-[155px] rounded-[22px] p-3 flex flex-col justify-between"
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
-                  <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain object-left" />
+                  <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain object-left" />
                   
                   <div className="space-y-0.5">
                     <div className="text-[9px] font-medium text-[#FF6F61] uppercase tracking-wider">Next Dose</div>
@@ -116,7 +115,7 @@ const WidgetPreview = () => {
                   className="w-[155px] h-[155px] rounded-[22px] p-3 flex flex-col justify-between"
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
-                  <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain object-left" />
+                  <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain object-left" />
                   
                   <div className="flex-1 flex flex-col items-center justify-center">
                     <div className="text-[11px] text-[#6B7280] text-center">All caught up!</div>
@@ -132,7 +131,7 @@ const WidgetPreview = () => {
                   className="w-[155px] h-[155px] rounded-[22px] p-3 flex flex-col justify-between"
                   style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E5E5' }}
                 >
-                  <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain object-left" style={{ filter: 'brightness(0.2)' }} />
+                  <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain object-left" style={{ filter: 'brightness(0.2)' }} />
                   
                   <div className="space-y-0.5">
                     <div className="text-[9px] font-medium text-[#FF6F61] uppercase tracking-wider">Next Dose</div>
@@ -166,18 +165,18 @@ const WidgetPreview = () => {
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain" />
+                    <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain" />
                     <span className="text-[10px] font-medium text-[#FF6F61]">2 of 4 taken</span>
                   </div>
                   
                   <div className="flex-1 grid grid-cols-4 gap-2">
-                    {/* Taken */}
+                    {/* Taken - Today */}
                     <div 
                       className="rounded-xl p-2 flex flex-col justify-between"
                       style={{ backgroundColor: '#FF6F6115', border: '1px solid #FF6F6130' }}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="text-[9px] text-[#6B7280]">8 AM</span>
+                        <span className="text-[8px] text-[#6B7280]">Today 8AM</span>
                         <div className="w-4 h-4 rounded-full bg-[#FF6F61] flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-white" />
                         </div>
@@ -188,13 +187,13 @@ const WidgetPreview = () => {
                       </div>
                     </div>
                     
-                    {/* Taken */}
+                    {/* Taken - Today */}
                     <div 
                       className="rounded-xl p-2 flex flex-col justify-between"
                       style={{ backgroundColor: '#FF6F6115', border: '1px solid #FF6F6130' }}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="text-[9px] text-[#6B7280]">8 AM</span>
+                        <span className="text-[8px] text-[#6B7280]">Today 8AM</span>
                         <div className="w-4 h-4 rounded-full bg-[#FF6F61] flex items-center justify-center">
                           <Check className="w-2.5 h-2.5 text-white" />
                         </div>
@@ -205,39 +204,39 @@ const WidgetPreview = () => {
                       </div>
                     </div>
                     
-                    {/* Pending */}
+                    {/* Pending - Tomorrow */}
                     <div 
                       className="rounded-xl p-2 flex flex-col justify-between"
                       style={{ backgroundColor: '#1A1A1A', border: '1px solid #333333' }}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="text-[9px] text-[#FF6F61]">9 PM</span>
+                        <span className="text-[8px] text-[#FF6F61]">TUE 8AM</span>
                         <div 
                           className="w-4 h-4 rounded-full"
                           style={{ border: '2px solid #FF6F6140' }}
                         />
                       </div>
                       <div>
-                        <div className="text-[10px] font-semibold text-white truncate">BPC-157</div>
-                        <div className="text-[8px] text-[#6B7280]">2mg</div>
+                        <div className="text-[10px] font-semibold text-white truncate">Test Cyp</div>
+                        <div className="text-[8px] text-[#6B7280]">100mg</div>
                       </div>
                     </div>
                     
-                    {/* Pending */}
+                    {/* Pending - Friday */}
                     <div 
                       className="rounded-xl p-2 flex flex-col justify-between"
                       style={{ backgroundColor: '#1A1A1A', border: '1px solid #333333' }}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="text-[9px] text-[#FF6F61]">9 PM</span>
+                        <span className="text-[8px] text-[#FF6F61]">FRI 8AM</span>
                         <div 
                           className="w-4 h-4 rounded-full"
                           style={{ border: '2px solid #FF6F6140' }}
                         />
                       </div>
                       <div>
-                        <div className="text-[10px] font-semibold text-white truncate">NAD+</div>
-                        <div className="text-[8px] text-[#6B7280]">50mg</div>
+                        <div className="text-[10px] font-semibold text-white truncate">Tirz</div>
+                        <div className="text-[8px] text-[#6B7280]">2mg</div>
                       </div>
                     </div>
                   </div>
@@ -252,7 +251,7 @@ const WidgetPreview = () => {
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain" />
+                    <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain" />
                     <span className="text-[10px] font-medium text-[#9CA3AF]">Upcoming</span>
                   </div>
                   
@@ -288,7 +287,7 @@ const WidgetPreview = () => {
                   style={{ backgroundColor: '#0F0F0F', border: '1px solid #262626' }}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain" />
+                    <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain" />
                   </div>
                   
                   <div className="flex-1 flex flex-col items-center justify-center">
@@ -317,7 +316,7 @@ const WidgetPreview = () => {
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-2">
-                <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain" />
+                <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain" />
                 <span className="text-[10px] font-medium text-[#9CA3AF] uppercase tracking-wider">Levels</span>
               </div>
               
@@ -433,7 +432,7 @@ const WidgetPreview = () => {
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-3">
-                <img src={horizontalLogo} alt="Regimen" className="h-4 object-contain" />
+                <img src={wordmarkLogo} alt="Regimen" className="h-3.5 object-contain" />
                 <span className="text-[10px] text-[#FF6F61]">Next 7 days</span>
               </div>
               
@@ -594,58 +593,64 @@ const WidgetPreview = () => {
             </div>
             
             <div className="flex gap-4 flex-wrap">
-              {/* Single dose with icon */}
+              {/* Single dose with REGIMEN text */}
               <div className="space-y-1.5">
                 <div 
-                  className="w-[158px] h-[50px] rounded-2xl px-3 flex items-center gap-2"
+                  className="w-[158px] h-[50px] rounded-2xl px-2.5 py-1.5 flex flex-col"
                   style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                 >
-                  <MonochromeIcon className="w-6 h-6" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-white font-semibold truncate">Tirzepatide</span>
-                      <span className="text-[9px] text-white/70">2mg</span>
+                  <span className="text-[7px] text-white/50 font-bold tracking-wider">REGIMEN</span>
+                  <div className="flex-1 flex items-center gap-1.5">
+                    <MonochromeIcon className="w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] text-white font-semibold truncate">Tirzepatide</span>
+                        <span className="text-[8px] text-white/70">2mg</span>
+                      </div>
+                      <div className="text-[8px] text-white/60">MON 8 AM</div>
                     </div>
-                    <div className="text-[9px] text-white/60">MON 8 AM</div>
                   </div>
                 </div>
-                <p className="text-[9px] text-muted-foreground text-center">Single dose</p>
+                <p className="text-[9px] text-muted-foreground text-center">With branding</p>
               </div>
               
-              {/* Two medications */}
+              {/* Two medications with REGIMEN */}
               <div className="space-y-1.5">
                 <div 
-                  className="w-[158px] h-[50px] rounded-2xl px-2.5 flex items-center gap-2"
+                  className="w-[158px] h-[50px] rounded-2xl px-2.5 py-1 flex flex-col"
                   style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                 >
-                  <MonochromeIcon className="w-5 h-5" />
-                  <div className="flex-1 space-y-0.5">
+                  <span className="text-[7px] text-white/50 font-bold tracking-wider">REGIMEN</span>
+                  <div className="flex-1 space-y-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-white font-medium">Test Cyp</span>
-                      <span className="text-[8px] text-white/60">TUE 8AM</span>
+                      <span className="text-[8px] text-white font-medium">Test Cyp</span>
+                      <span className="text-[7px] text-white/60">TUE 8AM</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-white font-medium">Tirz</span>
-                      <span className="text-[8px] text-white/60">MON 8AM</span>
+                      <span className="text-[8px] text-white font-medium">Tirz</span>
+                      <span className="text-[7px] text-white/60">FRI 8AM</span>
                     </div>
                   </div>
                 </div>
                 <p className="text-[9px] text-muted-foreground text-center">Multiple doses</p>
               </div>
 
-              {/* Today's dose */}
+              {/* Today's dose with REGIMEN */}
               <div className="space-y-1.5">
                 <div 
-                  className="w-[158px] h-[50px] rounded-2xl px-3 flex items-center gap-2"
+                  className="w-[158px] h-[50px] rounded-2xl px-2.5 py-1.5 flex flex-col"
                   style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
                 >
-                  <MonochromeIcon className="w-6 h-6" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-white font-semibold truncate">BPC-157</span>
-                      <span className="text-[9px] text-white/70">2mg</span>
+                  <span className="text-[7px] text-white/50 font-bold tracking-wider">REGIMEN</span>
+                  <div className="flex-1 flex items-center gap-1.5">
+                    <MonochromeIcon className="w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] text-white font-semibold truncate">BPC-157</span>
+                        <span className="text-[8px] text-white/70">2mg</span>
+                      </div>
+                      <div className="text-[8px] text-white/60">Today 9 PM</div>
                     </div>
-                    <div className="text-[9px] text-white/60">Today 9 PM</div>
                   </div>
                 </div>
                 <p className="text-[9px] text-muted-foreground text-center">Today</p>
@@ -709,6 +714,7 @@ const WidgetPreview = () => {
             <li>• <strong>Time display:</strong> Shows "2h 15m" if today, "TUE 8 AM" if tomorrow/soon, "MON 8 AM • Dec 9" if further</li>
             <li>• <strong>Large widget:</strong> User chooses in widget settings: Estimated Levels OR Upcoming Schedule</li>
             <li>• <strong>Levels widget:</strong> User selects which compound to track in widget configuration</li>
+            <li>• <strong>Missed doses:</strong> Only shows medications from current time forward — missed doses are not shown</li>
             <li>• <strong>Lock screen:</strong> iOS automatically applies monochrome tint — please provide white icon asset</li>
             <li>• <strong>Widget options:</strong> Yes, you can offer multiple widget options per size — users pick in widget gallery</li>
             <li>• <strong>Both themes:</strong> Widgets support light and dark mode automatically</li>
