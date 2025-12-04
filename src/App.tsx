@@ -39,6 +39,7 @@ import NotFound from "./pages/NotFound";
 import EmailTest from "./pages/EmailTest";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import WidgetPreview from "./pages/WidgetPreview";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +84,7 @@ const AppContent = () => {
             <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
             <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
             <Route path="/email-test" element={<EmailTest />} />
+            <Route path="/widget-preview" element={<WidgetPreview />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
