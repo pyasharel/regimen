@@ -79,22 +79,61 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     halfLifeHours: 192, // ~8 days
     category: 'steroid',
     displayName: 'Testosterone Cypionate',
+    notes: 'Injectable (oil-based)'
   },
   'testosterone enanthate': {
     halfLifeHours: 168, // ~7 days
     category: 'steroid',
     displayName: 'Testosterone Enanthate',
+    notes: 'Injectable (oil-based)'
   },
   'testosterone propionate': {
     halfLifeHours: 48, // ~2 days
     category: 'steroid',
     displayName: 'Testosterone Propionate',
+    notes: 'Injectable (oil-based)'
+  },
+  'testosterone gel': {
+    halfLifeHours: 24, // Designed for daily application to maintain steady state
+    category: 'steroid',
+    displayName: 'Testosterone Gel',
+    notes: 'Transdermal (AndroGel, Testim) - apply daily'
+  },
+  'testosterone cream': {
+    halfLifeHours: 24, // Similar to gel - daily application
+    category: 'steroid',
+    displayName: 'Testosterone Cream',
+    notes: 'Transdermal - apply daily'
+  },
+  'testosterone patch': {
+    halfLifeHours: 24, // Designed for daily patch replacement
+    category: 'steroid',
+    displayName: 'Testosterone Patch',
+    notes: 'Transdermal (Androderm) - apply daily'
   },
   'testosterone undecanoate': {
-    halfLifeHours: 504, // ~21 days
+    halfLifeHours: 504, // ~21 days (injectable Nebido)
     category: 'steroid',
     displayName: 'Testosterone Undecanoate',
-    notes: 'Nebido'
+    notes: 'Nebido (injectable). Oral form (Jatenzo) has ~5hr half-life'
+  },
+  'testosterone undecanoate oral': {
+    halfLifeHours: 5, // ~5 hours for oral Jatenzo
+    category: 'steroid',
+    displayName: 'Testosterone Undecanoate (Oral)',
+    notes: 'Jatenzo - take twice daily with food'
+  },
+  'androgel': {
+    halfLifeHours: 24,
+    category: 'steroid',
+    displayName: 'AndroGel',
+    notes: 'Testosterone gel - apply daily'
+  },
+  'testim': {
+    halfLifeHours: 24,
+    category: 'steroid',
+    displayName: 'Testim',
+    notes: 'Testosterone gel - apply daily'
   },
   'nandrolone decanoate': {
     halfLifeHours: 288, // ~12 days (range: 6-12 days)

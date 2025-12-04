@@ -603,15 +603,20 @@ export const CompoundDetailScreen = () => {
 
         {/* Dose History */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-sm">Dose History</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Dose History</h3>
+            {uniqueTakenDoses.length > 0 && (
+              <span className="text-xs text-muted-foreground">{uniqueTakenDoses.length} logged</span>
+            )}
+          </div>
           
           {uniqueTakenDoses.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No doses logged yet
             </p>
           ) : (
-            <div className="space-y-2">
-              {uniqueTakenDoses.slice(0, 20).map((dose) => (
+            <div className={`space-y-2 ${uniqueTakenDoses.length > 10 ? 'max-h-[400px] overflow-y-auto pr-1' : ''}`}>
+              {uniqueTakenDoses.map((dose) => (
                 <div 
                   key={dose.id}
                   className="flex items-center justify-between p-3 rounded-xl bg-card border border-border"
@@ -633,11 +638,6 @@ export const CompoundDetailScreen = () => {
                   <div className="text-xs text-primary font-medium">✓ Taken</div>
                 </div>
               ))}
-              {uniqueTakenDoses.length > 20 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  Showing most recent 20 doses
-                </p>
-              )}
             </div>
           )}
         </div>
