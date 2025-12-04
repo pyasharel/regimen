@@ -285,11 +285,15 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
           <div className="space-y-2">
             <Label>Dosage ({dose.dose_unit})</Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={doseAmount}
-              onChange={(e) => setDoseAmount(e.target.value)}
-              step="0.1"
-              min="0"
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                  setDoseAmount(value);
+                }
+              }}
             />
             {dose.calculated_iu && (
               <p className="text-xs text-muted-foreground">
