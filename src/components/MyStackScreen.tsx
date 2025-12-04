@@ -12,7 +12,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
-import { ShareCard } from "@/components/ShareCard";
+import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
 import {
   DropdownMenu,
@@ -617,13 +617,13 @@ export const MyStackScreen = () => {
 
       {/* Hidden share card for image generation */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        <ShareCard
+        <StackShareCard
           ref={shareCardRef}
-          title="My Stack"
-          subtitle={`${activeCompounds.length} active compound${activeCompounds.length !== 1 ? 's' : ''}`}
-          items={activeCompounds.map(c => ({
+          compounds={activeCompounds.map(c => ({
             name: c.name,
-            detail: `${formatDose(c.intended_dose, c.dose_unit)} · ${getScheduleDisplay(c)}`,
+            dose: formatDose(c.intended_dose, c.dose_unit),
+            schedule: getScheduleDisplay(c),
+            hasLevels: hasHalfLifeTracking(c.name),
           }))}
         />
       </div>
