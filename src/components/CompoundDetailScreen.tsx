@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
@@ -13,7 +13,8 @@ import { format, subDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-
+import { ShareCard } from "@/components/ShareCard";
+import { shareElementAsImage } from "@/utils/visualShare";
 
 interface Compound {
   id: string;
@@ -60,6 +61,7 @@ export const CompoundDetailScreen = () => {
   const [doses, setDoses] = useState<Dose[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'1W' | '1M' | '3M' | '6M'>('1M');
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -219,7 +221,13 @@ export const CompoundDetailScreen = () => {
     
     triggerHaptic();
     
-    // Format compound info as text
+    // Try visual share first
+    if (shareCardRef.current) {
+      const success = await shareElementAsImage(shareCardRef.current, `${compound.name.toLowerCase().replace(/\s+/g, '-')}.png`);
+      if (success) return;
+    }
+    
+    // Fallback to text share
     const scheduleDisplay = getScheduleDaysDisplay();
     const timesDisplay = compound.time_of_day.map(t => formatTime(t)).join(', ');
     const startDateDisplay = format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy');
@@ -586,6 +594,23 @@ export const CompoundDetailScreen = () => {
         </div>
 
       </div>
+
+      {/* Hidden share card for image generation */}
+      {compound && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <ShareCard
+            ref={shareCardRef}
+            title={compound.name}
+            subtitle={getScheduleDaysDisplay()}
+            items={[
+              { name: 'Dose', detail: formatDose(compound.intended_dose, compound.dose_unit) },
+              { name: 'Started', detail: format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy') },
+              { name: 'Total doses', detail: String(totalDosesTaken) },
+              ...(currentLevel ? [{ name: 'Est. level', detail: `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` }] : []),
+            ]}
+          />
+        </div>
+      )}
     </div>
   );
 };

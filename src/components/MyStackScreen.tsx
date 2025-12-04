@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2 } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
@@ -12,6 +12,8 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
+import { ShareCard } from "@/components/ShareCard";
+import { shareElementAsImage } from "@/utils/visualShare";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +47,7 @@ export const MyStackScreen = () => {
   const [loading, setLoading] = useState(true);
   const [weeklyDoses, setWeeklyDoses] = useState(0);
   const [adherenceRate, setAdherenceRate] = useState(0);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCompounds();
@@ -278,7 +281,13 @@ export const MyStackScreen = () => {
 
     triggerHaptic();
     
-    // Format stack as text
+    // Try visual share first
+    if (shareCardRef.current) {
+      const success = await shareElementAsImage(shareCardRef.current, 'my-stack.png');
+      if (success) return;
+    }
+    
+    // Fallback to text share
     const stackText = activeCompounds
       .map(c => `• ${c.name}: ${formatDose(c.intended_dose, c.dose_unit)} (${getScheduleDisplay(c)})`)
       .join('\n');
@@ -293,7 +302,6 @@ export const MyStackScreen = () => {
         dialogTitle: 'Share your stack',
       });
     } catch (err) {
-      // User cancelled or share failed
       console.log('Share cancelled or failed:', err);
     }
   };
@@ -606,6 +614,19 @@ export const MyStackScreen = () => {
       )}
 
       <BottomNavigation />
+
+      {/* Hidden share card for image generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <ShareCard
+          ref={shareCardRef}
+          title="My Stack"
+          subtitle={`${activeCompounds.length} active compound${activeCompounds.length !== 1 ? 's' : ''}`}
+          items={activeCompounds.map(c => ({
+            name: c.name,
+            detail: `${formatDose(c.intended_dose, c.dose_unit)} · ${getScheduleDisplay(c)}`,
+          }))}
+        />
+      </div>
     </div>
   );
 };
