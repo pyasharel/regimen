@@ -53,6 +53,17 @@ const DAY_ABBREVIATIONS: Record<string, string> = {
   'Sunday': 'Sun'
 };
 
+// Day index to name mapping (0 = Sunday, 1 = Monday, etc.)
+const DAY_INDEX_TO_NAME: Record<string, string> = {
+  '0': 'Sun',
+  '1': 'Mon',
+  '2': 'Tue',
+  '3': 'Wed',
+  '4': 'Thu',
+  '5': 'Fri',
+  '6': 'Sat',
+};
+
 export const CompoundDetailScreen = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -198,9 +209,32 @@ export const CompoundDetailScreen = () => {
     if (!compound) return '';
     if (compound.schedule_type === 'Daily') return 'Daily';
     if (compound.schedule_type === 'Weekly') return 'Weekly';
-    if (compound.schedule_days && compound.schedule_days.length > 0) {
-      return compound.schedule_days.map(d => DAY_ABBREVIATIONS[d] || d).join(', ');
+    if (compound.schedule_type === 'As Needed') return 'As Needed';
+    
+    // Handle "Every X Days" format
+    const everyXMatch = compound.schedule_type.match(/Every (\d+) Days/);
+    if (everyXMatch) {
+      return `Every ${everyXMatch[1]} days`;
     }
+    
+    // Handle specific days - schedule_days contains day indices (0=Sun, 1=Mon, etc.)
+    if ((compound.schedule_type === 'Specific day(s)' || compound.schedule_type === 'Specific day of the week') 
+        && compound.schedule_days && compound.schedule_days.length > 0) {
+      const dayNames = compound.schedule_days.map(d => {
+        // d could be a string like "1" or a full day name like "Monday"
+        if (DAY_INDEX_TO_NAME[d]) {
+          return DAY_INDEX_TO_NAME[d];
+        }
+        if (DAY_ABBREVIATIONS[d]) {
+          return DAY_ABBREVIATIONS[d];
+        }
+        return d;
+      });
+      // For single day, show "Every Mon" or "Weekly (Mon)"
+      // For multiple days, show "Mon, Wed, Fri"
+      return dayNames.length === 1 ? `Every ${dayNames[0]}` : dayNames.join(', ');
+    }
+    
     return compound.schedule_type;
   };
 
