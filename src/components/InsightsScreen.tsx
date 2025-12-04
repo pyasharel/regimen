@@ -183,24 +183,38 @@ export const InsightsScreen = () => {
       return entryDate >= cutoffDate;
     });
 
-    return filteredWeightEntries.map(entry => {
+    const sortedEntries = filteredWeightEntries.sort((a, b) => 
+      a.entry_date.localeCompare(b.entry_date)
+    );
+
+    // Track which dosage changes have been assigned to a weight entry
+    const assignedChanges = new Set<number>();
+
+    return sortedEntries.map(entry => {
       const entryDate = parseISO(entry.entry_date);
       const dateStr = format(entryDate, 'MMM d');
       
-      // Find if there's a dosage change near this weight entry (within same day)
-      const nearbyChange = dosageChanges.find(change => {
-        const daysDiff = Math.abs((change.date.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
-        return daysDiff < 1;
-      });
+      // Find the first unassigned dosage change that occurred on or before this weight entry
+      let matchedChange: DosageChange | undefined;
+      for (let i = 0; i < dosageChanges.length; i++) {
+        if (assignedChanges.has(i)) continue;
+        const change = dosageChanges[i];
+        // Show badge on the first weight entry on or after the dosage change date
+        if (change.date <= entryDate) {
+          matchedChange = change;
+          assignedChanges.add(i);
+          break;
+        }
+      }
 
       return {
         date: dateStr,
         dateObj: entryDate,
         weight: (entry.metrics as any)?.weight,
         fullDate: entry.entry_date,
-        dosageLabel: nearbyChange ? formatDose(nearbyChange.amount, nearbyChange.unit) : undefined,
+        dosageLabel: matchedChange ? formatDose(matchedChange.amount, matchedChange.unit) : undefined,
       };
-    }).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+    });
   }, [weightEntries, cutoffDate, dosageChanges]);
 
   // Calculate weight stats
@@ -426,7 +440,7 @@ export const InsightsScreen = () => {
             <Card className="p-4 bg-muted/30">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={chartData} margin={{ top: 35, right: 40, left: 0, bottom: 5 }}>
+                  <LineChart data={chartData} margin={{ top: 35, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis 
                       dataKey="date" 
