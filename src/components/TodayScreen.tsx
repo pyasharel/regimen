@@ -891,8 +891,8 @@ export const TodayScreen = () => {
                 return false;
               });
 
-              // Check if dose is within ~2 hours of scheduled time (for pulse animation)
-              const isDoseNearScheduledTime = (dose: typeof doses[0]) => {
+              // Check if dose is past due (for subtle pulse animation)
+              const isDosePastDue = (dose: typeof doses[0]) => {
                 if (dose.taken) return false;
                 const now = new Date();
                 const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -902,23 +902,27 @@ export const TodayScreen = () => {
                 
                 // Parse scheduled time
                 let scheduledHour = 8;
-                if (dose.scheduled_time === 'Morning') scheduledHour = 8;
-                else if (dose.scheduled_time === 'Afternoon') scheduledHour = 14;
-                else if (dose.scheduled_time === 'Evening') scheduledHour = 18;
+                let scheduledMinute = 0;
+                if (dose.scheduled_time === 'Morning') { scheduledHour = 8; scheduledMinute = 0; }
+                else if (dose.scheduled_time === 'Afternoon') { scheduledHour = 14; scheduledMinute = 0; }
+                else if (dose.scheduled_time === 'Evening') { scheduledHour = 18; scheduledMinute = 0; }
                 else {
                   const match = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
-                  if (match) scheduledHour = parseInt(match[1]);
+                  if (match) {
+                    scheduledHour = parseInt(match[1]);
+                    scheduledMinute = parseInt(match[2]);
+                  }
                 }
                 
                 const currentHour = now.getHours();
-                const hourDiff = Math.abs(currentHour - scheduledHour);
+                const currentMinute = now.getMinutes();
                 
-                // Pulse if within 2 hours before or after
-                return hourDiff <= 2;
+                // Pulse only if current time is past the scheduled time
+                return (currentHour > scheduledHour) || (currentHour === scheduledHour && currentMinute >= scheduledMinute);
               };
               
               const renderDoseCard = (dose: typeof doses[0]) => {
-                const shouldPulse = isDoseNearScheduledTime(dose);
+                const shouldPulse = isDosePastDue(dose);
                 
                 return (
                   <div
