@@ -623,7 +623,6 @@ export const MyStackScreen = () => {
             name: c.name,
             dose: formatDose(c.intended_dose, c.dose_unit),
             schedule: getScheduleDisplay(c),
-            hasLevels: hasHalfLifeTracking(c.name),
           }))}
         />
       </div>

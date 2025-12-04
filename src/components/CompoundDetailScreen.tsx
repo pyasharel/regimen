@@ -602,11 +602,12 @@ export const CompoundDetailScreen = () => {
             ref={shareCardRef}
             name={compound.name}
             dose={formatDose(compound.intended_dose, compound.dose_unit)}
-            schedule={getScheduleDaysDisplay()}
-            times={compound.time_of_day.map(t => formatTime(t)).join(', ')}
+            schedule={`${getScheduleDaysDisplay()} • ${compound.time_of_day.map(t => formatTime(t)).join(', ')}`}
             startDate={format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
             totalDoses={totalDosesTaken}
             estimatedLevel={currentLevel ? `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` : undefined}
+            doseUnit={compound.dose_unit}
+            chartData={chartData.length > 0 ? chartData.map(d => ({ date: d.date, level: d.level, isFuture: d.isFuture })) : undefined}
           />
         </div>
       )}
