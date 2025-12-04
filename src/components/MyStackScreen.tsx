@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2 } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
@@ -10,6 +10,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import {
   DropdownMenu,
@@ -263,6 +264,37 @@ export const MyStackScreen = () => {
       }
     } catch (err) {
       console.log('Haptic failed:', err);
+    }
+  };
+
+  const handleShareStack = async () => {
+    if (activeCompounds.length === 0) {
+      toast({
+        title: "Nothing to share",
+        description: "Add some compounds to share your stack",
+      });
+      return;
+    }
+
+    triggerHaptic();
+    
+    // Format stack as text
+    const stackText = activeCompounds
+      .map(c => `• ${c.name}: ${formatDose(c.intended_dose, c.dose_unit)} (${getScheduleDisplay(c)})`)
+      .join('\n');
+    
+    const shareText = `My Stack 💊\n\n${stackText}\n\nTrack your protocol at regimen.app`;
+    
+    try {
+      await Share.share({
+        title: 'My Stack',
+        text: shareText,
+        url: 'https://regimen.app',
+        dialogTitle: 'Share your stack',
+      });
+    } catch (err) {
+      // User cancelled or share failed
+      console.log('Share cancelled or failed:', err);
     }
   };
 
@@ -545,6 +577,17 @@ export const MyStackScreen = () => {
           ))}
         </div>
       </div>
+
+      {/* Share Button - Only show when has active compounds */}
+      {activeCompounds.length > 0 && (
+        <button
+          onClick={handleShareStack}
+          className="fixed left-5 flex h-11 w-11 items-center justify-center rounded-full bg-card border border-border text-muted-foreground shadow-lg transition-all hover:scale-105 active:scale-95 hover:text-foreground"
+          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <Share2 className="h-5 w-5" />
+        </button>
+      )}
 
       {/* FAB Button - Only show when has active compounds */}
       {activeCompounds.length > 0 && (

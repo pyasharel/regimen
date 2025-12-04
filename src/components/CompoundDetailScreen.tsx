@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,9 @@ import { getHalfLifeData } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
+import { Share } from '@capacitor/share';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 
 interface Compound {
@@ -56,7 +59,7 @@ export const CompoundDetailScreen = () => {
   const [compound, setCompound] = useState<Compound | null>(null);
   const [doses, setDoses] = useState<Dose[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M'>('1M');
+  const [timeRange, setTimeRange] = useState<'1W' | '1M' | '3M' | '6M'>('1M');
 
   useEffect(() => {
     if (id) {
@@ -128,6 +131,7 @@ export const CompoundDetailScreen = () => {
 
   const getRangeInDays = () => {
     switch (timeRange) {
+      case '1W': return 7;
       case '1M': return 30;
       case '3M': return 90;
       case '6M': return 180;
@@ -135,7 +139,7 @@ export const CompoundDetailScreen = () => {
   };
 
   // Use more data points for smoother peaks/troughs visualization
-  const pointsPerDay = timeRange === '1M' ? 8 : timeRange === '3M' ? 4 : 2;
+  const pointsPerDay = timeRange === '1W' ? 12 : timeRange === '1M' ? 8 : timeRange === '3M' ? 4 : 2;
   
   const now = new Date();
   const nowTimestamp = now.getTime();
@@ -196,6 +200,52 @@ export const CompoundDetailScreen = () => {
       return compound.schedule_days.map(d => DAY_ABBREVIATIONS[d] || d).join(', ');
     }
     return compound.schedule_type;
+  };
+
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!compound) return;
+    
+    triggerHaptic();
+    
+    // Format compound info as text
+    const scheduleDisplay = getScheduleDaysDisplay();
+    const timesDisplay = compound.time_of_day.map(t => formatTime(t)).join(', ');
+    const startDateDisplay = format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy');
+    
+    let shareText = `${compound.name}\n\n`;
+    shareText += `💊 Dose: ${formatDose(compound.intended_dose, compound.dose_unit)}\n`;
+    shareText += `📅 Schedule: ${scheduleDisplay} at ${timesDisplay}\n`;
+    shareText += `📆 Started: ${startDateDisplay}\n`;
+    shareText += `✓ Total doses: ${totalDosesTaken}\n`;
+    
+    if (currentLevel) {
+      shareText += `📊 Est. level: ~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}\n`;
+    }
+    
+    shareText += `\nTrack your protocol at regimen.app`;
+    
+    try {
+      await Share.share({
+        title: compound.name,
+        text: shareText,
+        url: 'https://regimen.app',
+        dialogTitle: `Share ${compound.name}`,
+      });
+    } catch (err) {
+      console.log('Share cancelled or failed:', err);
+    }
   };
 
   if (loading) {
@@ -340,7 +390,7 @@ export const CompoundDetailScreen = () => {
                 <span className="font-semibold text-sm">Level History</span>
               </div>
               <div className="flex gap-1">
-                {(['1M', '3M', '6M'] as const).map((range) => (
+                {(['1W', '1M', '3M', '6M'] as const).map((range) => (
                   <button
                     key={range}
                     onClick={() => setTimeRange(range)}
@@ -523,6 +573,15 @@ export const CompoundDetailScreen = () => {
             </div>
           )}
         </div>
+
+        {/* Share Button */}
+        <button
+          onClick={handleShare}
+          className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Share2 className="h-4 w-4" />
+          <span className="text-sm font-medium">Share</span>
+        </button>
 
       </div>
     </div>
