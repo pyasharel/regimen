@@ -1,22 +1,19 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, TrendingUp, TrendingDown, Layers } from "lucide-react";
+import { TrendingUp, TrendingDown, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getSignedUrl } from "@/utils/storageUtils";
-import { format, parseISO, startOfDay, differenceInDays, subMonths } from "date-fns";
+import { format, parseISO, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatDose } from "@/utils/doseUtils";
+import { MainHeader } from "@/components/MainHeader";
 import {
-  ComposedChart,
+  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -24,40 +21,32 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceDot,
+  Label,
 } from 'recharts';
-import logoHorizontal from "@/assets/logo-regimen-horizontal-final.png";
 
-type TimelineDataPoint = {
+type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
+
+type ChartDataPoint = {
   date: string;
   dateObj: Date;
   weight?: number;
+  fullDate: string;
+  dosageLabel?: string;
 };
 
-type DosageMarker = {
+type DosageChange = {
   date: Date;
   dateFormatted: string;
-  medicationName: string;
   amount: number;
   unit: string;
-  color: string;
   compoundId: string;
+  compoundName: string;
 };
 
 export const InsightsScreen = () => {
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState<'3M' | '6M' | 'ALL'>('6M');
-  const [selectedCompoundId, setSelectedCompoundId] = useState<string | 'all'>('all');
-  const [stackView, setStackView] = useState(false);
-
-  // Medication colors from design system
-  const MEDICATION_COLORS = [
-    'hsl(6 100% 69%)',      // coral (primary)
-    'hsl(258 90% 66%)',     // purple (secondary)
-    'hsl(217 91% 60%)',     // blue
-    'hsl(142 71% 45%)',     // green (success)
-    'hsl(25 95% 53%)',      // orange
-    'hsl(330 81% 60%)',     // pink
-  ];
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>("6M");
+  const [selectedCompoundId, setSelectedCompoundId] = useState<string>("");
 
   // Fetch weight entries
   const { data: entries = [], isLoading: entriesLoading } = useQuery({
@@ -116,85 +105,72 @@ export const InsightsScreen = () => {
     },
   });
 
+  // Set initial compound selection
+  useEffect(() => {
+    if (compounds.length > 0 && !selectedCompoundId) {
+      setSelectedCompoundId(compounds[0].id);
+    }
+  }, [compounds, selectedCompoundId]);
+
   const isLoading = entriesLoading || compoundsLoading || dosesLoading;
 
-  // Calculate cutoff date based on time range
+  // Calculate cutoff date based on time frame
   const cutoffDate = useMemo(() => {
     const now = new Date();
-    switch (timeRange) {
+    switch (timeFrame) {
+      case '1M':
+        return subMonths(now, 1);
       case '3M':
         return subMonths(now, 3);
       case '6M':
         return subMonths(now, 6);
-      case 'ALL':
-        return new Date(0); // Beginning of time
+      case '1Y':
+        return subMonths(now, 12);
+      case 'All':
+        return new Date(0);
       default:
         return subMonths(now, 6);
     }
-  }, [timeRange]);
+  }, [timeFrame]);
 
-  // Calculate dosage changes and markers
-  const dosageMarkers = useMemo(() => {
-    const markers: DosageMarker[] = [];
+  // Calculate dosage changes for the selected compound
+  const dosageChanges = useMemo(() => {
+    if (!selectedCompoundId) return [];
+    
+    const compound = compounds.find(c => c.id === selectedCompoundId);
+    if (!compound) return [];
 
-    compounds.forEach((compound, idx) => {
-      const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
-      const compoundDoses = doses
-        .filter(d => d.compound_id === compound.id)
-        .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime());
+    const compoundDoses = doses
+      .filter(d => d.compound_id === selectedCompoundId)
+      .sort((a, b) => new Date(a.taken_at!).getTime() - new Date(b.taken_at!).getTime());
 
-      if (compoundDoses.length === 0) return;
+    if (compoundDoses.length === 0) return [];
 
-      // Track dose changes
-      let lastDoseAmount = compoundDoses[0].dose_amount;
-      let lastDoseUnit = compoundDoses[0].dose_unit;
+    const changes: DosageChange[] = [];
+    let lastDoseAmount = -1;
+    let lastDoseUnit = "";
 
-      // Add first dose as a marker
-      const firstDose = compoundDoses[0];
-      const firstDate = parseISO(firstDose.taken_at!);
-      if (firstDate >= cutoffDate) {
-        markers.push({
-          date: firstDate,
-          dateFormatted: format(firstDate, 'MMM d'),
-          medicationName: compound.name,
-          amount: firstDose.dose_amount,
-          unit: firstDose.dose_unit,
-          color,
+    compoundDoses.forEach(dose => {
+      const doseDate = parseISO(dose.taken_at!);
+      if (doseDate < cutoffDate) return;
+
+      // Only add if this is a dose change
+      if (dose.dose_amount !== lastDoseAmount || dose.dose_unit !== lastDoseUnit) {
+        changes.push({
+          date: doseDate,
+          dateFormatted: format(doseDate, 'MMM d'),
+          amount: dose.dose_amount,
+          unit: dose.dose_unit,
           compoundId: compound.id,
+          compoundName: compound.name,
         });
+        lastDoseAmount = dose.dose_amount;
+        lastDoseUnit = dose.dose_unit;
       }
-
-      // Find dose changes
-      compoundDoses.forEach(dose => {
-        const doseDate = parseISO(dose.taken_at!);
-        if (doseDate < cutoffDate) return;
-
-        if (dose.dose_amount !== lastDoseAmount || dose.dose_unit !== lastDoseUnit) {
-          markers.push({
-            date: doseDate,
-            dateFormatted: format(doseDate, 'MMM d'),
-            medicationName: compound.name,
-            amount: dose.dose_amount,
-            unit: dose.dose_unit,
-            color,
-            compoundId: compound.id,
-          });
-          lastDoseAmount = dose.dose_amount;
-          lastDoseUnit = dose.dose_unit;
-        }
-      });
     });
 
-    return markers.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [compounds, doses, cutoffDate]);
-
-  // Filter markers based on selected compound
-  const filteredMarkers = useMemo(() => {
-    if (selectedCompoundId === 'all' || stackView) {
-      return dosageMarkers;
-    }
-    return dosageMarkers.filter(m => m.compoundId === selectedCompoundId);
-  }, [dosageMarkers, selectedCompoundId, stackView]);
+    return changes;
+  }, [selectedCompoundId, compounds, doses, cutoffDate]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -203,12 +179,25 @@ export const InsightsScreen = () => {
       return entryDate >= cutoffDate;
     });
 
-    return filteredWeightEntries.map(entry => ({
-      date: format(parseISO(entry.entry_date), 'MMM d'),
-      dateObj: parseISO(entry.entry_date),
-      weight: (entry.metrics as any)?.weight,
-    }));
-  }, [weightEntries, cutoffDate]);
+    return filteredWeightEntries.map(entry => {
+      const entryDate = parseISO(entry.entry_date);
+      const dateStr = format(entryDate, 'MMM d');
+      
+      // Find if there's a dosage change near this weight entry (within same day)
+      const nearbyChange = dosageChanges.find(change => {
+        const daysDiff = Math.abs((change.date.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff < 1;
+      });
+
+      return {
+        date: dateStr,
+        dateObj: entryDate,
+        weight: (entry.metrics as any)?.weight,
+        fullDate: entry.entry_date,
+        dosageLabel: nearbyChange ? formatDose(nearbyChange.amount, nearbyChange.unit) : undefined,
+      };
+    }).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+  }, [weightEntries, cutoffDate, dosageChanges]);
 
   // Calculate weight stats
   const weightStats = useMemo(() => {
@@ -222,129 +211,137 @@ export const InsightsScreen = () => {
     return { current, change, trend };
   }, [chartData]);
 
-  // Y-axis domain for better visualization
-  const weightDomain = useMemo(() => {
-    if (chartData.length === 0) return [0, 100];
-    const weights = chartData.map(d => d.weight).filter(Boolean) as number[];
-    const min = Math.min(...weights);
-    const max = Math.max(...weights);
-    const padding = (max - min) * 0.15 || 10;
-    return [Math.floor(min - padding), Math.ceil(max + padding)];
-  }, [chartData]);
+  // Custom dot component that shows dosage label
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (!cx || !cy) return null;
+    
+    return (
+      <g>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={5}
+          fill="hsl(var(--primary))"
+          stroke="none"
+        />
+        {payload?.dosageLabel && (
+          <g>
+            {/* Badge background */}
+            <rect
+              x={cx - 20}
+              y={cy - 28}
+              width={40}
+              height={18}
+              rx={4}
+              fill="hsl(var(--primary))"
+            />
+            {/* Badge text */}
+            <text
+              x={cx}
+              y={cy - 16}
+              textAnchor="middle"
+              fill="hsl(var(--primary-foreground))"
+              fontSize={10}
+              fontWeight={600}
+            >
+              {payload.dosageLabel}
+            </text>
+          </g>
+        )}
+      </g>
+    );
+  };
 
-  // Custom tooltip
+  const CustomActiveDot = (props: any) => {
+    const { cx, cy } = props;
+    if (!cx || !cy) return null;
+    
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={7}
+        fill="hsl(var(--primary))"
+        stroke="hsl(var(--background))"
+        strokeWidth={2}
+      />
+    );
+  };
+
+  // Custom Tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload[0]) return null;
 
     const data = payload[0].payload;
-    const markersOnThisDate = filteredMarkers.filter(
-      m => format(m.date, 'MMM d') === data.date
-    );
-
     return (
-      <Card className="p-3 shadow-elevated">
-        <p className="text-xs font-medium text-muted-foreground mb-2">{data.date}</p>
+      <Card className="p-3 shadow-elevated border border-border bg-card">
+        <p className="text-xs font-medium text-muted-foreground mb-1">{data.date}</p>
         {data.weight && (
-          <p className="text-sm font-semibold text-foreground mb-2">
+          <p className="text-sm font-semibold text-foreground">
             {data.weight.toFixed(1)} lbs
           </p>
         )}
-        {markersOnThisDate.length > 0 && (
-          <div className="space-y-1.5 pt-2 border-t border-border">
-            {markersOnThisDate.map((marker, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: marker.color }}
-                />
-                <div className="text-xs">
-                  <p className="font-medium text-foreground">{marker.medicationName}</p>
-                  <p className="text-muted-foreground">{formatDose(marker.amount, marker.unit)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        {data.dosageLabel && (
+          <p className="text-xs text-primary mt-1">
+            Dosage: {data.dosageLabel}
+          </p>
         )}
       </Card>
     );
   };
 
+  const selectedCompound = compounds.find(c => c.id === selectedCompoundId);
+
   if (isLoading) {
     return (
-      <div className="flex flex-col h-screen bg-background">
-        <header className="border-b border-border px-4 mt-6 bg-background sticky top-0 flex-shrink-0 z-10 h-16 flex items-center">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1 flex justify-center">
-            <Skeleton className="h-8 w-32" />
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
-          <Skeleton className="h-48 w-full" />
+      <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+        <MainHeader title="Insights" />
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-12 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
-
         <BottomNavigation />
       </div>
     );
   }
 
-  const hasData = chartData.length > 0 && compounds.length > 0;
+  const hasWeightData = chartData.length > 0;
+  const hasCompounds = compounds.length > 0;
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-4 mt-6 bg-background sticky top-0 flex-shrink-0 z-10 h-16 flex items-center">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1 flex justify-center">
-          <img src={logoHorizontal} alt="Regimen" className="h-7" />
-        </div>
-      </header>
+    <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+      <MainHeader title="Insights" />
 
-      <div className="flex-1 overflow-y-auto pb-24">
-        {/* Hero Section */}
-        <div className="px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-foreground mb-1">
-            Your Journey
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Track your progress and medication milestones
-          </p>
-        </div>
-
-        {!hasData ? (
-          <div className="px-4 pt-12">
-            <Card className="p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted/50 mx-auto mb-4 flex items-center justify-center">
-                <TrendingUp className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                No Data Yet
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Start logging your weight and medications to see your journey visualized here.
-              </p>
-              <Button onClick={() => navigate('/progress')}>
-                Go to Progress
-              </Button>
-            </Card>
-          </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
+        {!hasWeightData ? (
+          <Card className="p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-muted/50 mx-auto mb-4 flex items-center justify-center">
+              <TrendingUp className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Weight Data Yet
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Start logging your weight to see how your medications correlate with your progress.
+            </p>
+            <Button onClick={() => navigate('/progress')}>
+              Go to Progress
+            </Button>
+          </Card>
         ) : (
-          <div className="px-4 space-y-6">
-            {/* Current Stats Card */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-4">
+          <>
+            {/* Current Weight Stats */}
+            <Card className="p-4 bg-card border border-border">
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Current Weight</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Current Weight</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-bold text-foreground">
+                    <span className="text-3xl font-bold text-foreground">
                       {weightStats.current.toFixed(1)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">lbs</p>
+                    </span>
+                    <span className="text-sm text-muted-foreground">lbs</span>
                   </div>
                 </div>
                 <div className="text-right">
@@ -363,163 +360,119 @@ export const InsightsScreen = () => {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {timeRange === '3M' ? 'Last 3 months' : timeRange === '6M' ? 'Last 6 months' : 'All time'}
+                    {timeFrame === '1M' ? 'Last month' : 
+                     timeFrame === '3M' ? 'Last 3 months' : 
+                     timeFrame === '6M' ? 'Last 6 months' : 
+                     timeFrame === '1Y' ? 'Last year' : 'All time'}
                   </p>
                 </div>
               </div>
             </Card>
 
-            {/* Controls */}
-            <div className="space-y-3">
-              {/* Time Range Selector */}
-              <div className="flex items-center gap-2">
-                {(['3M', '6M', 'ALL'] as const).map((range) => (
-                  <Button
-                    key={range}
-                    variant={timeRange === range ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTimeRange(range)}
-                    className="flex-1"
-                  >
-                    {range === 'ALL' ? 'All' : range}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Medication Selector & Stack View Toggle */}
-              <div className="flex items-center gap-3">
-                <Select
-                  value={selectedCompoundId}
-                  onValueChange={setSelectedCompoundId}
-                  disabled={stackView}
+            {/* Time Frame Selector */}
+            <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
+              {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeFrame(tf)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    timeFrame === tf
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-foreground/70 hover:text-foreground'
+                  }`}
                 >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select medication" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Medications</SelectItem>
-                    {compounds.map(compound => (
-                      <SelectItem key={compound.id} value={compound.id}>
-                        {compound.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg bg-card">
-                  <Layers className="w-4 h-4 text-muted-foreground" />
-                  <Switch
-                    checked={stackView}
-                    onCheckedChange={(checked) => {
-                      setStackView(checked);
-                      if (checked) setSelectedCompoundId('all');
-                    }}
-                    id="stack-view"
-                  />
-                  <Label
-                    htmlFor="stack-view"
-                    className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
-                  >
-                    Stack
-                  </Label>
-                </div>
-              </div>
+                  {tf}
+                </button>
+              ))}
             </div>
 
-            {/* Chart */}
-            <Card className="p-4">
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(6 100% 69%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(258 90% 66%)" stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
+            {/* Medication Selector */}
+            {hasCompounds && (
+              <Select
+                value={selectedCompoundId}
+                onValueChange={setSelectedCompoundId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select medication to track" />
+                </SelectTrigger>
+                <SelectContent>
+                  {compounds.map(compound => (
+                    <SelectItem key={compound.id} value={compound.id}>
+                      {compound.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Weight Chart with Dosage Markers */}
+            <Card className="p-4 bg-muted/30">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={chartData} margin={{ top: 35, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                    <XAxis
-                      dataKey="date"
+                    <XAxis 
+                      dataKey="date" 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={11}
                       tickLine={false}
+                      axisLine={false}
                     />
-                    <YAxis
-                      domain={weightDomain}
+                    <YAxis 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={11}
                       tickLine={false}
-                      tickFormatter={(value) => `${value}`}
+                      axisLine={false}
+                      domain={['dataMin - 5', 'dataMax + 5']}
+                      label={{ 
+                        value: 'Weight (lbs)', 
+                        angle: -90, 
+                        position: 'insideLeft',
+                        style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
+                      }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="weight"
-                      stroke="url(#weightGradient)"
+                    <Line 
+                      type="monotone" 
+                      dataKey="weight" 
+                      stroke="hsl(var(--primary))" 
                       strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 6, fill: 'hsl(6 100% 69%)' }}
+                      dot={<CustomDot />}
+                      activeDot={<CustomActiveDot />}
                     />
-
-                    {/* Dosage Markers */}
-                    {filteredMarkers.map((marker, idx) => {
-                      const dataPoint = chartData.find(
-                        d => format(d.dateObj, 'MMM d') === marker.dateFormatted
-                      );
-                      if (!dataPoint || !dataPoint.weight) return null;
-
-                      return (
-                        <ReferenceDot
-                          key={`${marker.compoundId}-${idx}`}
-                          x={marker.dateFormatted}
-                          y={dataPoint.weight}
-                          r={8}
-                          fill={marker.color}
-                          stroke="hsl(var(--background))"
-                          strokeWidth={2}
-                        />
-                      );
-                    })}
-                  </ComposedChart>
+                  </LineChart>
                 </ResponsiveContainer>
-              </div>
-
-              {/* Legend */}
-              {filteredMarkers.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-3">
-                    Dosage Changes
-                  </p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {filteredMarkers.map((marker, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: marker.color }}
-                          />
-                          <span className="font-medium text-foreground">{marker.medicationName}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {formatDose(marker.amount, marker.unit)}
-                          </Badge>
-                          <span className="text-muted-foreground">{marker.dateFormatted}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              ) : (
+                <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+                  No weight data for this time period.
                 </div>
               )}
             </Card>
 
-            {/* Info Card */}
-            <Card className="p-4 bg-muted/30">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">Pro tip:</span> Toggle Stack View to see all your medications at once, or select a single medication to focus on its journey.
-              </p>
-            </Card>
-          </div>
+            {/* Dosage Changes Legend */}
+            {dosageChanges.length > 0 && selectedCompound && (
+              <Card className="p-4 bg-card border border-border">
+                <h3 className="text-sm font-medium text-foreground mb-3">
+                  {selectedCompound.name} Dosage History
+                </h3>
+                <div className="space-y-2">
+                  {dosageChanges.map((change, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="text-foreground font-medium">
+                          {formatDose(change.amount, change.unit)}
+                        </span>
+                      </div>
+                      <span className="text-muted-foreground text-xs">
+                        {change.dateFormatted}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </>
         )}
       </div>
 
