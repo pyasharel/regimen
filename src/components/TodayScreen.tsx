@@ -1031,7 +1031,7 @@ export const TodayScreen = () => {
                       />
                     )}
                     
-                    <div className="p-3">
+                    <div className="p-3 min-h-[60px]">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {/* Medication name with optional Skipped badge */}
