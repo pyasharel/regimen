@@ -8,12 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
+import { hapticLight, hapticMedium, hapticWarning } from "@/utils/haptics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -259,15 +259,7 @@ export const MyStackScreen = () => {
   };
 
   const triggerHaptic = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Light });
-      } else if ('vibrate' in navigator) {
-        navigator.vibrate(30);
-      }
-    } catch (err) {
-      console.log('Haptic failed:', err);
-    }
+    await hapticLight();
   };
 
   const handleShareStack = async () => {

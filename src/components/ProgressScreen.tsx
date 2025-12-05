@@ -19,7 +19,6 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
 import { Camera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { MainHeader } from "@/components/MainHeader";
@@ -28,6 +27,7 @@ import { MetricChart } from "@/components/progress/MetricChart";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
 import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { hapticLight, hapticMedium, hapticSuccess } from "@/utils/haptics";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
@@ -242,14 +242,10 @@ export const ProgressScreen = () => {
   const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
 
   const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
-      } else if ('vibrate' in navigator) {
-        navigator.vibrate(intensity === 'light' ? 30 : 50);
-      }
-    } catch (err) {
-      console.log('Haptic failed:', err);
+    if (intensity === 'light') {
+      await hapticLight();
+    } else {
+      await hapticMedium();
     }
   };
 

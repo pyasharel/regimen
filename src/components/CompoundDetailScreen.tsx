@@ -11,10 +11,10 @@ import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/u
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { Share } from '@capacitor/share';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { CompoundShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
+import { hapticLight, hapticMedium } from "@/utils/haptics";
 
 interface Compound {
   id: string;
@@ -251,15 +251,7 @@ export const CompoundDetailScreen = () => {
   };
 
   const triggerHaptic = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Light });
-      } else if ('vibrate' in navigator) {
-        navigator.vibrate(30);
-      }
-    } catch (err) {
-      console.log('Haptic failed:', err);
-    }
+    await hapticLight();
   };
 
   const handleShare = async () => {

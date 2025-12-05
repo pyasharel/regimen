@@ -1,25 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, Layers, TrendingUp, Settings, BarChart3 } from "lucide-react";
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { Capacitor } from '@capacitor/core';
 import { useState } from "react";
+import { hapticLight } from "@/utils/haptics";
 
 export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [tappedTab, setTappedTab] = useState<string | null>(null);
-
-  const triggerHaptic = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Light });
-      } else if ('vibrate' in navigator) {
-        navigator.vibrate(30);
-      }
-    } catch (err) {
-      console.log('Haptic failed:', err);
-    }
-  };
 
   const tabs = [
     { name: "Today", path: "/today", icon: Home },
@@ -30,7 +17,7 @@ export const BottomNavigation = () => {
   ];
 
   const handleNavigation = (path: string, name: string) => {
-    triggerHaptic();
+    hapticLight();
     setTappedTab(name);
     setTimeout(() => setTappedTab(null), 200);
     navigate(path);

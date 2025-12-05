@@ -10,7 +10,6 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
@@ -22,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
 import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
+import { hapticSuccess, hapticLight, hapticMedium, hapticWarning, hapticPattern } from "@/utils/haptics";
 import {
   Drawer,
   DrawerContent,
@@ -514,10 +514,8 @@ export const TodayScreen = () => {
   };
 
   const triggerLastDoseCelebration = () => {
-    // Medium haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate([100, 50, 100]);
-    }
+    // Success haptic feedback pattern for day complete
+    hapticPattern([100, 50, 100, 50, 150]);
 
     // Play two-tone chime
     const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
@@ -613,22 +611,14 @@ export const TodayScreen = () => {
 
   const greeting = getGreeting();
 
-  // Haptic feedback function - Medium impact for dose toggles
+  // Haptic feedback function - now uses centralized haptic utilities
   const triggerHaptic = async (intensity: 'light' | 'medium' | 'heavy' = 'medium') => {
-    try {
-      if (Capacitor.isNativePlatform()) {
-        const style = intensity === 'light' ? ImpactStyle.Light : 
-                     intensity === 'medium' ? ImpactStyle.Medium : 
-                     ImpactStyle.Heavy;
-        await Haptics.impact({ style });
-      } else if ('vibrate' in navigator) {
-        const duration = intensity === 'light' ? 30 : 
-                        intensity === 'medium' ? 50 : 
-                        100;
-        navigator.vibrate(duration);
-      }
-    } catch (err) {
-      console.log('Haptic failed:', err);
+    if (intensity === 'light') {
+      await hapticLight();
+    } else if (intensity === 'medium') {
+      await hapticMedium();
+    } else {
+      await hapticSuccess(); // Use success haptic for heavy/completion actions
     }
   };
 
