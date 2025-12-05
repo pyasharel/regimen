@@ -1035,8 +1035,8 @@ export const TodayScreen = () => {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {/* Medication name with optional Skipped badge */}
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className={`text-[17px] font-bold transition-colors duration-300 ${
+                          <div className="flex items-center gap-2 mb-1 min-w-0">
+                            <h3 className={`text-[17px] font-bold transition-colors duration-300 truncate ${
                               isSkipped 
                                 ? 'text-muted-foreground/60' 
                                 : dose.taken 
@@ -1046,7 +1046,7 @@ export const TodayScreen = () => {
                               {dose.compound_name}
                             </h3>
                             {isSkipped && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted-foreground/20 text-muted-foreground/70">
+                              <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted-foreground/20 text-muted-foreground/70">
                                 Skipped
                               </span>
                             )}
