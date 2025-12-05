@@ -174,26 +174,26 @@ All colors MUST be HSL.
   
   /* ===== ANIMATIONS ===== */
   
-  /* Page Transitions - Option A: Fade + Scale */
+  /* Page Transitions - Option C: Fade + Y Translate (iOS-style) */
   @keyframes page-enter {
     from { 
       opacity: 0;
-      transform: scale(0.98);
+      transform: translateY(12px);
     }
     to { 
       opacity: 1;
-      transform: scale(1);
+      transform: translateY(0);
     }
   }
   
   @keyframes page-exit {
     from { 
       opacity: 1;
-      transform: scale(1);
+      transform: translateY(0);
     }
     to { 
       opacity: 0;
-      transform: scale(0.98);
+      transform: translateY(-8px);
     }
   }
   
@@ -202,11 +202,11 @@ All colors MUST be HSL.
   }
   
   .page-enter {
-    animation: page-enter 0.25s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+    animation: page-enter 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
   }
   
   .page-exit {
-    animation: page-exit 0.15s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+    animation: page-exit 0.15s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
   }
   
   /* List Item Stagger Animation */
