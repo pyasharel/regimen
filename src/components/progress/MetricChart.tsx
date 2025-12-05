@@ -195,7 +195,7 @@ export const MetricChart = ({
     const data = payload[0].payload;
     
     return (
-      <Card className="p-3 shadow-lg border border-border bg-card">
+      <div className="p-3 shadow-lg border border-border bg-card rounded-lg">
         <p className="text-xs font-medium text-muted-foreground mb-1">{data.date}</p>
         {metricType === "weight" && (
           <p className="text-sm font-semibold text-foreground">{data.value} {weightUnit}</p>
@@ -213,7 +213,7 @@ export const MetricChart = ({
         {data.dosageLabel && (
           <p className="text-xs text-primary mt-1">Dosage: {data.dosageLabel}</p>
         )}
-      </Card>
+      </div>
     );
   };
 
@@ -312,7 +312,7 @@ export const MetricChart = ({
               style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
             }}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
           <Bar 
             dataKey="value" 
             radius={[4, 4, 0, 0]}
