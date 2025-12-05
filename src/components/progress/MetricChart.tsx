@@ -254,11 +254,11 @@ export const MetricChart = ({
     );
   }
 
-  // Get color based on metric type
+  // Get color based on metric type - using purple/coral scheme
   const getMetricColor = () => {
-    if (metricType === "energy") return { stroke: "hsl(35, 92%, 50%)", fill: "hsl(35, 92%, 50%)" }; // Amber
-    if (metricType === "sleep") return { stroke: "hsl(230, 70%, 55%)", fill: "hsl(230, 70%, 55%)" }; // Indigo
-    return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" }; // Purple for weight
+    if (metricType === "energy") return { stroke: "hsl(350, 70%, 60%)", fill: "hsl(350, 70%, 60%)" }; // Coral/rose
+    if (metricType === "sleep") return { stroke: "hsl(270, 60%, 55%)", fill: "hsl(270, 60%, 55%)" }; // Deeper purple
+    return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" }; // Primary for weight
   };
 
   const metricColor = getMetricColor();
