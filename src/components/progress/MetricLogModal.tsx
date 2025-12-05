@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Star } from "lucide-react";
+import { CalendarIcon, Zap, Moon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,26 +22,48 @@ interface MetricLogModalProps {
   onSuccess: () => void;
 }
 
-const StarRating = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
+// Icon-based rating matching Log Today drawer
+const IconRating = ({ 
+  value, 
+  onChange,
+  icon: Icon,
+  color,
+}: { 
+  value: number; 
+  onChange: (v: number) => void;
+  icon: React.ElementType;
+  color: string;
+}) => {
   return (
-    <div className="flex gap-2 justify-center py-4">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => onChange(star)}
-          className="transition-transform hover:scale-110"
-        >
-          <Star
+    <div className="flex items-center justify-center gap-1.5 py-4">
+      {[1, 2, 3, 4, 5].map((level) => {
+        const isSelected = level <= value;
+        
+        return (
+          <button
+            key={level}
+            type="button"
+            onClick={() => onChange(level)}
             className={cn(
-              "w-10 h-10 transition-colors",
-              star <= value
-                ? "fill-primary text-primary"
-                : "text-muted-foreground/30"
+              "w-11 h-11 rounded-full flex items-center justify-center transition-all",
+              "border-2 active:scale-95",
+              isSelected
+                ? `border-transparent ${color}`
+                : "border-muted-foreground/20 bg-transparent"
             )}
-          />
-        </button>
-      ))}
+          >
+            <Icon 
+              className={cn(
+                "w-5 h-5 transition-colors",
+                isSelected ? "text-white fill-white" : "text-muted-foreground/40 fill-muted-foreground/40"
+              )}
+            />
+          </button>
+        );
+      })}
+      <span className="ml-2 text-sm font-medium" style={{ color: color.includes('hsl') ? color.replace('bg-[', '').replace(']', '') : undefined }}>
+        {value}/5
+      </span>
     </div>
   );
 };
@@ -54,6 +76,10 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Colors matching charts
+  const energyColor = "bg-[hsl(350,70%,60%)]"; // coral/rose
+  const sleepColor = "bg-[hsl(270,60%,55%)]"; // purple
+
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -61,7 +87,6 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
       if (!user) throw new Error('Not authenticated');
 
       const dateStr = format(entryDate, 'yyyy-MM-dd');
-      let category = metricType;
       let metrics: any = {};
 
       if (metricType === "weight") {
@@ -86,7 +111,6 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         metrics = { notes: notes.trim() };
       }
 
-      // Check if entry exists for this date (any category - unique constraint is user_id + entry_date)
       const { data: existingEntry } = await supabase
         .from('progress_entries')
         .select('id, metrics, category')
@@ -96,7 +120,6 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
 
       let error;
       if (existingEntry) {
-        // Merge new metrics with existing metrics
         const existingMetrics = typeof existingEntry.metrics === 'object' && existingEntry.metrics !== null 
           ? existingEntry.metrics as Record<string, unknown>
           : {};
@@ -151,8 +174,8 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
   const getTitle = () => {
     switch (metricType) {
       case "weight": return "Log Weight";
-      case "energy": return "Log Energy Level";
-      case "sleep": return "Log Sleep Quality";
+      case "energy": return "Log Energy";
+      case "sleep": return "Log Last Night's Sleep";
       case "notes": return "Add Journal Entry";
     }
   };
@@ -163,6 +186,18 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
       case "sleep": return "How well did you sleep last night?";
       default: return "";
     }
+  };
+
+  const getIcon = () => {
+    if (metricType === "energy") return Zap;
+    if (metricType === "sleep") return Moon;
+    return Zap;
+  };
+
+  const getColor = () => {
+    if (metricType === "energy") return energyColor;
+    if (metricType === "sleep") return sleepColor;
+    return energyColor;
   };
 
   return (
@@ -197,7 +232,12 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
           {(metricType === "energy" || metricType === "sleep") && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-2">{getHelperText()}</p>
-              <StarRating value={rating} onChange={setRating} />
+              <IconRating 
+                value={rating} 
+                onChange={setRating} 
+                icon={getIcon()}
+                color={getColor()}
+              />
               <p className="text-xs text-muted-foreground">
                 {rating === 1 && "Poor"}
                 {rating === 2 && "Below average"}
