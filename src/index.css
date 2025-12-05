@@ -236,6 +236,22 @@ All colors MUST be HSL.
     animation: nav-bounce 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   
+  /* Subtle Pulse Wave - for attention indicators */
+  @keyframes pulse-wave {
+    0%, 100% { 
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 0.6;
+      transform: scale(1.15);
+    }
+  }
+  
+  .animate-pulse-wave {
+    animation: pulse-wave 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
   /* Shimmer Effect for Skeletons */
   @keyframes shimmer {
     100% {

@@ -319,7 +319,7 @@ export const MyStackScreen = () => {
   }
  
   return (
-    <div className="flex min-h-screen flex-col bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       {/* Header */}
       <MainHeader title="My Stack" />
 
@@ -329,7 +329,7 @@ export const MyStackScreen = () => {
           {/* Active Compounds */}
           <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-white animate-pulse-wave" />
               <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
             </div>
             <div className="text-center">
@@ -356,8 +356,8 @@ export const MyStackScreen = () => {
         </div>
       </div>
 
-      {/* Active Compounds */}
-      <div className="flex-1 space-y-4 px-4 pb-4">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto space-y-4 px-4 pb-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
         <div className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Active
