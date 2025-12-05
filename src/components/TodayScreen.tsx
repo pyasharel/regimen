@@ -1180,32 +1180,31 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* Slim Bottom Tray with Log Drawer */}
-      <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>
-        {/* Persistent tray trigger - sits just above bottom nav */}
-        <div 
-          className="fixed left-0 right-0 flex items-center justify-between px-4"
-          style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+      {/* Add Medication FAB - floating in bottom right, above tray */}
+      {hasCompounds && (
+        <button
+          onClick={() => navigate("/add-compound")}
+          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+          style={{ bottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
         >
-          {/* Log Today tray button */}
+          <Plus className="h-6 w-6 text-white" />
+        </button>
+      )}
+
+      {/* Slim Bottom Tray - thin horizontal bar just above bottom nav */}
+      <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>
+        <div 
+          className="fixed left-0 right-0 bg-secondary/60 backdrop-blur-sm border-t border-border/30"
+          style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+        >
           <DrawerTrigger asChild>
             <button
-              className="flex items-center gap-2 px-3 py-2 rounded-full bg-secondary/90 backdrop-blur-sm shadow-md transition-all hover:bg-secondary active:scale-95"
+              className="w-full flex items-center justify-center gap-2 py-2.5 transition-colors hover:bg-secondary/80 active:bg-secondary"
             >
               <ClipboardList className={`h-4 w-4 text-secondary-foreground transition-transform duration-300 ${showLogTodayModal ? 'rotate-45' : ''}`} />
-              <span className="text-xs font-medium text-secondary-foreground">Log</span>
+              <span className="text-xs font-medium text-secondary-foreground">Log Today</span>
             </button>
           </DrawerTrigger>
-          
-          {/* Add Medication FAB - on the right */}
-          {hasCompounds && (
-            <button
-              onClick={() => navigate("/add-compound")}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
-            >
-              <Plus className="h-6 w-6 text-white" />
-            </button>
-          )}
         </div>
         
         {/* Log Today Drawer Content */}
