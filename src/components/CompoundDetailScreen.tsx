@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ interface Dose {
   scheduled_time: string;
   taken: boolean;
   taken_at: string | null;
+  skipped?: boolean;
 }
 
 const DAY_ABBREVIATIONS: Record<string, string> = {
@@ -114,6 +115,7 @@ export const CompoundDetailScreen = () => {
 
   const halfLifeData = compound ? getHalfLifeData(compound.name) : null;
   const takenDoses = doses.filter(d => d.taken && d.taken_at);
+  const skippedDoses = doses.filter(d => d.skipped === true);
   
   // Deduplicate doses - if two doses are within 60 seconds of each other, they're duplicates
   const uniqueTakenDoses = takenDoses
@@ -130,6 +132,16 @@ export const CompoundDetailScreen = () => {
       return acc;
     }, [] as Dose[])
     .sort((a, b) => new Date(b.taken_at! + 'Z').getTime() - new Date(a.taken_at! + 'Z').getTime()); // Sort newest first
+
+  // Combine taken and skipped for full dose history display
+  const allHandledDoses = [
+    ...uniqueTakenDoses.map(d => ({ ...d, type: 'taken' as const })),
+    ...skippedDoses.map(d => ({ ...d, type: 'skipped' as const }))
+  ].sort((a, b) => {
+    const dateA = a.taken_at ? new Date(a.taken_at + 'Z').getTime() : new Date(a.scheduled_date + 'T00:00:00').getTime();
+    const dateB = b.taken_at ? new Date(b.taken_at + 'Z').getTime() : new Date(b.scheduled_date + 'T00:00:00').getTime();
+    return dateB - dateA; // Newest first
+  });
 
   const takenDosesForCalc: TakenDose[] = uniqueTakenDoses.map(d => ({
     id: d.id,
@@ -640,37 +652,54 @@ export const CompoundDetailScreen = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-sm">Dose History</h3>
-            {uniqueTakenDoses.length > 0 && (
-              <span className="text-xs text-muted-foreground">{uniqueTakenDoses.length} logged</span>
+            {allHandledDoses.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {uniqueTakenDoses.length} taken{skippedDoses.length > 0 && `, ${skippedDoses.length} skipped`}
+              </span>
             )}
           </div>
           
-          {uniqueTakenDoses.length === 0 ? (
+          {allHandledDoses.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No doses logged yet
             </p>
           ) : (
-            <div className={`space-y-2 ${uniqueTakenDoses.length > 10 ? 'max-h-[400px] overflow-y-auto pr-1' : ''}`}>
-              {uniqueTakenDoses.map((dose) => (
+            <div className={`space-y-2 ${allHandledDoses.length > 10 ? 'max-h-[400px] overflow-y-auto pr-1' : ''}`}>
+              {allHandledDoses.map((dose) => (
                 <div 
                   key={dose.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-card border border-border"
+                  className={`flex items-center justify-between p-3 rounded-xl border ${
+                    dose.type === 'skipped' 
+                      ? 'bg-muted/30 border-border/50' 
+                      : 'bg-card border-border'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <div className={`h-2 w-2 rounded-full ${
+                      dose.type === 'skipped' ? 'bg-muted-foreground/40' : 'bg-primary'
+                    }`} />
                     <div>
-                      <div className="font-medium text-sm">
+                      <div className={`font-medium text-sm ${
+                        dose.type === 'skipped' ? 'text-muted-foreground/70' : ''
+                      }`}>
                         {formatDose(dose.dose_amount, dose.dose_unit)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {dose.taken_at 
+                        {dose.type === 'taken' && dose.taken_at 
                           ? format(new Date(dose.taken_at + 'Z'), 'MMM d, yyyy • h:mm a')
                           : format(new Date(dose.scheduled_date + 'T00:00:00'), 'MMM d, yyyy')
                         }
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-primary font-medium">✓ Taken</div>
+                  {dose.type === 'skipped' ? (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground/60 font-medium">
+                      <CircleSlash className="h-3 w-3" />
+                      Skipped
+                    </div>
+                  ) : (
+                    <div className="text-xs text-primary font-medium">✓ Taken</div>
+                  )}
                 </div>
               ))}
             </div>
