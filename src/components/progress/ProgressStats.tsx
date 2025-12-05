@@ -5,11 +5,15 @@ import { safeParseDate, safeFormatDate } from "@/utils/dateUtils";
 interface ProgressStatsProps {
   weightEntries: any[];
   streakData: { current_streak?: number; longest_streak?: number } | null;
+  goalWeight?: number;
+  weightUnit?: string;
 }
 
 export const ProgressStats = ({ 
   weightEntries, 
-  streakData
+  streakData,
+  goalWeight,
+  weightUnit = 'lbs'
 }: ProgressStatsProps) => {
   // Get all weight entries sorted by date (most recent first)
   const sortedEntries = [...weightEntries].sort((a, b) => {
@@ -21,10 +25,11 @@ export const ProgressStats = ({
 
   const currentWeight = sortedEntries[0]?.metrics?.weight;
   const startingWeight = sortedEntries[sortedEntries.length - 1]?.metrics?.weight;
+  const startDate = sortedEntries[sortedEntries.length - 1]?.entry_date;
 
-  // Calculate % change
-  const percentChange = startingWeight && currentWeight
-    ? ((currentWeight - startingWeight) / startingWeight) * 100
+  // Calculate absolute change (in lbs/kg)
+  const absoluteChange = startingWeight && currentWeight
+    ? currentWeight - startingWeight
     : null;
 
   // Calculate weekly trend
@@ -40,51 +45,62 @@ export const ProgressStats = ({
     return (weightChange / daysBetween) * 7;
   })();
 
+  // Calculate "To Goal" - how much left to reach goal
+  const toGoal = goalWeight && currentWeight
+    ? currentWeight - goalWeight
+    : null;
+
   if (!currentWeight) return null;
 
-  // Pared down to 4 core stats
+  // 2x2 layout like reference image
   const stats = [
     {
-      label: "Current",
+      label: "Current Weight",
       value: Math.round(currentWeight),
-      unit: "lbs",
+      unit: weightUnit,
       subtext: sortedEntries[0] && safeFormatDate(sortedEntries[0].entry_date, 'MMM d')
     },
     {
-      label: "Change",
-      value: percentChange !== null ? `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}` : '--',
-      unit: "%",
-      subtext: startingWeight ? `from ${Math.round(startingWeight)}` : undefined
+      label: "Total Change",
+      value: absoluteChange !== null ? `${absoluteChange > 0 ? '+' : ''}${Math.round(absoluteChange)}` : '--',
+      unit: weightUnit,
+      subtext: startDate ? `Since ${safeFormatDate(startDate, 'MMM d')}` : undefined
     },
     {
-      label: "Weekly",
+      label: "Weekly Trend",
       value: weeklyTrend !== null ? `${weeklyTrend >= 0 ? '+' : ''}${weeklyTrend.toFixed(1)}` : '--',
-      unit: "lbs/wk",
-      subtext: sortedEntries.length >= 2 ? `${Math.min(4, sortedEntries.length)} entries` : undefined
+      unit: `${weightUnit}/wk`,
+      subtext: sortedEntries.length >= 2 ? `Last ${Math.min(4, sortedEntries.length)} entries` : undefined
     },
-    {
-      label: "Streak",
+    // Show "To Goal" if goal is set, otherwise show streak
+    goalWeight ? {
+      label: "To Goal",
+      value: toGoal !== null ? `${toGoal > 0 ? '' : '+'}${Math.abs(Math.round(toGoal))}` : '--',
+      unit: weightUnit,
+      subtext: `Goal: ${goalWeight} ${weightUnit}`
+    } : {
+      label: "Current Streak",
       value: streakData?.current_streak || 0,
       unit: "days",
-      subtext: `Best: ${streakData?.longest_streak || 0}`
+      subtext: `Best: ${streakData?.longest_streak || 0} days`
     }
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 gap-3">
       {stats.map((stat, idx) => (
         <Card 
           key={idx} 
-          className="p-2 bg-card border border-border"
+          className="p-3 bg-card border border-border"
         >
-          <div className="space-y-0.5">
-            <div className="text-[9px] text-muted-foreground uppercase tracking-wide truncate">{stat.label}</div>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-base font-bold text-foreground">{stat.value}</span>
-              {stat.unit && <span className="text-[8px] text-muted-foreground">{stat.unit}</span>}
+          <div className="space-y-1">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{stat.label}</div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-foreground">{stat.value}</span>
+              {stat.unit && <span className="text-xs text-muted-foreground">{stat.unit}</span>}
             </div>
             {stat.subtext && (
-              <div className="text-[8px] text-muted-foreground truncate">
+              <div className="text-[10px] text-muted-foreground">
                 {stat.subtext}
               </div>
             )}
