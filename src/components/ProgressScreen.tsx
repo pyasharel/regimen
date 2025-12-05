@@ -491,7 +491,7 @@ export const ProgressScreen = () => {
                   value={selectedCompoundId || "none"}
                   onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
                 >
-                  <SelectTrigger className="w-full h-9 text-xs bg-secondary/30 border-border/50">
+                  <SelectTrigger className="w-full h-9 text-xs bg-muted/50 border-border">
                     <SelectValue placeholder="Correlation" />
                   </SelectTrigger>
                   <SelectContent>
