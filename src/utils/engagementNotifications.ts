@@ -9,6 +9,36 @@ export type EngagementNotificationType =
   | 'weekly_checkin'
   | 'reengage';
 
+// Fixed notification IDs for each type to prevent duplicates
+const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = {
+  first_dose: 90001,
+  streak_3: 90003,
+  streak_7: 90007,
+  missed_dose: 90010,
+  weekly_checkin: 90020,
+  reengage: 90030,
+};
+
+// LocalStorage keys for throttling
+const THROTTLE_KEYS: Record<EngagementNotificationType, string> = {
+  first_dose: 'regimen_notif_first_dose',
+  streak_3: 'regimen_notif_streak_3',
+  streak_7: 'regimen_notif_streak_7',
+  missed_dose: 'regimen_notif_missed_dose',
+  weekly_checkin: 'regimen_notif_weekly_checkin',
+  reengage: 'regimen_notif_reengage',
+};
+
+// How often each notification type can be sent (in days)
+const THROTTLE_DAYS: Record<EngagementNotificationType, number> = {
+  first_dose: 9999, // Only once ever
+  streak_3: 30,     // Once per month (streak resets)
+  streak_7: 30,     // Once per month
+  missed_dose: 3,   // Every 3 days max
+  weekly_checkin: 7, // Once per week
+  reengage: 3,       // Every 3 days max
+};
+
 const ENGAGEMENT_NOTIFICATIONS = {
   first_dose: {
     title: "✅ Great start!",
@@ -37,19 +67,57 @@ const ENGAGEMENT_NOTIFICATIONS = {
 };
 
 /**
- * Schedule an engagement notification
+ * Check if a notification type is throttled (recently sent)
+ */
+const isThrottled = (type: EngagementNotificationType): boolean => {
+  const key = THROTTLE_KEYS[type];
+  const lastSent = localStorage.getItem(key);
+  
+  if (!lastSent) return false;
+  
+  const lastSentDate = new Date(lastSent);
+  const now = new Date();
+  const daysSince = Math.floor((now.getTime() - lastSentDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  return daysSince < THROTTLE_DAYS[type];
+};
+
+/**
+ * Mark a notification type as sent (for throttling)
+ */
+const markAsSent = (type: EngagementNotificationType): void => {
+  const key = THROTTLE_KEYS[type];
+  localStorage.setItem(key, new Date().toISOString());
+};
+
+/**
+ * Schedule an engagement notification with deduplication
  */
 export const scheduleEngagementNotification = async (
   type: EngagementNotificationType,
   scheduledTime: Date
 ): Promise<void> => {
   try {
+    // Check throttle
+    if (isThrottled(type)) {
+      console.log(`Skipping ${type} notification - throttled`);
+      return;
+    }
+    
     const notification = ENGAGEMENT_NOTIFICATIONS[type];
+    const notificationId = ENGAGEMENT_NOTIFICATION_IDS[type];
+    
+    // Cancel any existing notification with the same ID first
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
+    } catch (e) {
+      // Ignore errors from canceling non-existent notifications
+    }
     
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: Math.floor(Math.random() * 100000) + 50000, // Random ID between 50000-150000
+          id: notificationId, // Use fixed ID to prevent duplicates
           title: notification.title,
           body: notification.body,
           schedule: { at: scheduledTime },
@@ -60,6 +128,9 @@ export const scheduleEngagementNotification = async (
         },
       ],
     });
+    
+    // Mark as sent for throttling
+    markAsSent(type);
 
     console.log(`Scheduled ${type} engagement notification for ${scheduledTime}`);
   } catch (error) {
@@ -113,6 +184,7 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
 
 /**
  * Schedule missed dose notification (3 PM if unchecked doses)
+ * Only for doses that are NOT taken AND NOT skipped
  */
 export const scheduleMissedDoseNotification = async (): Promise<void> => {
   try {
@@ -122,13 +194,14 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Check if there are unchecked doses for today
+    // Check if there are unchecked AND non-skipped doses for today
     const { data: doses } = await supabase
       .from('doses')
-      .select('id, scheduled_time')
+      .select('id, scheduled_time, skipped')
       .eq('user_id', user.id)
       .eq('scheduled_date', todayStr)
-      .eq('taken', false);
+      .eq('taken', false)
+      .eq('skipped', false); // Exclude skipped doses!
 
     if (doses && doses.length > 0) {
       // Check if any dose time has passed
@@ -158,6 +231,12 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
  */
 export const scheduleWeeklyCheckin = async (): Promise<void> => {
   try {
+    // Check throttle first - no need to calculate if already sent this week
+    if (isThrottled('weekly_checkin')) {
+      console.log('Skipping weekly check-in - already scheduled this week');
+      return;
+    }
+    
     const today = new Date();
     const dayOfWeek = today.getDay();
     
@@ -194,7 +273,7 @@ export const scheduleReengagementNotification = async (): Promise<void> => {
     const today = new Date();
     const daysSinceLastCheckIn = Math.floor((today.getTime() - lastCheckIn.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Schedule re-engagement if it's been 3 days
+    // Schedule re-engagement if it's been 3+ days since last check-in
     if (daysSinceLastCheckIn >= 3) {
       const notificationTime = new Date();
       notificationTime.setHours(14, 0, 0, 0); // 2 PM
@@ -210,16 +289,17 @@ export const scheduleReengagementNotification = async (): Promise<void> => {
 
 /**
  * Initialize all engagement notifications
+ * Uses throttling to prevent duplicate scheduling
  */
 export const initializeEngagementNotifications = async (): Promise<void> => {
   try {
-    // Schedule weekly check-in
+    // Schedule weekly check-in (throttled to once per week)
     await scheduleWeeklyCheckin();
     
-    // Check for missed doses
+    // Check for missed doses (throttled to once every 3 days)
     await scheduleMissedDoseNotification();
     
-    // Check for re-engagement
+    // Check for re-engagement (throttled to once every 3 days)
     await scheduleReengagementNotification();
     
     // Streak notifications are triggered on dose completion

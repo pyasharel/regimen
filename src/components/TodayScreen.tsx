@@ -188,14 +188,17 @@ export const TodayScreen = () => {
     verifyCheckout();
   }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
+  // Load data when date changes
   useEffect(() => {
     loadDoses();
     checkCompounds();
     loadUserName();
-    
-    // Initialize engagement notifications
-    initializeEngagementNotifications();
   }, [selectedDate]);
+
+  // Initialize engagement notifications only once on mount
+  useEffect(() => {
+    initializeEngagementNotifications();
+  }, []);
 
 
   const loadUserName = async () => {
