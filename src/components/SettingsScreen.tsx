@@ -23,7 +23,10 @@ export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">(() => {
+    const saved = localStorage.getItem('weightUnit');
+    return saved === 'kg' ? 'kg' : 'lbs';
+  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
@@ -37,6 +40,22 @@ export const SettingsScreen = () => {
     const saved = localStorage.getItem('goalWeight');
     return saved ? parseFloat(saved) : null;
   });
+
+  // Save weightUnit to localStorage when it changes
+  const handleWeightUnitChange = (unit: "lbs" | "kg") => {
+    setWeightUnit(unit);
+    localStorage.setItem('weightUnit', unit);
+  };
+
+  // Convert goal weight for display based on unit (stored in lbs)
+  const getDisplayGoalWeight = () => {
+    if (!goalWeight) return null;
+    if (weightUnit === 'kg') {
+      return Math.round(goalWeight / 2.20462);
+    }
+    return Math.round(goalWeight);
+  };
+
   useEffect(() => {
     const savedSound = localStorage.getItem('soundEnabled');
     setSoundEnabled(savedSound !== 'false');
@@ -113,7 +132,7 @@ export const SettingsScreen = () => {
     {
       icon: Target,
       label: "Goal Weight",
-      description: goalWeight ? `${goalWeight} lbs` : "Not set",
+      description: getDisplayGoalWeight() ? `${getDisplayGoalWeight()} ${weightUnit}` : "Not set",
       onClick: () => setShowGoalModal(true),
     },
     {
@@ -206,7 +225,7 @@ export const SettingsScreen = () => {
                     </div>
                     <div className="flex gap-1 bg-muted rounded-lg p-1">
                       <button
-                        onClick={() => setWeightUnit("lbs")}
+                        onClick={() => handleWeightUnitChange("lbs")}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                           weightUnit === "lbs" ? "bg-background shadow-sm" : "hover:bg-background/50"
                         }`}
@@ -214,7 +233,7 @@ export const SettingsScreen = () => {
                         lbs
                       </button>
                       <button
-                        onClick={() => setWeightUnit("kg")}
+                        onClick={() => handleWeightUnitChange("kg")}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                           weightUnit === "kg" ? "bg-background shadow-sm" : "hover:bg-background/50"
                         }`}

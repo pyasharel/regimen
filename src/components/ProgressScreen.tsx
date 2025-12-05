@@ -26,6 +26,7 @@ import { MainHeader } from "@/components/MainHeader";
 import { ProgressStats } from "@/components/progress/ProgressStats";
 import { MetricChart } from "@/components/progress/MetricChart";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
+import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -77,6 +78,7 @@ export const ProgressScreen = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
   
   // User settings for weight unit and goal
   const [weightUnit, setWeightUnit] = useState<string>('lbs');
@@ -89,6 +91,12 @@ export const ProgressScreen = () => {
     setWeightUnit(savedUnit);
     if (savedGoal) setGoalWeight(Number(savedGoal));
   }, []);
+
+  const handleSaveGoal = (value: number) => {
+    localStorage.setItem('goalWeight', value.toString());
+    setGoalWeight(value);
+    toast.success('Goal weight saved');
+  };
 
   // Fetch progress entries
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -408,6 +416,7 @@ export const ProgressScreen = () => {
           streakData={streakData}
           goalWeight={goalWeight}
           weightUnit={weightUnit}
+          onSetGoal={() => setShowGoalModal(true)}
         />
 
         {/* Metric Type Selector - Text labels */}
@@ -471,6 +480,7 @@ export const ProgressScreen = () => {
                 isLoading={dataLoading}
                 dosageChanges={selectedCompoundId ? dosageChanges : []}
                 selectedMedication={selectedCompound?.name}
+                weightUnit={weightUnit}
               />
             </Card>
 
@@ -501,7 +511,7 @@ export const ProgressScreen = () => {
                       At {ratePerDosage.dosage.amount}{ratePerDosage.dosage.unit}:
                     </span>
                     <span className="font-medium text-foreground">
-                      {ratePerDosage.rate >= 0 ? '+' : ''}{ratePerDosage.rate.toFixed(1)} lbs/wk
+                      {ratePerDosage.rate >= 0 ? '+' : ''}{(weightUnit === 'kg' ? ratePerDosage.rate / 2.20462 : ratePerDosage.rate).toFixed(1)} {weightUnit}/wk
                     </span>
                     <span className="text-muted-foreground/70">
                       ({ratePerDosage.entries} entries)
@@ -849,6 +859,13 @@ export const ProgressScreen = () => {
         entryId={previewPhoto?.id || ''}
         onDelete={handleDeletePhoto}
         onDateUpdate={refetchEntries}
+      />
+      <BodySettingsModal
+        open={showGoalModal}
+        onOpenChange={setShowGoalModal}
+        type="goal"
+        currentValue={goalWeight}
+        onSave={handleSaveGoal}
       />
     </div>
   );
