@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO, subMonths } from "date-fns";
 import { formatDose } from "@/utils/doseUtils";
@@ -7,6 +6,8 @@ import { Star } from "lucide-react";
 import {
   LineChart,
   Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -250,12 +251,18 @@ export const MetricChart = ({
     );
   }
 
-  // Use scatter plot (dots without connecting line) for energy and sleep
-  // This allows seeing medication correlation over time like weight
+  // Use area chart (filled underneath) for energy and sleep
+  // Like the medication levels visualization
   if (metricType === "energy" || metricType === "sleep") {
     return (
       <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
-        <LineChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
+        <AreaChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id={`${metricType}Gradient`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05}/>
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
           <XAxis 
             dataKey="date" 
@@ -279,16 +286,16 @@ export const MetricChart = ({
             }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Line 
+          <Area 
             type="monotone" 
             dataKey="value" 
-            stroke="transparent"
-            strokeWidth={0}
+            stroke="hsl(var(--primary))" 
+            strokeWidth={2}
+            fill={`url(#${metricType}Gradient)`}
             dot={<CustomDot />}
             activeDot={<CustomActiveDot />}
-            connectNulls={false}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     );
   }
