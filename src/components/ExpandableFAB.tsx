@@ -75,11 +75,11 @@ export const ExpandableFAB = ({ onAddMedication, onLogToday }: ExpandableFABProp
           onClick={handleLogToday}
           className="flex items-center gap-3 group"
         >
-          <span className="px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg text-sm font-medium shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg text-sm font-medium shadow-lg">
             Log Today
           </span>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-coral shadow-lg transition-transform hover:scale-105 active:scale-95">
-            <ClipboardList className="h-5 w-5 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary shadow-lg transition-transform hover:scale-105 active:scale-95">
+            <ClipboardList className="h-5 w-5 text-secondary-foreground" />
           </div>
         </button>
 
@@ -88,11 +88,11 @@ export const ExpandableFAB = ({ onAddMedication, onLogToday }: ExpandableFABProp
           onClick={handleAddMedication}
           className="flex items-center gap-3 group"
         >
-          <span className="px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg text-sm font-medium shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="px-3 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg text-sm font-medium shadow-lg">
             Add Medication
           </span>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary shadow-lg transition-transform hover:scale-105 active:scale-95">
-            <Pill className="h-5 w-5 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary shadow-lg transition-transform hover:scale-105 active:scale-95">
+            <Pill className="h-5 w-5 text-secondary-foreground" />
           </div>
         </button>
       </div>
