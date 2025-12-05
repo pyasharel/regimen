@@ -794,41 +794,36 @@ export const TodayScreen = () => {
 
       {/* Doses */}
       <div className="flex-1 space-y-4 p-4 relative overflow-y-auto">
-        {/* Day Complete Celebration - Elegant Starburst */}
+        {/* Day Complete Celebration */}
         {showDayComplete && (
           <>
-            {/* High-altitude starburst from bottom */}
+            {/* Subtle confetti particles */}
             <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-              {[...Array(20)].map((_, i) => {
-                const startX = 40 + Math.random() * 20; // Centered spread
-                const endX = startX + (Math.random() - 0.5) * 30; // Slight horizontal drift
-                return (
-                  <div
-                    key={i}
-                    className="absolute rounded-full"
-                    style={{
-                      left: `${startX}%`,
-                      bottom: '10%',
-                      width: `${3 + Math.random() * 4}px`,
-                      height: `${3 + Math.random() * 4}px`,
-                      backgroundColor: i % 4 === 0 ? '#FF6F61' : i % 4 === 1 ? '#FF8A7A' : i % 4 === 2 ? '#FFA07A' : '#FFB899',
-                      animation: `starburst-particle ${0.8 + Math.random() * 0.4}s ease-out forwards`,
-                      animationDelay: `${Math.random() * 0.15}s`,
-                      boxShadow: '0 0 6px currentColor',
-                    }}
-                  />
-                );
-              })}
+              {[...Array(12)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    left: `${20 + Math.random() * 60}%`,
+                    top: '-10px',
+                    backgroundColor: i % 3 === 0 ? '#FF6F61' : i % 3 === 1 ? '#8B5CF6' : '#FCD34D',
+                    animation: `confetti-fall ${2 + Math.random()}s ease-in forwards`,
+                    animationDelay: `${Math.random() * 0.3}s`,
+                    opacity: 0.8
+                  }}
+                />
+              ))}
             </div>
             
-            {/* Perfect Day message - appears after particles start */}
+            {/* Perfect Day message */}
             <div 
-              className="fixed inset-x-0 top-32 z-50 flex justify-center pointer-events-none"
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
               style={{
-                animation: 'day-complete-enter 0.6s ease-out 0.2s both',
+                animation: 'day-complete-enter 0.5s ease-out',
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%)'
               }}
             >
-              <div className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <div className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Perfect Day!
               </div>
             </div>
@@ -938,7 +933,6 @@ export const TodayScreen = () => {
               
               const renderDoseCard = (dose: typeof doses[0]) => {
                 const shouldPulse = isDosePastDue(dose);
-                const isAnimating = animatingDoses.has(dose.id);
                 
                 return (
                   <div
@@ -947,29 +941,28 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border animate-fade-in relative ${
+                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
                       dose.taken
                         ? 'bg-card border-border'
                         : 'bg-primary border-primary'
-                    } ${isAnimating && !dose.taken ? '' : ''}`}
+                    }`}
                     style={{
                       opacity: dose.taken ? 0.85 : 1,
-                      transform: dose.taken && !isAnimating ? 'scale(0.98)' : 'scale(1)',
-                      transition: isAnimating ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      animation: isAnimating ? 'card-lift-settle 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' : 'none',
-                      ...(dose.taken && !isAnimating ? {} : !dose.taken ? {
+                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      ...(dose.taken ? {} : {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
-                      } : {})
+                      })
                     }}
                   >
-                    {/* Shimmer sweep on completion */}
-                    {isAnimating && (
+                    {/* Golden shine for day complete only */}
+                    {showDayComplete && dose.taken && (
                       <div 
-                        className="absolute inset-0 pointer-events-none z-10"
+                        className="absolute inset-0 pointer-events-none"
                         style={{
-                          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                          background: 'linear-gradient(90deg, transparent 40%, rgba(255,215,0,0.3) 50%, transparent 60%)',
                           backgroundSize: '200% 100%',
-                          animation: 'shimmer-sweep 0.5s ease-out forwards'
+                          animation: 'golden-shine 0.3s ease-out'
                         }}
                       />
                     )}
@@ -977,15 +970,10 @@ export const TodayScreen = () => {
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          {/* Medication name with pop animation */}
-                          <h3 
-                            className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground' : 'text-white'
-                            }`}
-                            style={{
-                              animation: isAnimating ? 'text-pop 0.3s ease-out' : 'none'
-                            }}
-                          >
+                          {/* Medication name */}
+                          <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
+                            dose.taken ? 'text-muted-foreground' : 'text-white'
+                          }`}>
                             {dose.compound_name}
                           </h3>
                           
@@ -1043,9 +1031,11 @@ export const TodayScreen = () => {
                             dose.taken
                               ? 'bg-success border-success'
                               : 'border-white/40 hover:border-white active:scale-95'
-                          } ${shouldPulse && !dose.taken ? 'animate-gentle-pulse' : ''}`}
+                          } ${shouldPulse ? 'animate-gentle-pulse' : ''}`}
                           style={{
-                            animation: isAnimating ? 'checkbox-check 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+                            ...(animatingDoses.has(dose.id) && dose.taken ? {
+                              animation: 'checkbox-check 0.2s ease-out'
+                            } : {})
                           }}
                         >
                           {dose.taken && (
@@ -1055,12 +1045,10 @@ export const TodayScreen = () => {
                               fill="none"
                               stroke="currentColor"
                               strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
                               strokeDasharray="24"
                               strokeDashoffset="0"
                               style={{
-                                animation: isAnimating ? 'draw-check 0.35s ease-out' : 'none',
+                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
                               }}
                             >
                               <polyline points="20 6 9 17 4 12" />
