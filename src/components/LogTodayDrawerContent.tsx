@@ -16,53 +16,31 @@ interface LogTodayDrawerContentProps {
   onSuccess: () => void;
 }
 
-// Icon-based rating with circular buttons
-const IconRating = ({ 
+// Simple numbered rating buttons
+const RatingSelector = ({ 
   value, 
-  onChange,
-  icon: Icon,
-  color,
-  fillIcon = false,
+  onChange, 
 }: { 
   value: number | null; 
   onChange: (v: number | null) => void;
-  icon: React.ElementType;
-  color: string;
-  fillIcon?: boolean;
 }) => {
   return (
-    <div className="flex items-center gap-1.5">
-      {[1, 2, 3, 4, 5].map((level) => {
-        const isSelected = value !== null && level <= value;
-        
-        return (
-          <button
-            key={level}
-            type="button"
-            onClick={() => onChange(value === level ? null : level)}
-            className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-              "border-2 active:scale-95",
-              isSelected
-                ? `border-transparent ${color}`
-                : "border-muted-foreground/20 bg-transparent"
-            )}
-          >
-            <Icon 
-              className={cn(
-                "w-5 h-5 transition-colors",
-                isSelected ? "text-white fill-white" : "text-muted-foreground/40",
-                fillIcon && !isSelected && "fill-muted-foreground/40"
-              )}
-            />
-          </button>
-        );
-      })}
-      {value !== null && (
-        <span className="ml-2 text-sm font-medium" style={{ color: color.includes('hsl') ? color.replace('bg-[', '').replace(']', '') : undefined }}>
-          {value}/5
-        </span>
-      )}
+    <div className="flex gap-2">
+      {[1, 2, 3, 4, 5].map((num) => (
+        <button
+          key={num}
+          type="button"
+          onClick={() => onChange(value === num ? null : num)}
+          className={cn(
+            "h-10 w-10 rounded-lg text-sm font-medium transition-all active:scale-95",
+            value === num
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          )}
+        >
+          {num}
+        </button>
+      ))}
     </div>
   );
 };
@@ -209,10 +187,6 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
 
   const hasContent = weight || energy !== null || sleep !== null || notes.trim();
 
-  // Colors matching Progress screen charts
-  const energyColor = "bg-[hsl(350,70%,60%)]"; // coral/rose
-  const sleepColor = "bg-[hsl(270,60%,55%)]"; // purple
-
   return (
     <div className="space-y-5">
       {/* Weight Section */}
@@ -246,31 +220,19 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Energy Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Zap className="w-4 h-4 fill-current" style={{ color: 'hsl(350, 70%, 60%)' }} />
+          <Zap className="w-4 h-4 text-amber-500" />
           Energy
         </Label>
-        <IconRating 
-          value={energy} 
-          onChange={setEnergy} 
-          icon={Zap}
-          color={energyColor}
-          fillIcon
-        />
+        <RatingSelector value={energy} onChange={setEnergy} />
       </div>
 
       {/* Sleep Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Moon className="w-4 h-4 fill-current" style={{ color: 'hsl(270, 60%, 55%)' }} />
+          <Moon className="w-4 h-4 text-indigo-400" />
           Last Night's Sleep
         </Label>
-        <IconRating 
-          value={sleep} 
-          onChange={setSleep}
-          icon={Moon}
-          color={sleepColor}
-          fillIcon
-        />
+        <RatingSelector value={sleep} onChange={setSleep} />
       </div>
 
       {/* Notes Section */}
