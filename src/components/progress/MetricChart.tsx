@@ -3,16 +3,18 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO, subMonths } from "date-fns";
 import { formatDose } from "@/utils/doseUtils";
-import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
 import { Star } from "lucide-react";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
 
 type MetricType = "weight" | "energy" | "sleep" | "notes";
@@ -32,6 +34,7 @@ interface MetricChartProps {
   dosageChanges?: DosageChange[];
   selectedMedication?: string;
   onDotClick?: (index: number) => void;
+  weightUnit?: string;
 }
 
 export const MetricChart = ({
@@ -41,7 +44,8 @@ export const MetricChart = ({
   isLoading,
   dosageChanges = [],
   selectedMedication,
-  onDotClick
+  onDotClick,
+  weightUnit = 'lbs'
 }: MetricChartProps) => {
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -54,6 +58,14 @@ export const MetricChart = ({
       default: return subMonths(now, 12);
     }
   }, [timeFrame]);
+
+  // Convert weight for display based on unit preference
+  const convertWeight = (weightLbs: number) => {
+    if (weightUnit === 'kg') {
+      return Math.round((weightLbs / 2.20462) * 10) / 10;
+    }
+    return Math.round(weightLbs * 10) / 10;
+  };
 
   const chartData = useMemo(() => {
     let filteredEntries = entries.filter(e => {
@@ -70,7 +82,7 @@ export const MetricChart = ({
       a.entry_date.localeCompare(b.entry_date)
     );
 
-    // Track assigned dosage changes for weight chart
+    // Track assigned dosage changes
     const assignedChanges = new Set<number>();
 
     return sortedEntries.map(entry => {
@@ -78,7 +90,7 @@ export const MetricChart = ({
       const dateStr = format(entryDate, 'MMM d');
       
       let dosageLabel: string | undefined;
-      if (metricType === "weight" && dosageChanges.length > 0) {
+      if (dosageChanges.length > 0) {
         for (let i = 0; i < dosageChanges.length; i++) {
           if (assignedChanges.has(i)) continue;
           const change = dosageChanges[i];
@@ -91,7 +103,7 @@ export const MetricChart = ({
       }
 
       const getValue = () => {
-        if (metricType === "weight") return Math.round(entry.metrics.weight * 10) / 10;
+        if (metricType === "weight") return convertWeight(entry.metrics.weight);
         if (metricType === "energy") return entry.metrics.energy;
         if (metricType === "sleep") return entry.metrics.sleep;
         return 0;
@@ -105,9 +117,9 @@ export const MetricChart = ({
         id: entry.id
       };
     });
-  }, [entries, cutoffDate, metricType, dosageChanges]);
+  }, [entries, cutoffDate, metricType, dosageChanges, weightUnit]);
 
-  // Custom dot with dosage labels for weight chart
+  // Custom dot with dosage labels for line chart
   const CustomDot = (props: any) => {
     const { cx, cy, payload, index } = props;
     if (!cx || !cy) return null;
@@ -186,7 +198,7 @@ export const MetricChart = ({
       <Card className="p-3 shadow-lg border border-border bg-card">
         <p className="text-xs font-medium text-muted-foreground mb-1">{data.date}</p>
         {metricType === "weight" && (
-          <p className="text-sm font-semibold text-foreground">{data.value} lbs</p>
+          <p className="text-sm font-semibold text-foreground">{data.value} {weightUnit}</p>
         )}
         {(metricType === "energy" || metricType === "sleep") && (
           <div className="flex items-center gap-1">
@@ -205,11 +217,43 @@ export const MetricChart = ({
     );
   };
 
+  // Custom bar label for dosage
+  const renderBarLabel = (props: any) => {
+    const { x, y, width, payload } = props;
+    if (!payload?.dosageLabel) return null;
+    
+    const badgeWidth = Math.max(40, payload.dosageLabel.length * 6 + 12);
+    const badgeX = x + width / 2 - badgeWidth / 2;
+    
+    return (
+      <g>
+        <rect
+          x={badgeX}
+          y={y - 22}
+          width={badgeWidth}
+          height={16}
+          rx={3}
+          fill="hsl(var(--primary))"
+        />
+        <text
+          x={x + width / 2}
+          y={y - 11}
+          textAnchor="middle"
+          fill="hsl(var(--primary-foreground))"
+          fontSize={9}
+          fontWeight={600}
+        >
+          {payload.dosageLabel}
+        </text>
+      </g>
+    );
+  };
+
   const getYAxisConfig = () => {
     if (metricType === "weight") {
       return {
         domain: ['dataMin - 5', 'dataMax + 5'] as [string, string],
-        label: 'Weight (lbs)'
+        label: `Weight (${weightUnit})`
       };
     }
     return {
@@ -240,8 +284,55 @@ export const MetricChart = ({
     );
   }
 
+  // Use bar chart for energy and sleep (discrete ratings)
+  if (metricType === "energy" || metricType === "sleep") {
+    const hasDosageLabels = dosageChanges.length > 0;
+    return (
+      <ResponsiveContainer width="100%" height={hasDosageLabels ? 230 : 200}>
+        <BarChart data={chartData} margin={{ top: hasDosageLabels ? 30 : 10, right: 20, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
+          <XAxis 
+            dataKey="date" 
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis 
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            domain={[0, 5]}
+            ticks={[1, 2, 3, 4, 5]}
+            label={{ 
+              value: yAxisConfig.label, 
+              angle: -90, 
+              position: 'insideLeft',
+              style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
+            }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar 
+            dataKey="value" 
+            radius={[4, 4, 0, 0]}
+            label={hasDosageLabels ? renderBarLabel : undefined}
+          >
+            {chartData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={`hsl(var(--primary) / ${0.4 + (entry.value / 5) * 0.6})`}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // Line chart for weight
   return (
-    <ResponsiveContainer width="100%" height={metricType === "weight" && dosageChanges.length > 0 ? 250 : 200}>
+    <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
       <LineChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
         <XAxis 
@@ -257,7 +348,6 @@ export const MetricChart = ({
           tickLine={false}
           axisLine={false}
           domain={yAxisConfig.domain}
-          ticks={'ticks' in yAxisConfig ? yAxisConfig.ticks : undefined}
           label={{ 
             value: yAxisConfig.label, 
             angle: -90, 

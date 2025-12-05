@@ -7,13 +7,15 @@ interface ProgressStatsProps {
   streakData: { current_streak?: number; longest_streak?: number } | null;
   goalWeight?: number;
   weightUnit?: string;
+  onSetGoal?: () => void;
 }
 
 export const ProgressStats = ({ 
   weightEntries, 
   streakData,
   goalWeight,
-  weightUnit = 'lbs'
+  weightUnit = 'lbs',
+  onSetGoal
 }: ProgressStatsProps) => {
   // Get all weight entries sorted by date (most recent first)
   const sortedEntries = [...weightEntries].sort((a, b) => {
@@ -23,13 +25,24 @@ export const ProgressStats = ({
     return dateA.getTime() - dateB.getTime();
   });
 
-  const currentWeight = sortedEntries[0]?.metrics?.weight;
-  const startingWeight = sortedEntries[sortedEntries.length - 1]?.metrics?.weight;
+  // Convert weight based on unit preference (stored in lbs)
+  const convertWeight = (weightLbs: number) => {
+    if (weightUnit === 'kg') {
+      return Math.round((weightLbs / 2.20462) * 10) / 10;
+    }
+    return Math.round(weightLbs * 10) / 10;
+  };
+
+  const currentWeightLbs = sortedEntries[0]?.metrics?.weight;
+  const startingWeightLbs = sortedEntries[sortedEntries.length - 1]?.metrics?.weight;
   const startDate = sortedEntries[sortedEntries.length - 1]?.entry_date;
 
-  // Calculate absolute change (in lbs/kg)
+  const currentWeight = currentWeightLbs ? convertWeight(currentWeightLbs) : null;
+  const startingWeight = startingWeightLbs ? convertWeight(startingWeightLbs) : null;
+
+  // Calculate absolute change
   const absoluteChange = startingWeight && currentWeight
-    ? currentWeight - startingWeight
+    ? Math.round((currentWeight - startingWeight) * 10) / 10
     : null;
 
   // Calculate weekly trend
@@ -41,69 +54,64 @@ export const ProgressStats = ({
     const daysBetween = firstDate && lastDate 
       ? Math.max(1, differenceInDays(firstDate, lastDate))
       : 1;
-    const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
-    return (weightChange / daysBetween) * 7;
+    const weightChange = convertWeight(recentEntries[0].metrics.weight) - convertWeight(recentEntries[recentEntries.length - 1].metrics.weight);
+    return Math.round((weightChange / daysBetween) * 7 * 10) / 10;
   })();
 
   // Calculate "To Goal" - how much left to reach goal
-  const toGoal = goalWeight && currentWeight
-    ? currentWeight - goalWeight
+  const toGoal = goalWeight && currentWeightLbs
+    ? Math.round((convertWeight(currentWeightLbs) - convertWeight(goalWeight)) * 10) / 10
     : null;
 
   if (!currentWeight) return null;
 
-  // 2x2 layout like reference image
+  // 4 stats in one row
   const stats = [
     {
-      label: "Current Weight",
+      label: "Current",
       value: Math.round(currentWeight),
       unit: weightUnit,
-      subtext: sortedEntries[0] && safeFormatDate(sortedEntries[0].entry_date, 'MMM d')
     },
     {
-      label: "Total Change",
-      value: absoluteChange !== null ? `${absoluteChange > 0 ? '+' : ''}${Math.round(absoluteChange)}` : '--',
+      label: "Change",
+      value: absoluteChange !== null ? `${absoluteChange > 0 ? '+' : ''}${absoluteChange}` : '--',
       unit: weightUnit,
-      subtext: startDate ? `Since ${safeFormatDate(startDate, 'MMM d')}` : undefined
     },
     {
-      label: "Weekly Trend",
-      value: weeklyTrend !== null ? `${weeklyTrend >= 0 ? '+' : ''}${weeklyTrend.toFixed(1)}` : '--',
+      label: "Weekly",
+      value: weeklyTrend !== null ? `${weeklyTrend >= 0 ? '+' : ''}${weeklyTrend}` : '--',
       unit: `${weightUnit}/wk`,
-      subtext: sortedEntries.length >= 2 ? `Last ${Math.min(4, sortedEntries.length)} entries` : undefined
     },
-    // Show "To Goal" if goal is set, otherwise show streak
-    goalWeight ? {
+    {
       label: "To Goal",
-      value: toGoal !== null ? `${toGoal > 0 ? '' : '+'}${Math.abs(Math.round(toGoal))}` : '--',
-      unit: weightUnit,
-      subtext: `Goal: ${goalWeight} ${weightUnit}`
-    } : {
-      label: "Current Streak",
-      value: streakData?.current_streak || 0,
-      unit: "days",
-      subtext: `Best: ${streakData?.longest_streak || 0} days`
+      value: toGoal !== null ? `${toGoal > 0 ? '' : '+'}${Math.abs(toGoal)}` : '--',
+      unit: goalWeight ? weightUnit : '',
+      isClickable: !goalWeight,
+      onClick: onSetGoal,
+      subtext: !goalWeight ? "Set goal" : undefined
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-4 gap-2">
       {stats.map((stat, idx) => (
         <Card 
           key={idx} 
-          className="p-3 bg-card border border-border"
+          className={`p-2 bg-card border border-border ${stat.isClickable ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+          onClick={stat.isClickable ? stat.onClick : undefined}
         >
-          <div className="space-y-1">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{stat.label}</div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-foreground">{stat.value}</span>
-              {stat.unit && <span className="text-xs text-muted-foreground">{stat.unit}</span>}
+          <div className="space-y-0.5 text-center">
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wide">{stat.label}</div>
+            <div className="flex items-baseline justify-center gap-0.5">
+              {stat.subtext ? (
+                <span className="text-xs text-primary font-medium">{stat.subtext}</span>
+              ) : (
+                <>
+                  <span className="text-lg font-bold text-foreground">{stat.value}</span>
+                  {stat.unit && <span className="text-[9px] text-muted-foreground">{stat.unit}</span>}
+                </>
+              )}
             </div>
-            {stat.subtext && (
-              <div className="text-[10px] text-muted-foreground">
-                {stat.subtext}
-              </div>
-            )}
           </div>
         </Card>
       ))}
