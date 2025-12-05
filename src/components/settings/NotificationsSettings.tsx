@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { WeeklyDigestSettings } from "@/components/WeeklyDigestSettings";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { toast } from "sonner";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from "@/integrations/supabase/client";
 import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
-import { hapticLight } from "@/utils/haptics";
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -53,7 +53,15 @@ export const NotificationsSettings = () => {
   }, []);
 
   const triggerHaptic = async () => {
-    await hapticLight();
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
   };
 
   const handlePhotoRemindersToggle = (checked: boolean) => {

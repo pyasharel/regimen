@@ -8,12 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
-import { hapticLight, hapticMedium, hapticWarning } from "@/utils/haptics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -259,7 +259,15 @@ export const MyStackScreen = () => {
   };
 
   const triggerHaptic = async () => {
-    await hapticLight();
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
   };
 
   const handleShareStack = async () => {
@@ -319,7 +327,7 @@ export const MyStackScreen = () => {
   }
  
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="flex min-h-screen flex-col bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       {/* Header */}
       <MainHeader title="My Stack" />
 
@@ -329,7 +337,7 @@ export const MyStackScreen = () => {
           {/* Active Compounds */}
           <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-white animate-pulse-wave" />
+              <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
               <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
             </div>
             <div className="text-center">
@@ -356,8 +364,8 @@ export const MyStackScreen = () => {
         </div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto space-y-4 px-4 pb-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+      {/* Active Compounds */}
+      <div className="flex-1 space-y-4 px-4 pb-4">
         <div className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Active

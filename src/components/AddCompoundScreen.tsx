@@ -29,10 +29,10 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
 import { cn } from "@/lib/utils";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
-import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from "@/utils/haptics";
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
@@ -594,10 +594,14 @@ export const AddCompoundScreen = () => {
   };
 
   const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
-    if (intensity === 'light') {
-      await hapticLight();
-    } else {
-      await hapticMedium();
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(intensity === 'light' ? 30 : 50);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
     }
   };
 
