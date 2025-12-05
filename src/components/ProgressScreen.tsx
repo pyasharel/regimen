@@ -77,6 +77,18 @@ export const ProgressScreen = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  
+  // User settings for weight unit and goal
+  const [weightUnit, setWeightUnit] = useState<string>('lbs');
+  const [goalWeight, setGoalWeight] = useState<number | undefined>();
+  
+  // Load user settings
+  useEffect(() => {
+    const savedUnit = localStorage.getItem('weightUnit') || 'lbs';
+    const savedGoal = localStorage.getItem('goalWeight');
+    setWeightUnit(savedUnit);
+    if (savedGoal) setGoalWeight(Number(savedGoal));
+  }, []);
 
   // Fetch progress entries
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -394,6 +406,8 @@ export const ProgressScreen = () => {
         <ProgressStats 
           weightEntries={weightEntries}
           streakData={streakData}
+          goalWeight={goalWeight}
+          weightUnit={weightUnit}
         />
 
         {/* Metric Type Selector - Text labels */}
@@ -428,7 +442,7 @@ export const ProgressScreen = () => {
                 className="text-primary hover:text-primary hover:bg-primary/10 h-8 text-xs"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Log
+                Log {getMetricLabel(metricType)}
               </Button>
             </div>
 
@@ -460,8 +474,8 @@ export const ProgressScreen = () => {
               />
             </Card>
 
-            {/* Medication Correlation - Below chart, subtle */}
-            {metricType === "weight" && compounds.length > 0 && (
+            {/* Medication Correlation - Below chart, available for weight/energy/sleep */}
+            {compounds.length > 0 && (
               <div className="space-y-2">
                 <Select
                   value={selectedCompoundId || "none"}
@@ -471,7 +485,7 @@ export const ProgressScreen = () => {
                     <SelectValue placeholder="Correlation" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Clear selection</SelectItem>
+                    <SelectItem value="none">Correlation</SelectItem>
                     {compounds.map(compound => (
                       <SelectItem key={compound.id} value={compound.id}>
                         {compound.name}
@@ -480,8 +494,8 @@ export const ProgressScreen = () => {
                   </SelectContent>
                 </Select>
 
-                {/* Rate per dosage stat */}
-                {selectedCompoundId && ratePerDosage && (
+                {/* Rate per dosage stat - only for weight */}
+                {metricType === "weight" && selectedCompoundId && ratePerDosage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
                     <span>
                       At {ratePerDosage.dosage.amount}{ratePerDosage.dosage.unit}:
@@ -516,11 +530,10 @@ export const ProgressScreen = () => {
             </div>
             
             {entries.filter(e => e.category === 'notes' || e.notes).length > 0 ? (
-              <div className="space-y-3">
+              <div className="max-h-[320px] overflow-y-auto space-y-3 pr-1">
                 {entries
                   .filter(e => e.category === 'notes' || e.notes)
                   .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
-                  .slice(0, 10)
                   .map(entry => (
                     <Card key={entry.id} className="p-4 bg-card border border-border">
                       <div className="flex justify-between items-start mb-2">
