@@ -188,25 +188,39 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
  */
 export const scheduleMissedDoseNotification = async (): Promise<void> => {
   try {
+    // Check throttle FIRST before doing database queries
+    if (isThrottled('missed_dose')) {
+      console.log('Skipping missed dose check - throttled');
+      return;
+    }
+    
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Check if there are unchecked AND non-skipped doses for today
+    // Check if there are unchecked doses for today
+    // We need to handle skipped being null (old doses) or false
     const { data: doses } = await supabase
       .from('doses')
       .select('id, scheduled_time, skipped')
       .eq('user_id', user.id)
       .eq('scheduled_date', todayStr)
-      .eq('taken', false)
-      .eq('skipped', false); // Exclude skipped doses!
+      .eq('taken', false);
 
     if (doses && doses.length > 0) {
+      // Filter out skipped doses (including handling null values from old doses)
+      const unskippedDoses = doses.filter(dose => dose.skipped !== true);
+      
+      if (unskippedDoses.length === 0) {
+        console.log('All untaken doses are skipped - no missed dose notification needed');
+        return;
+      }
+      
       // Check if any dose time has passed
       const currentTime = today.getHours() * 60 + today.getMinutes();
-      const hasMissedDose = doses.some(dose => {
+      const hasMissedDose = unskippedDoses.some(dose => {
         const [hours, minutes] = dose.scheduled_time.split(':').map(Number);
         const doseTime = hours * 60 + minutes;
         return doseTime < currentTime;
