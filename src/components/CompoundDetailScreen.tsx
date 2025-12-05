@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -483,11 +483,25 @@ export const CompoundDetailScreen = () => {
                       <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                     </linearGradient>
-                    <linearGradient id="levelGradientFuture" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.12} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                    {/* Future gradient with both vertical and horizontal fade for half-life decay effect */}
+                    <linearGradient id="levelGradientFuture" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                      <stop offset="40%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
                     </linearGradient>
+                    <linearGradient id="futureStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
+                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                    </linearGradient>
+                    {/* Glow filter for current point */}
+                    <filter id="currentPointGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
                   </defs>
                   <XAxis 
                     dataKey="date" 
@@ -533,11 +547,11 @@ export const CompoundDetailScreen = () => {
                     isAnimationActive={false}
                     connectNulls={false}
                   />
-                  {/* Future projections - lighter */}
+                  {/* Future projections - lighter with fading stroke */}
                   <Area
                     type="basis"
                     dataKey="futureLevel"
-                    stroke="hsl(var(--primary))"
+                    stroke="url(#futureStrokeGradient)"
                     strokeWidth={1.5}
                     strokeDasharray="4 2"
                     fill="url(#levelGradientFuture)"
@@ -553,6 +567,19 @@ export const CompoundDetailScreen = () => {
                     fill="transparent"
                     isAnimationActive={false}
                   />
+                  {/* Glowing "Current" dot */}
+                  {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
+                    <ReferenceDot
+                      x={chartData[nowIndex].date}
+                      y={chartData[nowIndex].level}
+                      r={6}
+                      fill="hsl(var(--primary))"
+                      stroke="hsl(var(--background))"
+                      strokeWidth={2}
+                      filter="url(#currentPointGlow)"
+                      className="animate-chart-glow"
+                    />
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             </div>

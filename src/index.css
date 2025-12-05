@@ -198,6 +198,17 @@ All colors MUST be HSL.
     }
   }
   
+  @keyframes chart-glow-pulse {
+    0%, 100% {
+      opacity: 1;
+      filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.6));
+    }
+    50% {
+      opacity: 0.85;
+      filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.9));
+    }
+  }
+  
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
@@ -208,5 +219,9 @@ All colors MUST be HSL.
   
   .animate-gentle-pulse {
     animation: gentle-pulse 2.5s ease-in-out infinite;
+  }
+  
+  .animate-chart-glow {
+    animation: chart-glow-pulse 2s ease-in-out infinite;
   }
 }
