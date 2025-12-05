@@ -22,17 +22,18 @@ const IconRating = ({
   onChange,
   icon: Icon,
   color,
+  fillIcon = false,
 }: { 
   value: number | null; 
   onChange: (v: number | null) => void;
   icon: React.ElementType;
   color: string;
+  fillIcon?: boolean;
 }) => {
   return (
     <div className="flex items-center gap-1.5">
       {[1, 2, 3, 4, 5].map((level) => {
         const isSelected = value !== null && level <= value;
-        const isExact = value === level;
         
         return (
           <button
@@ -50,14 +51,15 @@ const IconRating = ({
             <Icon 
               className={cn(
                 "w-5 h-5 transition-colors",
-                isSelected ? "text-white" : "text-muted-foreground/40"
+                isSelected ? "text-white fill-white" : "text-muted-foreground/40",
+                fillIcon && !isSelected && "fill-muted-foreground/40"
               )}
             />
           </button>
         );
       })}
       {value !== null && (
-        <span className={cn("ml-2 text-sm font-medium", color.replace('bg-', 'text-').replace('[', '[').replace(']', ']'))} style={{ color: color.includes('hsl') ? color.replace('bg-[', '').replace(']', '') : undefined }}>
+        <span className="ml-2 text-sm font-medium" style={{ color: color.includes('hsl') ? color.replace('bg-[', '').replace(']', '') : undefined }}>
           {value}/5
         </span>
       )}
@@ -244,7 +246,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Energy Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Zap className="w-4 h-4" style={{ color: 'hsl(350, 70%, 60%)' }} />
+          <Zap className="w-4 h-4 fill-current" style={{ color: 'hsl(350, 70%, 60%)' }} />
           Energy
         </Label>
         <IconRating 
@@ -252,20 +254,22 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           onChange={setEnergy} 
           icon={Zap}
           color={energyColor}
+          fillIcon
         />
       </div>
 
       {/* Sleep Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Moon className="w-4 h-4" style={{ color: 'hsl(270, 60%, 55%)' }} />
-          Sleep
+          <Moon className="w-4 h-4 fill-current" style={{ color: 'hsl(270, 60%, 55%)' }} />
+          Last Night's Sleep
         </Label>
         <IconRating 
           value={sleep} 
           onChange={setSleep}
           icon={Moon}
           color={sleepColor}
+          fillIcon
         />
       </div>
 
