@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { toast } from "sonner";
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -24,6 +23,7 @@ import { getSignedUrl } from "@/utils/storageUtils";
 import { format, subDays, parseISO, startOfDay, differenceInDays, subMonths, subYears } from "date-fns";
 import { useStreaks } from "@/hooks/useStreaks";
 import { Flame } from "lucide-react";
+import { hapticMedium, hapticSuccess } from "@/utils/haptics";
 import { 
   ComposedChart,
   Line,
@@ -351,7 +351,7 @@ export const ProgressScreen = () => {
       }
 
       if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Medium });
+        await hapticSuccess();
       }
 
       toast.success("Progress photo uploaded!");
