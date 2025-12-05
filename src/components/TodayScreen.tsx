@@ -687,16 +687,7 @@ export const TodayScreen = () => {
             </h2>
             <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[pulse_4s_ease-in-out_infinite]" />
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowLogTodayModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary text-secondary-foreground text-sm font-medium transition-colors"
-            >
-              <ClipboardList className="h-4 w-4" />
-              <span className="hidden sm:inline">Log</span>
-            </button>
-            <StreakBadge />
-          </div>
+          <StreakBadge />
         </div>
       </div>
 
@@ -1181,15 +1172,28 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* Simple FAB for Add Medication - consistent with My Stack */}
+      {/* Stacked FAB buttons */}
       {hasCompounds && (
-        <button
-          onClick={() => navigate("/add-compound")}
-          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+        <div 
+          className="fixed right-5 flex flex-col items-center gap-3"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
         >
-          <Plus className="h-6 w-6 text-white" />
-        </button>
+          {/* Log Today button - smaller, above the main FAB */}
+          <button
+            onClick={() => setShowLogTodayModal(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary shadow-lg transition-all hover:scale-105 active:scale-95"
+          >
+            <ClipboardList className="h-5 w-5 text-secondary-foreground" />
+          </button>
+          
+          {/* Main Add Medication FAB */}
+          <button
+            onClick={() => navigate("/add-compound")}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+          >
+            <Plus className="h-6 w-6 text-white" />
+          </button>
+        </div>
       )}
 
       <BottomNavigation />
