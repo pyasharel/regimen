@@ -494,9 +494,11 @@ export const CompoundDetailScreen = () => {
                       <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
                     </linearGradient>
-                    {/* Glow filter for current point */}
-                    <filter id="currentPointGlow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    {/* Glow filter for current point with animated glow */}
+                    <filter id="currentPointGlow" x="-100%" y="-100%" width="300%" height="300%">
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur">
+                        <animate attributeName="stdDeviation" values="3;6;3" dur="2s" repeatCount="indefinite" />
+                      </feGaussianBlur>
                       <feMerge>
                         <feMergeNode in="coloredBlur"/>
                         <feMergeNode in="SourceGraphic"/>
@@ -567,7 +569,7 @@ export const CompoundDetailScreen = () => {
                     fill="transparent"
                     isAnimationActive={false}
                   />
-                  {/* Glowing "Current" dot */}
+                  {/* Glowing "Current" dot with SVG pulse animation */}
                   {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
                     <ReferenceDot
                       x={chartData[nowIndex].date}
@@ -577,8 +579,14 @@ export const CompoundDetailScreen = () => {
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
                       filter="url(#currentPointGlow)"
-                      className="animate-chart-glow"
-                    />
+                    >
+                      <animate
+                        attributeName="opacity"
+                        values="1;0.7;1"
+                        dur="2s"
+                        repeatCount="indefinite"
+                      />
+                    </ReferenceDot>
                   )}
                 </AreaChart>
               </ResponsiveContainer>
