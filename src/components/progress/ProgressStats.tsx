@@ -5,19 +5,11 @@ import { safeParseDate, safeFormatDate } from "@/utils/dateUtils";
 interface ProgressStatsProps {
   weightEntries: any[];
   streakData: { current_streak?: number; longest_streak?: number } | null;
-  userHeight?: number | null; // in inches
-  goalWeight?: number | null;
-  onSetGoal?: () => void;
-  onSetHeight?: () => void;
 }
 
 export const ProgressStats = ({ 
   weightEntries, 
-  streakData, 
-  userHeight, 
-  goalWeight,
-  onSetGoal,
-  onSetHeight
+  streakData
 }: ProgressStatsProps) => {
   // Get all weight entries sorted by date (most recent first)
   const sortedEntries = [...weightEntries].sort((a, b) => {
@@ -48,18 +40,9 @@ export const ProgressStats = ({
     return (weightChange / daysBetween) * 7;
   })();
 
-  // Calculate BMI
-  const bmi = userHeight && currentWeight
-    ? (currentWeight / (userHeight * userHeight)) * 703
-    : null;
-
-  // Calculate goal progress
-  const goalProgress = goalWeight && startingWeight && currentWeight
-    ? Math.min(100, Math.max(0, ((startingWeight - currentWeight) / (startingWeight - goalWeight)) * 100))
-    : null;
-
   if (!currentWeight) return null;
 
+  // Pared down to 4 core stats
   const stats = [
     {
       label: "Current",
@@ -79,32 +62,6 @@ export const ProgressStats = ({
       unit: "lbs/wk",
       subtext: sortedEntries.length >= 2 ? `${Math.min(4, sortedEntries.length)} entries` : undefined
     },
-    ...(goalWeight && goalProgress !== null ? [{
-      label: "Goal",
-      value: Math.round(goalProgress),
-      unit: "%",
-      subtext: `→ ${goalWeight} lbs`
-    }] : [{
-      label: "Goal",
-      value: "--",
-      unit: "",
-      subtext: "Set goal",
-      isLink: true,
-      onClick: onSetGoal
-    }]),
-    ...(bmi !== null ? [{
-      label: "BMI",
-      value: bmi.toFixed(1),
-      unit: "",
-      subtext: bmi < 18.5 ? 'Under' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Over' : 'Obese'
-    }] : [{
-      label: "BMI",
-      value: "--",
-      unit: "",
-      subtext: "Add height",
-      isLink: true,
-      onClick: onSetHeight
-    }]),
     {
       label: "Streak",
       value: streakData?.current_streak || 0,
@@ -114,22 +71,20 @@ export const ProgressStats = ({
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-4 gap-2">
       {stats.map((stat, idx) => (
         <Card 
           key={idx} 
-          className="p-2.5 bg-card border border-border"
-          onClick={stat.onClick}
-          style={{ cursor: stat.isLink ? 'pointer' : 'default' }}
+          className="p-2 bg-card border border-border"
         >
           <div className="space-y-0.5">
             <div className="text-[9px] text-muted-foreground uppercase tracking-wide truncate">{stat.label}</div>
             <div className="flex items-baseline gap-0.5">
-              <span className="text-lg font-bold text-foreground">{stat.value}</span>
-              {stat.unit && <span className="text-[9px] text-muted-foreground">{stat.unit}</span>}
+              <span className="text-base font-bold text-foreground">{stat.value}</span>
+              {stat.unit && <span className="text-[8px] text-muted-foreground">{stat.unit}</span>}
             </div>
             {stat.subtext && (
-              <div className={`text-[8px] truncate ${stat.isLink ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className="text-[8px] text-muted-foreground truncate">
                 {stat.subtext}
               </div>
             )}

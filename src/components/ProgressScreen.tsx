@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp, FileText, Zap, Moon, Scale } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
@@ -26,7 +26,6 @@ import { MainHeader } from "@/components/MainHeader";
 import { ProgressStats } from "@/components/progress/ProgressStats";
 import { MetricChart } from "@/components/progress/MetricChart";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
-import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -78,16 +77,6 @@ export const ProgressScreen = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [timelineExpanded, setTimelineExpanded] = useState(false);
-  const [showHeightModal, setShowHeightModal] = useState(false);
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [userHeight, setUserHeight] = useState<number | null>(() => {
-    const saved = localStorage.getItem('userHeight');
-    return saved ? parseFloat(saved) : null;
-  });
-  const [goalWeight, setGoalWeight] = useState<number | null>(() => {
-    const saved = localStorage.getItem('goalWeight');
-    return saved ? parseFloat(saved) : null;
-  });
 
   // Fetch progress entries
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -370,15 +359,6 @@ export const ProgressScreen = () => {
     }
   };
 
-  const getMetricIcon = (type: MetricType) => {
-    switch (type) {
-      case "weight": return <Scale className="w-4 h-4" />;
-      case "energy": return <Zap className="w-4 h-4" />;
-      case "sleep": return <Moon className="w-4 h-4" />;
-      case "notes": return <FileText className="w-4 h-4" />;
-    }
-  };
-
   const getMetricLabel = (type: MetricType) => {
     switch (type) {
       case "weight": return "Weight";
@@ -414,27 +394,22 @@ export const ProgressScreen = () => {
         <ProgressStats 
           weightEntries={weightEntries}
           streakData={streakData}
-          userHeight={userHeight}
-          goalWeight={goalWeight}
-          onSetGoal={() => setShowGoalModal(true)}
-          onSetHeight={() => setShowHeightModal(true)}
         />
 
-        {/* Metric Type Selector - Subtle tabs */}
+        {/* Metric Type Selector - Text labels */}
         <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg">
           {(["weight", "energy", "sleep", "notes"] as MetricType[]).map(type => (
             <button
               key={type}
               onClick={() => setMetricType(type)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium transition-all",
+                "flex-1 py-2 rounded-md text-xs font-medium transition-all",
                 metricType === type
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {getMetricIcon(type)}
-              <span className="hidden xs:inline">{getMetricLabel(type)}</span>
+              {getMetricLabel(type)}
             </button>
           ))}
         </div>
@@ -493,10 +468,10 @@ export const ProgressScreen = () => {
                   onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
                 >
                   <SelectTrigger className="w-full h-9 text-xs bg-secondary/30 border-border/50">
-                    <SelectValue placeholder="Correlate with medication..." />
+                    <SelectValue placeholder="Correlation" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No correlation</SelectItem>
+                    <SelectItem value="none">Clear selection</SelectItem>
                     {compounds.map(compound => (
                       <SelectItem key={compound.id} value={compound.id}>
                         {compound.name}
@@ -861,30 +836,6 @@ export const ProgressScreen = () => {
         entryId={previewPhoto?.id || ''}
         onDelete={handleDeletePhoto}
         onDateUpdate={refetchEntries}
-      />
-
-      {/* Body Settings Modals */}
-      <BodySettingsModal
-        open={showHeightModal}
-        onOpenChange={setShowHeightModal}
-        type="height"
-        currentValue={userHeight}
-        onSave={(value) => {
-          setUserHeight(value);
-          localStorage.setItem('userHeight', value.toString());
-          toast.success('Height saved');
-        }}
-      />
-      <BodySettingsModal
-        open={showGoalModal}
-        onOpenChange={setShowGoalModal}
-        type="goal"
-        currentValue={goalWeight}
-        onSave={(value) => {
-          setGoalWeight(value);
-          localStorage.setItem('goalWeight', value.toString());
-          toast.success('Goal weight saved');
-        }}
       />
     </div>
   );
