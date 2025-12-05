@@ -571,29 +571,20 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <div className="space-y-4">
-              {/* Placeholder photos with blur overlay */}
+              {/* Coral placeholder photo frames */}
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {[
-                  { src: '/progress-before.jpg', label: 'Week 1' },
-                  { src: '/progress-after.jpg', label: 'Week 4' },
-                  { src: '/progress-before.jpg', label: 'Week 8' },
-                ].map((placeholder, index) => (
+                {['Week 1', 'Week 4', 'Week 8'].map((label, index) => (
                   <div key={index} className="flex-shrink-0 text-center">
                     <div 
-                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted relative cursor-pointer group"
+                      className="w-24 h-32 rounded-lg bg-gradient-to-br from-coral/20 to-coral/10 border border-coral/30 relative cursor-pointer group hover:from-coral/30 hover:to-coral/20 transition-all"
                       onClick={() => setShowPhotoModal(true)}
                     >
-                      <img
-                        src={placeholder.src}
-                        alt="Sample progress"
-                        className="w-full h-full object-cover blur-sm opacity-40"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/20">
-                        <CameraIcon className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <CameraIcon className="w-7 h-7 text-coral/60 group-hover:text-coral group-hover:scale-110 transition-all" />
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground/50 mt-2">
-                      {placeholder.label}
+                    <div className="text-xs text-muted-foreground/60 mt-2">
+                      {label}
                     </div>
                   </div>
                 ))}
