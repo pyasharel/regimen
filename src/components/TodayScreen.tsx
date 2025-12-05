@@ -1180,32 +1180,16 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* Add Medication FAB - floating in bottom right, above tray */}
-      {hasCompounds && (
-        <button
-          onClick={() => navigate("/add-compound")}
-          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
-          style={{ bottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
-        >
-          <Plus className="h-6 w-6 text-white" />
-        </button>
-      )}
-
-      {/* Slim Bottom Tray - thin horizontal bar just above bottom nav */}
+      {/* Log Today FAB - primary daily action */}
       <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>
-        <div 
-          className="fixed left-0 right-0 bg-secondary/60 backdrop-blur-sm border-t border-border/30"
-          style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
-        >
-          <DrawerTrigger asChild>
-            <button
-              className="w-full flex items-center justify-center gap-2 py-2.5 transition-colors hover:bg-secondary/80 active:bg-secondary"
-            >
-              <ClipboardList className={`h-4 w-4 text-secondary-foreground transition-transform duration-300 ${showLogTodayModal ? 'rotate-45' : ''}`} />
-              <span className="text-xs font-medium text-secondary-foreground">Log Today</span>
-            </button>
-          </DrawerTrigger>
-        </div>
+        <DrawerTrigger asChild>
+          <button
+            className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+            style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+          >
+            <ClipboardList className="h-6 w-6 text-white" />
+          </button>
+        </DrawerTrigger>
         
         {/* Log Today Drawer Content */}
         <DrawerContent className="max-h-[85vh]">
