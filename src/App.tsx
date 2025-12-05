@@ -79,7 +79,7 @@ const AppContent = () => {
             <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
             <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
             <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
-            <Route path="/email-test" element={<EmailTest />} />
+            <Route path="/email-test" element={<ProtectedRoute><EmailTest /></ProtectedRoute>} />
             <Route path="/widget-preview" element={<WidgetPreview />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
