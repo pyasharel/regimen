@@ -570,9 +570,37 @@ export const ProgressScreen = () => {
               </Button>
             </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">No photos yet</p>
-              <p className="text-xs mt-1">Start tracking your transformation</p>
+            <div className="space-y-4">
+              {/* Placeholder photos with blur overlay */}
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {[
+                  { src: '/progress-before.jpg', label: 'Week 1' },
+                  { src: '/progress-after.jpg', label: 'Week 4' },
+                  { src: '/progress-before.jpg', label: 'Week 8' },
+                ].map((placeholder, index) => (
+                  <div key={index} className="flex-shrink-0 text-center">
+                    <div 
+                      className="w-24 h-32 rounded-lg overflow-hidden bg-muted relative cursor-pointer group"
+                      onClick={() => setShowPhotoModal(true)}
+                    >
+                      <img
+                        src={placeholder.src}
+                        alt="Sample progress"
+                        className="w-full h-full object-cover blur-sm opacity-40"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/20">
+                        <CameraIcon className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground/50 mt-2">
+                      {placeholder.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Tap to add your first progress photo
+              </p>
             </div>
           )}
         </Card>
