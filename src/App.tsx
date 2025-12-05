@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
@@ -10,7 +10,7 @@ import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { toast } from "sonner";
@@ -41,6 +41,36 @@ import WidgetPreview from "./pages/WidgetPreview";
 
 const queryClient = new QueryClient();
 
+// Page transition wrapper
+const PageTransitionWrapper = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  const [displayChildren, setDisplayChildren] = useState(children);
+  const [transitionStage, setTransitionStage] = useState<'enter' | 'exit'>('enter');
+  const previousPath = useRef(location.pathname);
+
+  useEffect(() => {
+    if (location.pathname !== previousPath.current) {
+      setTransitionStage('exit');
+      
+      const timer = setTimeout(() => {
+        setDisplayChildren(children);
+        setTransitionStage('enter');
+        previousPath.current = location.pathname;
+      }, 150);
+
+      return () => clearTimeout(timer);
+    } else {
+      setDisplayChildren(children);
+    }
+  }, [location.pathname, children]);
+
+  return (
+    <div className={`page-transition ${transitionStage === 'enter' ? 'page-enter' : 'page-exit'}`}>
+      {displayChildren}
+    </div>
+  );
+};
+
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
@@ -59,31 +89,33 @@ const AppContent = () => {
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
         )}
-        <Routes>
-            <Route path="/" element={<Splash />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
-            <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
-            <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
-            <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
-            <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
-            <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
-            <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
-            <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
-            <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
-            <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
-            <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
-            <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
-            <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
-            <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
-            <Route path="/email-test" element={<ProtectedRoute><EmailTest /></ProtectedRoute>} />
-            <Route path="/widget-preview" element={<WidgetPreview />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+        <PageTransitionWrapper>
+          <Routes>
+              <Route path="/" element={<Splash />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
+              <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
+              <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
+              <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
+              <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
+              <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
+              <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+              <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
+              <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
+              <Route path="/settings/data" element={<ProtectedRoute><DataSettings /></ProtectedRoute>} />
+              <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
+              <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
+              <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
+              <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
+              <Route path="/email-test" element={<ProtectedRoute><EmailTest /></ProtectedRoute>} />
+              <Route path="/widget-preview" element={<WidgetPreview />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+        </PageTransitionWrapper>
         </TooltipProvider>
         
         <SubscriptionPaywall 

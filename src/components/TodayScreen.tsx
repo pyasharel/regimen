@@ -1003,20 +1003,17 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
+                    className={`overflow-hidden rounded-2xl border transition-all animate-list-item relative press-scale cursor-pointer ${
                       isSkipped
                         ? 'bg-muted/50 border-border/50'
                         : dose.taken
                         ? 'bg-card border-border'
-                        : 'bg-primary border-primary'
+                        : 'bg-primary border-primary shadow-card'
                     }`}
                     style={{
                       opacity: isHandled ? 0.85 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      ...(isHandled ? {} : {
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
-                      })
+                      transition: 'all 0.2s cubic-bezier(0.2, 0, 0.2, 1)',
                     }}
                   >
                     {/* Golden shine for day complete only */}
