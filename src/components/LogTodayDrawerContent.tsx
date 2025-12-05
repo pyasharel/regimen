@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,28 +18,51 @@ interface LogTodayDrawerContentProps {
 
 const RatingSelector = ({ 
   value, 
-  onChange, 
+  onChange,
+  accentColor,
 }: { 
   value: number | null; 
   onChange: (v: number | null) => void;
+  accentColor: string;
 }) => {
+  const [animatingButton, setAnimatingButton] = useState<number | null>(null);
+
+  const handleSelect = (num: number) => {
+    const newValue = value === num ? null : num;
+    onChange(newValue);
+    
+    if (newValue !== null) {
+      setAnimatingButton(num);
+      setTimeout(() => setAnimatingButton(null), 400);
+    }
+  };
+
   return (
     <div className="flex gap-2">
-      {[1, 2, 3, 4, 5].map((num) => (
-        <button
-          key={num}
-          type="button"
-          onClick={() => onChange(value === num ? null : num)}
-          className={cn(
-            "h-11 w-11 rounded-lg text-base font-medium transition-all",
-            value === num
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted/50 text-muted-foreground hover:bg-muted"
-          )}
-        >
-          {num}
-        </button>
-      ))}
+      {[1, 2, 3, 4, 5].map((num) => {
+        const isSelected = value === num;
+        const isAnimating = animatingButton === num;
+        
+        return (
+          <button
+            key={num}
+            type="button"
+            onClick={() => handleSelect(num)}
+            className={cn(
+              "h-11 w-11 rounded-lg text-base font-medium transition-all duration-200",
+              isSelected
+                ? `${accentColor} text-white`
+                : "bg-muted/50 text-muted-foreground hover:bg-muted",
+              isAnimating && "animate-rating-pop"
+            )}
+            style={{
+              boxShadow: isSelected ? `0 0 12px 2px var(--rating-glow)` : undefined,
+            }}
+          >
+            {num}
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -52,6 +75,54 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const [sleep, setSleep] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingEntry, setLoadingEntry] = useState(false);
+
+  // Load existing entry when date changes
+  useEffect(() => {
+    const loadExistingEntry = async () => {
+      setLoadingEntry(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const dateStr = format(entryDate, 'yyyy-MM-dd');
+        const { data: existingEntry } = await supabase
+          .from('progress_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('entry_date', dateStr)
+          .maybeSingle();
+
+        if (existingEntry) {
+          const metrics = existingEntry.metrics as Record<string, number> | null;
+          if (metrics?.weight) {
+            // Convert from lbs (stored) to display unit
+            const displayWeight = weightUnit === 'kg' 
+              ? (metrics.weight / 2.20462).toFixed(1) 
+              : metrics.weight.toString();
+            setWeight(displayWeight);
+          } else {
+            setWeight("");
+          }
+          setEnergy(metrics?.energy ?? null);
+          setSleep(metrics?.sleep ?? null);
+          setNotes(existingEntry.notes || "");
+        } else {
+          // Reset form for new date
+          setWeight("");
+          setEnergy(null);
+          setSleep(null);
+          setNotes("");
+        }
+      } catch (error) {
+        console.error('Error loading entry:', error);
+      } finally {
+        setLoadingEntry(false);
+      }
+    };
+
+    loadExistingEntry();
+  }, [entryDate, weightUnit]);
 
   const handleSave = async () => {
     if (!weight && energy === null && sleep === null && !notes.trim()) {
@@ -119,7 +190,6 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       if (notes.trim()) logged.push('notes');
       
       toast.success(`Logged: ${logged.join(', ')}`);
-      resetForm();
       onSuccess();
     } catch (error) {
       console.error('Error logging:', error);
@@ -127,14 +197,6 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setWeight("");
-    setEnergy(null);
-    setSleep(null);
-    setNotes("");
-    setEntryDate(new Date());
   };
 
   const hasContent = weight || energy !== null || sleep !== null || notes.trim();
@@ -153,8 +215,9 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
             step="0.1"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            placeholder="Enter weight"
+            placeholder={loadingEntry ? "Loading..." : "Enter weight"}
             className="flex-1 h-11"
+            disabled={loadingEntry}
           />
           <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
             <SelectTrigger className="w-20 h-11">
@@ -174,7 +237,11 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           <Zap className="w-4 h-4 text-amber-500" />
           Energy
         </Label>
-        <RatingSelector value={energy} onChange={setEnergy} />
+        <RatingSelector 
+          value={energy} 
+          onChange={setEnergy} 
+          accentColor="bg-amber-500"
+        />
       </div>
 
       {/* Sleep Section */}
@@ -183,7 +250,11 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           <Moon className="w-4 h-4 text-indigo-400" />
           Sleep
         </Label>
-        <RatingSelector value={sleep} onChange={setSleep} />
+        <RatingSelector 
+          value={sleep} 
+          onChange={setSleep}
+          accentColor="bg-indigo-400"
+        />
       </div>
 
       {/* Notes Section */}
@@ -195,8 +266,9 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="How are you feeling?"
+          placeholder={loadingEntry ? "Loading..." : "How are you feeling?"}
           className="min-h-[70px] resize-none"
+          disabled={loadingEntry}
         />
       </div>
 
@@ -235,7 +307,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Save Button */}
       <Button
         onClick={handleSave}
-        disabled={loading || !hasContent}
+        disabled={loading || loadingEntry || !hasContent}
         className="w-full h-11 text-base"
       >
         {loading ? 'Saving...' : 'Save Entry'}
