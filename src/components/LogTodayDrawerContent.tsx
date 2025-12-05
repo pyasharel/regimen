@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Star } from "lucide-react";
+import { CalendarIcon, Scale, Zap, Moon, NotebookPen } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,35 +16,51 @@ interface LogTodayDrawerContentProps {
   onSuccess: () => void;
 }
 
-// Star rating matching Progress screen style
-const StarRating = ({ 
+// Icon-based rating with circular buttons
+const IconRating = ({ 
   value, 
   onChange,
-  accentColor,
+  icon: Icon,
+  color,
 }: { 
   value: number | null; 
   onChange: (v: number | null) => void;
-  accentColor: string;
+  icon: React.ElementType;
+  color: string;
 }) => {
   return (
-    <div className="flex gap-2">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          onClick={() => onChange(value === star ? null : star)}
-          className="transition-transform hover:scale-110 active:scale-95"
-        >
-          <Star
+    <div className="flex items-center gap-1.5">
+      {[1, 2, 3, 4, 5].map((level) => {
+        const isSelected = value !== null && level <= value;
+        const isExact = value === level;
+        
+        return (
+          <button
+            key={level}
+            type="button"
+            onClick={() => onChange(value === level ? null : level)}
             className={cn(
-              "w-9 h-9 transition-colors",
-              value !== null && star <= value
-                ? `fill-current ${accentColor}`
-                : "text-muted-foreground/30"
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+              "border-2 active:scale-95",
+              isSelected
+                ? `border-transparent ${color}`
+                : "border-muted-foreground/20 bg-transparent"
             )}
-          />
-        </button>
-      ))}
+          >
+            <Icon 
+              className={cn(
+                "w-5 h-5 transition-colors",
+                isSelected ? "text-white" : "text-muted-foreground/40"
+              )}
+            />
+          </button>
+        );
+      })}
+      {value !== null && (
+        <span className={cn("ml-2 text-sm font-medium", color.replace('bg-', 'text-').replace('[', '[').replace(']', ']'))} style={{ color: color.includes('hsl') ? color.replace('bg-[', '').replace(']', '') : undefined }}>
+          {value}/5
+        </span>
+      )}
     </div>
   );
 };
@@ -191,9 +207,13 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
 
   const hasContent = weight || energy !== null || sleep !== null || notes.trim();
 
+  // Colors matching Progress screen charts
+  const energyColor = "bg-[hsl(350,70%,60%)]"; // coral/rose
+  const sleepColor = "bg-[hsl(270,60%,55%)]"; // purple
+
   return (
     <div className="space-y-5">
-      {/* Weight Section - Primary/Coral */}
+      {/* Weight Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
           <Scale className="w-4 h-4 text-primary" />
@@ -221,29 +241,31 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
         </div>
       </div>
 
-      {/* Energy Section - Coral/Rose like chart */}
+      {/* Energy Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
           <Zap className="w-4 h-4" style={{ color: 'hsl(350, 70%, 60%)' }} />
           Energy
         </Label>
-        <StarRating 
+        <IconRating 
           value={energy} 
           onChange={setEnergy} 
-          accentColor="text-[hsl(350,70%,60%)]"
+          icon={Zap}
+          color={energyColor}
         />
       </div>
 
-      {/* Sleep Section - Purple like chart */}
+      {/* Sleep Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
           <Moon className="w-4 h-4" style={{ color: 'hsl(270, 60%, 55%)' }} />
           Sleep
         </Label>
-        <StarRating 
+        <IconRating 
           value={sleep} 
           onChange={setSleep}
-          accentColor="text-[hsl(270,60%,55%)]"
+          icon={Moon}
+          color={sleepColor}
         />
       </div>
 
