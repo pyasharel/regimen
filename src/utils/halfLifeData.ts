@@ -164,16 +164,55 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Trenbolone Enanthate',
   },
   'masteron': {
-    halfLifeHours: 72, // ~3 days (propionate)
+    halfLifeHours: 48, // ~2 days (propionate default)
     category: 'steroid',
     displayName: 'Masteron',
+    notes: 'Drostanolone - specify Propionate or Enanthate'
+  },
+  'masteron propionate': {
+    halfLifeHours: 48, // ~2 days
+    category: 'steroid',
+    displayName: 'Masteron Propionate',
     notes: 'Drostanolone Propionate'
   },
+  'masteron enanthate': {
+    halfLifeHours: 168, // ~7 days
+    category: 'steroid',
+    displayName: 'Masteron Enanthate',
+    notes: 'Drostanolone Enanthate'
+  },
+  'drostanolone propionate': {
+    halfLifeHours: 48, // ~2 days
+    category: 'steroid',
+    displayName: 'Drostanolone Propionate',
+  },
+  'drostanolone enanthate': {
+    halfLifeHours: 168, // ~7 days
+    category: 'steroid',
+    displayName: 'Drostanolone Enanthate',
+  },
   'primobolan': {
-    halfLifeHours: 240, // ~10 days (enanthate)
+    halfLifeHours: 168, // ~7 days (depot/enanthate)
     category: 'steroid',
     displayName: 'Primobolan',
-    notes: 'Methenolone Enanthate'
+    notes: 'Methenolone - Injectable depot form'
+  },
+  'primobolan depot': {
+    halfLifeHours: 168, // ~7 days
+    category: 'steroid',
+    displayName: 'Primobolan Depot',
+    notes: 'Methenolone Enanthate (injectable)'
+  },
+  'methenolone enanthate': {
+    halfLifeHours: 168, // ~7 days
+    category: 'steroid',
+    displayName: 'Methenolone Enanthate',
+  },
+  'methenolone acetate': {
+    halfLifeHours: 6, // ~6 hours (oral)
+    category: 'steroid',
+    displayName: 'Methenolone Acetate',
+    notes: 'Oral Primobolan'
   },
   'hcg': {
     halfLifeHours: 36,
