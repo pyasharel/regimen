@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
@@ -43,7 +43,7 @@ type ProgressEntry = {
 };
 
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
-type MetricType = "weight" | "energy" | "sleep" | "notes";
+type MetricType = "weight" | "energy" | "sleep";
 
 type Compound = {
   id: string;
@@ -384,7 +384,6 @@ export const ProgressScreen = () => {
       case "weight": return "Weight";
       case "energy": return "Energy";
       case "sleep": return "Sleep";
-      case "notes": return "Journal";
     }
   };
 
@@ -419,17 +418,17 @@ export const ProgressScreen = () => {
           onSetGoal={() => setShowGoalModal(true)}
         />
 
-        {/* Metric Type Selector - Text labels */}
-        <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg">
-          {(["weight", "energy", "sleep", "notes"] as MetricType[]).map(type => (
+        {/* Metric Type Selector - More muted styling */}
+        <div className="flex gap-2 border-b border-border/50">
+          {(["weight", "energy", "sleep"] as MetricType[]).map(type => (
             <button
               key={type}
               onClick={() => setMetricType(type)}
               className={cn(
-                "flex-1 py-2 rounded-md text-xs font-medium transition-all",
+                "pb-2 px-1 text-xs font-medium transition-all border-b-2 -mb-px",
                 metricType === type
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {getMetricLabel(type)}
@@ -438,8 +437,7 @@ export const ProgressScreen = () => {
         </div>
 
         {/* Chart Section */}
-        {metricType !== "notes" && (
-          <div className="space-y-3">
+        <div className="space-y-3">
             <div className="flex justify-between items-center">
               <h2 className="text-base font-semibold text-foreground">
                 {getMetricLabel(metricType)}
@@ -520,54 +518,7 @@ export const ProgressScreen = () => {
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* Notes/Journal View */}
-        {metricType === "notes" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-foreground">Journal Entries</h2>
-              <Button 
-                onClick={() => setShowLogModal(true)} 
-                size="sm" 
-                variant="ghost"
-                className="text-primary hover:text-primary hover:bg-primary/10"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Entry
-              </Button>
-            </div>
-            
-            {entries.filter(e => e.category === 'notes' || e.notes).length > 0 ? (
-              <div className="max-h-[320px] overflow-y-auto space-y-3 pr-1">
-                {entries
-                  .filter(e => e.category === 'notes' || e.notes)
-                  .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
-                  .map(entry => (
-                    <Card key={entry.id} className="p-4 bg-card border border-border">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs text-muted-foreground">
-                          {safeFormatDate(entry.entry_date, 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground">
-                        {entry.notes || (entry.metrics as any)?.notes}
-                      </p>
-                    </Card>
-                  ))}
-              </div>
-            ) : (
-              <Card className="p-8 text-center bg-muted/30">
-                <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">No journal entries yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Track your thoughts, side effects, and observations
-                </p>
-              </Card>
-            )}
-          </div>
-        )}
+        </div>
 
         {/* Visual Progress */}
         <Card className="p-4 bg-card border border-border space-y-4">

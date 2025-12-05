@@ -7,17 +7,14 @@ import { Star } from "lucide-react";
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from 'recharts';
 
-type MetricType = "weight" | "energy" | "sleep" | "notes";
+type MetricType = "weight" | "energy" | "sleep";
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
 
 interface DosageChange {
@@ -217,37 +214,6 @@ export const MetricChart = ({
     );
   };
 
-  // Custom bar label for dosage
-  const renderBarLabel = (props: any) => {
-    const { x, y, width, payload } = props;
-    if (!payload?.dosageLabel) return null;
-    
-    const badgeWidth = Math.max(40, payload.dosageLabel.length * 6 + 12);
-    const badgeX = x + width / 2 - badgeWidth / 2;
-    
-    return (
-      <g>
-        <rect
-          x={badgeX}
-          y={y - 22}
-          width={badgeWidth}
-          height={16}
-          rx={3}
-          fill="hsl(var(--primary))"
-        />
-        <text
-          x={x + width / 2}
-          y={y - 11}
-          textAnchor="middle"
-          fill="hsl(var(--primary-foreground))"
-          fontSize={9}
-          fontWeight={600}
-        >
-          {payload.dosageLabel}
-        </text>
-      </g>
-    );
-  };
 
   const getYAxisConfig = () => {
     if (metricType === "weight") {
@@ -284,13 +250,13 @@ export const MetricChart = ({
     );
   }
 
-  // Use bar chart for energy and sleep (discrete ratings)
+  // Use scatter plot (dots without connecting line) for energy and sleep
+  // This allows seeing medication correlation over time like weight
   if (metricType === "energy" || metricType === "sleep") {
-    const hasDosageLabels = dosageChanges.length > 0;
     return (
-      <ResponsiveContainer width="100%" height={hasDosageLabels ? 230 : 200}>
-        <BarChart data={chartData} margin={{ top: hasDosageLabels ? 30 : 10, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
+      <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
+        <LineChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
           <XAxis 
             dataKey="date" 
             stroke="hsl(var(--muted-foreground))"
@@ -312,20 +278,17 @@ export const MetricChart = ({
               style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
             }}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
-          <Bar 
+          <Tooltip content={<CustomTooltip />} />
+          <Line 
+            type="monotone" 
             dataKey="value" 
-            radius={[4, 4, 0, 0]}
-            label={hasDosageLabels ? renderBarLabel : undefined}
-          >
-            {chartData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={`hsl(var(--primary) / ${0.4 + (entry.value / 5) * 0.6})`}
-              />
-            ))}
-          </Bar>
-        </BarChart>
+            stroke="transparent"
+            strokeWidth={0}
+            dot={<CustomDot />}
+            activeDot={<CustomActiveDot />}
+            connectNulls={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
     );
   }
