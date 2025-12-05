@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Scale, Zap, Moon, NotebookPen } from "lucide-react";
+import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Star } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,8 @@ interface LogTodayDrawerContentProps {
   onSuccess: () => void;
 }
 
-const RatingSelector = ({ 
+// Star rating matching Progress screen style
+const StarRating = ({ 
   value, 
   onChange,
   accentColor,
@@ -25,44 +26,25 @@ const RatingSelector = ({
   onChange: (v: number | null) => void;
   accentColor: string;
 }) => {
-  const [animatingButton, setAnimatingButton] = useState<number | null>(null);
-
-  const handleSelect = (num: number) => {
-    const newValue = value === num ? null : num;
-    onChange(newValue);
-    
-    if (newValue !== null) {
-      setAnimatingButton(num);
-      setTimeout(() => setAnimatingButton(null), 400);
-    }
-  };
-
   return (
     <div className="flex gap-2">
-      {[1, 2, 3, 4, 5].map((num) => {
-        const isSelected = value === num;
-        const isAnimating = animatingButton === num;
-        
-        return (
-          <button
-            key={num}
-            type="button"
-            onClick={() => handleSelect(num)}
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(value === star ? null : star)}
+          className="transition-transform hover:scale-110 active:scale-95"
+        >
+          <Star
             className={cn(
-              "h-11 w-11 rounded-lg text-base font-medium transition-all duration-200",
-              isSelected
-                ? `${accentColor} text-white`
-                : "bg-muted/50 text-muted-foreground hover:bg-muted",
-              isAnimating && "animate-rating-pop"
+              "w-9 h-9 transition-colors",
+              value !== null && star <= value
+                ? `fill-current ${accentColor}`
+                : "text-muted-foreground/30"
             )}
-            style={{
-              boxShadow: isSelected ? `0 0 12px 2px var(--rating-glow)` : undefined,
-            }}
-          >
-            {num}
-          </button>
-        );
-      })}
+          />
+        </button>
+      ))}
     </div>
   );
 };
@@ -83,7 +65,10 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       setLoadingEntry(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          setLoadingEntry(false);
+          return;
+        }
 
         const dateStr = format(entryDate, 'yyyy-MM-dd');
         const { data: existingEntry } = await supabase
@@ -93,26 +78,31 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           .eq('entry_date', dateStr)
           .maybeSingle();
 
-        if (existingEntry) {
+        // Reset all fields first
+        setWeight("");
+        setEnergy(null);
+        setSleep(null);
+        setNotes("");
+
+        if (existingEntry && existingEntry.metrics) {
           const metrics = existingEntry.metrics as Record<string, number> | null;
-          if (metrics?.weight) {
-            // Convert from lbs (stored) to display unit
-            const displayWeight = weightUnit === 'kg' 
-              ? (metrics.weight / 2.20462).toFixed(1) 
-              : metrics.weight.toString();
-            setWeight(displayWeight);
-          } else {
-            setWeight("");
+          if (metrics) {
+            if (typeof metrics.weight === 'number') {
+              const displayWeight = weightUnit === 'kg' 
+                ? (metrics.weight / 2.20462).toFixed(1) 
+                : metrics.weight.toString();
+              setWeight(displayWeight);
+            }
+            if (typeof metrics.energy === 'number') {
+              setEnergy(metrics.energy);
+            }
+            if (typeof metrics.sleep === 'number') {
+              setSleep(metrics.sleep);
+            }
           }
-          setEnergy(metrics?.energy ?? null);
-          setSleep(metrics?.sleep ?? null);
-          setNotes(existingEntry.notes || "");
-        } else {
-          // Reset form for new date
-          setWeight("");
-          setEnergy(null);
-          setSleep(null);
-          setNotes("");
+          if (existingEntry.notes) {
+            setNotes(existingEntry.notes);
+          }
         }
       } catch (error) {
         console.error('Error loading entry:', error);
@@ -203,10 +193,10 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
 
   return (
     <div className="space-y-5">
-      {/* Weight Section */}
+      {/* Weight Section - Primary/Coral */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Scale className="w-4 h-4 text-coral" />
+          <Scale className="w-4 h-4 text-primary" />
           Weight
         </Label>
         <div className="flex gap-2">
@@ -231,29 +221,29 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
         </div>
       </div>
 
-      {/* Energy Section */}
+      {/* Energy Section - Coral/Rose like chart */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Zap className="w-4 h-4 text-amber-500" />
+          <Zap className="w-4 h-4" style={{ color: 'hsl(350, 70%, 60%)' }} />
           Energy
         </Label>
-        <RatingSelector 
+        <StarRating 
           value={energy} 
           onChange={setEnergy} 
-          accentColor="bg-amber-500"
+          accentColor="text-[hsl(350,70%,60%)]"
         />
       </div>
 
-      {/* Sleep Section */}
+      {/* Sleep Section - Purple like chart */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Moon className="w-4 h-4 text-indigo-400" />
+          <Moon className="w-4 h-4" style={{ color: 'hsl(270, 60%, 55%)' }} />
           Sleep
         </Label>
-        <RatingSelector 
+        <StarRating 
           value={sleep} 
           onChange={setSleep}
-          accentColor="bg-indigo-400"
+          accentColor="text-[hsl(270,60%,55%)]"
         />
       </div>
 
