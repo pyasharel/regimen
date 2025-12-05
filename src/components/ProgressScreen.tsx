@@ -4,33 +4,32 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, TrendingUp, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp, FileText, Zap, Moon, Scale } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, differenceInDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { safeParseDate, safeFormatDate, createLocalDate } from "@/utils/dateUtils";
 import { useStreaks } from "@/hooks/useStreaks";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { cn } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Camera } from '@capacitor/camera';
 import { CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
-import { CycleTimeline } from "@/components/CycleTimeline";
 import { MainHeader } from "@/components/MainHeader";
+import { ProgressStats } from "@/components/progress/ProgressStats";
+import { MetricChart } from "@/components/progress/MetricChart";
+import { MetricLogModal } from "@/components/progress/MetricLogModal";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 
 type ProgressEntry = {
   id: string;
@@ -43,6 +42,7 @@ type ProgressEntry = {
 };
 
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
+type MetricType = "weight" | "energy" | "sleep" | "notes";
 
 type Compound = {
   id: string;
@@ -57,31 +57,29 @@ type Compound = {
   created_at: string;
 };
 
-// Remove local helpers - now using global dateUtils
+type DosageChange = {
+  date: Date;
+  amount: number;
+  unit: string;
+};
 
 export const ProgressScreen = () => {
-  console.log('[ProgressScreen] Component rendering');
-  
   const navigate = useNavigate();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("1Y");
+  const [metricType, setMetricType] = useState<MetricType>("weight");
+  const [selectedCompoundId, setSelectedCompoundId] = useState<string>("");
   const [showLogModal, setShowLogModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [weight, setWeight] = useState("");
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
-  const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [photoDate, setPhotoDate] = useState<Date>(new Date());
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const { isSubscribed } = useSubscription();
-  
-  console.log('[ProgressScreen] State initialized');
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
-  const [editingEntry, setEditingEntry] = useState<{ id: string; weight: number; date: Date; unit: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
 
-  // Cached data fetching with React Query
-  const { data: entries = [], isLoading: entriesLoading, isError: entriesError, refetch: refetchEntries } = useQuery({
+  // Fetch progress entries
+  const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
     queryKey: ['progress-entries'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -91,7 +89,7 @@ export const ProgressScreen = () => {
         .from('progress_entries')
         .select('*')
         .eq('user_id', user.id)
-        .order('entry_date', { ascending: true }); // Oldest to newest for timeline view
+        .order('entry_date', { ascending: true });
       
       if (error) {
         console.error('Error fetching progress entries:', error);
@@ -99,12 +97,11 @@ export const ProgressScreen = () => {
       }
       return data as ProgressEntry[];
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
-    retry: 1,
+    staleTime: 1000 * 60 * 5,
   });
 
-  const { data: compounds = [], isLoading: compoundsLoading, isError: compoundsError } = useQuery({
+  // Fetch compounds
+  const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
     queryKey: ['compounds-progress'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -122,218 +119,107 @@ export const ProgressScreen = () => {
       }
       return data as Compound[];
     },
-    retry: 1,
   });
 
-  const { data: recentDoses = [], isLoading: dosesLoading, isError: dosesError } = useQuery({
-    queryKey: ['recent-doses'],
+  // Fetch doses for medication correlation
+  const { data: doses = [], isLoading: dosesLoading } = useQuery({
+    queryKey: ['doses-progress'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
       
       const { data, error } = await supabase
         .from('doses')
-        .select(`
-          *,
-          compounds (name)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .eq('taken', true)
-        .order('taken_at', { ascending: false })
-        .limit(10);
+        .order('scheduled_date', { ascending: true });
       
-      if (error) {
-        console.error('Error fetching doses:', error);
-        return [];
-      }
+      if (error) return [];
       return data || [];
     },
-    retry: 1,
   });
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
-  const hasError = entriesError || compoundsError || dosesError;
   
-  // Preload signed URLs for all photos
+  // Preload signed URLs for photos
   useEffect(() => {
     const loadPhotoUrls = async () => {
       const photoEntries = entries.filter(e => e.photo_url);
       const urls: Record<string, string> = {};
       await Promise.all(photoEntries.map(async (entry) => {
         const signedUrl = await getSignedUrl('progress-photos', entry.photo_url);
-        if (signedUrl) urls[entry.photo_url] = signedUrl;
+        if (signedUrl) urls[entry.photo_url!] = signedUrl;
       }));
       setPhotoUrls(urls);
     };
     if (entries.length > 0) loadPhotoUrls();
   }, [entries]);
-  
-  console.log('[ProgressScreen] Data status:', { dataLoading, hasError, entriesCount: entries.length });
 
+  // Calculate dosage changes for selected compound
+  const dosageChanges = useMemo((): DosageChange[] => {
+    if (!selectedCompoundId) return [];
+    
+    const compoundDoses = doses
+      .filter(d => d.compound_id === selectedCompoundId)
+      .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
-  const handleLogWeight = async () => {
-    if (!weight) {
-      toast.error('Please enter your weight');
-      return;
-    }
+    if (compoundDoses.length === 0) return [];
 
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+    const changes: DosageChange[] = [];
+    let lastDoseAmount = -1;
+    let lastDoseUnit = "";
 
-      const weightValue = parseFloat(weight);
-      if (isNaN(weightValue) || weightValue <= 0) {
-        toast.error('Please enter a valid weight');
-        return;
+    compoundDoses.forEach(dose => {
+      if (dose.dose_amount !== lastDoseAmount || dose.dose_unit !== lastDoseUnit) {
+        changes.push({
+          date: parseISO(dose.scheduled_date),
+          amount: dose.dose_amount,
+          unit: dose.dose_unit,
+        });
+        lastDoseAmount = dose.dose_amount;
+        lastDoseUnit = dose.dose_unit;
       }
-
-      const weightInLbs = weightUnit === 'kg' ? weightValue * 2.20462 : weightValue;
-
-      // Check if entry exists for this date
-      const dateStr = format(entryDate, 'yyyy-MM-dd');
-      const { data: existingEntry } = await supabase
-        .from('progress_entries')
-        .select('id, category, photo_url')
-        .eq('user_id', user.id)
-        .eq('entry_date', dateStr)
-        .maybeSingle();
-
-      let error;
-      if (existingEntry) {
-        // Update existing entry
-        ({ error } = await supabase
-          .from('progress_entries')
-          .update({ 
-            category: 'weight',
-            metrics: { weight: weightInLbs } 
-          })
-          .eq('id', existingEntry.id));
-      } else {
-        // Insert new entry
-        ({ error } = await supabase
-          .from('progress_entries')
-          .insert([{
-            user_id: user.id,
-            entry_date: dateStr,
-            category: 'weight',
-            metrics: { weight: weightInLbs }
-          }]));
-      }
-
-      if (error) throw error;
-
-      toast.success('Weight logged successfully');
-      setShowLogModal(false);
-      setWeight("");
-      setEntryDate(new Date()); // Reset to today
-      refetchEntries();
-    } catch (error) {
-      console.error('Error logging weight:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to log weight');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteEntry = async (entryId: string) => {
-    try {
-      const { error } = await supabase
-        .from('progress_entries')
-        .delete()
-        .eq('id', entryId);
-
-      if (error) throw error;
-
-      toast.success('Entry deleted successfully');
-      setEditingEntry(null);
-      refetchEntries();
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-      toast.error('Failed to delete entry');
-    }
-  };
-
-  const handleUpdateEntry = async () => {
-    if (!editingEntry) return;
-    
-    setLoading(true);
-    try {
-      const dateStr = format(editingEntry.date, 'yyyy-MM-dd');
-      
-      const { error } = await supabase
-        .from('progress_entries')
-        .update({
-          entry_date: dateStr,
-          metrics: { weight: editingEntry.weight, unit: editingEntry.unit }
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) throw error;
-
-      toast.success('Entry updated successfully');
-      setEditingEntry(null);
-      refetchEntries();
-    } catch (error) {
-      console.error('Error updating entry:', error);
-      toast.error('Failed to update entry');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const CustomDot = (props: any) => {
-    const { cx, cy, index } = props;
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={5}
-        fill="hsl(var(--primary))"
-        stroke="none"
-        cursor="pointer"
-        onClick={() => handleDotClick(index)}
-        style={{ cursor: 'pointer' }}
-      />
-    );
-  };
-
-  const CustomActiveDot = (props: any) => {
-    const { cx, cy, index } = props;
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={7}
-        fill="hsl(var(--primary))"
-        stroke="hsl(var(--background))"
-        strokeWidth={2}
-        cursor="pointer"
-        onClick={() => handleDotClick(index)}
-        style={{ cursor: 'pointer' }}
-      />
-    );
-  };
-
-  const handleDotClick = (index: number) => {
-    if (index === undefined || index < 0 || index >= weightEntries.length) return;
-    
-    const entry = weightEntries[index];
-    if (!entry) return;
-    
-    const localDate = createLocalDate(entry.entry_date);
-    if (!localDate) {
-      toast.error('Invalid entry date');
-      return;
-    }
-    
-    setEditingEntry({
-      id: entry.id,
-      weight: entry.metrics?.weight || 0,
-      date: localDate,
-      unit: entry.metrics?.unit || 'lbs'
     });
-  };
+
+    return changes;
+  }, [selectedCompoundId, doses]);
+
+  // Calculate rate per current dosage level
+  const ratePerDosage = useMemo(() => {
+    if (!selectedCompoundId || dosageChanges.length === 0) return null;
+    
+    const weightEntries = entries.filter(e => e.metrics?.weight);
+    if (weightEntries.length < 2) return null;
+
+    // Find current dosage (most recent change)
+    const currentDosage = dosageChanges[dosageChanges.length - 1];
+    
+    // Find weight entries during this dosage period
+    const entriesDuringDosage = weightEntries.filter(e => {
+      const entryDate = parseISO(e.entry_date);
+      return entryDate >= currentDosage.date;
+    }).sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+
+    if (entriesDuringDosage.length < 2) return null;
+
+    const firstEntry = entriesDuringDosage[0];
+    const lastEntry = entriesDuringDosage[entriesDuringDosage.length - 1];
+    const daysBetween = Math.max(1, Math.floor((parseISO(lastEntry.entry_date).getTime() - parseISO(firstEntry.entry_date).getTime()) / (1000 * 60 * 60 * 24)));
+    const weightChange = lastEntry.metrics.weight - firstEntry.metrics.weight;
+    const weeklyRate = (weightChange / daysBetween) * 7;
+
+    return {
+      rate: weeklyRate,
+      dosage: currentDosage,
+      entries: entriesDuringDosage.length
+    };
+  }, [selectedCompoundId, dosageChanges, entries]);
+
+  const { data: streakData } = useStreaks();
+
+  const weightEntries = entries.filter(e => e.metrics?.weight);
+  const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
 
   const triggerHaptic = async (intensity: 'light' | 'medium' = 'medium') => {
     try {
@@ -352,9 +238,7 @@ export const ProgressScreen = () => {
       setShowPaywall(true);
       return;
     }
-
     triggerHaptic('light');
-
     try {
       const image = await Camera.getPhoto({
         quality: 90,
@@ -362,13 +246,11 @@ export const ProgressScreen = () => {
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera
       });
-
       if (image.dataUrl) {
         await uploadPhotoFromDataUrl(image.dataUrl);
       }
     } catch (error) {
       console.error('Error capturing photo:', error);
-      toast.error('Failed to capture photo');
     }
   };
 
@@ -377,9 +259,7 @@ export const ProgressScreen = () => {
       setShowPaywall(true);
       return;
     }
-
     triggerHaptic('light');
-
     try {
       const image = await Camera.getPhoto({
         quality: 90,
@@ -387,13 +267,11 @@ export const ProgressScreen = () => {
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Photos
       });
-
       if (image.dataUrl) {
         await uploadPhotoFromDataUrl(image.dataUrl);
       }
     } catch (error) {
       console.error('Error selecting photo:', error);
-      toast.error('Failed to select photo');
     }
   };
 
@@ -403,40 +281,32 @@ export const ProgressScreen = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Convert data URL to blob
       const response = await fetch(dataUrl);
       const blob = await response.blob();
       
       const fileName = `${user.id}/${Date.now()}-image.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg'
-        });
+        .upload(fileName, blob, { contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
-      // Check if entry exists for this date
       const dateStr = format(photoDate, 'yyyy-MM-dd');
       const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .select('id, category, metrics')
+        .select('id')
         .eq('user_id', user.id)
         .eq('entry_date', dateStr)
+        .eq('category', 'photo')
         .maybeSingle();
 
       let entryError;
       if (existingEntry) {
-        // Update existing entry with photo
         ({ error: entryError } = await supabase
           .from('progress_entries')
-          .update({ 
-            category: 'photo',
-            photo_url: fileName 
-          })
+          .update({ photo_url: fileName })
           .eq('id', existingEntry.id));
       } else {
-        // Insert new entry
         ({ error: entryError } = await supabase
           .from('progress_entries')
           .insert([{
@@ -449,91 +319,16 @@ export const ProgressScreen = () => {
 
       if (entryError) throw entryError;
 
-      triggerHaptic('medium'); // Success haptic
+      triggerHaptic('medium');
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
       refetchEntries();
     } catch (error) {
       console.error('Error uploading photo:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload photo');
+      toast.error('Failed to upload photo');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getFilteredEntries = () => {
-    if (timeFrame === "All") return entries;
-
-    const now = new Date();
-    const cutoffDate = new Date(now);
-    
-    switch (timeFrame) {
-      case "1M":
-        cutoffDate.setMonth(now.getMonth() - 1);
-        break;
-      case "3M":
-        cutoffDate.setMonth(now.getMonth() - 3);
-        break;
-      case "6M":
-        cutoffDate.setMonth(now.getMonth() - 6);
-        break;
-      case "1Y":
-        cutoffDate.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-    
-    return entries.filter(e => {
-      const entryDate = safeParseDate(e.entry_date);
-      return entryDate && entryDate >= cutoffDate;
-    });
-  };
-
-  const weightEntries = getFilteredEntries().filter(e => e.metrics?.weight);
-  const photoEntries = entries.filter(e => e.photo_url).slice(0, 10);
-  
-  // Get all weight entries sorted by date (most recent first)
-  const allWeightEntries = entries
-    .filter(e => e.metrics?.weight)
-    .sort((a, b) => {
-      const dateA = safeParseDate(b.entry_date);
-      const dateB = safeParseDate(a.entry_date);
-      if (!dateA || !dateB) return 0;
-      return dateA.getTime() - dateB.getTime();
-    });
-  
-  const currentWeight = allWeightEntries[0]?.metrics?.weight;
-  const startingWeight = allWeightEntries[allWeightEntries.length - 1]?.metrics?.weight;
-  const previousWeight = allWeightEntries[1]?.metrics?.weight;
-  
-  // Get streak data
-  const { data: streakData } = useStreaks();
-
-  // Calculate weight trend for encouraging message
-  const getWeightTrend = () => {
-    if (!currentWeight || !previousWeight) return 'getting_started';
-    const change = previousWeight - currentWeight;
-    if (change > 2) return 'weight_down'; // Lost weight
-    if (change < -2) return 'weight_up'; // Gained weight
-    return 'consistent'; // Maintaining
-  };
-
-  const chartData = weightEntries
-    .map(entry => {
-      // Parse as local date to avoid timezone shifts
-      const localDate = createLocalDate(entry.entry_date);
-      if (!localDate) return null;
-      
-      return {
-        date: safeFormatDate(localDate, 'MMM d'),
-        weight: Math.round(entry.metrics.weight * 10) / 10,
-        fullDate: entry.entry_date
-      };
-    })
-    .filter(Boolean) // Remove null entries from invalid dates
-    .sort((a, b) => a.fullDate.localeCompare(b.fullDate)); // Sort chronologically
-
-  const getPhotoUrl = (photoPath: string) => {
-    return photoUrls[photoPath] || '';
   };
 
   const handleDeletePhoto = async (entryId: string) => {
@@ -544,16 +339,10 @@ export const ProgressScreen = () => {
       const entry = entries.find(e => e.id === entryId);
       if (!entry) return;
 
-      // Delete from storage if has photo
       if (entry.photo_url) {
-        const { error: storageError } = await supabase.storage
-          .from('progress-photos')
-          .remove([entry.photo_url]);
-        
-        if (storageError) console.error('Error deleting from storage:', storageError);
+        await supabase.storage.from('progress-photos').remove([entry.photo_url]);
       }
 
-      // Delete entry
       const { error } = await supabase
         .from('progress_entries')
         .delete()
@@ -561,18 +350,35 @@ export const ProgressScreen = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-
       toast.success('Photo deleted');
+      setPreviewPhoto(null);
       refetchEntries();
     } catch (error) {
       console.error('Error deleting photo:', error);
       toast.error('Failed to delete photo');
     }
   };
+
+  const getMetricIcon = (type: MetricType) => {
+    switch (type) {
+      case "weight": return <Scale className="w-4 h-4" />;
+      case "energy": return <Zap className="w-4 h-4" />;
+      case "sleep": return <Moon className="w-4 h-4" />;
+      case "notes": return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  const getMetricLabel = (type: MetricType) => {
+    switch (type) {
+      case "weight": return "Weight";
+      case "energy": return "Energy";
+      case "sleep": return "Sleep";
+      case "notes": return "Journal";
+    }
+  };
+
+  const selectedCompound = compounds.find(c => c.id === selectedCompoundId);
   
-  console.log('[ProgressScreen] About to render, dataLoading:', dataLoading);
-  
-  // Show loading state
   if (dataLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
@@ -590,182 +396,165 @@ export const ProgressScreen = () => {
   
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-      {/* Header */}
       <MainHeader title="Progress" />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
-        {/* Error Message */}
-        {hasError && (
-          <Card className="p-4 bg-destructive/10 border-destructive/20">
-            <p className="text-sm text-destructive">
-              There was an error loading your progress data. Please try refreshing the page.
-            </p>
-          </Card>
-        )}
-        {/* Stats Dashboard - 4 Compact Cards Grid */}
-        {currentWeight && (
-          <div className="grid grid-cols-2 gap-2">
-            {/* Current Weight Card */}
-            <Card className="p-3 bg-card border border-border">
-              <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Current Weight</div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-foreground">{Math.round(currentWeight)}</span>
-                  <span className="text-[10px] text-muted-foreground">lbs</span>
-                </div>
-                <div className="text-[9px] text-muted-foreground">
-                  {allWeightEntries[0] && safeFormatDate(allWeightEntries[0].entry_date, 'MMM d')}
-                </div>
-              </div>
-            </Card>
+        {/* Stats Dashboard */}
+        <ProgressStats 
+          weightEntries={weightEntries}
+          streakData={streakData}
+        />
 
-            {/* Total Change Card */}
-            {startingWeight && startingWeight !== currentWeight && (
-              <Card className="p-3 bg-card border border-border">
-                <div className="space-y-1">
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Change</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-bold text-foreground">
-                      {startingWeight > currentWeight ? '-' : '+'}{Math.abs(Math.round((currentWeight - startingWeight) * 10) / 10)}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">lbs</span>
-                  </div>
-                  <div className="text-[9px] text-muted-foreground">
-                    Since {allWeightEntries[allWeightEntries.length - 1] && safeFormatDate(allWeightEntries[allWeightEntries.length - 1].entry_date, 'MMM d')}
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Weekly Trend Card */}
-            {allWeightEntries.length >= 2 && (() => {
-              const recentEntries = allWeightEntries.slice(0, Math.min(4, allWeightEntries.length));
-              const firstDate = safeParseDate(recentEntries[0].entry_date);
-              const lastDate = safeParseDate(recentEntries[recentEntries.length - 1].entry_date);
-              const daysBetween = firstDate && lastDate 
-                ? Math.max(1, differenceInDays(firstDate, lastDate))
-                : 1;
-              const weightChange = recentEntries[0].metrics.weight - recentEntries[recentEntries.length - 1].metrics.weight;
-              const weeklyAvg = (weightChange / daysBetween) * 7;
-              
-              return (
-                <Card className="p-3 bg-card border border-border">
-                  <div className="space-y-1">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Weekly Trend</div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-bold text-foreground">
-                        {weeklyAvg < 0 ? '' : '+'}{Math.round(weeklyAvg * 10) / 10}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">lbs/wk</span>
-                    </div>
-                    <div className="text-[9px] text-muted-foreground">
-                      Last {recentEntries.length} entries
-                    </div>
-                  </div>
-                </Card>
-              );
-            })()}
-
-            {/* Current Streak Card */}
-            <Card className="p-3 bg-card border border-border">
-              <div className="space-y-1">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Current Streak</div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-foreground">{streakData?.current_streak || 0}</span>
-                  <span className="text-[10px] text-muted-foreground">days</span>
-                </div>
-                <div className="text-[9px] text-muted-foreground">
-                  Best: {streakData?.longest_streak || 0} days
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-foreground">Weight Chart</h2>
-            <Button 
-              onClick={() => setShowLogModal(true)} 
-              size="sm" 
-              variant="ghost"
-              className="text-primary hover:text-primary hover:bg-primary/10"
+        {/* Metric Type Selector */}
+        <div className="flex gap-2">
+          {(["weight", "energy", "sleep", "notes"] as MetricType[]).map(type => (
+            <button
+              key={type}
+              onClick={() => setMetricType(type)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all",
+                metricType === type
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-foreground/70 hover:text-foreground"
+              )}
             >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Log Weight
-            </Button>
-          </div>
-
-          <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
-            {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setTimeFrame(tf)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  timeFrame === tf
-                    ? 'bg-background text-primary shadow-sm'
-                    : 'text-foreground/70 hover:text-foreground'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-
-          <Card className="p-4 bg-muted/30">
-            {dataLoading ? (
-              <Skeleton className="w-full h-[200px]" />
-            ) : weightEntries.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    domain={['dataMin - 5', 'dataMax + 5']}
-                    label={{ 
-                      value: 'Weight (lbs)', 
-                      angle: -90, 
-                      position: 'insideLeft',
-                      style: { fill: 'hsl(var(--muted-foreground))', fontSize: 12 }
-                    }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px',
-                      fontSize: '12px'
-                    }}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="weight" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3}
-                    dot={<CustomDot />}
-                    activeDot={<CustomActiveDot />}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                No weight data yet. Start logging to see your progress!
-              </div>
-            )}
-          </Card>
+              {getMetricIcon(type)}
+              {getMetricLabel(type)}
+            </button>
+          ))}
         </div>
 
+        {/* Chart Section */}
+        {metricType !== "notes" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-foreground">
+                {getMetricLabel(metricType)} Chart
+              </h2>
+              <Button 
+                onClick={() => setShowLogModal(true)} 
+                size="sm" 
+                variant="ghost"
+                className="text-primary hover:text-primary hover:bg-primary/10"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Log {getMetricLabel(metricType)}
+              </Button>
+            </div>
+
+            {/* Time Frame Selector */}
+            <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
+              {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeFrame(tf)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    timeFrame === tf
+                      ? 'bg-background text-primary shadow-sm'
+                      : 'text-foreground/70 hover:text-foreground'
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
+
+            {/* Medication Correlation Dropdown (only for weight) */}
+            {metricType === "weight" && compounds.length > 0 && (
+              <Select
+                value={selectedCompoundId}
+                onValueChange={setSelectedCompoundId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select medication to show dosage changes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No medication overlay</SelectItem>
+                  {compounds.map(compound => (
+                    <SelectItem key={compound.id} value={compound.id}>
+                      {compound.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Rate per dosage stat */}
+            {metricType === "weight" && selectedCompoundId && ratePerDosage && (
+              <div className="flex items-center gap-2 text-sm bg-primary/10 text-primary px-3 py-2 rounded-lg">
+                <span className="font-medium">
+                  At {ratePerDosage.dosage.amount}{ratePerDosage.dosage.unit}:
+                </span>
+                <span>
+                  {ratePerDosage.rate >= 0 ? '+' : ''}{ratePerDosage.rate.toFixed(1)} lbs/week
+                </span>
+                <span className="text-xs text-primary/70">
+                  ({ratePerDosage.entries} entries)
+                </span>
+              </div>
+            )}
+
+            <Card className="p-4 bg-muted/30">
+              <MetricChart
+                metricType={metricType}
+                entries={entries}
+                timeFrame={timeFrame}
+                isLoading={dataLoading}
+                dosageChanges={selectedCompoundId ? dosageChanges : []}
+                selectedMedication={selectedCompound?.name}
+              />
+            </Card>
+          </div>
+        )}
+
+        {/* Notes/Journal View */}
+        {metricType === "notes" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-foreground">Journal Entries</h2>
+              <Button 
+                onClick={() => setShowLogModal(true)} 
+                size="sm" 
+                variant="ghost"
+                className="text-primary hover:text-primary hover:bg-primary/10"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Entry
+              </Button>
+            </div>
+            
+            {entries.filter(e => e.category === 'notes' || e.notes).length > 0 ? (
+              <div className="space-y-3">
+                {entries
+                  .filter(e => e.category === 'notes' || e.notes)
+                  .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
+                  .slice(0, 10)
+                  .map(entry => (
+                    <Card key={entry.id} className="p-4 bg-card border border-border">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs text-muted-foreground">
+                          {safeFormatDate(entry.entry_date, 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground">
+                        {entry.notes || (entry.metrics as any)?.notes}
+                      </p>
+                    </Card>
+                  ))}
+              </div>
+            ) : (
+              <Card className="p-8 text-center bg-muted/30">
+                <FileText className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">No journal entries yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Track your thoughts, side effects, and observations
+                </p>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Visual Progress */}
         <Card className="p-4 bg-card border border-border space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
@@ -780,17 +569,10 @@ export const ProgressScreen = () => {
             </Button>
           </div>
 
-          {dataLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="flex-shrink-0 w-24 h-32 rounded-lg" />
-              ))}
-            </div>
-          ) : photoEntries.length > 0 ? (
+          {photoEntries.length > 0 ? (
             <>
-              <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth" style={{ scrollBehavior: 'smooth' }}>
+              <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth">
                 {photoEntries.map((entry) => {
-                  // Parse as local date to avoid timezone shifts
                   const localDate = createLocalDate(entry.entry_date);
                   if (!localDate) return null;
                   
@@ -798,10 +580,10 @@ export const ProgressScreen = () => {
                     <div key={entry.id} className="flex-shrink-0 text-center">
                       <div 
                         className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setPreviewPhoto({ url: getPhotoUrl(entry.photo_url!), id: entry.id })}
+                        onClick={() => setPreviewPhoto({ url: photoUrls[entry.photo_url!] || '', id: entry.id })}
                       >
                         <img
-                          src={getPhotoUrl(entry.photo_url!)}
+                          src={photoUrls[entry.photo_url!] || ''}
                           alt={`Progress ${entry.entry_date}`}
                           className="w-full h-full object-cover"
                         />
@@ -813,296 +595,192 @@ export const ProgressScreen = () => {
                   );
                 })}
               </div>
-
-              {photoEntries.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate("/progress/compare")}
-                >
-                  View All & Compare
-                </Button>
-              )}
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/progress/compare")}
+              >
+                View All & Compare
+              </Button>
             </>
-          ) : photoEntries.length === 0 ? (
-            <>
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">No photos yet</p>
-                <p className="text-xs mt-1">Start tracking your transformation</p>
-              </div>
-            </>
-          ) : null}
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No photos yet</p>
+              <p className="text-xs mt-1">Start tracking your transformation</p>
+            </div>
+          )}
         </Card>
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Medication Timeline</h2>
-          
-          <Card className="p-6 bg-card border border-border">
-            {dataLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : compounds.length > 0 ? (
-              <div className="space-y-6 max-h-96 overflow-y-auto">
-                {(() => {
-                  // Calculate timeline range: limit to last 18 months for cleaner view
-                  const now = new Date();
-                  const eighteenMonthsAgo = new Date(now);
-                  eighteenMonthsAgo.setMonth(now.getMonth() - 18);
-                  
-                  const earliestStart = compounds.reduce((earliest, compound) => {
-                    const startDate = safeParseDate(compound.start_date);
-                    if (!startDate) return earliest;
-                    return startDate < earliest ? startDate : earliest;
-                  }, now);
-                  
-                  // Use 18 months ago or earliest start, whichever is more recent
-                  const timelineStart = earliestStart > eighteenMonthsAgo ? earliestStart : eighteenMonthsAgo;
-                  timelineStart.setDate(1); // Start of that month
-                  const timelineEnd = now;
-                  const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-                  
-                  // Use primary color scheme with opacity variations for clean look
-                  const MEDICATION_COLORS = [
-                    'hsl(var(--primary))',
-                    'hsl(var(--primary) / 0.8)',
-                    'hsl(var(--primary) / 0.6)',
-                    'hsl(var(--primary) / 0.5)',
-                    'hsl(var(--primary) / 0.4)',
-                    'hsl(var(--primary) / 0.3)',
-                  ];
-                  
-                  return (
-                    <>
-                      <div className="space-y-4">
-                        {compounds.map((compound, idx) => {
-                          const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
-                          
-                          // Safely parse dates
-                          const startDate = safeParseDate(compound.start_date);
-                          const endDate = compound.end_date ? safeParseDate(compound.end_date) : now;
-                          
-                          // Skip compounds with invalid start dates
-                          if (!startDate) return null;
-                          
-                          const isActive = compound.is_active && (!compound.end_date || (endDate && endDate >= now));
-                          
-                          // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
-                          const convertWeeksToDays = (weeks: number) => {
-                            if (weeks >= 4 && weeks % 4 === 0) {
-                              return (weeks / 4) * 30; // Treat as months
-                            }
-                            return weeks * 7;
-                          };
-                          
-                          // Calculate all on/off periods if has cycles
-                          const periods: Array<{ start: Date; end: Date; isOn: boolean }> = [];
-                          
-                          if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
-                            const cycleWeeksOn = compound.cycle_weeks_on;
-                            const cycleWeeksOff = compound.cycle_weeks_off;
-                            const daysOn = convertWeeksToDays(cycleWeeksOn);
-                            const daysOff = convertWeeksToDays(cycleWeeksOff);
-                            
-                            let currentStart = startDate;
-                            const finalEnd = endDate;
-                            
-                            while (currentStart < finalEnd) {
-                              // On period
-                              const onEnd = new Date(currentStart);
-                              onEnd.setDate(onEnd.getDate() + daysOn);
+        {/* Collapsible Medication Timeline */}
+        {compounds.length > 0 && (
+          <Collapsible open={timelineExpanded} onOpenChange={setTimelineExpanded}>
+            <Card className="bg-card border border-border overflow-hidden">
+              <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                <h2 className="text-lg font-semibold text-foreground">Medication Timeline</h2>
+                {timelineExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  <div className="space-y-4">
+                    {(() => {
+                      const now = new Date();
+                      const eighteenMonthsAgo = new Date(now);
+                      eighteenMonthsAgo.setMonth(now.getMonth() - 18);
+                      
+                      const earliestStart = compounds.reduce((earliest, compound) => {
+                        const startDate = safeParseDate(compound.start_date);
+                        if (!startDate) return earliest;
+                        return startDate < earliest ? startDate : earliest;
+                      }, now);
+                      
+                      const timelineStart = earliestStart > eighteenMonthsAgo ? earliestStart : eighteenMonthsAgo;
+                      timelineStart.setDate(1);
+                      const timelineEnd = now;
+                      const totalDays = Math.floor((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                      
+                      const MEDICATION_COLORS = [
+                        'hsl(var(--primary))',
+                        'hsl(var(--primary) / 0.8)',
+                        'hsl(var(--primary) / 0.6)',
+                        'hsl(var(--primary) / 0.5)',
+                      ];
+                      
+                      return (
+                        <>
+                          <div className="space-y-4">
+                            {compounds.map((compound, idx) => {
+                              const color = MEDICATION_COLORS[idx % MEDICATION_COLORS.length];
+                              const startDate = safeParseDate(compound.start_date);
+                              const endDate = compound.end_date ? safeParseDate(compound.end_date) : now;
                               
-                              periods.push({
-                                start: currentStart,
-                                end: onEnd > finalEnd ? finalEnd : onEnd,
-                                isOn: true
-                              });
+                              if (!startDate) return null;
                               
-                              // Off period
-                              const offStart = new Date(onEnd);
-                              const offEnd = new Date(offStart);
-                              offEnd.setDate(offEnd.getDate() + daysOff);
+                              const isActive = compound.is_active && (!compound.end_date || (endDate && endDate >= now));
                               
-                              if (offStart < finalEnd) {
-                                periods.push({
-                                  start: offStart,
-                                  end: offEnd > finalEnd ? finalEnd : offEnd,
-                                  isOn: false
-                                });
+                              const convertWeeksToDays = (weeks: number) => {
+                                if (weeks >= 4 && weeks % 4 === 0) return (weeks / 4) * 30;
+                                return weeks * 7;
+                              };
+                              
+                              const periods: Array<{ start: Date; end: Date; isOn: boolean }> = [];
+                              
+                              if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
+                                const daysOn = convertWeeksToDays(compound.cycle_weeks_on);
+                                const daysOff = convertWeeksToDays(compound.cycle_weeks_off);
+                                
+                                let currentStart = startDate;
+                                const finalEnd = endDate;
+                                
+                                while (currentStart < finalEnd) {
+                                  const onEnd = new Date(currentStart);
+                                  onEnd.setDate(onEnd.getDate() + daysOn);
+                                  periods.push({ start: currentStart, end: onEnd > finalEnd ? finalEnd : onEnd, isOn: true });
+                                  
+                                  const offStart = new Date(onEnd);
+                                  const offEnd = new Date(offStart);
+                                  offEnd.setDate(offEnd.getDate() + daysOff);
+                                  
+                                  if (offStart < finalEnd) {
+                                    periods.push({ start: offStart, end: offEnd > finalEnd ? finalEnd : offEnd, isOn: false });
+                                  }
+                                  currentStart = offEnd;
+                                  if (currentStart >= finalEnd) break;
+                                }
+                              } else {
+                                periods.push({ start: startDate, end: endDate, isOn: true });
                               }
                               
-                              currentStart = offEnd;
-                              if (currentStart >= finalEnd) break;
-                            }
-                          } else {
-                            // No cycles - just one continuous period
-                            periods.push({
-                              start: startDate,
-                              end: endDate,
-                              isOn: true
-                            });
-                          }
-                          
-                          return (
-                            <div key={compound.id} className="space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <div 
-                                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                    style={{ backgroundColor: color }}
-                                  />
-                                  <span className={`text-sm font-medium truncate ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                    {compound.name}
-                                  </span>
-                                  {isActive && (
-                                    <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium whitespace-nowrap flex-shrink-0">
-                                      Active
+                              return (
+                                <div key={compound.id} className="space-y-2">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                                      <span className={`text-sm font-medium truncate ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                        {compound.name}
+                                      </span>
+                                      {isActive && (
+                                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium whitespace-nowrap flex-shrink-0">
+                                          Active
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                      {safeFormatDate(startDate, 'MMM d')} - {isActive ? 'Now' : safeFormatDate(endDate, 'MMM d')}
                                     </span>
-                                  )}
+                                  </div>
+                                  
+                                  <div className="relative h-1 bg-muted rounded-full overflow-hidden">
+                                    {periods.map((period, periodIdx) => {
+                                      if (period.end < timelineStart) return null;
+                                      
+                                      const visibleStart = period.start < timelineStart ? timelineStart : period.start;
+                                      const periodStartDays = Math.floor((visibleStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                                      const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
+                                      
+                                      const leftPercent = Math.max(0, (periodStartDays / totalDays) * 100);
+                                      const widthPercent = Math.max(0.5, ((periodEndDays - periodStartDays) / totalDays) * 100);
+                                      
+                                      if (!period.isOn) return null;
+                                      
+                                      return (
+                                        <div
+                                          key={periodIdx}
+                                          className="absolute h-full"
+                                          style={{
+                                            left: `${leftPercent}%`,
+                                            width: `${widthPercent}%`,
+                                            backgroundColor: color,
+                                            opacity: isActive ? 1 : 0.4,
+                                          }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                                <span className="text-[11px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                  {safeFormatDate(startDate, 'MMM d')} - {isActive ? 'Now' : safeFormatDate(endDate, 'MMM d')}
-                                </span>
-                              </div>
-                              
-                              {/* Thin line timeline */}
-                              <div className="relative h-1 bg-muted rounded-full overflow-hidden">
-                                {periods.map((period, periodIdx) => {
-                                  // Only render periods within the visible timeline
-                                  if (period.end < timelineStart) return null;
-                                  
-                                  const visibleStart = period.start < timelineStart ? timelineStart : period.start;
-                                  const periodStartDays = Math.floor((visibleStart.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-                                  const periodEndDays = Math.floor((period.end.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24));
-                                  
-                                  const leftPercent = Math.max(0, (periodStartDays / totalDays) * 100);
-                                  const widthPercent = Math.max(0.5, ((periodEndDays - periodStartDays) / totalDays) * 100);
-                                  
-                                  if (!period.isOn) return null; // Only show "on" periods
-                                  
-                                  return (
-                                    <div
-                                      key={periodIdx}
-                                      className="absolute h-full transition-all"
-                                      style={{
-                                        left: `${leftPercent}%`,
-                                        width: `${widthPercent}%`,
-                                        backgroundColor: color,
-                                        opacity: isActive ? 1 : 0.4,
-                                      }}
-                                      title={`${safeFormatDate(period.start, 'MMM d, yyyy')} - ${safeFormatDate(period.end, 'MMM d, yyyy')}`}
-                                    />
-                                  );
-                                })}
-                              </div>
+                              );
+                            }).filter(Boolean)}
+                          </div>
+                          
+                          <div className="relative pt-4 border-t border-border/50 mt-2">
+                            <div className="flex justify-between text-[10px] text-muted-foreground">
+                              {(() => {
+                                const numLabels = Math.min(6, Math.ceil(totalDays / 30));
+                                const labels = [];
+                                for (let i = 0; i < numLabels; i++) {
+                                  const date = new Date(timelineStart);
+                                  date.setDate(date.getDate() + (i * Math.floor(totalDays / (numLabels - 1))));
+                                  labels.push(safeFormatDate(date, 'MMM yy'));
+                                }
+                                return labels.map((label, idx) => <span key={idx}>{label}</span>);
+                              })()}
                             </div>
-                          );
-                        }).filter(Boolean)} {/* Filter out null entries from invalid dates */}
-                      </div>
-                      
-                      {/* Timeline labels */}
-                      <div className="relative pt-4 border-t border-border/50 mt-2">
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          {(() => {
-                            const numLabels = Math.min(6, Math.ceil(totalDays / 30));
-                            const labels = [];
-                            
-                            for (let i = 0; i < numLabels; i++) {
-                              const date = new Date(timelineStart);
-                              date.setDate(date.getDate() + (i * Math.floor(totalDays / (numLabels - 1))));
-                              labels.push(safeFormatDate(date, 'MMM yy'));
-                            }
-                            
-                            return labels.map((label, idx) => (
-                              <span key={idx}>{label}</span>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No medications tracked yet</p>
-                <p className="text-sm mt-1">Add your first compound to see your medication journey</p>
-              </div>
-            )}
-          </Card>
-        </div>
-
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
       </div>
 
       <BottomNavigation />
 
-      <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Weight</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="Enter weight"
-                  className="flex-1 h-14 text-lg"
-                />
-                <Select value={weightUnit} onValueChange={(value: "lbs" | "kg") => setWeightUnit(value)}>
-                  <SelectTrigger className="w-24 h-14">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lbs">lbs</SelectItem>
-                    <SelectItem value="kg">kg</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+      {/* Log Modal */}
+      <MetricLogModal
+        open={showLogModal}
+        onOpenChange={setShowLogModal}
+        metricType={metricType}
+        onSuccess={refetchEntries}
+      />
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
-                Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full h-14 justify-between text-left font-normal",
-                      !entryDate && "text-muted-foreground"
-                    )}
-                  >
-                    <span>Entry Date</span>
-                    <span>{format(entryDate, "MMM d, yyyy")}</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={entryDate}
-                    onSelect={(date) => date && setEntryDate(date)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <Button 
-              onClick={handleLogWeight} 
-              disabled={loading || !weight} 
-              className="w-full h-14 text-base"
-            >
-              {loading ? 'Logging...' : 'Log Weight Entry'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* Photo Modal */}
       <Dialog open={showPhotoModal} onOpenChange={setShowPhotoModal}>
         <DialogContent>
           <DialogHeader>
@@ -1118,10 +796,7 @@ export const ProgressScreen = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn(
-                      "w-full h-12 justify-between text-left font-normal",
-                      !photoDate && "text-muted-foreground"
-                    )}
+                    className={cn("w-full h-12 justify-between text-left font-normal")}
                   >
                     <span className="text-muted-foreground">Photo Date</span>
                     <span>{format(photoDate, "MMM d, yyyy")}</span>
@@ -1144,7 +819,6 @@ export const ProgressScreen = () => {
               onClick={handleCapturePhoto} 
               disabled={loading} 
               className="w-full h-14 text-base"
-              variant="default"
             >
               <CameraIcon className="w-5 h-5 mr-2" />
               {loading ? 'Processing...' : 'Snap a Photo'}
@@ -1171,92 +845,6 @@ export const ProgressScreen = () => {
         onDelete={handleDeletePhoto}
         onDateUpdate={refetchEntries}
       />
-
-      {/* Edit Weight Entry Dialog */}
-      <Dialog open={!!editingEntry} onOpenChange={(open) => !open && setEditingEntry(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Weight Entry</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-between text-left font-normal",
-                      !editingEntry?.date && "text-muted-foreground"
-                    )}
-                  >
-                    <span className="text-muted-foreground">Entry Date</span>
-                    <span>{editingEntry?.date && format(editingEntry.date, "MMM d, yyyy")}</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={editingEntry?.date}
-                    onSelect={(date) => date && setEditingEntry(prev => prev ? {...prev, date} : null)}
-                    disabled={(date) => date > new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Weight</Label>
-              <Input
-                type="number"
-                step="0.1"
-                value={editingEntry?.weight || ''}
-                onChange={(e) => setEditingEntry(prev => 
-                  prev ? {...prev, weight: parseFloat(e.target.value) || 0} : null
-                )}
-                placeholder="Enter weight"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              <Select
-                value={editingEntry?.unit}
-                onValueChange={(value: "lbs" | "kg") => 
-                  setEditingEntry(prev => prev ? {...prev, unit: value} : null)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lbs">lbs</SelectItem>
-                  <SelectItem value="kg">kg</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="destructive"
-                onClick={() => editingEntry && handleDeleteEntry(editingEntry.id)}
-                className="flex-1"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
-              <Button
-                onClick={handleUpdateEntry}
-                disabled={loading || !editingEntry?.weight}
-                className="flex-1"
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

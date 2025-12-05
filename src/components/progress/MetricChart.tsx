@@ -1,0 +1,280 @@
+import { useMemo } from "react";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format, parseISO, subMonths } from "date-fns";
+import { formatDose } from "@/utils/doseUtils";
+import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
+import { Star } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+
+type MetricType = "weight" | "energy" | "sleep" | "notes";
+type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
+
+interface DosageChange {
+  date: Date;
+  amount: number;
+  unit: string;
+}
+
+interface MetricChartProps {
+  metricType: MetricType;
+  entries: any[];
+  timeFrame: TimeFrame;
+  isLoading: boolean;
+  dosageChanges?: DosageChange[];
+  selectedMedication?: string;
+  onDotClick?: (index: number) => void;
+}
+
+export const MetricChart = ({
+  metricType,
+  entries,
+  timeFrame,
+  isLoading,
+  dosageChanges = [],
+  selectedMedication,
+  onDotClick
+}: MetricChartProps) => {
+  const cutoffDate = useMemo(() => {
+    const now = new Date();
+    switch (timeFrame) {
+      case '1M': return subMonths(now, 1);
+      case '3M': return subMonths(now, 3);
+      case '6M': return subMonths(now, 6);
+      case '1Y': return subMonths(now, 12);
+      case 'All': return new Date(0);
+      default: return subMonths(now, 12);
+    }
+  }, [timeFrame]);
+
+  const chartData = useMemo(() => {
+    let filteredEntries = entries.filter(e => {
+      const entryDate = parseISO(e.entry_date);
+      if (entryDate < cutoffDate) return false;
+      
+      if (metricType === "weight") return e.metrics?.weight;
+      if (metricType === "energy") return e.metrics?.energy;
+      if (metricType === "sleep") return e.metrics?.sleep;
+      return false;
+    });
+
+    const sortedEntries = filteredEntries.sort((a, b) => 
+      a.entry_date.localeCompare(b.entry_date)
+    );
+
+    // Track assigned dosage changes for weight chart
+    const assignedChanges = new Set<number>();
+
+    return sortedEntries.map(entry => {
+      const entryDate = parseISO(entry.entry_date);
+      const dateStr = format(entryDate, 'MMM d');
+      
+      let dosageLabel: string | undefined;
+      if (metricType === "weight" && dosageChanges.length > 0) {
+        for (let i = 0; i < dosageChanges.length; i++) {
+          if (assignedChanges.has(i)) continue;
+          const change = dosageChanges[i];
+          if (change.date <= entryDate) {
+            dosageLabel = formatDose(change.amount, change.unit);
+            assignedChanges.add(i);
+            break;
+          }
+        }
+      }
+
+      const getValue = () => {
+        if (metricType === "weight") return Math.round(entry.metrics.weight * 10) / 10;
+        if (metricType === "energy") return entry.metrics.energy;
+        if (metricType === "sleep") return entry.metrics.sleep;
+        return 0;
+      };
+
+      return {
+        date: dateStr,
+        value: getValue(),
+        fullDate: entry.entry_date,
+        dosageLabel,
+        id: entry.id
+      };
+    });
+  }, [entries, cutoffDate, metricType, dosageChanges]);
+
+  // Custom dot with dosage labels for weight chart
+  const CustomDot = (props: any) => {
+    const { cx, cy, payload, index } = props;
+    if (!cx || !cy) return null;
+    
+    const badgeWidth = payload?.dosageLabel ? Math.max(45, payload.dosageLabel.length * 7 + 16) : 0;
+    const isLastPoint = index === chartData.length - 1;
+    const isFirstPoint = index === 0;
+    
+    let badgeX = cx - badgeWidth / 2;
+    if (isLastPoint && payload?.dosageLabel) {
+      badgeX = cx - badgeWidth + 10;
+    } else if (isFirstPoint && payload?.dosageLabel) {
+      badgeX = cx - 10;
+    }
+    
+    return (
+      <g>
+        <circle
+          cx={cx}
+          cy={cy}
+          r={5}
+          fill="hsl(var(--primary))"
+          stroke="none"
+          cursor={onDotClick ? "pointer" : "default"}
+          onClick={() => onDotClick?.(index)}
+        />
+        {payload?.dosageLabel && (
+          <g>
+            <rect
+              x={badgeX}
+              y={cy - 28}
+              width={badgeWidth}
+              height={18}
+              rx={4}
+              fill="hsl(var(--primary))"
+            />
+            <text
+              x={badgeX + badgeWidth / 2}
+              y={cy - 16}
+              textAnchor="middle"
+              fill="hsl(var(--primary-foreground))"
+              fontSize={10}
+              fontWeight={600}
+            >
+              {payload.dosageLabel}
+            </text>
+          </g>
+        )}
+      </g>
+    );
+  };
+
+  const CustomActiveDot = (props: any) => {
+    const { cx, cy, index } = props;
+    if (!cx || !cy) return null;
+    
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={7}
+        fill="hsl(var(--primary))"
+        stroke="hsl(var(--background))"
+        strokeWidth={2}
+        cursor={onDotClick ? "pointer" : "default"}
+        onClick={() => onDotClick?.(index)}
+      />
+    );
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || !payload[0]) return null;
+    const data = payload[0].payload;
+    
+    return (
+      <Card className="p-3 shadow-lg border border-border bg-card">
+        <p className="text-xs font-medium text-muted-foreground mb-1">{data.date}</p>
+        {metricType === "weight" && (
+          <p className="text-sm font-semibold text-foreground">{data.value} lbs</p>
+        )}
+        {(metricType === "energy" || metricType === "sleep") && (
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map(star => (
+              <Star
+                key={star}
+                className={`w-3 h-3 ${star <= data.value ? 'fill-primary text-primary' : 'text-muted-foreground/30'}`}
+              />
+            ))}
+          </div>
+        )}
+        {data.dosageLabel && (
+          <p className="text-xs text-primary mt-1">Dosage: {data.dosageLabel}</p>
+        )}
+      </Card>
+    );
+  };
+
+  const getYAxisConfig = () => {
+    if (metricType === "weight") {
+      return {
+        domain: ['dataMin - 5', 'dataMax + 5'] as [string, string],
+        label: 'Weight (lbs)'
+      };
+    }
+    return {
+      domain: [0, 5] as [number, number],
+      label: metricType === "energy" ? 'Energy' : 'Sleep Quality',
+      ticks: [1, 2, 3, 4, 5]
+    };
+  };
+
+  const yAxisConfig = getYAxisConfig();
+
+  if (isLoading) {
+    return <Skeleton className="w-full h-[200px]" />;
+  }
+
+  if (chartData.length === 0) {
+    const labels = {
+      weight: "No weight data yet. Start logging to see your progress!",
+      energy: "No energy data yet. Start tracking to see patterns!",
+      sleep: "No sleep data yet. Start tracking to see patterns!",
+      notes: ""
+    };
+    
+    return (
+      <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
+        {labels[metricType]}
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={metricType === "weight" && dosageChanges.length > 0 ? 250 : 200}>
+      <LineChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+        <XAxis 
+          dataKey="date" 
+          stroke="hsl(var(--muted-foreground))"
+          fontSize={11}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis 
+          stroke="hsl(var(--muted-foreground))"
+          fontSize={11}
+          tickLine={false}
+          axisLine={false}
+          domain={yAxisConfig.domain}
+          ticks={'ticks' in yAxisConfig ? yAxisConfig.ticks : undefined}
+          label={{ 
+            value: yAxisConfig.label, 
+            angle: -90, 
+            position: 'insideLeft',
+            style: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
+          }}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Line 
+          type="monotone" 
+          dataKey="value" 
+          stroke="hsl(var(--primary))" 
+          strokeWidth={3}
+          dot={<CustomDot />}
+          activeDot={<CustomActiveDot />}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+};
