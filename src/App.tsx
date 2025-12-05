@@ -19,7 +19,6 @@ import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
-import { InsightsScreen } from "./components/InsightsScreenComplex";
 import { SettingsScreen } from "./components/SettingsScreen";
 import PhotoCompareScreen from "./components/PhotoCompareScreen";
 import { AccountSettings } from "./components/settings/AccountSettings";
@@ -31,7 +30,6 @@ import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SubscriptionTest } from "./pages/SubscriptionTest";
-import { InsightsScreen as NewInsightsScreen } from "./components/InsightsScreen";
 import { CompoundDetailScreen } from "./components/CompoundDetailScreen";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
@@ -71,8 +69,6 @@ const AppContent = () => {
             <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
             <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
-            <Route path="/insights" element={<ProtectedRoute><NewInsightsScreen /></ProtectedRoute>} />
-            <Route path="/progress/insights" element={<ProtectedRoute><InsightsScreen /></ProtectedRoute>} />
             <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
             <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
