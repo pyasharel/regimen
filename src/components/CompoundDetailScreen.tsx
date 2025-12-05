@@ -664,7 +664,7 @@ export const CompoundDetailScreen = () => {
               No doses logged yet
             </p>
           ) : (
-            <div className={`space-y-2 ${allHandledDoses.length > 10 ? 'max-h-[400px] overflow-y-auto pr-1' : ''}`}>
+            <div className={`space-y-2 ${allHandledDoses.length > 5 ? 'max-h-[280px] overflow-y-auto pr-1' : ''}`}>
               {allHandledDoses.map((dose) => (
                 <div 
                   key={dose.id}
