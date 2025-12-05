@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -47,6 +47,7 @@ interface Dose {
   calculated_iu: number | null;
   calculated_ml: number | null;
   taken: boolean;
+  skipped?: boolean;
   compound_name?: string;
   schedule_type?: string;
 }
@@ -445,6 +446,65 @@ export const TodayScreen = () => {
       }, 600);
     } catch (error) {
       console.error('Error toggling dose:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update dose",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const skipDose = async (doseId: string, isCurrentlySkipped: boolean) => {
+    try {
+      const dose = doses.find(d => d.id === doseId);
+      if (!dose) return;
+
+      // Don't allow skipping "as needed" doses
+      if (dose.schedule_type === 'As Needed') {
+        toast({
+          title: "Cannot Skip",
+          description: "As-needed medications cannot be skipped",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      triggerHaptic('light');
+
+      const { error } = await supabase
+        .from('doses')
+        .update({
+          skipped: !isCurrentlySkipped,
+          taken: false, // Ensure taken is false when skipping
+          taken_at: null
+        })
+        .eq('id', doseId);
+
+      if (error) throw error;
+
+      // Update local state
+      setDoses(doses.map(d =>
+        d.id === doseId
+          ? { ...d, skipped: !isCurrentlySkipped, taken: false }
+          : d
+      ));
+
+      // Cancel notification when dose is skipped
+      if (!isCurrentlySkipped) {
+        await cancelDoseNotification(doseId);
+      }
+
+      // Invalidate streak query to refresh
+      queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+
+      toast({
+        title: isCurrentlySkipped ? "Dose Restored" : "Dose Skipped",
+        description: isCurrentlySkipped 
+          ? "You can now mark this dose as taken" 
+          : "This dose has been marked as skipped",
+      });
+    } catch (error) {
+      console.error('Error skipping dose:', error);
       toast({
         title: "Error",
         description: "Failed to update dose",
@@ -903,7 +963,7 @@ export const TodayScreen = () => {
 
               // Check if dose is past due (for subtle pulse animation)
               const isDosePastDue = (dose: typeof doses[0]) => {
-                if (dose.taken) return false;
+                if (dose.taken || dose.skipped) return false;
                 const now = new Date();
                 const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 
@@ -933,6 +993,8 @@ export const TodayScreen = () => {
               
               const renderDoseCard = (dose: typeof doses[0]) => {
                 const shouldPulse = isDosePastDue(dose);
+                const isSkipped = dose.skipped === true;
+                const isHandled = dose.taken || isSkipped;
                 
                 return (
                   <div
@@ -942,15 +1004,17 @@ export const TodayScreen = () => {
                       else cardRefs.current.delete(dose.id);
                     }}
                     className={`overflow-hidden rounded-2xl border transition-all animate-fade-in relative ${
-                      dose.taken
+                      isSkipped
+                        ? 'bg-muted/50 border-border/50'
+                        : dose.taken
                         ? 'bg-card border-border'
                         : 'bg-primary border-primary'
                     }`}
                     style={{
-                      opacity: dose.taken ? 0.85 : 1,
-                      transform: dose.taken ? 'scale(0.98)' : 'scale(1)',
+                      opacity: isHandled ? 0.85 : 1,
+                      transform: isHandled ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      ...(dose.taken ? {} : {
+                      ...(isHandled ? {} : {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
                       })
                     }}
@@ -970,25 +1034,48 @@ export const TodayScreen = () => {
                     <div className="p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          {/* Medication name */}
-                          <h3 className={`text-[17px] font-bold mb-1 transition-colors duration-300 ${
-                            dose.taken ? 'text-muted-foreground' : 'text-white'
-                          }`}>
-                            {dose.compound_name}
-                          </h3>
+                          {/* Medication name with optional Skipped badge */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className={`text-[17px] font-bold transition-colors duration-300 ${
+                              isSkipped 
+                                ? 'text-muted-foreground/60' 
+                                : dose.taken 
+                                ? 'text-muted-foreground' 
+                                : 'text-white'
+                            }`}>
+                              {dose.compound_name}
+                            </h3>
+                            {isSkipped && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted-foreground/20 text-muted-foreground/70">
+                                Skipped
+                              </span>
+                            )}
+                          </div>
                           
                           {/* Time and dosage on same line */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-xs font-semibold transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
+                              isSkipped
+                                ? 'text-muted-foreground/40'
+                                : dose.taken 
+                                ? 'text-muted-foreground/70' 
+                                : 'text-white/70'
                             }`}>
                               {formatTime(dose.scheduled_time)}
                             </span>
                             <span className={`text-xs font-semibold transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground/70' : 'text-white/70'
+                              isSkipped
+                                ? 'text-muted-foreground/40'
+                                : dose.taken 
+                                ? 'text-muted-foreground/70' 
+                                : 'text-white/70'
                             }`} style={{ marginLeft: '1px', marginRight: '1px' }}>•</span>
                             <span className={`text-xs font-semibold transition-colors duration-300 ${
-                              dose.taken ? 'text-muted-foreground' : 'text-white/90'
+                              isSkipped
+                                ? 'text-muted-foreground/50'
+                                : dose.taken 
+                                ? 'text-muted-foreground' 
+                                : 'text-white/90'
                             }`}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
                               {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
@@ -1003,7 +1090,9 @@ export const TodayScreen = () => {
                             <button
                               onClick={(e) => e.stopPropagation()}
                               className={`flex-shrink-0 p-1.5 rounded transition-colors ${
-                                dose.taken 
+                                isSkipped
+                                  ? 'text-muted-foreground/30 hover:text-muted-foreground/50'
+                                  : dose.taken 
                                   ? 'text-muted-foreground/40 hover:text-muted-foreground/60' 
                                   : 'text-white/40 hover:text-white/60'
                               }`}
@@ -1020,41 +1109,64 @@ export const TodayScreen = () => {
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit Dose
                             </DropdownMenuItem>
+                            {isSkipped ? (
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation();
+                                skipDose(dose.id, true);
+                              }}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Undo Skip
+                              </DropdownMenuItem>
+                            ) : !dose.taken && dose.schedule_type !== 'As Needed' && (
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation();
+                                skipDose(dose.id, false);
+                              }}>
+                                <CircleSlash className="h-4 w-4 mr-2" />
+                                Skip Dose
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                         
-                        {/* Check button with optional pulse */}
-                        <button
-                          onClick={() => toggleDose(dose.id, dose.taken)}
-                          disabled={animatingDoses.has(dose.id)}
-                          className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
-                            dose.taken
-                              ? 'bg-success border-success'
-                              : 'border-white/40 hover:border-white active:scale-95'
-                          } ${shouldPulse ? 'animate-gentle-pulse' : ''}`}
-                          style={{
-                            ...(animatingDoses.has(dose.id) && dose.taken ? {
-                              animation: 'checkbox-check 0.2s ease-out'
-                            } : {})
-                          }}
-                        >
-                          {dose.taken && (
-                            <svg
-                              className="h-full w-full text-white"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray="24"
-                              strokeDashoffset="0"
-                              style={{
-                                animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
-                              }}
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </button>
+                        {/* Check button / Skip indicator */}
+                        {isSkipped ? (
+                          <div className="flex-shrink-0 h-7 w-7 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center">
+                            <CircleSlash className="h-4 w-4 text-muted-foreground/40" />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => toggleDose(dose.id, dose.taken)}
+                            disabled={animatingDoses.has(dose.id)}
+                            className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                              dose.taken
+                                ? 'bg-success border-success'
+                                : 'border-white/40 hover:border-white active:scale-95'
+                            } ${shouldPulse ? 'animate-gentle-pulse' : ''}`}
+                            style={{
+                              ...(animatingDoses.has(dose.id) && dose.taken ? {
+                                animation: 'checkbox-check 0.2s ease-out'
+                              } : {})
+                            }}
+                          >
+                            {dose.taken && (
+                              <svg
+                                className="h-full w-full text-white"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeDasharray="24"
+                                strokeDashoffset="0"
+                                style={{
+                                  animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                                }}
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
