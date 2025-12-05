@@ -21,7 +21,15 @@ import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
-import { LogTodayModal } from "@/components/LogTodayModal";
+import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1172,29 +1180,52 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* Stacked FAB buttons */}
-      {hasCompounds && (
+      {/* Slim Bottom Tray with Log Drawer */}
+      <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>
+        {/* Persistent tray trigger - sits just above bottom nav */}
         <div 
-          className="fixed right-5 flex flex-col items-center gap-3"
-          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
+          className="fixed left-0 right-0 flex items-center justify-between px-4"
+          style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
         >
-          {/* Log Today button - smaller, above the main FAB */}
-          <button
-            onClick={() => setShowLogTodayModal(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary shadow-lg transition-all hover:scale-105 active:scale-95"
-          >
-            <ClipboardList className="h-5 w-5 text-secondary-foreground" />
-          </button>
+          {/* Log Today tray button */}
+          <DrawerTrigger asChild>
+            <button
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-secondary/90 backdrop-blur-sm shadow-md transition-all hover:bg-secondary active:scale-95"
+            >
+              <ClipboardList className={`h-4 w-4 text-secondary-foreground transition-transform duration-300 ${showLogTodayModal ? 'rotate-45' : ''}`} />
+              <span className="text-xs font-medium text-secondary-foreground">Log</span>
+            </button>
+          </DrawerTrigger>
           
-          {/* Main Add Medication FAB */}
-          <button
-            onClick={() => navigate("/add-compound")}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
-          >
-            <Plus className="h-6 w-6 text-white" />
-          </button>
+          {/* Add Medication FAB - on the right */}
+          {hasCompounds && (
+            <button
+              onClick={() => navigate("/add-compound")}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+            >
+              <Plus className="h-6 w-6 text-white" />
+            </button>
+          )}
         </div>
-      )}
+        
+        {/* Log Today Drawer Content */}
+        <DrawerContent className="max-h-[85vh]">
+          <div className="mx-auto w-full max-w-lg">
+            <DrawerHeader>
+              <DrawerTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Log Today
+              </DrawerTitle>
+              <DrawerDescription>
+                Track your daily metrics and notes
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="p-4 pb-8">
+              <LogTodayDrawerContent onSuccess={() => setShowLogTodayModal(false)} />
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <BottomNavigation />
 
@@ -1217,15 +1248,6 @@ export const TodayScreen = () => {
         }}
         dose={editingDose}
         onDoseUpdated={loadDoses}
-      />
-
-      {/* Log Today Modal */}
-      <LogTodayModal
-        open={showLogTodayModal}
-        onOpenChange={setShowLogTodayModal}
-        onSuccess={() => {
-          // Could refresh any relevant data here
-        }}
       />
     </div>
   );
