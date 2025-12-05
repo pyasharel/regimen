@@ -85,9 +85,11 @@ This file contains all compounds currently available in the autocomplete databas
 - Deca / Nandrolone Decanoate
 - Dianabol / Methandrostenolone
 - Equipoise / Boldenone Undecylenate
-- Masteron / Drostanolone Propionate / Enanthate
+- Masteron Propionate / Drostanolone Propionate
+- Masteron Enanthate / Drostanolone Enanthate
 - NPP / Nandrolone Phenylpropionate
-- Primobolan / Methenolone Enanthate
+- Primobolan / Primobolan Depot / Methenolone Enanthate
+- Primobolan (Oral) / Methenolone Acetate
 - Trenbolone Acetate / Enanthate
 - Winstrol / Stanozolol
 

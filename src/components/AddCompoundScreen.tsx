@@ -77,8 +77,8 @@ const COMMON_PEPTIDES = [
   "Nandrolone Decanoate", "Deca", "Nandrolone Phenylpropionate", "NPP",
   "Trenbolone Acetate", "Trenbolone Enanthate",
   "Boldenone Undecylenate", "Equipoise",
-  "Drostanolone Propionate", "Masteron", "Drostanolone Enanthate",
-  "Methenolone Enanthate", "Primobolan",
+  "Masteron Propionate", "Masteron Enanthate", "Drostanolone Propionate", "Drostanolone Enanthate",
+  "Primobolan", "Primobolan Depot", "Methenolone Enanthate", "Methenolone Acetate",
   "Oxandrolone", "Anavar", "Stanozolol", "Winstrol",
   "Oxymetholone", "Anadrol", "Methandrostenolone", "Dianabol",
   
