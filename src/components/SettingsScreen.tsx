@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2, Bell } from "lucide-react";
+import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2, Bell, Target, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -13,6 +13,7 @@ import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
+import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 
 // Version info
 const APP_VERSION = '0.1.2';
@@ -26,7 +27,16 @@ export const SettingsScreen = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
-
+  const [showHeightModal, setShowHeightModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [userHeight, setUserHeight] = useState<number | null>(() => {
+    const saved = localStorage.getItem('userHeight');
+    return saved ? parseFloat(saved) : null;
+  });
+  const [goalWeight, setGoalWeight] = useState<number | null>(() => {
+    const saved = localStorage.getItem('goalWeight');
+    return saved ? parseFloat(saved) : null;
+  });
   useEffect(() => {
     const savedSound = localStorage.getItem('soundEnabled');
     setSoundEnabled(savedSound !== 'false');
@@ -93,6 +103,18 @@ export const SettingsScreen = () => {
       label: "Notifications",
       description: "Manage your reminders",
       onClick: () => navigate("/settings/notifications"),
+    },
+    {
+      icon: Ruler,
+      label: "Height",
+      description: userHeight ? `${Math.floor(userHeight / 12)}'${userHeight % 12}"` : "Not set",
+      onClick: () => setShowHeightModal(true),
+    },
+    {
+      icon: Target,
+      label: "Goal Weight",
+      description: goalWeight ? `${goalWeight} lbs` : "Not set",
+      onClick: () => setShowGoalModal(true),
     },
     {
       icon: Scale,
@@ -291,6 +313,30 @@ export const SettingsScreen = () => {
       </div>
 
       <BottomNavigation />
+
+      {/* Body Settings Modals */}
+      <BodySettingsModal
+        open={showHeightModal}
+        onOpenChange={setShowHeightModal}
+        type="height"
+        currentValue={userHeight}
+        onSave={(value) => {
+          setUserHeight(value);
+          localStorage.setItem('userHeight', value.toString());
+          toast.success('Height saved');
+        }}
+      />
+      <BodySettingsModal
+        open={showGoalModal}
+        onOpenChange={setShowGoalModal}
+        type="goal"
+        currentValue={goalWeight}
+        onSave={(value) => {
+          setGoalWeight(value);
+          localStorage.setItem('goalWeight', value.toString());
+          toast.success('Goal weight saved');
+        }}
+      />
     </div>
   );
 };

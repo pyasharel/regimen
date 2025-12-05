@@ -26,6 +26,7 @@ import { MainHeader } from "@/components/MainHeader";
 import { ProgressStats } from "@/components/progress/ProgressStats";
 import { MetricChart } from "@/components/progress/MetricChart";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
+import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -77,6 +78,16 @@ export const ProgressScreen = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [showHeightModal, setShowHeightModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [userHeight, setUserHeight] = useState<number | null>(() => {
+    const saved = localStorage.getItem('userHeight');
+    return saved ? parseFloat(saved) : null;
+  });
+  const [goalWeight, setGoalWeight] = useState<number | null>(() => {
+    const saved = localStorage.getItem('goalWeight');
+    return saved ? parseFloat(saved) : null;
+  });
 
   // Fetch progress entries
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
@@ -403,96 +414,65 @@ export const ProgressScreen = () => {
         <ProgressStats 
           weightEntries={weightEntries}
           streakData={streakData}
+          userHeight={userHeight}
+          goalWeight={goalWeight}
+          onSetGoal={() => setShowGoalModal(true)}
+          onSetHeight={() => setShowHeightModal(true)}
         />
 
-        {/* Metric Type Selector */}
-        <div className="flex gap-2">
+        {/* Metric Type Selector - Subtle tabs */}
+        <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg">
           {(["weight", "energy", "sleep", "notes"] as MetricType[]).map(type => (
             <button
               key={type}
               onClick={() => setMetricType(type)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all",
+                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-medium transition-all",
                 metricType === type
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground/70 hover:text-foreground"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {getMetricIcon(type)}
-              {getMetricLabel(type)}
+              <span className="hidden xs:inline">{getMetricLabel(type)}</span>
             </button>
           ))}
         </div>
 
         {/* Chart Section */}
         {metricType !== "notes" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-foreground">
-                {getMetricLabel(metricType)} Chart
+              <h2 className="text-base font-semibold text-foreground">
+                {getMetricLabel(metricType)}
               </h2>
               <Button 
                 onClick={() => setShowLogModal(true)} 
                 size="sm" 
                 variant="ghost"
-                className="text-primary hover:text-primary hover:bg-primary/10"
+                className="text-primary hover:text-primary hover:bg-primary/10 h-8 text-xs"
               >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Log {getMetricLabel(metricType)}
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Log
               </Button>
             </div>
 
             {/* Time Frame Selector */}
-            <div className="flex gap-1 bg-secondary p-1 rounded-lg w-fit">
+            <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg w-fit">
               {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeFrame(tf)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     timeFrame === tf
-                      ? 'bg-background text-primary shadow-sm'
-                      : 'text-foreground/70 hover:text-foreground'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {tf}
                 </button>
               ))}
             </div>
-
-            {/* Medication Correlation Dropdown (only for weight) */}
-            {metricType === "weight" && compounds.length > 0 && (
-              <Select
-                value={selectedCompoundId || "none"}
-                onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select medication to show dosage changes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No medication overlay</SelectItem>
-                  {compounds.map(compound => (
-                    <SelectItem key={compound.id} value={compound.id}>
-                      {compound.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Rate per dosage stat */}
-            {metricType === "weight" && selectedCompoundId && ratePerDosage && (
-              <div className="flex items-center gap-2 text-sm bg-primary/10 text-primary px-3 py-2 rounded-lg">
-                <span className="font-medium">
-                  At {ratePerDosage.dosage.amount}{ratePerDosage.dosage.unit}:
-                </span>
-                <span>
-                  {ratePerDosage.rate >= 0 ? '+' : ''}{ratePerDosage.rate.toFixed(1)} lbs/week
-                </span>
-                <span className="text-xs text-primary/70">
-                  ({ratePerDosage.entries} entries)
-                </span>
-              </div>
-            )}
 
             <Card className="p-4 bg-muted/30">
               <MetricChart
@@ -504,6 +484,43 @@ export const ProgressScreen = () => {
                 selectedMedication={selectedCompound?.name}
               />
             </Card>
+
+            {/* Medication Correlation - Below chart, subtle */}
+            {metricType === "weight" && compounds.length > 0 && (
+              <div className="space-y-2">
+                <Select
+                  value={selectedCompoundId || "none"}
+                  onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
+                >
+                  <SelectTrigger className="w-full h-9 text-xs bg-secondary/30 border-border/50">
+                    <SelectValue placeholder="Correlate with medication..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No correlation</SelectItem>
+                    {compounds.map(compound => (
+                      <SelectItem key={compound.id} value={compound.id}>
+                        {compound.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Rate per dosage stat */}
+                {selectedCompoundId && ratePerDosage && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
+                    <span>
+                      At {ratePerDosage.dosage.amount}{ratePerDosage.dosage.unit}:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {ratePerDosage.rate >= 0 ? '+' : ''}{ratePerDosage.rate.toFixed(1)} lbs/wk
+                    </span>
+                    <span className="text-muted-foreground/70">
+                      ({ratePerDosage.entries} entries)
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -844,6 +861,30 @@ export const ProgressScreen = () => {
         entryId={previewPhoto?.id || ''}
         onDelete={handleDeletePhoto}
         onDateUpdate={refetchEntries}
+      />
+
+      {/* Body Settings Modals */}
+      <BodySettingsModal
+        open={showHeightModal}
+        onOpenChange={setShowHeightModal}
+        type="height"
+        currentValue={userHeight}
+        onSave={(value) => {
+          setUserHeight(value);
+          localStorage.setItem('userHeight', value.toString());
+          toast.success('Height saved');
+        }}
+      />
+      <BodySettingsModal
+        open={showGoalModal}
+        onOpenChange={setShowGoalModal}
+        type="goal"
+        currentValue={goalWeight}
+        onSave={(value) => {
+          setGoalWeight(value);
+          localStorage.setItem('goalWeight', value.toString());
+          toast.success('Goal weight saved');
+        }}
       />
     </div>
   );
