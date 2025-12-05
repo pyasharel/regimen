@@ -462,14 +462,14 @@ export const ProgressScreen = () => {
             {/* Medication Correlation Dropdown (only for weight) */}
             {metricType === "weight" && compounds.length > 0 && (
               <Select
-                value={selectedCompoundId}
-                onValueChange={setSelectedCompoundId}
+                value={selectedCompoundId || "none"}
+                onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select medication to show dosage changes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No medication overlay</SelectItem>
+                  <SelectItem value="none">No medication overlay</SelectItem>
                   {compounds.map(compound => (
                     <SelectItem key={compound.id} value={compound.id}>
                       {compound.name}
