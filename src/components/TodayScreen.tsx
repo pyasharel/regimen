@@ -21,6 +21,8 @@ import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
+import { ExpandableFAB } from "@/components/ExpandableFAB";
+import { LogTodayModal } from "@/components/LogTodayModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +65,7 @@ export const TodayScreen = () => {
   // Dose edit modal state
   const [editingDose, setEditingDose] = useState<Dose | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLogTodayModal, setShowLogTodayModal] = useState(false);
   
   // Subscription state
   const { 
@@ -1170,19 +1173,12 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* FAB Button */}
-      {/* Floating Action Button - Only show when has compounds */}
+      {/* Expandable FAB - Only show when has compounds */}
       {hasCompounds && (
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            navigate("/add-compound");
-          }}
-          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
-          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
-        >
-          <Plus className="h-6 w-6 text-white" />
-        </button>
+        <ExpandableFAB 
+          onAddMedication={() => navigate("/add-compound")}
+          onLogToday={() => setShowLogTodayModal(true)}
+        />
       )}
 
       <BottomNavigation />
@@ -1206,6 +1202,15 @@ export const TodayScreen = () => {
         }}
         dose={editingDose}
         onDoseUpdated={loadDoses}
+      />
+
+      {/* Log Today Modal */}
+      <LogTodayModal
+        open={showLogTodayModal}
+        onOpenChange={setShowLogTodayModal}
+        onSuccess={() => {
+          // Could refresh any relevant data here
+        }}
       />
     </div>
   );
