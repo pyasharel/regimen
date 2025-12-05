@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -21,7 +21,6 @@ import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
-import { ExpandableFAB } from "@/components/ExpandableFAB";
 import { LogTodayModal } from "@/components/LogTodayModal";
 import {
   DropdownMenu,
@@ -688,7 +687,16 @@ export const TodayScreen = () => {
             </h2>
             <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[pulse_4s_ease-in-out_infinite]" />
           </div>
-          <StreakBadge />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLogTodayModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary text-secondary-foreground text-sm font-medium transition-colors"
+            >
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Log</span>
+            </button>
+            <StreakBadge />
+          </div>
         </div>
       </div>
 
@@ -1173,12 +1181,15 @@ export const TodayScreen = () => {
         )}
       </div>
 
-      {/* Expandable FAB - Only show when has compounds */}
+      {/* Simple FAB for Add Medication - consistent with My Stack */}
       {hasCompounds && (
-        <ExpandableFAB 
-          onAddMedication={() => navigate("/add-compound")}
-          onLogToday={() => setShowLogTodayModal(true)}
-        />
+        <button
+          onClick={() => navigate("/add-compound")}
+          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+          style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </button>
       )}
 
       <BottomNavigation />
