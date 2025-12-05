@@ -119,9 +119,10 @@ export const MetricChart = ({
 
   // Custom dot with dosage labels for line chart
   const CustomDot = (props: any) => {
-    const { cx, cy, payload, index } = props;
+    const { cx, cy, payload, index, color } = props;
     if (!cx || !cy) return null;
     
+    const dotColor = color || "hsl(var(--primary))";
     const badgeWidth = payload?.dosageLabel ? Math.max(45, payload.dosageLabel.length * 7 + 16) : 0;
     const isLastPoint = index === chartData.length - 1;
     const isFirstPoint = index === 0;
@@ -139,7 +140,7 @@ export const MetricChart = ({
           cx={cx}
           cy={cy}
           r={5}
-          fill="hsl(var(--primary))"
+          fill={dotColor}
           stroke="none"
           cursor={onDotClick ? "pointer" : "default"}
           onClick={() => onDotClick?.(index)}
@@ -152,13 +153,13 @@ export const MetricChart = ({
               width={badgeWidth}
               height={18}
               rx={4}
-              fill="hsl(var(--primary))"
+              fill={dotColor}
             />
             <text
               x={badgeX + badgeWidth / 2}
               y={cy - 16}
               textAnchor="middle"
-              fill="hsl(var(--primary-foreground))"
+              fill="white"
               fontSize={10}
               fontWeight={600}
             >
@@ -171,15 +172,17 @@ export const MetricChart = ({
   };
 
   const CustomActiveDot = (props: any) => {
-    const { cx, cy, index } = props;
+    const { cx, cy, index, color } = props;
     if (!cx || !cy) return null;
+    
+    const dotColor = color || "hsl(var(--primary))";
     
     return (
       <circle
         cx={cx}
         cy={cy}
         r={7}
-        fill="hsl(var(--primary))"
+        fill={dotColor}
         stroke="hsl(var(--background))"
         strokeWidth={2}
         cursor={onDotClick ? "pointer" : "default"}
@@ -251,6 +254,15 @@ export const MetricChart = ({
     );
   }
 
+  // Get color based on metric type
+  const getMetricColor = () => {
+    if (metricType === "energy") return { stroke: "hsl(35, 92%, 50%)", fill: "hsl(35, 92%, 50%)" }; // Amber
+    if (metricType === "sleep") return { stroke: "hsl(230, 70%, 55%)", fill: "hsl(230, 70%, 55%)" }; // Indigo
+    return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" }; // Purple for weight
+  };
+
+  const metricColor = getMetricColor();
+
   // Use area chart (filled underneath) for energy and sleep
   // Like the medication levels visualization
   if (metricType === "energy" || metricType === "sleep") {
@@ -259,8 +271,8 @@ export const MetricChart = ({
         <AreaChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
           <defs>
             <linearGradient id={`${metricType}Gradient`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
-              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05}/>
+              <stop offset="5%" stopColor={metricColor.fill} stopOpacity={0.4}/>
+              <stop offset="95%" stopColor={metricColor.fill} stopOpacity={0.05}/>
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -289,11 +301,11 @@ export const MetricChart = ({
           <Area 
             type="monotone" 
             dataKey="value" 
-            stroke="hsl(var(--primary))" 
+            stroke={metricColor.stroke}
             strokeWidth={2}
             fill={`url(#${metricType}Gradient)`}
-            dot={<CustomDot />}
-            activeDot={<CustomActiveDot />}
+            dot={(props: any) => <CustomDot {...props} color={metricColor.stroke} />}
+            activeDot={(props: any) => <CustomActiveDot {...props} color={metricColor.stroke} />}
           />
         </AreaChart>
       </ResponsiveContainer>
