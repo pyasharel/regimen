@@ -86,20 +86,27 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         metrics = { notes: notes.trim() };
       }
 
-      // Check if entry exists for this date and category
+      // Check if entry exists for this date (any category - unique constraint is user_id + entry_date)
       const { data: existingEntry } = await supabase
         .from('progress_entries')
-        .select('id')
+        .select('id, metrics, category')
         .eq('user_id', user.id)
         .eq('entry_date', dateStr)
-        .eq('category', category)
         .maybeSingle();
 
       let error;
       if (existingEntry) {
+        // Merge new metrics with existing metrics
+        const existingMetrics = typeof existingEntry.metrics === 'object' && existingEntry.metrics !== null 
+          ? existingEntry.metrics as Record<string, unknown>
+          : {};
+        const mergedMetrics = { ...existingMetrics, ...metrics };
         ({ error } = await supabase
           .from('progress_entries')
-          .update({ metrics })
+          .update({ 
+            metrics: mergedMetrics,
+            notes: metricType === "notes" ? notes.trim() : null
+          })
           .eq('id', existingEntry.id));
       } else {
         ({ error } = await supabase
@@ -107,7 +114,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
           .insert([{
             user_id: user.id,
             entry_date: dateStr,
-            category,
+            category: 'metrics',
             metrics,
             notes: metricType === "notes" ? notes.trim() : null
           }]));
