@@ -7,7 +7,8 @@ export type EngagementNotificationType =
   | 'streak_7'
   | 'missed_dose'
   | 'weekly_checkin'
-  | 'reengage';
+  | 'reengage'
+  | 'photo_reminder';
 
 // Fixed notification IDs for each type to prevent duplicates
 const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = {
@@ -17,6 +18,7 @@ const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = 
   missed_dose: 90010,
   weekly_checkin: 90020,
   reengage: 90030,
+  photo_reminder: 90040,
 };
 
 // LocalStorage keys for throttling
@@ -27,6 +29,7 @@ const THROTTLE_KEYS: Record<EngagementNotificationType, string> = {
   missed_dose: 'regimen_notif_missed_dose',
   weekly_checkin: 'regimen_notif_weekly_checkin',
   reengage: 'regimen_notif_reengage',
+  photo_reminder: 'regimen_notif_photo_reminder',
 };
 
 // How often each notification type can be sent (in days)
@@ -37,6 +40,7 @@ const THROTTLE_DAYS: Record<EngagementNotificationType, number> = {
   missed_dose: 3,   // Every 3 days max
   weekly_checkin: 7, // Once per week
   reengage: 3,       // Every 3 days max
+  photo_reminder: 7, // Once per week
 };
 
 const ENGAGEMENT_NOTIFICATIONS = {
@@ -63,6 +67,10 @@ const ENGAGEMENT_NOTIFICATIONS = {
   reengage: {
     title: "🌟 Ready to continue?",
     body: "Your transformation journey awaits. Log your doses today!",
+  },
+  photo_reminder: {
+    title: "📸 Track your transformation!",
+    body: "A quick progress photo helps you see how far you've come.",
   },
 };
 
@@ -268,6 +276,50 @@ export const scheduleWeeklyCheckin = async (): Promise<void> => {
 };
 
 /**
+ * Schedule photo reminder notification (Saturday 10 AM)
+ * Only for users who have taken at least 1 photo
+ */
+export const schedulePhotoReminder = async (): Promise<void> => {
+  try {
+    // Check throttle first
+    if (isThrottled('photo_reminder')) {
+      console.log('Skipping photo reminder - already scheduled this week');
+      return;
+    }
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Check if user has taken at least 1 photo
+    const { count } = await supabase
+      .from('progress_entries')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .not('photo_url', 'is', null);
+
+    // Only send reminder to users who have taken at least 1 photo
+    if (!count || count < 1) {
+      console.log('User has no photos - skipping photo reminder');
+      return;
+    }
+
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    // Calculate days until next Saturday
+    const daysUntilSaturday = dayOfWeek === 6 ? 7 : (6 - dayOfWeek);
+    
+    const nextSaturday = new Date(today);
+    nextSaturday.setDate(today.getDate() + daysUntilSaturday);
+    nextSaturday.setHours(10, 0, 0, 0); // 10 AM
+
+    await scheduleEngagementNotification('photo_reminder', nextSaturday);
+  } catch (error) {
+    console.error('Failed to schedule photo reminder:', error);
+  }
+};
+
+/**
  * Schedule re-engagement notification (2 PM, 3 days after last activity)
  */
 export const scheduleReengagementNotification = async (): Promise<void> => {
@@ -315,6 +367,9 @@ export const initializeEngagementNotifications = async (): Promise<void> => {
     
     // Check for re-engagement (throttled to once every 3 days)
     await scheduleReengagementNotification();
+    
+    // Schedule photo reminder (throttled to once per week, only for users with 1+ photos)
+    await schedulePhotoReminder();
     
     // Streak notifications are triggered on dose completion
   } catch (error) {
