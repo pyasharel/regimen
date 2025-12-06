@@ -462,13 +462,13 @@ export const MyStackScreen = () => {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                     cycleStatus.currentPhase === 'on' 
-                                      ? 'bg-primary animate-pulse' 
-                                      : 'bg-muted-foreground'
+                                      ? 'bg-secondary animate-pulse' 
+                                      : 'bg-primary'
                                   }`} />
                                   <span className={`text-xs font-semibold uppercase tracking-wider ${
                                     cycleStatus.currentPhase === 'on' 
-                                      ? 'text-primary' 
-                                      : 'text-muted-foreground'
+                                      ? 'text-secondary' 
+                                      : 'text-primary'
                                   }`}>
                                     {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
                                   </span>
@@ -480,10 +480,15 @@ export const MyStackScreen = () => {
                                   {cyclePattern}
                                 </span>
                               </div>
-                              <Progress 
-                                value={cycleStatus.progressPercentage} 
-                                className="h-1.5"
-                              />
+                              {/* Cycle progress bar with clear colors */}
+                              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all ${
+                                    cycleStatus.currentPhase === 'on' ? 'bg-secondary' : 'bg-primary'
+                                  }`}
+                                  style={{ width: `${cycleStatus.progressPercentage}%` }}
+                                />
+                              </div>
                             </div>
                           );
                         })()}
