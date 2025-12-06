@@ -1,7 +1,8 @@
-import { Plus, Pause, Trash2 } from "lucide-react";
+import { Plus, Pause, Trash2, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export interface DosePhase {
   id: string;
@@ -64,7 +65,11 @@ export const DosePhaseTimeline = ({
   onShowPaywall,
   startDate
 }: DosePhaseTimelineProps) => {
+  const { toast } = useToast();
   const currentPhaseIndex = getCurrentPhaseIndex(phases, startDate);
+  
+  // Check if last phase is ongoing
+  const lastPhaseIsOngoing = phases.length > 0 && phases[phases.length - 1].durationUnit === 'ongoing';
   
   const addPhase = () => {
     if (!isSubscribed && phases.length >= 1) {
@@ -72,11 +77,20 @@ export const DosePhaseTimeline = ({
       return;
     }
     
-    const lastPhase = phases.filter(p => p.type === 'dose').pop();
+    // If last phase is ongoing, show a message
+    if (lastPhaseIsOngoing) {
+      toast({
+        title: "Change last phase duration first",
+        description: "Set a specific duration (weeks/months) before adding another phase",
+      });
+      return;
+    }
+    
+    const lastDosePhase = phases.filter(p => p.type === 'dose').pop();
     const newPhase: DosePhase = {
       id: generateId(),
       type: 'dose',
-      doseAmount: lastPhase?.doseAmount || 0,
+      doseAmount: lastDosePhase?.doseAmount || 0,
       doseUnit: globalDoseUnit,
       duration: 4,
       durationUnit: 'weeks',
@@ -88,6 +102,15 @@ export const DosePhaseTimeline = ({
   const addBreak = () => {
     if (!isSubscribed && phases.length >= 1) {
       onShowPaywall?.();
+      return;
+    }
+    
+    // If last phase is ongoing, show a message
+    if (lastPhaseIsOngoing) {
+      toast({
+        title: "Change last phase duration first",
+        description: "Set a specific duration (weeks/months) before adding an off cycle",
+      });
       return;
     }
     
@@ -266,7 +289,7 @@ export const DosePhaseTimeline = ({
                 )}
                 {phase.type === 'dose' && phase.calculatedUnits !== null && phase.calculatedUnits !== undefined && (
                   <p className="text-sm font-medium text-primary">
-                    Draw up: {phase.calculatedUnits.toFixed(1)} Units
+                    Draw up: {Math.round(phase.calculatedUnits)} units
                   </p>
                 )}
               </div>
@@ -297,23 +320,30 @@ export const DosePhaseTimeline = ({
 
       {/* Repeat Cycle Toggle */}
       {phases.length > 0 && (
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          <Label className="text-sm font-medium">Repeat Cycle</Label>
-          <button
-            type="button"
-            onClick={() => onRepeatCycleChange(!repeatCycle)}
-            className={cn(
-              "w-12 h-7 rounded-full transition-colors relative",
-              repeatCycle ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
+        <div className="pt-3 border-t border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Repeat Cycle</Label>
+            <button
+              type="button"
+              onClick={() => onRepeatCycleChange(!repeatCycle)}
               className={cn(
-                "absolute top-1 w-5 h-5 rounded-full bg-white transition-transform",
-                repeatCycle ? "left-6" : "left-1"
+                "w-12 h-7 rounded-full transition-colors relative",
+                repeatCycle ? "bg-primary" : "bg-muted"
               )}
-            />
-          </button>
+            >
+              <span
+                className={cn(
+                  "absolute top-1 w-5 h-5 rounded-full bg-white transition-transform",
+                  repeatCycle ? "left-6" : "left-1"
+                )}
+              />
+            </button>
+          </div>
+          {repeatCycle && (
+            <p className="text-xs text-muted-foreground">
+              This protocol will repeat after completing all phases
+            </p>
+          )}
         </div>
       )}
 
