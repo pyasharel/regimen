@@ -49,21 +49,32 @@
    - Message: "Seven days of dedication! You're unstoppable."
 
 4. **Missed Dose** 💪
-   - Triggered: 3 PM if unchecked doses from earlier
+   - Triggered: 3 PM if unchecked doses from earlier (not skipped)
+   - Throttle: Once every 3 days max
    - Message: "Quick check-in? You have unchecked doses from earlier today."
 
 5. **Weekly Check-in** 📊
    - Triggered: Sunday 7 PM
+   - Throttle: Once per week
    - Message: "Another week in the books! Keep up the great work."
 
 6. **Re-engagement** 🌟
    - Triggered: 2 PM after 3 days of no activity
+   - Throttle: Once every 3 days max
    - Message: "Your transformation journey awaits. Log your doses today!"
+
+7. **Photo Reminder** 📸
+   - Triggered: Saturday 10 AM
+   - Target: Only users who have taken at least 1 photo
+   - Throttle: Once per week
+   - Message: "Track your transformation! A quick progress photo helps you see how far you've come."
 
 ### Implementation
 - `src/utils/engagementNotifications.ts` - Notification scheduling logic
 - `src/hooks/useEngagementTracking.tsx` - Tracks first dose event
-- Auto-initialized on Today screen load
+- Auto-initialized on Today screen load (once per mount)
+- Uses fixed notification IDs to prevent duplicates
+- Uses localStorage throttling to prevent spam
 - Checks for streak notifications after each dose completion
 
 ---
