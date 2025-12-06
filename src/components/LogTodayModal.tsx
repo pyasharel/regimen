@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +22,13 @@ interface LogTodayModalProps {
 const RatingSelector = ({ 
   value, 
   onChange, 
-  label 
+  label,
+  disabled
 }: { 
   value: number | null; 
   onChange: (v: number | null) => void;
   label: string;
+  disabled?: boolean;
 }) => {
   return (
     <div className="flex gap-2">
@@ -35,11 +37,13 @@ const RatingSelector = ({
           key={num}
           type="button"
           onClick={() => onChange(value === num ? null : num)}
+          disabled={disabled}
           className={cn(
             "h-11 w-11 rounded-lg text-base font-medium transition-all",
             value === num
               ? "bg-primary text-primary-foreground"
-              : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              : "bg-muted/50 text-muted-foreground hover:bg-muted",
+            disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           {num}
@@ -57,6 +61,65 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
   const [sleep, setSleep] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingEntry, setLoadingEntry] = useState(false);
+
+  // Load existing entry when date changes or modal opens
+  useEffect(() => {
+    if (!open) return;
+    
+    const loadExistingEntry = async () => {
+      setLoadingEntry(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoadingEntry(false);
+          return;
+        }
+
+        const dateStr = format(entryDate, 'yyyy-MM-dd');
+        const { data: existingEntry } = await supabase
+          .from('progress_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('entry_date', dateStr)
+          .maybeSingle();
+
+        // Reset all fields first - nothing pre-selected
+        setWeight("");
+        setEnergy(null);
+        setSleep(null);
+        setNotes("");
+
+        // Then load existing data if available
+        if (existingEntry && existingEntry.metrics) {
+          const metrics = existingEntry.metrics as Record<string, number> | null;
+          if (metrics) {
+            if (typeof metrics.weight === 'number') {
+              const displayWeight = weightUnit === 'kg' 
+                ? (metrics.weight / 2.20462).toFixed(1) 
+                : metrics.weight.toString();
+              setWeight(displayWeight);
+            }
+            if (typeof metrics.energy === 'number') {
+              setEnergy(metrics.energy);
+            }
+            if (typeof metrics.sleep === 'number') {
+              setSleep(metrics.sleep);
+            }
+          }
+          if (existingEntry.notes) {
+            setNotes(existingEntry.notes);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading entry:', error);
+      } finally {
+        setLoadingEntry(false);
+      }
+    };
+
+    loadExistingEntry();
+  }, [entryDate, weightUnit, open]);
 
   const handleSave = async () => {
     // Check if at least one field is filled
@@ -176,8 +239,9 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
                 step="0.1"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
-                placeholder="Enter weight"
+                placeholder={loadingEntry ? "Loading..." : "Enter weight"}
                 className="flex-1 h-12"
+                disabled={loadingEntry}
               />
               <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
                 <SelectTrigger className="w-20 h-12">
@@ -197,7 +261,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
               <Zap className="w-4 h-4 text-amber-500" />
               Energy level
             </Label>
-            <RatingSelector value={energy} onChange={setEnergy} label="Energy" />
+            <RatingSelector value={energy} onChange={setEnergy} label="Energy" disabled={loadingEntry} />
             {energy !== null && (
               <p className="text-xs text-muted-foreground">
                 {energy === 1 && "Low energy"}
@@ -215,7 +279,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
               <Moon className="w-4 h-4 text-indigo-400" />
               Sleep quality
             </Label>
-            <RatingSelector value={sleep} onChange={setSleep} label="Sleep" />
+            <RatingSelector value={sleep} onChange={setSleep} label="Sleep" disabled={loadingEntry} />
             {sleep !== null && (
               <p className="text-xs text-muted-foreground">
                 {sleep === 1 && "Poor sleep"}
@@ -236,8 +300,9 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="How are you feeling? Side effects, thoughts..."
+              placeholder={loadingEntry ? "Loading..." : "How are you feeling? Side effects, thoughts..."}
               className="min-h-[80px] resize-none"
+              disabled={loadingEntry}
             />
           </div>
 
@@ -276,13 +341,13 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           {/* Save Button */}
           <Button
             onClick={handleSave}
-            disabled={loading || !hasContent}
+            disabled={loading || loadingEntry || !hasContent}
             className="w-full h-12 text-base"
           >
             {loading ? 'Saving...' : 'Save Entry'}
           </Button>
           
-          {!hasContent && (
+          {!hasContent && !loadingEntry && (
             <p className="text-xs text-muted-foreground text-center">
               Fill in at least one field to save
             </p>
