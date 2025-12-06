@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TimePicker } from "@/components/ui/time-picker";
 import { IOSTimePicker } from "@/components/ui/ios-time-picker";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
+import { DosePhaseTimeline, DosePhase } from "@/components/compound/DosePhaseTimeline";
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
@@ -166,12 +168,18 @@ export const AddCompoundScreen = () => {
   const [notes, setNotes] = useState("");
   const [enableReminder, setEnableReminder] = useState(true);
 
-  // Cycle (premium)
+  // Dose Phases & Cycles (premium)
+  const [enableDosePhases, setEnableDosePhases] = useState(false);
+  const [dosePhases, setDosePhases] = useState<DosePhase[]>([]);
+  const [repeatCycle, setRepeatCycle] = useState(false);
+  const [cycleReminders, setCycleReminders] = useState(true);
+  const [dosePhasesOpen, setDosePhasesOpen] = useState(true);
+  
+  // Legacy cycle state (for backwards compatibility with existing compounds)
   const [enableCycle, setEnableCycle] = useState(false);
   const [cycleMode, setCycleMode] = useState<'continuous' | 'one-time'>('one-time');
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
-  const [cycleReminders, setCycleReminders] = useState(true);
   const [cycleTimeUnit, setCycleTimeUnit] = useState<'weeks' | 'months'>('weeks');
 
   // Active status
@@ -420,6 +428,44 @@ export const AddCompoundScreen = () => {
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
 
+  // Calculate IU for a given dose amount (used by phase timeline)
+  const calculateUnitsForDose = (doseAmount: number): number | null => {
+    if (!vialSize || !bacWater || !doseAmount) return null;
+    
+    const vialNum = parseFloat(vialSize);
+    const bacWaterNum = parseFloat(bacWater);
+    
+    if (isNaN(vialNum) || isNaN(bacWaterNum) || vialNum <= 0 || bacWaterNum <= 0 || doseAmount <= 0) {
+      return null;
+    }
+
+    // Convert everything to mcg for consistent calculation
+    const vialMcg = vialUnit === 'mg' ? vialNum * 1000 : vialNum;
+    
+    // Convert dose to mcg based on unit
+    let doseMcg: number;
+    if (doseUnit === 'mg') {
+      doseMcg = doseAmount * 1000;
+    } else if (doseUnit === 'mcg') {
+      doseMcg = doseAmount;
+    } else {
+      return null;
+    }
+    
+    if (doseMcg > vialMcg) return null;
+    
+    const concentrationMcgPerML = vialMcg / bacWaterNum;
+    if (concentrationMcgPerML <= 0 || !isFinite(concentrationMcgPerML)) return null;
+    
+    const volumeML = doseMcg / concentrationMcgPerML;
+    if (volumeML <= 0 || !isFinite(volumeML)) return null;
+    
+    const syringeUnits = volumeML * 100;
+    return syringeUnits > 0 && isFinite(syringeUnits) 
+      ? Math.round(syringeUnits * 10) / 10 
+      : null;
+  };
+
   // Don't auto-populate dose - let user enter their intended dose
   // The calculator will show them the IU amount based on their dose
 
@@ -491,7 +537,7 @@ export const AddCompoundScreen = () => {
   };
 
   const generateDoses = (compoundId: string, userId: string, includesPast: boolean = false) => {
-    const doses = [];
+    const doses: any[] = [];
     // Parse date in local timezone
     const start = createLocalDate(startDate);
     if (!start) {
@@ -514,7 +560,6 @@ export const AddCompoundScreen = () => {
     let daysToGenerate: number;
     
     if (includesPast && start < today) {
-      // For past dates, calculate days from start to today + 60 days forward
       const totalDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + maxDays;
       daysToGenerate = totalDays;
     } else {
@@ -528,11 +573,61 @@ export const AddCompoundScreen = () => {
         daysToGenerate = Math.min(daysToGenerate, Math.max(0, daysDiff + 1));
       }
     }
+
+    // Helper: Calculate phase durations and cumulative days
+    const getPhaseAtDay = (daysSinceStart: number): { phase: DosePhase | null; isBreak: boolean } => {
+      if (!enableDosePhases || dosePhases.length === 0) {
+        return { phase: null, isBreak: false };
+      }
+
+      // Calculate total cycle length (excluding ongoing phases)
+      let totalCycleDays = 0;
+      const phaseDays: number[] = [];
+      let hasOngoing = false;
+
+      for (const phase of dosePhases) {
+        if (phase.durationUnit === 'ongoing') {
+          hasOngoing = true;
+          phaseDays.push(Infinity);
+        } else {
+          const days = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
+          phaseDays.push(days);
+          totalCycleDays += days;
+        }
+      }
+
+      // If repeat is enabled and no ongoing phase, we cycle
+      let effectiveDay = daysSinceStart;
+      if (repeatCycle && !hasOngoing && totalCycleDays > 0) {
+        effectiveDay = daysSinceStart % totalCycleDays;
+      }
+
+      // Find which phase we're in
+      let cumulativeDays = 0;
+      for (let i = 0; i < dosePhases.length; i++) {
+        const phaseDuration = phaseDays[i];
+        if (phaseDuration === Infinity) {
+          // Ongoing phase - we're in this phase from here on
+          return { phase: dosePhases[i], isBreak: dosePhases[i].type === 'break' };
+        }
+        if (effectiveDay < cumulativeDays + phaseDuration) {
+          return { phase: dosePhases[i], isBreak: dosePhases[i].type === 'break' };
+        }
+        cumulativeDays += phaseDuration;
+      }
+
+      // If we're past all phases and not repeating, no more doses
+      if (!repeatCycle) {
+        return { phase: null, isBreak: true };
+      }
+
+      return { phase: null, isBreak: true };
+    };
     
     for (let i = 0; i < daysToGenerate; i++) {
       const date = new Date(effectiveStart);
       date.setDate(date.getDate() + i);
-      const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
+      const dayOfWeek = date.getDay();
       
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
@@ -541,28 +636,58 @@ export const AddCompoundScreen = () => {
         }
       }
       
-      if (frequency === 'Every X Days' && i % everyXDays !== 0) {
+      if (frequency === 'Every X Days') {
+        const daysSinceOriginalStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceOriginalStart % everyXDays !== 0) {
+          continue;
+        }
+      }
+
+      // Calculate days since original start for phase/cycle logic
+      const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+      // NEW: Handle dose phases
+      if (enableDosePhases && dosePhases.length > 0) {
+        const { phase, isBreak } = getPhaseAtDay(daysSinceStart);
+        
+        // Skip if in break period or past all phases
+        if (isBreak || !phase) {
+          continue;
+        }
+
+        // Generate doses for this phase
+        const timesToGenerate = numberOfDoses === 2 
+          ? [customTime, customTime2]
+          : [customTime];
+
+        timesToGenerate.forEach(time => {
+          doses.push({
+            compound_id: compoundId,
+            user_id: userId,
+            scheduled_date: formatDate(date),
+            scheduled_time: time,
+            dose_amount: phase.doseAmount,
+            dose_unit: phase.doseUnit,
+            calculated_iu: phase.calculatedUnits || null,
+            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+            concentration: concentration ? parseFloat(concentration) : null
+          });
+        });
         continue;
       }
 
-      // Check cycle logic - skip if in "off" period
+      // LEGACY: Check old cycle logic - skip if in "off" period
       if (enableCycle && cycleMode === 'continuous') {
-        // Calculate days since original start date (not effective start)
-        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        // Convert to days: if cycleTimeUnit is months, multiply by ~30 days, else by 7
         const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
         const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
         const cycleLength = weeksOnInDays + weeksOffInDays;
         const positionInCycle = daysSinceStart % cycleLength;
         
-        // Skip if we're in the "off" period
         if (positionInCycle >= weeksOnInDays) {
           continue;
         }
       } else if (enableCycle && cycleMode === 'one-time') {
-        // For one-time cycles, only generate for the "on" weeks
         const onPeriodDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
-        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         if (daysSinceStart >= onPeriodDays) {
           continue;
         }
@@ -1462,131 +1587,107 @@ export const AddCompoundScreen = () => {
           </div>
         </div>
 
-        {/* Cycle (Premium) */}
-        <div className="space-y-4 bg-background rounded-lg p-4 border border-border max-w-2xl">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
-              {!isSubscribed && (
-                <button
-                  type="button"
-                  onClick={() => setShowPaywall(true)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                >
-                  🔒 <span className="underline">Subscribe</span>
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Advanced: Automatically pause and resume this compound on a schedule</p>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <Label htmlFor="enableCycle" className="mb-0 text-sm">Enable Cycling</Label>
-            <Switch
-              id="enableCycle"
-              checked={enableCycle}
-              onCheckedChange={setEnableCycle}
-            />
-          </div>
-
-          {enableCycle && (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCycleMode('one-time')}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                    cycleMode === 'one-time'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted'
-                  }`}
-                >
-                  One-Time Duration
-                </button>
-                <button
-                  onClick={() => setCycleMode('continuous')}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                    cycleMode === 'continuous'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card border border-border hover:bg-muted'
-                  }`}
-                >
-                  On/Off Cycle
-                </button>
+        {/* Dose Phases & Cycles (Premium) */}
+        <Collapsible 
+          open={dosePhasesOpen} 
+          onOpenChange={setDosePhasesOpen}
+          className="bg-background rounded-lg border border-border max-w-2xl"
+        >
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors rounded-lg"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Dose Phases & Cycles
+                  </h2>
+                  {!isSubscribed && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowPaywall(true);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-primary cursor-pointer"
+                    >
+                      🔒
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-left">
+                  {enableDosePhases && dosePhases.length > 0 
+                    ? `${dosePhases.length} phase${dosePhases.length !== 1 ? 's' : ''} configured`
+                    : 'Configure dose changes and breaks over time'
+                  }
+                </p>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  value={cycleWeeksOn}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    if (!isNaN(val) && val >= 0.5) {
-                      setCycleWeeksOn(val);
+              {dosePhasesOpen ? (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              )}
+            </button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="px-4 pb-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-2">
+                <Label htmlFor="enableDosePhases" className="mb-0 text-sm">Enable Dose Phases</Label>
+                <Switch
+                  id="enableDosePhases"
+                  checked={enableDosePhases}
+                  onCheckedChange={(checked) => {
+                    setEnableDosePhases(checked);
+                    // If enabling and no phases exist, add initial phase with current dose
+                    if (checked && dosePhases.length === 0 && intendedDose) {
+                      const initialPhase: DosePhase = {
+                        id: Math.random().toString(36).substring(2, 9),
+                        type: 'dose',
+                        doseAmount: parseFloat(intendedDose) || 0,
+                        doseUnit: doseUnit,
+                        duration: 4,
+                        durationUnit: 'ongoing',
+                        calculatedUnits: calculateUnitsForDose(parseFloat(intendedDose) || 0)
+                      };
+                      setDosePhases([initialPhase]);
                     }
                   }}
-                  className="w-20"
                 />
-                <select
-                  value={cycleTimeUnit}
-                  onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                  className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
-                >
-                  <option value="weeks">weeks</option>
-                  <option value="months">months</option>
-                </select>
-                <span className="text-sm">on</span>
               </div>
 
-              {cycleMode === 'continuous' && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    value={cycleWeeksOff}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0.5) {
-                        setCycleWeeksOff(val);
-                      }
-                    }}
-                    className="w-20"
+              {enableDosePhases && (
+                <>
+                  <DosePhaseTimeline
+                    phases={dosePhases}
+                    onPhasesChange={setDosePhases}
+                    repeatCycle={repeatCycle}
+                    onRepeatCycleChange={setRepeatCycle}
+                    globalDoseUnit={doseUnit}
+                    onCalculateUnits={calculateUnitsForDose}
+                    isSubscribed={isSubscribed}
+                    onShowPaywall={() => setShowPaywall(true)}
                   />
-                  <select
-                    value={cycleTimeUnit}
-                    onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                    className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
-                  >
-                    <option value="weeks">weeks</option>
-                    <option value="months">months</option>
-                  </select>
-                  <span className="text-sm">off</span>
-                </div>
-              )}
-              
-              {/* Cycle Reminders Toggle - Moved after duration inputs */}
-              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                <div className="flex-1">
-                  <Label htmlFor="cycle-reminders" className="mb-0 text-sm font-medium">Cycle Change Reminders</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
-                </div>
-                <Switch
-                  id="cycle-reminders"
-                  checked={cycleReminders}
-                  onCheckedChange={setCycleReminders}
-                />
-              </div>
-
-              {cycleMode === 'one-time' && (
-                <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                  After {cycleWeeksOn} {cycleTimeUnit === 'months' ? (cycleWeeksOn !== 1 ? 'months' : 'month') : (cycleWeeksOn !== 1 ? 'weeks' : 'week')}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
-                </p>
+                  
+                  {/* Cycle Reminders Toggle */}
+                  {dosePhases.length > 0 && (
+                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                      <div className="flex-1">
+                        <Label htmlFor="phase-reminders" className="mb-0 text-sm font-medium">Phase Change Reminders</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">Get notified before phase transitions</p>
+                      </div>
+                      <Switch
+                        id="phase-reminders"
+                        checked={cycleReminders}
+                        onCheckedChange={setCycleReminders}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          )}
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
 
 
         {/* Active Protocol */}
