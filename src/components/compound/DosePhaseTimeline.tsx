@@ -347,10 +347,9 @@ export const DosePhaseTimeline = ({
         </div>
       )}
 
-      {/* Empty State */}
       {phases.length === 0 && (
         <div className="text-center py-4 text-muted-foreground">
-          <p className="text-sm">Define dose and break phases over time</p>
+          <p className="text-sm">Add phases to create your protocol</p>
         </div>
       )}
     </div>

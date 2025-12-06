@@ -462,29 +462,26 @@ export const MyStackScreen = () => {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                     cycleStatus.currentPhase === 'on' 
-                                      ? 'bg-secondary animate-pulse' 
-                                      : 'bg-primary'
+                                      ? 'bg-primary animate-pulse' 
+                                      : 'bg-muted-foreground/50'
                                   }`} />
                                   <span className={`text-xs font-semibold uppercase tracking-wider ${
                                     cycleStatus.currentPhase === 'on' 
-                                      ? 'text-secondary' 
-                                      : 'text-primary'
+                                      ? 'text-primary' 
+                                      : 'text-muted-foreground'
                                   }`}>
-                                    {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                                    {cycleStatus.currentPhase === 'on' ? 'On Cycle' : 'Off Cycle'}
                                   </span>
                                 </div>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                  {cyclePattern}
+                                  Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
                                 </span>
                               </div>
                               {/* Cycle progress bar with clear colors */}
                               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                                 <div 
                                   className={`h-full rounded-full transition-all ${
-                                    cycleStatus.currentPhase === 'on' ? 'bg-secondary' : 'bg-primary'
+                                    cycleStatus.currentPhase === 'on' ? 'bg-primary' : 'bg-muted-foreground/50'
                                   }`}
                                   style={{ width: `${cycleStatus.progressPercentage}%` }}
                                 />
