@@ -1572,15 +1572,6 @@ export const AddCompoundScreen = () => {
             />
           </div>
 
-          {/* Reminder Toggle */}
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
-            <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
-            <Switch
-              id="reminder"
-              checked={enableReminder}
-              onCheckedChange={setEnableReminder}
-            />
-          </div>
         </div>
 
         {/* Cycles & Titration Section */}
@@ -1626,7 +1617,7 @@ export const AddCompoundScreen = () => {
           {enableDosePhases && (
             <div className="px-4 pb-4 pt-0">
               <p className="text-xs text-muted-foreground mb-4">
-                Define dose and break phases over time. The protocol will end after all phases complete.
+                Define cycles and dose titration over time
               </p>
               <DosePhaseTimeline
                 phases={dosePhases}

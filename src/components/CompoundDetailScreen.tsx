@@ -634,10 +634,10 @@ export const CompoundDetailScreen = () => {
                 <span className="font-semibold text-sm">Cycle Status</span>
                 <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
                   cycleStatus.currentPhase === 'on' 
-                    ? 'bg-secondary/20 text-secondary' 
-                    : 'bg-primary/20 text-primary'
+                    ? 'bg-primary/20 text-primary' 
+                    : 'bg-muted text-muted-foreground'
                 }`}>
-                  {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
+                  {cycleStatus.currentPhase === 'on' ? 'On Cycle' : 'Off Cycle'}
                 </div>
               </div>
               <div className="text-sm text-muted-foreground mb-2">
@@ -647,7 +647,7 @@ export const CompoundDetailScreen = () => {
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all ${
-                    cycleStatus.currentPhase === 'on' ? 'bg-secondary' : 'bg-primary'
+                    cycleStatus.currentPhase === 'on' ? 'bg-primary' : 'bg-muted-foreground/50'
                   }`}
                   style={{ width: `${cycleStatus.progressPercentage}%` }}
                 />
