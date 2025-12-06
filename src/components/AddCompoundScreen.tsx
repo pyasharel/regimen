@@ -319,6 +319,24 @@ export const AddCompoundScreen = () => {
         }
       }
       
+      // Load dose phases from titration_config
+      if (editingCompound.has_titration && editingCompound.titration_config) {
+        setEnableDosePhases(true);
+        try {
+          const config = typeof editingCompound.titration_config === 'string' 
+            ? JSON.parse(editingCompound.titration_config) 
+            : editingCompound.titration_config;
+          if (config.phases && Array.isArray(config.phases)) {
+            setDosePhases(config.phases as DosePhase[]);
+          }
+          if (typeof config.repeatCycle === 'boolean') {
+            setRepeatCycle(config.repeatCycle);
+          }
+        } catch (e) {
+          console.error('Error parsing titration_config:', e);
+        }
+      }
+      
       if (editingCompound.vial_size) {
         setActiveCalculator('iu');
         setVialSize(editingCompound.vial_size.toString());
@@ -812,7 +830,9 @@ export const AddCompoundScreen = () => {
         cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
         cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
         cycle_reminders_enabled: enableCycle ? (localStorage.getItem('cycleReminders') !== 'false') : false,
-            is_active: isActive
+            is_active: isActive,
+            has_titration: enableDosePhases,
+            titration_config: enableDosePhases ? JSON.parse(JSON.stringify({ phases: dosePhases, repeatCycle })) : null
           })
           .eq('id', editingCompound.id);
 
@@ -942,7 +962,9 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-            is_active: isActive
+            is_active: isActive,
+            has_titration: enableDosePhases,
+            titration_config: enableDosePhases ? JSON.parse(JSON.stringify({ phases: dosePhases, repeatCycle })) : null
           }])
           .select()
           .single();
