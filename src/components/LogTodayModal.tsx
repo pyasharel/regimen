@@ -300,8 +300,8 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={loadingEntry ? "Loading..." : "How are you feeling? Side effects, thoughts..."}
-              className="min-h-[80px] resize-none"
+              placeholder={loadingEntry ? "Loading..." : "What's going on today?"}
+              className="min-h-[100px] resize-none"
               disabled={loadingEntry}
             />
           </div>
