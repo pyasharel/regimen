@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { Plus, Pause, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pause, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface DosePhase {
@@ -24,9 +22,36 @@ interface DosePhaseTimelineProps {
   onCalculateUnits?: (doseAmount: number) => number | null;
   isSubscribed?: boolean;
   onShowPaywall?: () => void;
+  startDate?: string;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+// Calculate current phase based on start date and phase durations
+const getCurrentPhaseIndex = (phases: DosePhase[], startDate?: string): number => {
+  if (!startDate || phases.length === 0) return -1;
+  
+  const start = new Date(startDate);
+  const now = new Date();
+  const daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysSinceStart < 0) return -1; // Not started yet
+  
+  let accumulatedDays = 0;
+  for (let i = 0; i < phases.length; i++) {
+    const phase = phases[i];
+    if (phase.durationUnit === 'ongoing') {
+      return i; // If ongoing, this is the current phase
+    }
+    const phaseDays = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
+    if (daysSinceStart < accumulatedDays + phaseDays) {
+      return i;
+    }
+    accumulatedDays += phaseDays;
+  }
+  
+  return phases.length - 1; // Return last phase if past all phases
+};
 
 export const DosePhaseTimeline = ({
   phases,
@@ -36,8 +61,11 @@ export const DosePhaseTimeline = ({
   globalDoseUnit,
   onCalculateUnits,
   isSubscribed = true,
-  onShowPaywall
+  onShowPaywall,
+  startDate
 }: DosePhaseTimelineProps) => {
+  const currentPhaseIndex = getCurrentPhaseIndex(phases, startDate);
+  
   const addPhase = () => {
     if (!isSubscribed && phases.length >= 1) {
       onShowPaywall?.();
@@ -96,7 +124,7 @@ export const DosePhaseTimeline = ({
   };
 
   const getTotalDays = (phase: DosePhase): number => {
-    if (phase.durationUnit === 'ongoing') return 0; // Ongoing has no fixed days
+    if (phase.durationUnit === 'ongoing') return 0;
     const multiplier = phase.durationUnit === 'months' ? 30 : 7;
     return phase.duration * multiplier;
   };
@@ -104,171 +132,173 @@ export const DosePhaseTimeline = ({
   const getPhaseLabel = (index: number, phase: DosePhase): string => {
     if (phase.type === 'break') {
       const breakIndex = phases.slice(0, index + 1).filter(p => p.type === 'break').length;
-      return `Break Period ${breakIndex}`;
+      return `Off Cycle ${breakIndex}`;
     }
     const phaseIndex = phases.slice(0, index + 1).filter(p => p.type === 'dose').length;
     return `Phase ${phaseIndex}`;
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Phases List */}
       <div className="space-y-3">
-        {phases.map((phase, index) => (
-          <div
-            key={phase.id}
-            className={cn(
-              "relative rounded-lg border p-4 transition-all",
-              phase.type === 'break' 
-                ? "bg-destructive/5 border-destructive/30" 
-                : "bg-card border-border"
-            )}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {phase.type === 'break' && (
-                  <Pause className="w-4 h-4 text-destructive" />
-                )}
-                <span className={cn(
-                  "text-sm font-medium",
-                  phase.type === 'break' ? "text-destructive" : "text-foreground"
-                )}>
-                  {getPhaseLabel(index, phase)}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => removePhase(phase.id)}
-                className="p-1.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Break Period Content */}
-            {phase.type === 'break' && (
-              <p className="text-sm text-destructive mb-3">
-                No dosing during break period
-              </p>
-            )}
-
-            {/* Dose Phase Content */}
-            {phase.type === 'dose' && (
-              <div className="flex items-center gap-2 mb-3">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={phase.doseAmount || ''}
-                  onChange={(e) => updatePhase(phase.id, { 
-                    doseAmount: parseFloat(e.target.value) || 0 
-                  })}
-                  placeholder="0"
-                  className="w-20 h-10 text-center bg-input"
-                />
-                <div className="flex rounded-lg overflow-hidden border border-border">
-                  {['mcg', 'mg'].map((unit) => (
-                    <button
-                      key={unit}
-                      type="button"
-                      onClick={() => updatePhase(phase.id, { doseUnit: unit })}
-                      className={cn(
-                        "px-4 py-2 text-sm font-medium transition-colors",
-                        phase.doseUnit === unit
-                          ? "bg-muted text-foreground"
-                          : "bg-card text-muted-foreground hover:bg-muted/50"
-                      )}
-                    >
-                      {unit}
-                    </button>
-                  ))}
+        {phases.map((phase, index) => {
+          const isCurrentPhase = index === currentPhaseIndex;
+          const isBreak = phase.type === 'break';
+          
+          return (
+            <div
+              key={phase.id}
+              className={cn(
+                "relative rounded-lg border p-4 transition-all",
+                isBreak 
+                  ? "bg-muted/30 border-muted-foreground/30" 
+                  : "bg-card border-border",
+                isCurrentPhase && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+              )}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {isBreak && (
+                    <Pause className="w-4 h-4 text-muted-foreground" />
+                  )}
+                  <span className={cn(
+                    "text-sm font-medium",
+                    isBreak ? "text-muted-foreground" : "text-foreground"
+                  )}>
+                    {getPhaseLabel(index, phase)}
+                  </span>
+                  {isCurrentPhase && (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      Active
+                    </span>
+                  )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => removePhase(phase.id)}
+                  className="p-1.5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-            )}
 
-            {/* Duration Row */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Duration:</span>
-              {phase.durationUnit !== 'ongoing' && (
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  value={phase.duration || ''}
+              {/* Break Period Content */}
+              {isBreak && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  No dosing during off cycle
+                </p>
+              )}
+
+              {/* Dose Phase Content */}
+              {phase.type === 'dose' && (
+                <div className="flex items-center gap-2 mb-3">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={phase.doseAmount || ''}
+                    onChange={(e) => updatePhase(phase.id, { 
+                      doseAmount: parseFloat(e.target.value) || 0 
+                    })}
+                    placeholder="0"
+                    className="w-20 h-10 text-center bg-input"
+                  />
+                  <div className="flex rounded-lg overflow-hidden border border-border">
+                    {['mcg', 'mg'].map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => updatePhase(phase.id, { doseUnit: unit })}
+                        className={cn(
+                          "px-4 py-2 text-sm font-medium transition-colors",
+                          phase.doseUnit === unit
+                            ? "bg-muted text-foreground"
+                            : "bg-card text-muted-foreground hover:bg-muted/50"
+                        )}
+                      >
+                        {unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Duration Row */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Duration:</span>
+                {phase.durationUnit !== 'ongoing' && (
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={phase.duration || ''}
+                    onChange={(e) => updatePhase(phase.id, { 
+                      duration: parseInt(e.target.value) || 1 
+                    })}
+                    className="w-16 h-9 text-center bg-input"
+                  />
+                )}
+                <select
+                  value={phase.durationUnit}
                   onChange={(e) => updatePhase(phase.id, { 
-                    duration: parseInt(e.target.value) || 1 
+                    durationUnit: e.target.value as 'weeks' | 'months' | 'ongoing' 
                   })}
-                  className="w-16 h-9 text-center bg-input"
-                />
-              )}
-              <select
-                value={phase.durationUnit}
-                onChange={(e) => updatePhase(phase.id, { 
-                  durationUnit: e.target.value as 'weeks' | 'months' | 'ongoing' 
-                })}
-                className="h-9 bg-input border-border rounded-lg border px-2 text-sm text-primary"
-              >
-                <option value="weeks">Weeks</option>
-                <option value="months">Months</option>
-                <option value="ongoing">Ongoing</option>
-              </select>
-            </div>
+                  className="h-9 bg-input border-border rounded-lg border px-2 text-sm text-primary"
+                >
+                  <option value="weeks">Weeks</option>
+                  <option value="months">Months</option>
+                  <option value="ongoing">Ongoing</option>
+                </select>
+              </div>
 
-            {/* Total Days & Calculated Units */}
-            <div className="mt-2 space-y-1">
-              {phase.durationUnit !== 'ongoing' && (
-                <p className="text-xs text-muted-foreground">
-                  Total: {getTotalDays(phase)} days
-                </p>
-              )}
-              {phase.durationUnit === 'ongoing' && (
-                <p className="text-xs text-muted-foreground">
-                  Continues until you add the next phase
-                </p>
-              )}
-              {phase.type === 'dose' && phase.calculatedUnits !== null && phase.calculatedUnits !== undefined && (
-                <p className="text-sm font-medium text-primary">
-                  Draw up: {phase.calculatedUnits.toFixed(1)} Units
-                </p>
-              )}
+              {/* Total Days & Calculated Units */}
+              <div className="mt-2 space-y-1">
+                {phase.durationUnit !== 'ongoing' && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {getTotalDays(phase)} days
+                  </p>
+                )}
+                {phase.durationUnit === 'ongoing' && (
+                  <p className="text-xs text-muted-foreground">
+                    Continues until you add the next phase
+                  </p>
+                )}
+                {phase.type === 'dose' && phase.calculatedUnits !== null && phase.calculatedUnits !== undefined && (
+                  <p className="text-sm font-medium text-primary">
+                    Draw up: {phase.calculatedUnits.toFixed(1)} Units
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Add Buttons */}
-      <div className="flex gap-3">
-        <Button
+      {/* Add Links - Minimal hyperlink style */}
+      <div className="flex items-center justify-center gap-6 py-2">
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={addPhase}
-          className="flex-1 gap-1.5"
+          className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Phase
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={addBreak}
-          className="flex-1 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <Pause className="w-4 h-4" />
-          Add Break
-        </Button>
+          Add Off Cycle
+        </button>
       </div>
 
       {/* Repeat Cycle Toggle */}
       {phases.length > 0 && (
         <div className="flex items-center justify-between pt-3 border-t border-border">
-          <div>
-            <Label className="text-sm font-medium">Repeat Cycle</Label>
-            <p className="text-xs text-muted-foreground">
-              Restart from Phase 1 after completing all phases
-            </p>
-          </div>
+          <Label className="text-sm font-medium">Repeat Cycle</Label>
           <button
             type="button"
             onClick={() => onRepeatCycleChange(!repeatCycle)}
@@ -289,11 +319,21 @@ export const DosePhaseTimeline = ({
 
       {/* Empty State */}
       {phases.length === 0 && (
-        <div className="text-center py-6 text-muted-foreground">
-          <p className="text-sm">No phases configured</p>
-          <p className="text-xs mt-1">Add a phase to create a dosing schedule</p>
+        <div className="text-center py-4 text-muted-foreground">
+          <p className="text-sm">Define dose and break phases over time</p>
         </div>
       )}
     </div>
   );
+};
+
+// Export helper to get current phase dose for syncing with global dose
+export const getCurrentPhaseDose = (phases: DosePhase[], startDate?: string): { dose: number; unit: string } | null => {
+  const currentIndex = getCurrentPhaseIndex(phases, startDate);
+  if (currentIndex === -1 || !phases[currentIndex]) return null;
+  
+  const currentPhase = phases[currentIndex];
+  if (currentPhase.type === 'break') return null;
+  
+  return { dose: currentPhase.doseAmount, unit: currentPhase.doseUnit };
 };

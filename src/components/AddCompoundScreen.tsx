@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TimePicker } from "@/components/ui/time-picker";
 import { IOSTimePicker } from "@/components/ui/ios-time-picker";
 import { Textarea } from "@/components/ui/textarea";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -172,8 +172,6 @@ export const AddCompoundScreen = () => {
   const [enableDosePhases, setEnableDosePhases] = useState(false);
   const [dosePhases, setDosePhases] = useState<DosePhase[]>([]);
   const [repeatCycle, setRepeatCycle] = useState(false);
-  const [cycleReminders, setCycleReminders] = useState(true);
-  const [dosePhasesOpen, setDosePhasesOpen] = useState(true);
   
   // Legacy cycle state (for backwards compatibility with existing compounds)
   const [enableCycle, setEnableCycle] = useState(false);
@@ -813,7 +811,7 @@ export const AddCompoundScreen = () => {
         has_cycles: enableCycle,
         cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
         cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-        cycle_reminders_enabled: enableCycle ? cycleReminders : false,
+        cycle_reminders_enabled: enableCycle ? (localStorage.getItem('cycleReminders') !== 'false') : false,
             is_active: isActive
           })
           .eq('id', editingCompound.id);
@@ -904,20 +902,18 @@ export const AddCompoundScreen = () => {
             }
           });
 
-        // Schedule cycle reminders if enabled
-        if (enableCycle && cycleReminders) {
-          const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
-          if (cycleRemindersEnabled) {
-            scheduleCycleReminders({
-              id: editingCompound.id,
-              name,
-              start_date: startDate,
-              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-              has_cycles: true,
-              cycle_reminders_enabled: true
-            });
-          }
+        // Schedule cycle reminders if enabled (check global setting)
+        const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
+        if (enableCycle && cycleRemindersEnabled) {
+          scheduleCycleReminders({
+            id: editingCompound.id,
+            name,
+            start_date: startDate,
+            cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+            cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+            has_cycles: true,
+            cycle_reminders_enabled: true
+          });
         }
         return;
       } else {
@@ -1587,107 +1583,65 @@ export const AddCompoundScreen = () => {
           </div>
         </div>
 
-        {/* Dose Phases & Cycles (Premium) */}
-        <Collapsible 
-          open={dosePhasesOpen} 
-          onOpenChange={setDosePhasesOpen}
-          className="bg-background rounded-lg border border-border max-w-2xl"
-        >
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors rounded-lg"
-            >
-              <div className="flex flex-col items-start gap-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Dose Phases & Cycles
-                  </h2>
-                  {!isSubscribed && (
-                    <span 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowPaywall(true);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-primary cursor-pointer"
-                    >
-                      🔒
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground text-left">
-                  {enableDosePhases && dosePhases.length > 0 
-                    ? `${dosePhases.length} phase${dosePhases.length !== 1 ? 's' : ''} configured`
-                    : 'Configure dose changes and breaks over time'
-                  }
-                </p>
-              </div>
-              {dosePhasesOpen ? (
-                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              )}
-            </button>
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent className="px-4 pb-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-2">
-                <Label htmlFor="enableDosePhases" className="mb-0 text-sm">Enable Dose Phases</Label>
-                <Switch
-                  id="enableDosePhases"
-                  checked={enableDosePhases}
-                  onCheckedChange={(checked) => {
-                    setEnableDosePhases(checked);
-                    // If enabling and no phases exist, add initial phase with current dose
-                    if (checked && dosePhases.length === 0 && intendedDose) {
-                      const initialPhase: DosePhase = {
-                        id: Math.random().toString(36).substring(2, 9),
-                        type: 'dose',
-                        doseAmount: parseFloat(intendedDose) || 0,
-                        doseUnit: doseUnit,
-                        duration: 4,
-                        durationUnit: 'ongoing',
-                        calculatedUnits: calculateUnitsForDose(parseFloat(intendedDose) || 0)
-                      };
-                      setDosePhases([initialPhase]);
-                    }
-                  }}
-                />
-              </div>
-
-              {enableDosePhases && (
-                <>
-                  <DosePhaseTimeline
-                    phases={dosePhases}
-                    onPhasesChange={setDosePhases}
-                    repeatCycle={repeatCycle}
-                    onRepeatCycleChange={setRepeatCycle}
-                    globalDoseUnit={doseUnit}
-                    onCalculateUnits={calculateUnitsForDose}
-                    isSubscribed={isSubscribed}
-                    onShowPaywall={() => setShowPaywall(true)}
-                  />
-                  
-                  {/* Cycle Reminders Toggle */}
-                  {dosePhases.length > 0 && (
-                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                      <div className="flex-1">
-                        <Label htmlFor="phase-reminders" className="mb-0 text-sm font-medium">Phase Change Reminders</Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">Get notified before phase transitions</p>
-                      </div>
-                      <Switch
-                        id="phase-reminders"
-                        checked={cycleReminders}
-                        onCheckedChange={setCycleReminders}
-                      />
-                    </div>
-                  )}
-                </>
+        {/* Cycles & Titration Section */}
+        <div className="bg-background rounded-lg border border-border overflow-hidden">
+          {/* Header with inline toggle */}
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Cycles & Titration
+              </h2>
+              {!isSubscribed && (
+                <span 
+                  onClick={() => setShowPaywall(true)}
+                  className="text-xs text-muted-foreground hover:text-primary cursor-pointer"
+                >
+                  🔒
+                </span>
               )}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+            <Switch
+              id="enableDosePhases"
+              checked={enableDosePhases}
+              onCheckedChange={(checked) => {
+                setEnableDosePhases(checked);
+                // If enabling and no phases exist, add initial phase with current dose
+                if (checked && dosePhases.length === 0 && intendedDose) {
+                  const initialPhase: DosePhase = {
+                    id: Math.random().toString(36).substring(2, 9),
+                    type: 'dose',
+                    doseAmount: parseFloat(intendedDose) || 0,
+                    doseUnit: doseUnit,
+                    duration: 4,
+                    durationUnit: 'ongoing',
+                    calculatedUnits: calculateUnitsForDose(parseFloat(intendedDose) || 0)
+                  };
+                  setDosePhases([initialPhase]);
+                }
+              }}
+            />
+          </div>
+          
+          {/* Content when enabled */}
+          {enableDosePhases && (
+            <div className="px-4 pb-4 pt-0">
+              <p className="text-xs text-muted-foreground mb-4">
+                Define dose and break phases over time. The protocol will end after all phases complete.
+              </p>
+              <DosePhaseTimeline
+                phases={dosePhases}
+                onPhasesChange={setDosePhases}
+                repeatCycle={repeatCycle}
+                onRepeatCycleChange={setRepeatCycle}
+                globalDoseUnit={doseUnit}
+                onCalculateUnits={calculateUnitsForDose}
+                isSubscribed={isSubscribed}
+                onShowPaywall={() => setShowPaywall(true)}
+                startDate={startDate}
+              />
+            </div>
+          )}
+        </div>
 
 
         {/* Active Protocol */}
