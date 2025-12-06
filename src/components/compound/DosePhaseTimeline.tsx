@@ -29,29 +29,54 @@ interface DosePhaseTimelineProps {
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 // Calculate current phase based on start date and phase durations
-const getCurrentPhaseIndex = (phases: DosePhase[], startDate?: string): number => {
-  if (!startDate || phases.length === 0) return -1;
+const getCurrentPhaseIndex = (phases: DosePhase[], startDate?: string, repeatCycle?: boolean): number => {
+  if (!startDate || phases.length === 0) return 0; // Default to first phase if no start date
   
-  const start = new Date(startDate);
+  const start = new Date(startDate + 'T00:00:00'); // Parse as local date
   const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize to start of day
   const daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   
-  if (daysSinceStart < 0) return -1; // Not started yet
+  // If before start date, first phase is upcoming
+  if (daysSinceStart < 0) return 0;
   
-  let accumulatedDays = 0;
-  for (let i = 0; i < phases.length; i++) {
-    const phase = phases[i];
+  // Calculate total cycle duration
+  let totalCycleDays = 0;
+  const phaseDays: number[] = [];
+  let hasOngoing = false;
+  
+  for (const phase of phases) {
     if (phase.durationUnit === 'ongoing') {
-      return i; // If ongoing, this is the current phase
+      hasOngoing = true;
+      phaseDays.push(Infinity);
+    } else {
+      const days = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
+      phaseDays.push(days);
+      totalCycleDays += days;
     }
-    const phaseDays = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
-    if (daysSinceStart < accumulatedDays + phaseDays) {
-      return i;
-    }
-    accumulatedDays += phaseDays;
   }
   
-  return phases.length - 1; // Return last phase if past all phases
+  // If repeating and no ongoing phase, use modulo to find position in cycle
+  let effectiveDay = daysSinceStart;
+  if (repeatCycle && !hasOngoing && totalCycleDays > 0) {
+    effectiveDay = daysSinceStart % totalCycleDays;
+  }
+  
+  // Find which phase we're in
+  let accumulatedDays = 0;
+  for (let i = 0; i < phases.length; i++) {
+    const phaseDuration = phaseDays[i];
+    if (phaseDuration === Infinity) {
+      return i; // Ongoing phase - we're in this phase
+    }
+    if (effectiveDay < accumulatedDays + phaseDuration) {
+      return i;
+    }
+    accumulatedDays += phaseDuration;
+  }
+  
+  // If past all phases and not repeating, return last phase
+  return phases.length - 1;
 };
 
 export const DosePhaseTimeline = ({
@@ -66,7 +91,55 @@ export const DosePhaseTimeline = ({
   startDate
 }: DosePhaseTimelineProps) => {
   const { toast } = useToast();
-  const currentPhaseIndex = getCurrentPhaseIndex(phases, startDate);
+  const currentPhaseIndex = getCurrentPhaseIndex(phases, startDate, repeatCycle);
+  
+  // Calculate days into current phase
+  const getDaysIntoCurrentPhase = (): { daysInto: number; totalDays: number } | null => {
+    if (!startDate || phases.length === 0) return null;
+    
+    const start = new Date(startDate + 'T00:00:00');
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    let daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceStart < 0) return { daysInto: 0, totalDays: 0 };
+    
+    // Calculate total cycle and phase durations
+    let totalCycleDays = 0;
+    const phaseDays: number[] = [];
+    
+    for (const phase of phases) {
+      if (phase.durationUnit === 'ongoing') {
+        phaseDays.push(Infinity);
+      } else {
+        const days = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
+        phaseDays.push(days);
+        totalCycleDays += days;
+      }
+    }
+    
+    // Apply repeat cycle logic
+    if (repeatCycle && totalCycleDays > 0 && !phaseDays.includes(Infinity)) {
+      daysSinceStart = daysSinceStart % totalCycleDays;
+    }
+    
+    // Find days into current phase
+    let accumulatedDays = 0;
+    for (let i = 0; i < phases.length; i++) {
+      const phaseDuration = phaseDays[i];
+      if (daysSinceStart < accumulatedDays + phaseDuration) {
+        return { 
+          daysInto: daysSinceStart - accumulatedDays + 1, // +1 for human-readable (day 1, not day 0)
+          totalDays: phaseDuration === Infinity ? 0 : phaseDuration
+        };
+      }
+      accumulatedDays += phaseDuration;
+    }
+    
+    return null;
+  };
+  
+  const phaseProgress = getDaysIntoCurrentPhase();
   
   // Check if last phase is ongoing
   const lastPhaseIsOngoing = phases.length > 0 && phases[phases.length - 1].durationUnit === 'ongoing';
@@ -194,7 +267,9 @@ export const DosePhaseTimeline = ({
                   </span>
                   {isCurrentPhase && (
                     <span className="text-[10px] uppercase tracking-wide font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                      Active
+                      {phaseProgress && phaseProgress.totalDays > 0 
+                        ? `Day ${phaseProgress.daysInto} of ${phaseProgress.totalDays}`
+                        : 'Active'}
                     </span>
                   )}
                 </div>
@@ -357,9 +432,9 @@ export const DosePhaseTimeline = ({
 };
 
 // Export helper to get current phase dose for syncing with global dose
-export const getCurrentPhaseDose = (phases: DosePhase[], startDate?: string): { dose: number; unit: string } | null => {
-  const currentIndex = getCurrentPhaseIndex(phases, startDate);
-  if (currentIndex === -1 || !phases[currentIndex]) return null;
+export const getCurrentPhaseDose = (phases: DosePhase[], startDate?: string, repeatCycle?: boolean): { dose: number; unit: string } | null => {
+  const currentIndex = getCurrentPhaseIndex(phases, startDate, repeatCycle);
+  if (currentIndex < 0 || !phases[currentIndex]) return null;
   
   const currentPhase = phases[currentIndex];
   if (currentPhase.type === 'break') return null;
