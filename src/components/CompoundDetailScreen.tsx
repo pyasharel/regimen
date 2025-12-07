@@ -186,14 +186,13 @@ export const CompoundDetailScreen = () => {
     ? Math.max(...rawChartData.map(p => p.absoluteLevel)) 
     : 0;
   
-  // Smart Y-axis formatting for small decimals
+  // Clean Y-axis formatting - prefer whole numbers when possible
   const formatYAxis = (value: number) => {
     if (value === 0) return '0';
-    if (value >= 100) return Math.round(value).toString();
-    if (value >= 10) return value.toFixed(1);
+    if (Number.isInteger(value)) return value.toString();
+    if (value >= 10) return Math.round(value).toString();
     if (value >= 1) return value.toFixed(1);
-    if (value >= 0.1) return value.toFixed(2);
-    return value.toFixed(3);
+    return value.toFixed(2);
   };
   
   // Round up to nice number for Y-axis max
@@ -524,7 +523,7 @@ export const CompoundDetailScreen = () => {
 
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
                     <linearGradient id="levelGradientPast" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
