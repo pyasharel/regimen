@@ -516,17 +516,31 @@ export const TodayScreen = () => {
     }
   };
 
+  // Rotating success messages for variety
+  const celebrationMessages = [
+    "Perfect Day!",
+    "All done!",
+    "Nailed it!",
+    "On point!",
+    "Crushed it!",
+    "You're consistent!"
+  ];
+  const [celebrationMessage, setCelebrationMessage] = useState(celebrationMessages[0]);
+
   const triggerLastDoseCelebration = () => {
-    // Medium haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate([100, 50, 100]);
-    }
+    // Strong haptic feedback pattern
+    triggerHaptic('heavy');
+    setTimeout(() => triggerHaptic('medium'), 100);
 
     // Play two-tone chime
     const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
     if (soundEnabled) {
       playChimeSound();
     }
+
+    // Pick a random celebration message
+    const randomMessage = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
+    setCelebrationMessage(randomMessage);
 
     // Show celebration message
     setShowDayComplete(true);
@@ -811,7 +825,10 @@ export const TodayScreen = () => {
                   return (
                     <button
                       key={index}
-                      onClick={() => setSelectedDate(day)}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedDate(day);
+                      }}
                       className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 flex-1 min-w-0 transition-colors relative ${
                         isSelected
                           ? 'bg-primary text-primary-foreground'
@@ -887,7 +904,7 @@ export const TodayScreen = () => {
               }}
             >
               <div className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Perfect Day!
+                {celebrationMessage}
               </div>
             </div>
           </>
@@ -1299,6 +1316,7 @@ export const TodayScreen = () => {
       <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>
         <DrawerTrigger asChild>
           <button
+            onClick={() => triggerHaptic('light')}
             className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
             style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
           >

@@ -11,10 +11,25 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 interface LogTodayDrawerContentProps {
   onSuccess: () => void;
 }
+
+// Haptic utility
+const triggerHaptic = async (intensity: 'light' | 'medium' = 'light') => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await Haptics.impact({ style: intensity === 'light' ? ImpactStyle.Light : ImpactStyle.Medium });
+    } else if ('vibrate' in navigator) {
+      navigator.vibrate(intensity === 'light' ? 30 : 50);
+    }
+  } catch (err) {
+    console.log('Haptic failed:', err);
+  }
+};
 
 // Simple numbered rating buttons
 const RatingSelector = ({ 
@@ -30,7 +45,10 @@ const RatingSelector = ({
         <button
           key={num}
           type="button"
-          onClick={() => onChange(value === num ? null : num)}
+          onClick={() => {
+            triggerHaptic('light');
+            onChange(value === num ? null : num);
+          }}
           className={cn(
             "h-10 w-10 rounded-lg text-sm font-medium transition-all active:scale-95",
             value === num
@@ -116,6 +134,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       return;
     }
 
+    triggerHaptic('medium');
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();

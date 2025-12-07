@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/components/ThemeProvider";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 export const DisplaySettings = () => {
   const navigate = useNavigate();
@@ -38,7 +40,20 @@ export const DisplaySettings = () => {
     loadSettings();
   }, []);
 
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      } else if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+    } catch (err) {
+      console.log('Haptic failed:', err);
+    }
+  };
+
   const handleWeightUnitChange = async (unit: "lbs" | "kg") => {
+    triggerHaptic();
     // Convert goal weight when switching units
     if (goalWeight) {
       const currentValue = parseFloat(goalWeight);
@@ -55,6 +70,7 @@ export const DisplaySettings = () => {
   };
 
   const handleHeightUnitChange = async (unit: "imperial" | "metric") => {
+    triggerHaptic();
     // Convert height when switching units
     if (unit === "metric" && heightUnit === "imperial" && (heightFeet || heightInches)) {
       const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
@@ -112,7 +128,7 @@ export const DisplaySettings = () => {
           </div>
           <div className="space-y-2">
             <button
-              onClick={() => setTheme("light")}
+              onClick={() => { triggerHaptic(); setTheme("light"); }}
               className={`w-full rounded-lg border p-4 text-left transition-all ${
                 theme === "light" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
               }`}
@@ -121,7 +137,7 @@ export const DisplaySettings = () => {
               <div className="text-xs text-muted-foreground">Bright and clean</div>
             </button>
             <button
-              onClick={() => setTheme("dark")}
+              onClick={() => { triggerHaptic(); setTheme("dark"); }}
               className={`w-full rounded-lg border p-4 text-left transition-all ${
                 theme === "dark" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
               }`}
@@ -130,7 +146,7 @@ export const DisplaySettings = () => {
               <div className="text-xs text-muted-foreground">Easy on the eyes</div>
             </button>
             <button
-              onClick={() => setTheme("system")}
+              onClick={() => { triggerHaptic(); setTheme("system"); }}
               className={`w-full rounded-lg border p-4 text-left transition-all ${
                 theme === "system" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
               }`}
