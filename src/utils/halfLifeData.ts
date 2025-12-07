@@ -313,6 +313,12 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     category: 'peptide',
     displayName: 'Thymosin Beta-4',
   },
+  'bpc + tb-500': {
+    halfLifeHours: 3.5, // Average of BPC-157 (~5h) and TB-500 (~2h)
+    category: 'peptide',
+    displayName: 'BPC + TB-500',
+    notes: 'BPC-157 and TB-500 combination'
+  },
   'ipamorelin': {
     halfLifeHours: 2,
     category: 'peptide',
