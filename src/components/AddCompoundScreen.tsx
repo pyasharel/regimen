@@ -34,7 +34,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
-import { DosePhaseTimeline, DosePhase } from "@/components/compound/DosePhaseTimeline";
+import { CycleTimeline } from "@/components/CycleTimeline";
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
@@ -168,10 +168,7 @@ export const AddCompoundScreen = () => {
   const [notes, setNotes] = useState("");
   const [enableReminder, setEnableReminder] = useState(true);
 
-  // Dose Phases & Cycles (premium)
-  const [enableDosePhases, setEnableDosePhases] = useState(false);
-  const [dosePhases, setDosePhases] = useState<DosePhase[]>([]);
-  const [repeatCycle, setRepeatCycle] = useState(false);
+  // Cycles (premium) - simple on/off weeks
   
   // Legacy cycle state (for backwards compatibility with existing compounds)
   const [enableCycle, setEnableCycle] = useState(false);
@@ -316,24 +313,6 @@ export const AddCompoundScreen = () => {
           }
         } else {
           setCycleMode('one-time');
-        }
-      }
-      
-      // Load dose phases from titration_config
-      if (editingCompound.has_titration && editingCompound.titration_config) {
-        setEnableDosePhases(true);
-        try {
-          const config = typeof editingCompound.titration_config === 'string' 
-            ? JSON.parse(editingCompound.titration_config) 
-            : editingCompound.titration_config;
-          if (config.phases && Array.isArray(config.phases)) {
-            setDosePhases(config.phases as DosePhase[]);
-          }
-          if (typeof config.repeatCycle === 'boolean') {
-            setRepeatCycle(config.repeatCycle);
-          }
-        } catch (e) {
-          console.error('Error parsing titration_config:', e);
         }
       }
       
@@ -590,56 +569,6 @@ export const AddCompoundScreen = () => {
       }
     }
 
-    // Helper: Calculate phase durations and cumulative days
-    const getPhaseAtDay = (daysSinceStart: number): { phase: DosePhase | null; isBreak: boolean } => {
-      if (!enableDosePhases || dosePhases.length === 0) {
-        return { phase: null, isBreak: false };
-      }
-
-      // Calculate total cycle length (excluding ongoing phases)
-      let totalCycleDays = 0;
-      const phaseDays: number[] = [];
-      let hasOngoing = false;
-
-      for (const phase of dosePhases) {
-        if (phase.durationUnit === 'ongoing') {
-          hasOngoing = true;
-          phaseDays.push(Infinity);
-        } else {
-          const days = phase.durationUnit === 'months' ? phase.duration * 30 : phase.duration * 7;
-          phaseDays.push(days);
-          totalCycleDays += days;
-        }
-      }
-
-      // If repeat is enabled and no ongoing phase, we cycle
-      let effectiveDay = daysSinceStart;
-      if (repeatCycle && !hasOngoing && totalCycleDays > 0) {
-        effectiveDay = daysSinceStart % totalCycleDays;
-      }
-
-      // Find which phase we're in
-      let cumulativeDays = 0;
-      for (let i = 0; i < dosePhases.length; i++) {
-        const phaseDuration = phaseDays[i];
-        if (phaseDuration === Infinity) {
-          // Ongoing phase - we're in this phase from here on
-          return { phase: dosePhases[i], isBreak: dosePhases[i].type === 'break' };
-        }
-        if (effectiveDay < cumulativeDays + phaseDuration) {
-          return { phase: dosePhases[i], isBreak: dosePhases[i].type === 'break' };
-        }
-        cumulativeDays += phaseDuration;
-      }
-
-      // If we're past all phases and not repeating, no more doses
-      if (!repeatCycle) {
-        return { phase: null, isBreak: true };
-      }
-
-      return { phase: null, isBreak: true };
-    };
-    
     for (let i = 0; i < daysToGenerate; i++) {
       const date = new Date(effectiveStart);
       date.setDate(date.getDate() + i);
@@ -659,40 +588,10 @@ export const AddCompoundScreen = () => {
         }
       }
 
-      // Calculate days since original start for phase/cycle logic
+      // Calculate days since original start for cycle logic
       const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
-      // NEW: Handle dose phases
-      if (enableDosePhases && dosePhases.length > 0) {
-        const { phase, isBreak } = getPhaseAtDay(daysSinceStart);
-        
-        // Skip if in break period or past all phases
-        if (isBreak || !phase) {
-          continue;
-        }
-
-        // Generate doses for this phase
-        const timesToGenerate = numberOfDoses === 2 
-          ? [customTime, customTime2]
-          : [customTime];
-
-        timesToGenerate.forEach(time => {
-          doses.push({
-            compound_id: compoundId,
-            user_id: userId,
-            scheduled_date: formatDate(date),
-            scheduled_time: time,
-            dose_amount: phase.doseAmount,
-            dose_unit: phase.doseUnit,
-            calculated_iu: phase.calculatedUnits || null,
-            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
-            concentration: concentration ? parseFloat(concentration) : null
-          });
-        });
-        continue;
-      }
-
-      // LEGACY: Check old cycle logic - skip if in "off" period
+      // Check cycle logic - skip if in "off" period
       if (enableCycle && cycleMode === 'continuous') {
         const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
         const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
@@ -831,8 +730,8 @@ export const AddCompoundScreen = () => {
         cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
         cycle_reminders_enabled: enableCycle ? (localStorage.getItem('cycleReminders') !== 'false') : false,
             is_active: isActive,
-            has_titration: enableDosePhases,
-            titration_config: enableDosePhases ? JSON.parse(JSON.stringify({ phases: dosePhases, repeatCycle })) : null
+            has_titration: false,
+            titration_config: null
           })
           .eq('id', editingCompound.id);
 
@@ -963,8 +862,8 @@ export const AddCompoundScreen = () => {
             cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
             is_active: isActive,
-            has_titration: enableDosePhases,
-            titration_config: enableDosePhases ? JSON.parse(JSON.stringify({ phases: dosePhases, repeatCycle })) : null
+            has_titration: false,
+            titration_config: null
           }])
           .select()
           .single();
@@ -1596,13 +1495,13 @@ export const AddCompoundScreen = () => {
 
         </div>
 
-        {/* Cycles & Titration Section */}
+        {/* Cycles Section - Simple On/Off */}
         <div className="bg-background rounded-lg border border-border overflow-hidden">
           {/* Header with inline toggle */}
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Cycles & Titration
+                Cycles
               </h2>
               {!isSubscribed && (
                 <span 
@@ -1614,43 +1513,128 @@ export const AddCompoundScreen = () => {
               )}
             </div>
             <Switch
-              id="enableDosePhases"
-              checked={enableDosePhases}
+              id="enableCycle"
+              checked={enableCycle}
               onCheckedChange={(checked) => {
-                setEnableDosePhases(checked);
-                // If enabling and no phases exist, add initial phase with current dose
-                if (checked && dosePhases.length === 0 && intendedDose) {
-                  const initialPhase: DosePhase = {
-                    id: Math.random().toString(36).substring(2, 9),
-                    type: 'dose',
-                    doseAmount: parseFloat(intendedDose) || 0,
-                    doseUnit: doseUnit,
-                    duration: 4,
-                    durationUnit: 'ongoing',
-                    calculatedUnits: calculateUnitsForDose(parseFloat(intendedDose) || 0)
-                  };
-                  setDosePhases([initialPhase]);
+                if (!isSubscribed) {
+                  setShowPaywall(true);
+                  return;
                 }
+                setEnableCycle(checked);
               }}
             />
           </div>
           
           {/* Content when enabled */}
-          {enableDosePhases && (
-            <div className="px-4 pb-4 pt-0">
-              <p className="text-xs text-muted-foreground mb-4">
-                Define cycles and dose titration over time
+          {enableCycle && (
+            <div className="px-4 pb-4 pt-0 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Set on/off cycle periods for this compound
               </p>
-              <DosePhaseTimeline
-                phases={dosePhases}
-                onPhasesChange={setDosePhases}
-                repeatCycle={repeatCycle}
-                onRepeatCycleChange={setRepeatCycle}
-                globalDoseUnit={doseUnit}
-                onCalculateUnits={calculateUnitsForDose}
-                isSubscribed={isSubscribed}
-                onShowPaywall={() => setShowPaywall(true)}
-                startDate={startDate}
+              
+              {/* Cycle Mode Selection */}
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCycleMode('one-time')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      cycleMode === 'one-time'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    One-time Duration
+                  </button>
+                  <button
+                    onClick={() => setCycleMode('continuous')}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      cycleMode === 'continuous'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    On/Off Cycle
+                  </button>
+                </div>
+                
+                {/* Time Unit Toggle */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCycleTimeUnit('weeks')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
+                      cycleTimeUnit === 'weeks'
+                        ? 'bg-secondary text-secondary-foreground'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    Weeks
+                  </button>
+                  <button
+                    onClick={() => setCycleTimeUnit('months')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
+                      cycleTimeUnit === 'months'
+                        ? 'bg-secondary text-secondary-foreground'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    Months
+                  </button>
+                </div>
+              </div>
+              
+              {/* Duration Inputs */}
+              <div className={`grid gap-4 ${cycleMode === 'continuous' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    {cycleMode === 'one-time' ? 'Duration' : 'On Period'}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={cycleWeeksOn}
+                      onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
+                      min={1}
+                      max={52}
+                      className="h-10 text-center"
+                    />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}
+                    </span>
+                  </div>
+                </div>
+                
+                {cycleMode === 'continuous' && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Off Period</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={cycleWeeksOff}
+                        onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
+                        min={1}
+                        max={52}
+                        className="h-10 text-center"
+                      />
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
+                        {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Cycle Timeline Preview */}
+              <CycleTimeline
+                compound={{
+                  id: editingCompound?.id || 'preview',
+                  name: name || 'Preview',
+                  start_date: startDate,
+                  end_date: endDate || null,
+                  has_cycles: true,
+                  cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+                  cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+                  is_active: isActive,
+                }}
               />
             </div>
           )}
