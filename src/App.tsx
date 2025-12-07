@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { toast } from "sonner";
+import { persistentStorage, PERSISTENT_STORAGE_KEYS } from "@/utils/persistentStorage";
 import { Onboarding } from "./components/Onboarding";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
@@ -95,6 +96,11 @@ const AppContent = () => {
 };
 
 const App = () => {
+  // Migrate localStorage to Capacitor Preferences on app start
+  useEffect(() => {
+    persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SubscriptionProvider>
