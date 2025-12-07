@@ -1497,11 +1497,11 @@ export const AddCompoundScreen = () => {
 
         {/* Cycles Section - Simple On/Off */}
         <div className="bg-background rounded-lg border border-border overflow-hidden">
-          {/* Header with inline toggle */}
-          <div className="flex items-center justify-between p-4">
+          {/* Header section */}
+          <div className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Cycles
+                Cycle
               </h2>
               {!isSubscribed && (
                 <span 
@@ -1512,130 +1512,136 @@ export const AddCompoundScreen = () => {
                 </span>
               )}
             </div>
-            <Switch
-              id="enableCycle"
-              checked={enableCycle}
-              onCheckedChange={(checked) => {
-                if (!isSubscribed) {
-                  setShowPaywall(true);
-                  return;
-                }
-                setEnableCycle(checked);
-              }}
-            />
+            <p className="text-sm text-muted-foreground">
+              Automatically pause and resume this compound on a schedule
+            </p>
+            
+            {/* Enable Cycling toggle */}
+            <div className="flex items-center justify-between pt-2">
+              <Label htmlFor="enableCycle" className="mb-0 text-base">Enable Cycling</Label>
+              <Switch
+                id="enableCycle"
+                checked={enableCycle}
+                onCheckedChange={(checked) => {
+                  if (!isSubscribed) {
+                    setShowPaywall(true);
+                    return;
+                  }
+                  setEnableCycle(checked);
+                }}
+              />
+            </div>
           </div>
           
           {/* Content when enabled */}
           {enableCycle && (
             <div className="px-4 pb-4 pt-0 space-y-4">
-              <p className="text-xs text-muted-foreground">
-                Set on/off cycle periods for this compound
-              </p>
-              
               {/* Cycle Mode Selection */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setCycleMode('one-time')}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      cycleMode === 'one-time'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    One-time Duration
-                  </button>
-                  <button
-                    onClick={() => setCycleMode('continuous')}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      cycleMode === 'continuous'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    On/Off Cycle
-                  </button>
-                </div>
-                
-                {/* Time Unit Toggle */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setCycleTimeUnit('weeks')}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
-                      cycleTimeUnit === 'weeks'
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    Weeks
-                  </button>
-                  <button
-                    onClick={() => setCycleTimeUnit('months')}
-                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
-                      cycleTimeUnit === 'months'
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    Months
-                  </button>
-                </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCycleMode('one-time')}
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    cycleMode === 'one-time'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  One-Time Duration
+                </button>
+                <button
+                  onClick={() => setCycleMode('continuous')}
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    cycleMode === 'continuous'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  On/Off Cycle
+                </button>
               </div>
               
-              {/* Duration Inputs */}
-              <div className={`grid gap-4 ${cycleMode === 'continuous' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">
-                    {cycleMode === 'one-time' ? 'Duration' : 'On Period'}
-                  </Label>
+              {/* Duration Inputs - inline with dropdown */}
+              <div className="space-y-3">
+                {/* On period row */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={cycleWeeksOn}
+                    onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
+                    min={1}
+                    max={52}
+                    className="h-11 w-20 text-center text-base"
+                  />
+                  <select
+                    value={cycleTimeUnit}
+                    onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
+                    className="h-11 bg-input border-border rounded-lg border px-3 text-sm"
+                  >
+                    <option value="weeks">weeks</option>
+                    <option value="months">months</option>
+                  </select>
+                  <span className="text-sm text-muted-foreground">on</span>
+                </div>
+                
+                {/* Off period row - only for continuous mode */}
+                {cycleMode === 'continuous' && (
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
-                      value={cycleWeeksOn}
-                      onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
+                      value={cycleWeeksOff}
+                      onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
                       min={1}
                       max={52}
-                      className="h-10 text-center"
+                      className="h-11 w-20 text-center text-base"
                     />
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">
-                      {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}
-                    </span>
-                  </div>
-                </div>
-                
-                {cycleMode === 'continuous' && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Off Period</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={cycleWeeksOff}
-                        onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
-                        min={1}
-                        max={52}
-                        className="h-10 text-center"
-                      />
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}
-                      </span>
-                    </div>
+                    <select
+                      value={cycleTimeUnit}
+                      onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
+                      className="h-11 bg-input border-border rounded-lg border px-3 text-sm"
+                    >
+                      <option value="weeks">weeks</option>
+                      <option value="months">months</option>
+                    </select>
+                    <span className="text-sm text-muted-foreground">off</span>
                   </div>
                 )}
               </div>
               
-              {/* Cycle Timeline Preview */}
-              <CycleTimeline
-                compound={{
-                  id: editingCompound?.id || 'preview',
-                  name: name || 'Preview',
-                  start_date: startDate,
-                  end_date: endDate || null,
-                  has_cycles: true,
-                  cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-                  cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-                  is_active: isActive,
-                }}
-              />
+              {/* Cycle Change Reminders */}
+              <div className="flex items-center justify-between py-2 border-t border-border pt-4">
+                <div>
+                  <Label htmlFor="cycleReminders" className="mb-0 text-base">Cycle Change Reminders</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
+                </div>
+                <Switch
+                  id="cycleReminders"
+                  checked={enableReminder}
+                  onCheckedChange={setEnableReminder}
+                />
+              </div>
+              
+              {/* Info text for one-time duration */}
+              {cycleMode === 'one-time' && (
+                <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+                  After {cycleWeeksOn} {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                </div>
+              )}
+              
+              {/* Cycle Timeline Preview - only for continuous cycles */}
+              {cycleMode === 'continuous' && (
+                <CycleTimeline
+                  compound={{
+                    id: editingCompound?.id || 'preview',
+                    name: name || 'Preview',
+                    start_date: startDate,
+                    end_date: endDate || null,
+                    has_cycles: true,
+                    cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+                    cycle_weeks_off: cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff,
+                    is_active: isActive,
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
