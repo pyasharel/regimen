@@ -124,322 +124,389 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     notes: 'Dual agonist'
   },
 
-  // Anabolic Steroids / TRT
+  // Anabolic Steroids / TRT - Updated with clinical research data
+  // Sources: PubMed PMC5915615, DrugBank, SteroidPlotter research
   'testosterone cypionate': {
-    halfLifeHours: 192, // ~8 days
+    halfLifeHours: 108, // ~4.5 days (PubMed: 4.05 days median)
+    tMaxHours: 96, // Peak at 4-5 days post-injection (DrugBank)
     category: 'steroid',
     displayName: 'Testosterone Cypionate',
     notes: 'Injectable (oil-based)'
   },
   'testosterone enanthate': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 108, // ~4.5 days (similar to cypionate)
+    tMaxHours: 96, // Peak at ~4 days
     category: 'steroid',
     displayName: 'Testosterone Enanthate',
     notes: 'Injectable (oil-based)'
   },
   'testosterone propionate': {
-    halfLifeHours: 48, // ~2 days
+    halfLifeHours: 19, // ~0.8 days (fast ester)
+    tMaxHours: 24, // Peak at ~1 day
     category: 'steroid',
     displayName: 'Testosterone Propionate',
     notes: 'Injectable (oil-based)'
   },
   'testosterone gel': {
     halfLifeHours: 24, // Designed for daily application to maintain steady state
+    tMaxHours: 4, // Peak at ~4 hours after application
     category: 'steroid',
     displayName: 'Testosterone Gel',
     notes: 'Transdermal (AndroGel, Testim) - apply daily'
   },
   'testosterone cream': {
     halfLifeHours: 24, // Similar to gel - daily application
+    tMaxHours: 4,
     category: 'steroid',
     displayName: 'Testosterone Cream',
     notes: 'Transdermal - apply daily'
   },
   'testosterone patch': {
     halfLifeHours: 24, // Designed for daily patch replacement
+    tMaxHours: 8,
     category: 'steroid',
     displayName: 'Testosterone Patch',
     notes: 'Transdermal (Androderm) - apply daily'
   },
   'testosterone undecanoate': {
     halfLifeHours: 504, // ~21 days (injectable Nebido)
+    tMaxHours: 168, // Peak at ~7 days
     category: 'steroid',
     displayName: 'Testosterone Undecanoate',
     notes: 'Nebido (injectable). Oral form (Jatenzo) has ~5hr half-life'
   },
   'testosterone undecanoate oral': {
     halfLifeHours: 5, // ~5 hours for oral Jatenzo
+    tMaxHours: 2,
     category: 'steroid',
     displayName: 'Testosterone Undecanoate (Oral)',
     notes: 'Jatenzo - take twice daily with food'
   },
   'androgel': {
     halfLifeHours: 24,
+    tMaxHours: 4,
     category: 'steroid',
     displayName: 'AndroGel',
     notes: 'Testosterone gel - apply daily'
   },
   'testim': {
     halfLifeHours: 24,
+    tMaxHours: 4,
     category: 'steroid',
     displayName: 'Testim',
     notes: 'Testosterone gel - apply daily'
   },
   'nandrolone decanoate': {
-    halfLifeHours: 288, // ~12 days (range: 6-12 days)
+    halfLifeHours: 144, // ~6 days (clinical studies)
+    tMaxHours: 72, // Peak at ~3 days
     category: 'steroid',
     displayName: 'Nandrolone Decanoate',
     notes: 'Deca-Durabolin'
   },
   'nandrolone phenylpropionate': {
-    halfLifeHours: 72, // ~3 days
+    halfLifeHours: 60, // ~2.5 days
+    tMaxHours: 24, // Peak at ~1 day
     category: 'steroid',
     displayName: 'Nandrolone Phenylpropionate',
     notes: 'NPP'
   },
   'boldenone undecylenate': {
     halfLifeHours: 336, // ~14 days
+    tMaxHours: 96, // Peak at ~4 days
     category: 'steroid',
     displayName: 'Boldenone Undecylenate',
     notes: 'Equipoise'
   },
   'trenbolone acetate': {
-    halfLifeHours: 48, // ~2 days
+    halfLifeHours: 24, // ~1 day (fast ester)
+    tMaxHours: 12, // Peak at ~12 hours
     category: 'steroid',
     displayName: 'Trenbolone Acetate',
   },
   'trenbolone enanthate': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 120, // ~5 days
+    tMaxHours: 72, // Peak at ~3 days
     category: 'steroid',
     displayName: 'Trenbolone Enanthate',
   },
   'masteron': {
     halfLifeHours: 48, // ~2 days (propionate default)
+    tMaxHours: 24,
     category: 'steroid',
     displayName: 'Masteron',
     notes: 'Drostanolone - specify Propionate or Enanthate'
   },
   'masteron propionate': {
     halfLifeHours: 48, // ~2 days
+    tMaxHours: 24,
     category: 'steroid',
     displayName: 'Masteron Propionate',
     notes: 'Drostanolone Propionate'
   },
   'masteron enanthate': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 120, // ~5 days
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Masteron Enanthate',
     notes: 'Drostanolone Enanthate'
   },
   'drostanolone propionate': {
     halfLifeHours: 48, // ~2 days
+    tMaxHours: 24,
     category: 'steroid',
     displayName: 'Drostanolone Propionate',
   },
   'drostanolone enanthate': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 120, // ~5 days
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Drostanolone Enanthate',
   },
   'primobolan': {
-    halfLifeHours: 168, // ~7 days (depot/enanthate)
+    halfLifeHours: 120, // ~5 days (depot/enanthate)
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Primobolan',
     notes: 'Methenolone - Injectable depot form'
   },
   'primobolan depot': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 120, // ~5 days
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Primobolan Depot',
     notes: 'Methenolone Enanthate (injectable)'
   },
   'methenolone enanthate': {
-    halfLifeHours: 168, // ~7 days
+    halfLifeHours: 120, // ~5 days
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Methenolone Enanthate',
   },
   'methenolone acetate': {
     halfLifeHours: 6, // ~6 hours (oral)
+    tMaxHours: 2,
     category: 'steroid',
     displayName: 'Methenolone Acetate',
     notes: 'Oral Primobolan'
   },
   'hcg': {
-    halfLifeHours: 36,
+    halfLifeHours: 29, // ~29 hours (clinical data)
+    tMaxHours: 6, // Peak at ~6 hours
     category: 'peptide',
     displayName: 'HCG',
   },
   
-  // Additional steroids
+  // Additional steroids - with Tmax for oral steroids (fast absorption)
   'testosterone': {
-    halfLifeHours: 168, // Default to enanthate-like
+    halfLifeHours: 108, // Default to enanthate-like
+    tMaxHours: 96,
     category: 'steroid',
     displayName: 'Testosterone',
   },
   'sustanon': {
-    halfLifeHours: 384, // ~16 days (due to decanoate ester)
+    halfLifeHours: 360, // ~15 days (blend of esters)
+    tMaxHours: 48, // Fast esters peak early, slow esters extend
     category: 'steroid',
     displayName: 'Sustanon 250',
+    notes: 'Blend: propionate, phenylpropionate, isocaproate, decanoate'
   },
   'deca': {
-    halfLifeHours: 288, // ~12 days (range: 6-12 days)
+    halfLifeHours: 144, // ~6 days
+    tMaxHours: 72,
     category: 'steroid',
     displayName: 'Deca',
   },
   'anavar': {
     halfLifeHours: 9,
+    tMaxHours: 1, // Oral - peaks quickly
     category: 'steroid',
     displayName: 'Anavar',
   },
   'oxandrolone': {
     halfLifeHours: 9,
+    tMaxHours: 1,
     category: 'steroid',
     displayName: 'Oxandrolone',
   },
   'winstrol': {
     halfLifeHours: 9, // Oral version
+    tMaxHours: 1,
     category: 'steroid',
     displayName: 'Winstrol',
   },
+  'winstrol depot': {
+    halfLifeHours: 24, // Injectable version
+    tMaxHours: 12,
+    category: 'steroid',
+    displayName: 'Winstrol Depot',
+    notes: 'Stanozolol injectable (water-based)'
+  },
   'stanozolol': {
     halfLifeHours: 9,
+    tMaxHours: 1,
     category: 'steroid',
     displayName: 'Stanozolol',
   },
   'dianabol': {
     halfLifeHours: 5,
+    tMaxHours: 1.5, // Peak at 1-2 hours
     category: 'steroid',
     displayName: 'Dianabol',
   },
   'methandrostenolone': {
     halfLifeHours: 5,
+    tMaxHours: 1.5,
     category: 'steroid',
     displayName: 'Methandrostenolone',
   },
   'anadrol': {
     halfLifeHours: 9,
+    tMaxHours: 2,
     category: 'steroid',
     displayName: 'Anadrol',
   },
   'oxymetholone': {
     halfLifeHours: 9,
+    tMaxHours: 2,
     category: 'steroid',
     displayName: 'Oxymetholone',
   },
   'turinabol': {
     halfLifeHours: 16,
+    tMaxHours: 3,
     category: 'steroid',
     displayName: 'Turinabol',
   },
   'halotestin': {
     halfLifeHours: 9,
+    tMaxHours: 2,
     category: 'steroid',
     displayName: 'Halotestin',
   },
   'proviron': {
     halfLifeHours: 12,
+    tMaxHours: 3,
     category: 'steroid',
     displayName: 'Proviron',
   },
   'superdrol': {
     halfLifeHours: 8,
+    tMaxHours: 1,
     category: 'steroid',
     displayName: 'Superdrol',
   },
   
-  // More peptides with known half-lives
+  // Peptides with known half-lives and Tmax values
   'bpc-157': {
     halfLifeHours: 5, // ~4-6 hours estimated
+    tMaxHours: 0.5, // Peak at ~30 min (subcutaneous)
     category: 'peptide',
     displayName: 'BPC-157',
   },
   'tb-500': {
     halfLifeHours: 2,
+    tMaxHours: 0.25, // Peak at ~15 min
     category: 'peptide',
     displayName: 'TB-500',
   },
   'thymosin beta-4': {
     halfLifeHours: 2,
+    tMaxHours: 0.25,
     category: 'peptide',
     displayName: 'Thymosin Beta-4',
   },
   'bpc + tb-500': {
     halfLifeHours: 3.5, // Average of BPC-157 (~5h) and TB-500 (~2h)
+    tMaxHours: 0.5,
     category: 'peptide',
     displayName: 'BPC + TB-500',
     notes: 'BPC-157 and TB-500 combination'
   },
   'ipamorelin': {
     halfLifeHours: 2,
+    tMaxHours: 0.25, // Peak at ~15-30 min
     category: 'peptide',
     displayName: 'Ipamorelin',
   },
   'cjc-1295': {
     halfLifeHours: 168, // ~7 days WITH DAC (without DAC: ~30 min)
+    tMaxHours: 4, // Peak at ~4 hours
     category: 'peptide',
     displayName: 'CJC-1295',
     notes: 'With DAC modification - without DAC only ~30 min'
   },
   'cjc-1295 dac': {
     halfLifeHours: 168, // ~5-8 days
+    tMaxHours: 4,
     category: 'peptide',
     displayName: 'CJC-1295 DAC',
     notes: 'Drug Affinity Complex extends half-life'
   },
   'cjc-1295 no dac': {
     halfLifeHours: 0.5, // ~30 minutes
+    tMaxHours: 0.1, // Peak at ~6 min
     category: 'peptide',
     displayName: 'CJC-1295 (no DAC)',
     notes: 'Also called Mod GRF 1-29'
   },
   'mod grf 1-29': {
     halfLifeHours: 0.5, // ~30 minutes
+    tMaxHours: 0.1,
     category: 'peptide',
     displayName: 'Mod GRF 1-29',
     notes: 'CJC-1295 without DAC'
   },
   'sermorelin': {
     halfLifeHours: 0.2, // ~10-20 minutes
+    tMaxHours: 0.05, // Peak at ~3 min
     category: 'peptide',
     displayName: 'Sermorelin',
   },
   'ghrp-6': {
     halfLifeHours: 0.5,
+    tMaxHours: 0.25,
     category: 'peptide',
     displayName: 'GHRP-6',
   },
   'ghrp-2': {
     halfLifeHours: 0.5,
+    tMaxHours: 0.25,
     category: 'peptide',
     displayName: 'GHRP-2',
   },
   'mk-677': {
     halfLifeHours: 24,
+    tMaxHours: 4, // Peak at ~4 hours (oral)
     category: 'peptide',
     displayName: 'MK-677',
   },
   'ibutamoren': {
     halfLifeHours: 24,
+    tMaxHours: 4,
     category: 'peptide',
     displayName: 'Ibutamoren',
   },
   'pt-141': {
     halfLifeHours: 2,
+    tMaxHours: 0.5,
     category: 'peptide',
     displayName: 'PT-141',
   },
   'bremelanotide': {
     halfLifeHours: 2,
+    tMaxHours: 0.5,
     category: 'peptide',
     displayName: 'Bremelanotide',
   },
   'melanotan ii': {
     halfLifeHours: 0.5,
+    tMaxHours: 0.1,
     category: 'peptide',
     displayName: 'Melanotan II',
   },
   'melanotan 2': {
     halfLifeHours: 0.5,
+    tMaxHours: 0.1,
     category: 'peptide',
     displayName: 'Melanotan 2',
   },
