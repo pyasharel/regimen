@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash, Info } from "lucide-react";
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -187,9 +186,23 @@ export const CompoundDetailScreen = () => {
     ? Math.max(...rawChartData.map(p => p.absoluteLevel)) 
     : 0;
   
+  // Smart Y-axis formatting for small decimals
+  const formatYAxis = (value: number) => {
+    if (value === 0) return '0';
+    if (value >= 100) return Math.round(value).toString();
+    if (value >= 10) return value.toFixed(1);
+    if (value >= 1) return value.toFixed(1);
+    if (value >= 0.1) return value.toFixed(2);
+    return value.toFixed(3);
+  };
+  
   // Round up to nice number for Y-axis max
   const getAxisMax = (max: number) => {
-    if (max <= 0) return 100;
+    if (max <= 0) return 1;
+    if (max < 0.01) return 0.01;
+    if (max < 0.1) return Math.ceil(max * 100) / 100;
+    if (max < 1) return Math.ceil(max * 10) / 10;
+    if (max < 10) return Math.ceil(max);
     const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
     const normalized = max / magnitude;
     if (normalized <= 1) return magnitude;
@@ -198,7 +211,7 @@ export const CompoundDetailScreen = () => {
     return 10 * magnitude;
   };
   
-  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.1); // Add 10% headroom
+  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.15); // Add 15% headroom
   
   const chartData = rawChartData.map(point => ({
     date: format(point.timestamp, 'MMM d'),
@@ -491,18 +504,6 @@ export const CompoundDetailScreen = () => {
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-sm">Estimated Levels</span>
-                <TooltipProvider>
-                  <UITooltip>
-                    <TooltipTrigger asChild>
-                      <button className="p-0.5 rounded-full hover:bg-muted/50 transition-colors">
-                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[200px] text-center">
-                      <p className="text-xs">For informational purposes only. Not medical advice.</p>
-                    </TooltipContent>
-                  </UITooltip>
-                </TooltipProvider>
               </div>
               <div className="flex gap-1">
                 {(['1W', '1M', '3M', '6M'] as const).map((range) => (
@@ -564,8 +565,8 @@ export const CompoundDetailScreen = () => {
                     tickLine={false}
                     axisLine={false}
                     domain={[0, yAxisMax]}
-                    tickFormatter={(v) => `${v}`}
-                    width={35}
+                    tickFormatter={formatYAxis}
+                    width={40}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
