@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
 type Theme = "dark" | "light" | "system";
 
@@ -14,28 +16,63 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: "dark",
   setTheme: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
+// Helper to get theme from storage (Capacitor Preferences for native, localStorage for web)
+const getStoredTheme = async (storageKey: string): Promise<Theme | null> => {
+  if (Capacitor.isNativePlatform()) {
+    const { value } = await Preferences.get({ key: storageKey });
+    return value as Theme | null;
+  } else {
+    return localStorage.getItem(storageKey) as Theme | null;
+  }
+};
+
+// Helper to set theme in storage
+const setStoredTheme = async (storageKey: string, theme: Theme): Promise<void> => {
+  if (Capacitor.isNativePlatform()) {
+    await Preferences.set({ key: storageKey, value: theme });
+  } else {
+    localStorage.setItem(storageKey, theme);
+  }
+};
+
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "dark",
   storageKey = "ui-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem(storageKey) as Theme;
-    // Force dark mode as default if nothing is stored
-    if (!stored) {
-      localStorage.setItem(storageKey, defaultTheme);
-      return defaultTheme;
-    }
-    return stored;
-  });
+  // Start with default theme, then load from storage
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [isLoaded, setIsLoaded] = useState(false);
 
+  // Load theme from persistent storage on mount
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const stored = await getStoredTheme(storageKey);
+        if (stored) {
+          setThemeState(stored);
+        } else {
+          // No stored theme, save the default
+          await setStoredTheme(storageKey, defaultTheme);
+        }
+      } catch (error) {
+        console.error('Error loading theme from storage:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    
+    loadTheme();
+  }, [storageKey, defaultTheme]);
+
+  // Apply theme to document
   useEffect(() => {
     const root = window.document.documentElement;
 
@@ -54,12 +91,20 @@ export function ThemeProvider({
     root.classList.add(theme);
   }, [theme]);
 
+  const setTheme = async (newTheme: Theme) => {
+    try {
+      await setStoredTheme(storageKey, newTheme);
+      setThemeState(newTheme);
+    } catch (error) {
+      console.error('Error saving theme to storage:', error);
+      // Still update the state even if storage fails
+      setThemeState(newTheme);
+    }
+  };
+
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
+    setTheme,
   };
 
   return (
