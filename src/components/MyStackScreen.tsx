@@ -409,7 +409,7 @@ export const MyStackScreen = () => {
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse flex-shrink-0" />
+                      <div className="mt-1.5 h-2 w-2 rounded-full bg-[#FF6B6B] shadow-sm shadow-[#FF6B6B]/50 animate-pulse flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-bold text-foreground leading-tight">{compound.name}</h3>
@@ -430,59 +430,72 @@ export const MyStackScreen = () => {
                           {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}
                         </p>
                         
-                        {/* Cycle Status - Only show if has_cycles is true */}
-                        {compound.has_cycles && (() => {
-                          const cycleStatus = calculateCycleStatus(
-                            compound.start_date,
-                            compound.cycle_weeks_on,
-                            compound.cycle_weeks_off
-                          );
+                        {/* Cycle Status or Ongoing Status */}
+                        {(() => {
+                          // If compound has cycles, show cycle status
+                          if (compound.has_cycles) {
+                            const cycleStatus = calculateCycleStatus(
+                              compound.start_date,
+                              compound.cycle_weeks_on,
+                              compound.cycle_weeks_off
+                            );
+                            
+                            if (!cycleStatus) return null;
+                            
+                            // For one-time cycles that have ended, don't show status
+                            if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
+                            
+                            const isOnCycle = cycleStatus.currentPhase === 'on';
+                            
+                            return (
+                              <div className="mt-3 pt-3 border-t border-border/50">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                      isOnCycle 
+                                        ? 'bg-[#FF6B6B] animate-pulse' 
+                                        : 'bg-muted-foreground'
+                                    }`} />
+                                    <span className={`text-xs font-semibold uppercase tracking-wider ${
+                                      isOnCycle 
+                                        ? 'text-[#FF6B6B]' 
+                                        : 'text-muted-foreground'
+                                    }`}>
+                                      {isOnCycle ? 'ON CYCLE' : 'OFF CYCLE'}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                    Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={cycleStatus.progressPercentage} 
+                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-[#FF6B6B]' : '[&>div]:bg-muted-foreground'}`}
+                                />
+                              </div>
+                            );
+                          }
                           
-                          if (!cycleStatus) return null;
-                          
-                          // For one-time cycles that have ended, don't show status
-                          if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
-                          
-                          // Format cycle pattern display - show in months if >= 4 weeks
-                          const formatCyclePeriod = (weeks: number) => {
-                            if (weeks >= 4 && weeks % 4 === 0) {
-                              const months = weeks / 4;
-                              return `${months} ${months === 1 ? 'month' : 'months'}`;
-                            }
-                            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
-                          };
-                          
-                          const cyclePattern = compound.cycle_weeks_off 
-                            ? `${formatCyclePeriod(compound.cycle_weeks_on)} on, ${formatCyclePeriod(compound.cycle_weeks_off)} off`
-                            : `${formatCyclePeriod(compound.cycle_weeks_on)} duration`;
+                          // If no cycles, show as ONGOING
+                          const startDate = new Date(compound.start_date + 'T00:00:00');
+                          const now = new Date();
+                          now.setHours(0, 0, 0, 0);
+                          startDate.setHours(0, 0, 0, 0);
+                          const daysActive = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
                           
                           return (
                             <div className="mt-3 pt-3 border-t border-border/50">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                                    cycleStatus.currentPhase === 'on' 
-                                      ? 'bg-primary animate-pulse' 
-                                      : 'bg-muted-foreground'
-                                  }`} />
-                                  <span className={`text-xs font-semibold uppercase tracking-wider ${
-                                    cycleStatus.currentPhase === 'on' 
-                                      ? 'text-primary' 
-                                      : 'text-muted-foreground'
-                                  }`}>
-                                    {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-[#FF6B6B] animate-pulse" />
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-[#FF6B6B]">
+                                    ONGOING
                                   </span>
                                 </div>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                  {cyclePattern}
-                                </span>
                               </div>
                               <Progress 
-                                value={cycleStatus.progressPercentage} 
-                                className="h-1.5"
+                                value={100} 
+                                className="h-1.5 [&>div]:bg-[#FF6B6B]"
                               />
                             </div>
                           );
