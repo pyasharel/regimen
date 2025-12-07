@@ -195,22 +195,19 @@ export const CompoundDetailScreen = () => {
     return value.toFixed(2);
   };
   
-  // Round up to nice number for Y-axis max
+  // Round up to nice number for Y-axis max - tighter scaling
   const getAxisMax = (max: number) => {
     if (max <= 0) return 1;
-    if (max < 0.01) return 0.01;
-    if (max < 0.1) return Math.ceil(max * 100) / 100;
     if (max < 1) return Math.ceil(max * 10) / 10;
     if (max < 10) return Math.ceil(max);
-    const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
-    const normalized = max / magnitude;
-    if (normalized <= 1) return magnitude;
-    if (normalized <= 2) return 2 * magnitude;
-    if (normalized <= 5) return 5 * magnitude;
-    return 10 * magnitude;
+    if (max < 50) return Math.ceil(max / 5) * 5;      // Round to 5s
+    if (max < 100) return Math.ceil(max / 10) * 10;   // Round to 10s
+    if (max < 500) return Math.ceil(max / 25) * 25;   // Round to 25s
+    if (max < 1000) return Math.ceil(max / 50) * 50;  // Round to 50s
+    return Math.ceil(max / 100) * 100;                // Round to 100s
   };
   
-  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.15); // Add 15% headroom
+  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.1); // 10% headroom
   
   const chartData = rawChartData.map(point => ({
     date: format(point.timestamp, 'MMM d'),
