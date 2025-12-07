@@ -11,64 +11,114 @@
 
 export interface MedicationHalfLife {
   halfLifeHours: number;
+  tMaxHours?: number; // Time to reach peak concentration (default calculated from half-life)
   category: 'glp1' | 'steroid' | 'peptide' | 'other';
   displayName: string;
   notes?: string;
 }
+
+/**
+ * Get the Tmax (time to peak) for a medication
+ * Uses explicit tMaxHours if available, otherwise estimates based on category and half-life
+ */
+export const getTmax = (data: MedicationHalfLife): number => {
+  // Use explicit Tmax if provided
+  if (data.tMaxHours !== undefined) {
+    return data.tMaxHours;
+  }
+  
+  // Estimate Tmax based on category and half-life
+  // Generally, Tmax is much shorter than half-life for injectable medications
+  switch (data.category) {
+    case 'glp1':
+      // GLP-1s (subcutaneous) typically reach peak in 1-3 days
+      // Longer-acting formulations take longer to peak
+      if (data.halfLifeHours >= 120) {
+        return 24; // ~1 day for weekly injectables (semaglutide, tirzepatide)
+      }
+      return 8; // 8 hours for shorter-acting (liraglutide)
+    case 'steroid':
+      // Injectable steroids: Tmax varies by ester
+      if (data.halfLifeHours >= 168) {
+        return 48; // Long esters (cypionate, enanthate) ~2 days
+      } else if (data.halfLifeHours >= 48) {
+        return 24; // Medium esters (propionate) ~1 day
+      }
+      return 4; // Oral steroids ~4 hours
+    case 'peptide':
+      // Most peptides peak quickly (15 min - 2 hours)
+      if (data.halfLifeHours >= 24) {
+        return 4; // Longer-acting peptides (MK-677, CJC-1295 DAC)
+      }
+      return Math.max(0.25, data.halfLifeHours * 0.3); // Quick peptides peak at ~30% of half-life
+    default:
+      // Default: estimate Tmax as roughly 20% of half-life, min 1 hour
+      return Math.max(1, data.halfLifeHours * 0.2);
+  }
+};
 
 // Map medication names (lowercase) to half-life data
 export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
   // GLP-1 Agonists
   'semaglutide': {
     halfLifeHours: 168, // ~7 days
+    tMaxHours: 24, // Peak at ~1 day post-injection
     category: 'glp1',
     displayName: 'Semaglutide',
     notes: 'Ozempic, Wegovy, Rybelsus'
   },
   'tirzepatide': {
     halfLifeHours: 120, // ~5 days
+    tMaxHours: 24, // Peak at ~1 day post-injection
     category: 'glp1',
     displayName: 'Tirzepatide',
     notes: 'Mounjaro, Zepbound'
   },
   'liraglutide': {
     halfLifeHours: 13,
+    tMaxHours: 10, // Peak at ~8-12 hours
     category: 'glp1',
     displayName: 'Liraglutide',
     notes: 'Victoza, Saxenda'
   },
   'dulaglutide': {
     halfLifeHours: 120, // ~5 days
+    tMaxHours: 48, // Peak at ~24-72 hours
     category: 'glp1',
     displayName: 'Dulaglutide',
     notes: 'Trulicity'
   },
   'exenatide': {
     halfLifeHours: 2.4,
+    tMaxHours: 2, // Peak at ~2 hours
     category: 'glp1',
     displayName: 'Exenatide',
     notes: 'Byetta (immediate release)'
   },
   'exenatide er': {
     halfLifeHours: 168, // ~7 days (extended release)
+    tMaxHours: 48, // Slow release peaks later
     category: 'glp1',
     displayName: 'Exenatide ER',
     notes: 'Bydureon'
   },
   'retatrutide': {
     halfLifeHours: 144, // ~6 days (estimated from trials)
+    tMaxHours: 24, // Estimated similar to other weekly GLP-1s
     category: 'glp1',
     displayName: 'Retatrutide',
     notes: 'Triple agonist (GLP-1/GIP/Glucagon)'
   },
   'survodutide': {
     halfLifeHours: 144, // ~6 days (estimated)
+    tMaxHours: 24,
     category: 'glp1',
     displayName: 'Survodutide',
     notes: 'Dual agonist'
   },
   'mazdutide': {
     halfLifeHours: 144, // ~6 days (estimated)
+    tMaxHours: 24,
     category: 'glp1',
     displayName: 'Mazdutide',
     notes: 'Dual agonist'

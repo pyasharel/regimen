@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
-import { getHalfLifeData } from "@/utils/halfLifeData";
+import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot } from 'recharts';
 import { format, subDays } from 'date-fns';
@@ -151,7 +151,7 @@ export const CompoundDetailScreen = () => {
   }));
 
   const currentLevel = halfLifeData && takenDosesForCalc.length > 0
-    ? calculateCurrentLevel(takenDosesForCalc, halfLifeData.halfLifeHours)
+    ? calculateCurrentLevel(takenDosesForCalc, halfLifeData.halfLifeHours, getTmax(halfLifeData))
     : null;
 
   const getRangeInDays = () => {
@@ -176,7 +176,8 @@ export const CompoundDetailScreen = () => {
         subDays(new Date(), getRangeInDays()),
         new Date(),
         pointsPerDay,
-        true // Include future projections until clearance
+        true, // Include future projections until clearance
+        getTmax(halfLifeData) // Pass Tmax for absorption curve
       ).map(point => ({
         date: format(point.timestamp, 'MMM d'),
         timestamp: point.timestamp.getTime(),
