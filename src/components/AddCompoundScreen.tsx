@@ -13,7 +13,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TimePicker } from "@/components/ui/time-picker";
 import { IOSTimePicker } from "@/components/ui/ios-time-picker";
 import { Textarea } from "@/components/ui/textarea";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +33,6 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
-import { CycleTimeline } from "@/components/CycleTimeline";
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
@@ -168,13 +166,12 @@ export const AddCompoundScreen = () => {
   const [notes, setNotes] = useState("");
   const [enableReminder, setEnableReminder] = useState(true);
 
-  // Cycles (premium) - simple on/off weeks
-  
-  // Legacy cycle state (for backwards compatibility with existing compounds)
+  // Cycle (premium)
   const [enableCycle, setEnableCycle] = useState(false);
   const [cycleMode, setCycleMode] = useState<'continuous' | 'one-time'>('one-time');
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
+  const [cycleReminders, setCycleReminders] = useState(true);
   const [cycleTimeUnit, setCycleTimeUnit] = useState<'weeks' | 'months'>('weeks');
 
   // Active status
@@ -423,44 +420,6 @@ export const AddCompoundScreen = () => {
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
 
-  // Calculate IU for a given dose amount (used by phase timeline)
-  const calculateUnitsForDose = (doseAmount: number): number | null => {
-    if (!vialSize || !bacWater || !doseAmount) return null;
-    
-    const vialNum = parseFloat(vialSize);
-    const bacWaterNum = parseFloat(bacWater);
-    
-    if (isNaN(vialNum) || isNaN(bacWaterNum) || vialNum <= 0 || bacWaterNum <= 0 || doseAmount <= 0) {
-      return null;
-    }
-
-    // Convert everything to mcg for consistent calculation
-    const vialMcg = vialUnit === 'mg' ? vialNum * 1000 : vialNum;
-    
-    // Convert dose to mcg based on unit
-    let doseMcg: number;
-    if (doseUnit === 'mg') {
-      doseMcg = doseAmount * 1000;
-    } else if (doseUnit === 'mcg') {
-      doseMcg = doseAmount;
-    } else {
-      return null;
-    }
-    
-    if (doseMcg > vialMcg) return null;
-    
-    const concentrationMcgPerML = vialMcg / bacWaterNum;
-    if (concentrationMcgPerML <= 0 || !isFinite(concentrationMcgPerML)) return null;
-    
-    const volumeML = doseMcg / concentrationMcgPerML;
-    if (volumeML <= 0 || !isFinite(volumeML)) return null;
-    
-    const syringeUnits = volumeML * 100;
-    return syringeUnits > 0 && isFinite(syringeUnits) 
-      ? Math.round(syringeUnits * 10) / 10 
-      : null;
-  };
-
   // Don't auto-populate dose - let user enter their intended dose
   // The calculator will show them the IU amount based on their dose
 
@@ -532,7 +491,7 @@ export const AddCompoundScreen = () => {
   };
 
   const generateDoses = (compoundId: string, userId: string, includesPast: boolean = false) => {
-    const doses: any[] = [];
+    const doses = [];
     // Parse date in local timezone
     const start = createLocalDate(startDate);
     if (!start) {
@@ -555,6 +514,7 @@ export const AddCompoundScreen = () => {
     let daysToGenerate: number;
     
     if (includesPast && start < today) {
+      // For past dates, calculate days from start to today + 60 days forward
       const totalDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + maxDays;
       daysToGenerate = totalDays;
     } else {
@@ -568,11 +528,11 @@ export const AddCompoundScreen = () => {
         daysToGenerate = Math.min(daysToGenerate, Math.max(0, daysDiff + 1));
       }
     }
-
+    
     for (let i = 0; i < daysToGenerate; i++) {
       const date = new Date(effectiveStart);
       date.setDate(date.getDate() + i);
-      const dayOfWeek = date.getDay();
+      const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
       
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
@@ -581,28 +541,28 @@ export const AddCompoundScreen = () => {
         }
       }
       
-      if (frequency === 'Every X Days') {
-        const daysSinceOriginalStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        if (daysSinceOriginalStart % everyXDays !== 0) {
-          continue;
-        }
+      if (frequency === 'Every X Days' && i % everyXDays !== 0) {
+        continue;
       }
-
-      // Calculate days since original start for cycle logic
-      const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
       // Check cycle logic - skip if in "off" period
       if (enableCycle && cycleMode === 'continuous') {
+        // Calculate days since original start date (not effective start)
+        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        // Convert to days: if cycleTimeUnit is months, multiply by ~30 days, else by 7
         const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
         const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
         const cycleLength = weeksOnInDays + weeksOffInDays;
         const positionInCycle = daysSinceStart % cycleLength;
         
+        // Skip if we're in the "off" period
         if (positionInCycle >= weeksOnInDays) {
           continue;
         }
       } else if (enableCycle && cycleMode === 'one-time') {
+        // For one-time cycles, only generate for the "on" weeks
         const onPeriodDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
+        const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         if (daysSinceStart >= onPeriodDays) {
           continue;
         }
@@ -728,10 +688,8 @@ export const AddCompoundScreen = () => {
         has_cycles: enableCycle,
         cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
         cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-        cycle_reminders_enabled: enableCycle ? (localStorage.getItem('cycleReminders') !== 'false') : false,
-            is_active: isActive,
-            has_titration: false,
-            titration_config: null
+        cycle_reminders_enabled: enableCycle ? cycleReminders : false,
+            is_active: isActive
           })
           .eq('id', editingCompound.id);
 
@@ -821,18 +779,20 @@ export const AddCompoundScreen = () => {
             }
           });
 
-        // Schedule cycle reminders if enabled (check global setting)
-        const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
-        if (enableCycle && cycleRemindersEnabled) {
-          scheduleCycleReminders({
-            id: editingCompound.id,
-            name,
-            start_date: startDate,
-            cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-            cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-            has_cycles: true,
-            cycle_reminders_enabled: true
-          });
+        // Schedule cycle reminders if enabled
+        if (enableCycle && cycleReminders) {
+          const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
+          if (cycleRemindersEnabled) {
+            scheduleCycleReminders({
+              id: editingCompound.id,
+              name,
+              start_date: startDate,
+              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
+              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+              has_cycles: true,
+              cycle_reminders_enabled: true
+            });
+          }
         }
         return;
       } else {
@@ -861,9 +821,7 @@ export const AddCompoundScreen = () => {
             has_cycles: enableCycle,
             cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
             cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
-            is_active: isActive,
-            has_titration: false,
-            titration_config: null
+            is_active: isActive
           }])
           .select()
           .single();
@@ -1493,154 +1451,138 @@ export const AddCompoundScreen = () => {
             />
           </div>
 
+          {/* Reminder Toggle */}
+          <div className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+            <Label htmlFor="reminder" className="mb-0">Set Reminder</Label>
+            <Switch
+              id="reminder"
+              checked={enableReminder}
+              onCheckedChange={setEnableReminder}
+            />
+          </div>
         </div>
 
-        {/* Cycles Section - Simple On/Off */}
-        <div className="bg-background rounded-lg border border-border overflow-hidden">
-          {/* Header section */}
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Cycle
-              </h2>
+        {/* Cycle (Premium) */}
+        <div className="space-y-4 bg-background rounded-lg p-4 border border-border max-w-2xl">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
               {!isSubscribed && (
-                <span 
+                <button
+                  type="button"
                   onClick={() => setShowPaywall(true)}
-                  className="text-xs text-muted-foreground hover:text-primary cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
-                  🔒
-                </span>
+                  🔒 <span className="underline">Subscribe</span>
+                </button>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Automatically pause and resume this compound on a schedule
-            </p>
-            
-            {/* Enable Cycling toggle */}
-            <div className="flex items-center justify-between pt-2">
-              <Label htmlFor="enableCycle" className="mb-0 text-base">Enable Cycling</Label>
-              <Switch
-                id="enableCycle"
-                checked={enableCycle}
-                onCheckedChange={(checked) => {
-                  if (!isSubscribed) {
-                    setShowPaywall(true);
-                    return;
-                  }
-                  setEnableCycle(checked);
-                }}
-              />
-            </div>
+            <p className="text-xs text-muted-foreground">Advanced: Automatically pause and resume this compound on a schedule</p>
           </div>
-          
-          {/* Content when enabled */}
+
+          <div className="flex items-center justify-between py-2">
+            <Label htmlFor="enableCycle" className="mb-0 text-sm">Enable Cycling</Label>
+            <Switch
+              id="enableCycle"
+              checked={enableCycle}
+              onCheckedChange={setEnableCycle}
+            />
+          </div>
+
           {enableCycle && (
-            <div className="px-4 pb-4 pt-0 space-y-4">
-              {/* Cycle Mode Selection */}
+            <div className="space-y-4">
               <div className="flex gap-2">
                 <button
                   onClick={() => setCycleMode('one-time')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
                     cycleMode === 'one-time'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      : 'bg-card border border-border hover:bg-muted'
                   }`}
                 >
                   One-Time Duration
                 </button>
                 <button
                   onClick={() => setCycleMode('continuous')}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
                     cycleMode === 'continuous'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      : 'bg-card border border-border hover:bg-muted'
                   }`}
                 >
                   On/Off Cycle
                 </button>
               </div>
-              
-              {/* Duration Inputs - inline with dropdown */}
-              <div className="space-y-3">
-                {/* On period row */}
+
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  value={cycleWeeksOn}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val) && val >= 0.5) {
+                      setCycleWeeksOn(val);
+                    }
+                  }}
+                  className="w-20"
+                />
+                <select
+                  value={cycleTimeUnit}
+                  onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
+                  className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
+                >
+                  <option value="weeks">weeks</option>
+                  <option value="months">months</option>
+                </select>
+                <span className="text-sm">on</span>
+              </div>
+
+              {cycleMode === 'continuous' && (
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    value={cycleWeeksOn}
-                    onChange={(e) => setCycleWeeksOn(parseInt(e.target.value) || 1)}
-                    min={1}
-                    max={52}
-                    className="h-11 w-20 text-center text-base"
+                    step="0.5"
+                    min="0.5"
+                    value={cycleWeeksOff}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val >= 0.5) {
+                        setCycleWeeksOff(val);
+                      }
+                    }}
+                    className="w-20"
                   />
                   <select
                     value={cycleTimeUnit}
                     onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                    className="h-11 bg-input border-border rounded-lg border px-3 text-sm"
+                    className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
                   >
                     <option value="weeks">weeks</option>
                     <option value="months">months</option>
                   </select>
-                  <span className="text-sm text-muted-foreground">on</span>
-                </div>
-                
-                {/* Off period row - only for continuous mode */}
-                {cycleMode === 'continuous' && (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={cycleWeeksOff}
-                      onChange={(e) => setCycleWeeksOff(parseInt(e.target.value) || 1)}
-                      min={1}
-                      max={52}
-                      className="h-11 w-20 text-center text-base"
-                    />
-                    <select
-                      value={cycleTimeUnit}
-                      onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                      className="h-11 bg-input border-border rounded-lg border px-3 text-sm"
-                    >
-                      <option value="weeks">weeks</option>
-                      <option value="months">months</option>
-                    </select>
-                    <span className="text-sm text-muted-foreground">off</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Cycle Change Reminders */}
-              <div className="flex items-center justify-between py-2 border-t border-border pt-4">
-                <div>
-                  <Label htmlFor="cycleReminders" className="mb-0 text-base">Cycle Change Reminders</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
-                </div>
-                <Switch
-                  id="cycleReminders"
-                  checked={enableReminder}
-                  onCheckedChange={setEnableReminder}
-                />
-              </div>
-              
-              {/* Info text for one-time duration */}
-              {cycleMode === 'one-time' && (
-                <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                  After {cycleWeeksOn} {cycleTimeUnit === 'weeks' ? 'weeks' : 'months'}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                  <span className="text-sm">off</span>
                 </div>
               )}
               
-              {/* Cycle Timeline Preview - only for continuous cycles */}
-              {cycleMode === 'continuous' && (
-                <CycleTimeline
-                  compound={{
-                    id: editingCompound?.id || 'preview',
-                    name: name || 'Preview',
-                    start_date: startDate,
-                    end_date: endDate || null,
-                    has_cycles: true,
-                    cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-                    cycle_weeks_off: cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff,
-                    is_active: isActive,
-                  }}
+              {/* Cycle Reminders Toggle - Moved after duration inputs */}
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                <div className="flex-1">
+                  <Label htmlFor="cycle-reminders" className="mb-0 text-sm font-medium">Cycle Change Reminders</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get notified before cycle transitions</p>
+                </div>
+                <Switch
+                  id="cycle-reminders"
+                  checked={cycleReminders}
+                  onCheckedChange={setCycleReminders}
                 />
+              </div>
+
+              {cycleMode === 'one-time' && (
+                <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                  After {cycleWeeksOn} {cycleTimeUnit === 'months' ? (cycleWeeksOn !== 1 ? 'months' : 'month') : (cycleWeeksOn !== 1 ? 'weeks' : 'week')}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                </p>
               )}
             </div>
           )}

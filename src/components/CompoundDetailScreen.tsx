@@ -637,21 +637,13 @@ export const CompoundDetailScreen = () => {
                     ? 'bg-primary/20 text-primary' 
                     : 'bg-muted text-muted-foreground'
                 }`}>
-                  {cycleStatus.currentPhase === 'on' ? 'On Cycle' : 'Off Cycle'}
+                  {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
                 </div>
               </div>
               <div className="text-sm text-muted-foreground mb-2">
                 Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
               </div>
-              {/* Progress bar with clear colors */}
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all ${
-                    cycleStatus.currentPhase === 'on' ? 'bg-primary' : 'bg-muted-foreground/50'
-                  }`}
-                  style={{ width: `${cycleStatus.progressPercentage}%` }}
-                />
-              </div>
+              <Progress value={cycleStatus.progressPercentage} className="h-2" />
             </div>
           );
         })()}

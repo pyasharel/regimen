@@ -430,67 +430,62 @@ export const MyStackScreen = () => {
                           {getScheduleDisplay(compound)} • Active {getDaysActive(compound.start_date)}
                         </p>
                         
-                        {/* Status Section - Show cycle status or ongoing status */}
-                        {(() => {
-                          if (compound.has_cycles) {
-                            const cycleStatus = calculateCycleStatus(
-                              compound.start_date,
-                              compound.cycle_weeks_on,
-                              compound.cycle_weeks_off
-                            );
-                            
-                            if (!cycleStatus) return null;
-                            
-                            // For one-time cycles that have ended, don't show status
-                            if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
-                            
-                            return (
-                              <div className="mt-3 pt-3 border-t border-border/50">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                                      cycleStatus.currentPhase === 'on' 
-                                        ? 'bg-primary animate-pulse' 
-                                        : 'bg-muted-foreground/50'
-                                    }`} />
-                                    <span className={`text-xs font-semibold uppercase tracking-wider ${
-                                      cycleStatus.currentPhase === 'on' 
-                                        ? 'text-primary' 
-                                        : 'text-muted-foreground'
-                                    }`}>
-                                      {cycleStatus.currentPhase === 'on' ? 'On Cycle' : 'Off Cycle'}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                    Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
+                        {/* Cycle Status - Only show if has_cycles is true */}
+                        {compound.has_cycles && (() => {
+                          const cycleStatus = calculateCycleStatus(
+                            compound.start_date,
+                            compound.cycle_weeks_on,
+                            compound.cycle_weeks_off
+                          );
+                          
+                          if (!cycleStatus) return null;
+                          
+                          // For one-time cycles that have ended, don't show status
+                          if (!compound.cycle_weeks_off && !cycleStatus.isInCycle) return null;
+                          
+                          // Format cycle pattern display - show in months if >= 4 weeks
+                          const formatCyclePeriod = (weeks: number) => {
+                            if (weeks >= 4 && weeks % 4 === 0) {
+                              const months = weeks / 4;
+                              return `${months} ${months === 1 ? 'month' : 'months'}`;
+                            }
+                            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+                          };
+                          
+                          const cyclePattern = compound.cycle_weeks_off 
+                            ? `${formatCyclePeriod(compound.cycle_weeks_on)} on, ${formatCyclePeriod(compound.cycle_weeks_off)} off`
+                            : `${formatCyclePeriod(compound.cycle_weeks_on)} duration`;
+                          
+                          return (
+                            <div className="mt-3 pt-3 border-t border-border/50">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                    cycleStatus.currentPhase === 'on' 
+                                      ? 'bg-primary animate-pulse' 
+                                      : 'bg-muted-foreground'
+                                  }`} />
+                                  <span className={`text-xs font-semibold uppercase tracking-wider ${
+                                    cycleStatus.currentPhase === 'on' 
+                                      ? 'text-primary' 
+                                      : 'text-muted-foreground'
+                                  }`}>
+                                    {cycleStatus.currentPhase === 'on' ? 'ON Cycle' : 'OFF Cycle'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    • Day {cycleStatus.daysIntoPhase} of {cycleStatus.totalDaysInPhase}
                                   </span>
                                 </div>
-                                {/* Cycle progress bar */}
-                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded-full transition-all ${
-                                      cycleStatus.currentPhase === 'on' ? 'bg-primary' : 'bg-muted-foreground/50'
-                                    }`}
-                                    style={{ width: `${cycleStatus.progressPercentage}%` }}
-                                  />
-                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                                  {cyclePattern}
+                                </span>
                               </div>
-                            );
-                          } else {
-                            // No cycle defined - show as "Ongoing" with full coral bar
-                            return (
-                              <div className="mt-3 pt-3 border-t border-border/50">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
-                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                    Ongoing
-                                  </span>
-                                </div>
-                                {/* Full progress bar for ongoing */}
-                                <div className="h-1.5 w-full rounded-full bg-primary" />
-                              </div>
-                            );
-                          }
+                              <Progress 
+                                value={cycleStatus.progressPercentage} 
+                                className="h-1.5"
+                              />
+                            </div>
+                          );
                         })()}
                       </div>
                     </div>
