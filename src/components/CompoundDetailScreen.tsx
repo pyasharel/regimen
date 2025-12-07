@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash, Info } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -163,13 +164,13 @@ export const CompoundDetailScreen = () => {
     }
   };
 
-  // Use more data points for smoother, rounder curves like competitor apps
-  const pointsPerDay = timeRange === '1W' ? 24 : timeRange === '1M' ? 12 : timeRange === '3M' ? 6 : 4;
+  // Use high data points for smooth, rounded curves
+  const pointsPerDay = timeRange === '1W' ? 48 : timeRange === '1M' ? 24 : timeRange === '3M' ? 12 : 8;
   
   const now = new Date();
   const nowTimestamp = now.getTime();
   
-  const chartData = halfLifeData && takenDosesForCalc.length > 0
+  const rawChartData = halfLifeData && takenDosesForCalc.length > 0
     ? calculateMedicationLevels(
         takenDosesForCalc,
         halfLifeData.halfLifeHours,
@@ -178,17 +179,38 @@ export const CompoundDetailScreen = () => {
         pointsPerDay,
         true, // Include future projections until clearance
         getTmax(halfLifeData) // Pass Tmax for absorption curve
-      ).map(point => ({
-        date: format(point.timestamp, 'MMM d'),
-        timestamp: point.timestamp.getTime(),
-        level: Math.round(point.level * 10) / 10,
-        absoluteLevel: point.absoluteLevel.toFixed(2),
-        isFuture: point.isFuture || false,
-        // Split data for dual-area rendering
-        pastLevel: !point.isFuture ? Math.round(point.level * 10) / 10 : null,
-        futureLevel: point.isFuture ? Math.round(point.level * 10) / 10 : null,
-      }))
+      )
     : [];
+  
+  // Calculate max absolute level for Y-axis domain
+  const maxAbsoluteLevel = rawChartData.length > 0 
+    ? Math.max(...rawChartData.map(p => p.absoluteLevel)) 
+    : 0;
+  
+  // Round up to nice number for Y-axis max
+  const getAxisMax = (max: number) => {
+    if (max <= 0) return 100;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+    const normalized = max / magnitude;
+    if (normalized <= 1) return magnitude;
+    if (normalized <= 2) return 2 * magnitude;
+    if (normalized <= 5) return 5 * magnitude;
+    return 10 * magnitude;
+  };
+  
+  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.1); // Add 10% headroom
+  
+  const chartData = rawChartData.map(point => ({
+    date: format(point.timestamp, 'MMM d'),
+    timestamp: point.timestamp.getTime(),
+    level: point.absoluteLevel, // Use absolute level directly
+    absoluteLevel: point.absoluteLevel.toFixed(2),
+    percentOfPeak: Math.round(point.level * 10) / 10,
+    isFuture: point.isFuture || false,
+    // Split data for dual-area rendering
+    pastLevel: !point.isFuture ? point.absoluteLevel : null,
+    futureLevel: point.isFuture ? point.absoluteLevel : null,
+  }));
   
   // Find the "now" index for the reference line
   const nowIndex = chartData.findIndex(d => d.timestamp >= nowTimestamp);
@@ -469,6 +491,18 @@ export const CompoundDetailScreen = () => {
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-sm">Estimated Levels</span>
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <button className="p-0.5 rounded-full hover:bg-muted/50 transition-colors">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[200px] text-center">
+                      <p className="text-xs">For informational purposes only. Not medical advice.</p>
+                    </TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
               </div>
               <div className="flex gap-1">
                 {(['1W', '1M', '3M', '6M'] as const).map((range) => (
@@ -529,9 +563,9 @@ export const CompoundDetailScreen = () => {
                     tick={{ fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
-                    domain={[0, 100]}
-                    ticks={[0, 50, 100]}
-                    tickFormatter={(v) => `${v}%`}
+                    domain={[0, yAxisMax]}
+                    tickFormatter={(v) => `${v}`}
+                    width={35}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -539,12 +573,12 @@ export const CompoundDetailScreen = () => {
                         const data = payload[0].payload;
                         return (
                           <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-0.5">
                               {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
                             </p>
-                            <p className="text-sm font-semibold">~{data.absoluteLevel} {compound.dose_unit}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {data.level}% of peak concentration
+                            <p className="text-sm font-semibold text-primary">~{data.absoluteLevel} {compound.dose_unit}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {data.percentOfPeak}% of peak
                             </p>
                           </div>
                         );
