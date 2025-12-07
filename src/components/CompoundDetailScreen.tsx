@@ -557,12 +557,13 @@ export const CompoundDetailScreen = () => {
                     interval="preserveStartEnd"
                   />
                   <YAxis 
-                    tick={{ fontSize: 10 }}
+                    tick={{ fontSize: 9 }}
                     tickLine={false}
                     axisLine={false}
                     domain={[0, yAxisMax]}
                     tickFormatter={formatYAxis}
-                    width={40}
+                    width={32}
+                    tickCount={4}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
