@@ -352,6 +352,7 @@ export const ProgressScreen = () => {
   };
 
   const handleDeletePhoto = async (entryId: string) => {
+    triggerHaptic('medium');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -420,10 +421,13 @@ export const ProgressScreen = () => {
 
         {/* Metric Type Selector - More muted styling */}
         <div className="flex gap-2 border-b border-border/50">
-          {(["weight", "energy", "sleep"] as MetricType[]).map(type => (
+        {(["weight", "energy", "sleep"] as MetricType[]).map(type => (
             <button
               key={type}
-              onClick={() => setMetricType(type)}
+              onClick={() => {
+                triggerHaptic('light');
+                setMetricType(type);
+              }}
               className={cn(
                 "pb-2 px-1 text-xs font-medium transition-all border-b-2 -mb-px",
                 metricType === type
@@ -455,10 +459,13 @@ export const ProgressScreen = () => {
 
             {/* Time Frame Selector */}
             <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg w-fit">
-              {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
+          {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
                 <button
                   key={tf}
-                  onClick={() => setTimeFrame(tf)}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setTimeFrame(tf);
+                  }}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     timeFrame === tf
                       ? 'bg-background text-foreground shadow-sm'
@@ -470,7 +477,7 @@ export const ProgressScreen = () => {
               ))}
             </div>
 
-            <Card className="p-4 bg-muted/30">
+            <Card className="p-4 bg-muted/30" onClick={() => triggerHaptic('light')}>
               <MetricChart
                 metricType={metricType}
                 entries={entries}

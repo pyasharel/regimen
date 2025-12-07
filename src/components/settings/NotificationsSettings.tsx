@@ -129,31 +129,37 @@ export const NotificationsSettings = () => {
   };
 
   const handlePhotoFrequencyChange = async (value: "daily" | "weekly") => {
+    triggerHaptic();
     setPhotoFrequency(value);
     await persistentStorage.set('photoFrequency', value);
   };
 
   const handlePhotoTimeChange = async (value: string) => {
+    triggerHaptic();
     setPhotoTime(value);
     await persistentStorage.set('photoTime', value);
   };
 
   const handlePhotoDayChange = async (value: string) => {
+    triggerHaptic();
     setPhotoDay(value);
     await persistentStorage.set('photoDay', value);
   };
 
   const handleWeightFrequencyChange = async (value: "daily" | "weekly") => {
+    triggerHaptic();
     setWeightFrequency(value);
     await persistentStorage.set('weightFrequency', value);
   };
 
   const handleWeightTimeChange = async (value: string) => {
+    triggerHaptic();
     setWeightTime(value);
     await persistentStorage.set('weightTime', value);
   };
 
   const handleWeightDayChange = async (value: string) => {
+    triggerHaptic();
     setWeightDay(value);
     await persistentStorage.set('weightDay', value);
   };
