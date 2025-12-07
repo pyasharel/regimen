@@ -470,7 +470,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-[#FF6B6B]' : '[&>div]:bg-muted-foreground'}`}
+                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-[#FF6B6B]' : '[&>div]:bg-muted-foreground bg-muted-foreground/30'}`}
                                 />
                               </div>
                             );
