@@ -12,6 +12,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from "@/integrations/supabase/client";
 import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -30,26 +31,31 @@ export const NotificationsSettings = () => {
   const [weightDay, setWeightDay] = useState<string>("1"); // 1 = Monday
 
   useEffect(() => {
-    // Load saved preferences
-    const savedCycleReminders = localStorage.getItem('cycleReminders');
-    setCycleReminders(savedCycleReminders !== 'false');
-    const savedPhotoReminders = localStorage.getItem('photoReminders') === 'true';
-    const savedPhotoFrequency = localStorage.getItem('photoFrequency') as "daily" | "weekly" || "weekly";
-    const savedPhotoTime = localStorage.getItem('photoTime') || "08:00";
-    const savedPhotoDay = localStorage.getItem('photoDay') || "0";
-    const savedWeightReminders = localStorage.getItem('weightReminders') === 'true';
-    const savedWeightFrequency = localStorage.getItem('weightFrequency') as "daily" | "weekly" || "daily";
-    const savedWeightTime = localStorage.getItem('weightTime') || "07:00";
-    const savedWeightDay = localStorage.getItem('weightDay') || "1";
+    // Load saved preferences from persistent storage
+    const loadSettings = async () => {
+      const savedCycleReminders = await persistentStorage.get('cycleReminders');
+      setCycleReminders(savedCycleReminders !== 'false');
+      
+      const savedPhotoReminders = await persistentStorage.getBoolean('photoReminders', false);
+      const savedPhotoFrequency = await persistentStorage.get('photoFrequency') as "daily" | "weekly" || "weekly";
+      const savedPhotoTime = await persistentStorage.get('photoTime') || "08:00";
+      const savedPhotoDay = await persistentStorage.get('photoDay') || "0";
+      const savedWeightReminders = await persistentStorage.getBoolean('weightReminders', false);
+      const savedWeightFrequency = await persistentStorage.get('weightFrequency') as "daily" | "weekly" || "daily";
+      const savedWeightTime = await persistentStorage.get('weightTime') || "07:00";
+      const savedWeightDay = await persistentStorage.get('weightDay') || "1";
+      
+      setPhotoReminders(savedPhotoReminders);
+      setPhotoFrequency(savedPhotoFrequency);
+      setPhotoTime(savedPhotoTime);
+      setPhotoDay(savedPhotoDay);
+      setWeightReminders(savedWeightReminders);
+      setWeightFrequency(savedWeightFrequency);
+      setWeightTime(savedWeightTime);
+      setWeightDay(savedWeightDay);
+    };
     
-    setPhotoReminders(savedPhotoReminders);
-    setPhotoFrequency(savedPhotoFrequency);
-    setPhotoTime(savedPhotoTime);
-    setPhotoDay(savedPhotoDay);
-    setWeightReminders(savedWeightReminders);
-    setWeightFrequency(savedWeightFrequency);
-    setWeightTime(savedWeightTime);
-    setWeightDay(savedWeightDay);
+    loadSettings();
   }, []);
 
   const triggerHaptic = async () => {
@@ -64,32 +70,32 @@ export const NotificationsSettings = () => {
     }
   };
 
-  const handlePhotoRemindersToggle = (checked: boolean) => {
+  const handlePhotoRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
     if (checked && !isSubscribed) {
       toast.error("Photo reminders require subscription");
       return;
     }
     setPhotoReminders(checked);
-    localStorage.setItem('photoReminders', String(checked));
+    await persistentStorage.setBoolean('photoReminders', checked);
     if (checked) {
       toast.success("Photo reminders enabled");
     }
   };
 
-  const handleWeightRemindersToggle = (checked: boolean) => {
+  const handleWeightRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
     setWeightReminders(checked);
-    localStorage.setItem('weightReminders', String(checked));
+    await persistentStorage.setBoolean('weightReminders', checked);
     if (checked) {
       toast.success("Weight tracking reminders enabled");
     }
   };
   
-  const handleDoseRemindersToggle = (checked: boolean) => {
+  const handleDoseRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
     setDoseReminders(checked);
-    localStorage.setItem('doseReminders', String(checked));
+    await persistentStorage.setBoolean('doseReminders', checked);
     if (checked) {
       toast.success("Dose reminders enabled");
     } else {
@@ -100,7 +106,7 @@ export const NotificationsSettings = () => {
   const handleCycleRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
     setCycleReminders(checked);
-    localStorage.setItem('cycleReminders', String(checked));
+    await persistentStorage.setBoolean('cycleReminders', checked);
 
     // Update all compounds' cycle_reminders_enabled field
     const { data: { user } } = await supabase.auth.getUser();
@@ -122,34 +128,34 @@ export const NotificationsSettings = () => {
     }
   };
 
-  const handlePhotoFrequencyChange = (value: "daily" | "weekly") => {
+  const handlePhotoFrequencyChange = async (value: "daily" | "weekly") => {
     setPhotoFrequency(value);
-    localStorage.setItem('photoFrequency', value);
+    await persistentStorage.set('photoFrequency', value);
   };
 
-  const handlePhotoTimeChange = (value: string) => {
+  const handlePhotoTimeChange = async (value: string) => {
     setPhotoTime(value);
-    localStorage.setItem('photoTime', value);
+    await persistentStorage.set('photoTime', value);
   };
 
-  const handlePhotoDayChange = (value: string) => {
+  const handlePhotoDayChange = async (value: string) => {
     setPhotoDay(value);
-    localStorage.setItem('photoDay', value);
+    await persistentStorage.set('photoDay', value);
   };
 
-  const handleWeightFrequencyChange = (value: "daily" | "weekly") => {
+  const handleWeightFrequencyChange = async (value: "daily" | "weekly") => {
     setWeightFrequency(value);
-    localStorage.setItem('weightFrequency', value);
+    await persistentStorage.set('weightFrequency', value);
   };
 
-  const handleWeightTimeChange = (value: string) => {
+  const handleWeightTimeChange = async (value: string) => {
     setWeightTime(value);
-    localStorage.setItem('weightTime', value);
+    await persistentStorage.set('weightTime', value);
   };
 
-  const handleWeightDayChange = (value: string) => {
+  const handleWeightDayChange = async (value: string) => {
     setWeightDay(value);
-    localStorage.setItem('weightDay', value);
+    await persistentStorage.set('weightDay', value);
   };
 
   return (

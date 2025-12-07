@@ -4,6 +4,7 @@ import { ArrowLeft, Palette, Ruler, Target } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/components/ThemeProvider";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 export const DisplaySettings = () => {
   const navigate = useNavigate();
@@ -16,24 +17,28 @@ export const DisplaySettings = () => {
   const [heightCm, setHeightCm] = useState("");
   const [goalWeight, setGoalWeight] = useState("");
 
-  // Load saved preferences
+  // Load saved preferences from persistent storage
   useEffect(() => {
-    const savedWeightUnit = localStorage.getItem('weightUnit');
-    const savedHeightUnit = localStorage.getItem('heightUnit');
-    const savedHeightFeet = localStorage.getItem('heightFeet');
-    const savedHeightInches = localStorage.getItem('heightInches');
-    const savedHeightCm = localStorage.getItem('heightCm');
-    const savedGoalWeight = localStorage.getItem('goalWeight');
+    const loadSettings = async () => {
+      const savedWeightUnit = await persistentStorage.get('weightUnit');
+      const savedHeightUnit = await persistentStorage.get('heightUnit');
+      const savedHeightFeet = await persistentStorage.get('heightFeet');
+      const savedHeightInches = await persistentStorage.get('heightInches');
+      const savedHeightCm = await persistentStorage.get('heightCm');
+      const savedGoalWeight = await persistentStorage.get('goalWeight');
+      
+      if (savedWeightUnit) setWeightUnit(savedWeightUnit as "lbs" | "kg");
+      if (savedHeightUnit) setHeightUnit(savedHeightUnit as "imperial" | "metric");
+      if (savedHeightFeet) setHeightFeet(savedHeightFeet);
+      if (savedHeightInches) setHeightInches(savedHeightInches);
+      if (savedHeightCm) setHeightCm(savedHeightCm);
+      if (savedGoalWeight) setGoalWeight(savedGoalWeight);
+    };
     
-    if (savedWeightUnit) setWeightUnit(savedWeightUnit as "lbs" | "kg");
-    if (savedHeightUnit) setHeightUnit(savedHeightUnit as "imperial" | "metric");
-    if (savedHeightFeet) setHeightFeet(savedHeightFeet);
-    if (savedHeightInches) setHeightInches(savedHeightInches);
-    if (savedHeightCm) setHeightCm(savedHeightCm);
-    if (savedGoalWeight) setGoalWeight(savedGoalWeight);
+    loadSettings();
   }, []);
 
-  const handleWeightUnitChange = (unit: "lbs" | "kg") => {
+  const handleWeightUnitChange = async (unit: "lbs" | "kg") => {
     // Convert goal weight when switching units
     if (goalWeight) {
       const currentValue = parseFloat(goalWeight);
@@ -46,10 +51,10 @@ export const DisplaySettings = () => {
       }
     }
     setWeightUnit(unit);
-    localStorage.setItem('weightUnit', unit);
+    await persistentStorage.set('weightUnit', unit);
   };
 
-  const handleHeightUnitChange = (unit: "imperial" | "metric") => {
+  const handleHeightUnitChange = async (unit: "imperial" | "metric") => {
     // Convert height when switching units
     if (unit === "metric" && heightUnit === "imperial" && (heightFeet || heightInches)) {
       const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
@@ -61,27 +66,27 @@ export const DisplaySettings = () => {
       setHeightInches((totalInches % 12).toString());
     }
     setHeightUnit(unit);
-    localStorage.setItem('heightUnit', unit);
+    await persistentStorage.set('heightUnit', unit);
   };
 
-  const handleHeightFeetChange = (value: string) => {
+  const handleHeightFeetChange = async (value: string) => {
     setHeightFeet(value);
-    localStorage.setItem('heightFeet', value);
+    await persistentStorage.set('heightFeet', value);
   };
 
-  const handleHeightInchesChange = (value: string) => {
+  const handleHeightInchesChange = async (value: string) => {
     setHeightInches(value);
-    localStorage.setItem('heightInches', value);
+    await persistentStorage.set('heightInches', value);
   };
 
-  const handleHeightCmChange = (value: string) => {
+  const handleHeightCmChange = async (value: string) => {
     setHeightCm(value);
-    localStorage.setItem('heightCm', value);
+    await persistentStorage.set('heightCm', value);
   };
 
-  const handleGoalWeightChange = (value: string) => {
+  const handleGoalWeightChange = async (value: string) => {
     setGoalWeight(value);
-    localStorage.setItem('goalWeight', value);
+    await persistentStorage.set('goalWeight', value);
   };
 
   return (
