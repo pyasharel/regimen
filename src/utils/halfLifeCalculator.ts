@@ -1,11 +1,23 @@
 /**
- * Half-life calculation utilities
+ * Half-life calculation utilities with absorption modeling
  * 
  * Calculates estimated medication levels based on actual taken doses
- * using exponential decay formula: C(t) = C0 * (0.5)^(t/halfLife)
+ * using a one-compartment pharmacokinetic model with first-order absorption:
+ * 
+ * C(t) = (ka * Dose / (ka - ke)) * (e^(-ke*t) - e^(-ka*t))
+ * 
+ * Where:
+ * - ka = absorption rate constant
+ * - ke = elimination rate constant (ln(2) / halfLife)
+ * - t = time since dose
+ * 
+ * This creates a realistic curve that:
+ * 1. Starts at 0 at dose time
+ * 2. Rises gradually to peak at Tmax
+ * 3. Then decays exponentially
  */
 
-import { getHalfLifeData } from './halfLifeData';
+import { getHalfLifeData, getTmax } from './halfLifeData';
 
 export interface TakenDose {
   id: string;
@@ -22,15 +34,52 @@ export interface MedicationLevel {
 }
 
 /**
- * Calculate the remaining amount of a single dose at a given time
+ * Calculate the level of a single dose at a given time using absorption + elimination model
+ * Uses the Bateman equation for first-order absorption and elimination
  */
-const calculateDecay = (
+const calculateDoseLevel = (
   initialAmount: number,
   halfLifeHours: number,
+  tMaxHours: number,
   hoursElapsed: number
 ): number => {
   if (hoursElapsed < 0) return 0; // Dose hasn't been taken yet
-  return initialAmount * Math.pow(0.5, hoursElapsed / halfLifeHours);
+  if (hoursElapsed === 0) return 0; // At dose time, level is 0 (not yet absorbed)
+  
+  // Elimination rate constant
+  const ke = Math.LN2 / halfLifeHours;
+  
+  // Calculate absorption rate constant (ka) from Tmax
+  // At Tmax, dC/dt = 0, which gives us: ka = ke * e^(ka * Tmax) / e^(ke * Tmax)
+  // Simplified: ka ≈ ln(ka/ke) / Tmax + ke when ka >> ke
+  // We use an approximation: ka ≈ 2.5 / Tmax (this gives peak at roughly Tmax)
+  const ka = Math.max(ke * 5, 2.5 / tMaxHours); // Ensure ka > ke for proper absorption
+  
+  // Handle edge case where ka ≈ ke (would cause division by zero)
+  if (Math.abs(ka - ke) < 0.0001) {
+    // Use simplified model: linear rise then exponential decay
+    if (hoursElapsed <= tMaxHours) {
+      return initialAmount * (hoursElapsed / tMaxHours);
+    }
+    return initialAmount * Math.exp(-ke * (hoursElapsed - tMaxHours));
+  }
+  
+  // Bateman equation: C(t) = (ka * F * Dose / (ka - ke)) * (e^(-ke*t) - e^(-ka*t))
+  // F (bioavailability) assumed to be 1
+  const scaleFactor = ka / (ka - ke);
+  const level = initialAmount * scaleFactor * (Math.exp(-ke * hoursElapsed) - Math.exp(-ka * hoursElapsed));
+  
+  // Normalize to ensure peak is at initialAmount
+  // Calculate the theoretical peak level
+  const tPeak = Math.log(ka / ke) / (ka - ke);
+  const peakLevel = initialAmount * scaleFactor * (Math.exp(-ke * tPeak) - Math.exp(-ka * tPeak));
+  
+  // Scale so that peak = initialAmount
+  if (peakLevel > 0) {
+    return (level / peakLevel) * initialAmount;
+  }
+  
+  return Math.max(0, level);
 };
 
 /**
@@ -39,13 +88,14 @@ const calculateDecay = (
 const calculateLevelAtTime = (
   doses: TakenDose[],
   halfLifeHours: number,
+  tMaxHours: number,
   timestamp: Date
 ): number => {
   let totalLevel = 0;
   for (const dose of doses) {
     const hoursElapsed = (timestamp.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
     if (hoursElapsed >= 0) {
-      totalLevel += calculateDecay(dose.amount, halfLifeHours, hoursElapsed);
+      totalLevel += calculateDoseLevel(dose.amount, halfLifeHours, tMaxHours, hoursElapsed);
     }
   }
   return totalLevel;
@@ -60,6 +110,7 @@ const calculateLevelAtTime = (
  * @param endDate - End of the calculation period
  * @param pointsPerDay - Number of data points per day (default 4 for 6-hour intervals)
  * @param includeFuture - Whether to include future projections until clearance
+ * @param tMaxHours - Time to reach peak concentration (optional, defaults to estimate)
  */
 export const calculateMedicationLevels = (
   doses: TakenDose[],
@@ -67,9 +118,13 @@ export const calculateMedicationLevels = (
   startDate: Date,
   endDate: Date,
   pointsPerDay: number = 4,
-  includeFuture: boolean = false
+  includeFuture: boolean = false,
+  tMaxHours?: number
 ): MedicationLevel[] => {
   if (doses.length === 0) return [];
+
+  // Use provided tMax or estimate based on half-life (roughly 15% of half-life, min 1 hour)
+  const effectiveTmax = tMaxHours ?? Math.max(1, halfLifeHours * 0.15);
 
   const now = new Date();
   const timestamps: Set<number> = new Set();
@@ -91,20 +146,30 @@ export const calculateMedicationLevels = (
     currentTime = new Date(currentTime.getTime() + intervalHours * 60 * 60 * 1000);
   }
   
-  // Add timestamps at exact dose times and just after for smoother peaks
+  // Add timestamps at exact dose times and around peak for smoother absorption curves
   for (const dose of doses) {
     const doseTime = dose.takenAt.getTime();
     if (doseTime >= startDate.getTime() && doseTime <= actualEndDate.getTime()) {
       // Add point just before dose (1 minute before)
       timestamps.add(doseTime - 60000);
-      // Add point at dose time (peak)
+      // Add point at dose time (start of absorption)
       timestamps.add(doseTime);
-      // Add points at intervals after dose for smoother decay curve
-      timestamps.add(doseTime + 300000);   // 5 minutes
-      timestamps.add(doseTime + 1800000);  // 30 minutes
-      timestamps.add(doseTime + 3600000);  // 1 hour
-      timestamps.add(doseTime + 7200000);  // 2 hours
-      timestamps.add(doseTime + 14400000); // 4 hours
+      // Add points during absorption phase for smooth curve
+      const tMaxMs = effectiveTmax * 60 * 60 * 1000;
+      timestamps.add(doseTime + tMaxMs * 0.1);   // 10% to Tmax
+      timestamps.add(doseTime + tMaxMs * 0.25);  // 25% to Tmax
+      timestamps.add(doseTime + tMaxMs * 0.5);   // 50% to Tmax
+      timestamps.add(doseTime + tMaxMs * 0.75);  // 75% to Tmax
+      timestamps.add(doseTime + tMaxMs);          // At Tmax (peak)
+      timestamps.add(doseTime + tMaxMs * 1.25);  // 25% past peak
+      timestamps.add(doseTime + tMaxMs * 1.5);   // 50% past peak
+      timestamps.add(doseTime + tMaxMs * 2);     // 2x Tmax
+      // Add points at intervals after peak for decay curve
+      timestamps.add(doseTime + 7200000);   // 2 hours
+      timestamps.add(doseTime + 14400000);  // 4 hours
+      timestamps.add(doseTime + 28800000);  // 8 hours
+      timestamps.add(doseTime + 43200000);  // 12 hours
+      timestamps.add(doseTime + 86400000);  // 24 hours
     }
   }
   
@@ -118,7 +183,7 @@ export const calculateMedicationLevels = (
   
   const levels: MedicationLevel[] = sortedTimestamps.map(ts => {
     const timestamp = new Date(ts);
-    const absoluteLevel = calculateLevelAtTime(doses, halfLifeHours, timestamp);
+    const absoluteLevel = calculateLevelAtTime(doses, halfLifeHours, effectiveTmax, timestamp);
     return {
       timestamp,
       level: 0, // Will be calculated as percentage below
@@ -141,15 +206,20 @@ export const calculateMedicationLevels = (
  */
 export const calculateCurrentLevel = (
   doses: TakenDose[],
-  halfLifeHours: number
+  halfLifeHours: number,
+  tMaxHours?: number
 ): { level: number; absoluteLevel: number; percentOfPeak: number } => {
   const now = new Date();
+  
+  // Use provided tMax or estimate
+  const effectiveTmax = tMaxHours ?? Math.max(1, halfLifeHours * 0.15);
+  
   let totalLevel = 0;
   
   for (const dose of doses) {
     const hoursElapsed = (now.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
     if (hoursElapsed >= 0) {
-      totalLevel += calculateDecay(dose.amount, halfLifeHours, hoursElapsed);
+      totalLevel += calculateDoseLevel(dose.amount, halfLifeHours, effectiveTmax, hoursElapsed);
     }
   }
   
@@ -198,6 +268,7 @@ export const getMedicationStats = (
   percentOfPeak: number;
   estimatedClearance: Date | null;
   halfLifeHours: number | null;
+  tMaxHours: number | null;
 } | null => {
   const halfLifeData = getHalfLifeData(medicationName);
   if (!halfLifeData || doses.length === 0) return null;
@@ -205,7 +276,8 @@ export const getMedicationStats = (
   const takenDoses = doses.filter(d => d.takenAt);
   if (takenDoses.length === 0) return null;
   
-  const { absoluteLevel, percentOfPeak } = calculateCurrentLevel(takenDoses, halfLifeData.halfLifeHours);
+  const tMaxHours = getTmax(halfLifeData);
+  const { absoluteLevel, percentOfPeak } = calculateCurrentLevel(takenDoses, halfLifeData.halfLifeHours, tMaxHours);
   const clearance = estimateClearanceTime(takenDoses, halfLifeData.halfLifeHours);
   const lastDose = takenDoses.reduce((latest, dose) => 
     dose.takenAt > latest.takenAt ? dose : latest
@@ -217,6 +289,7 @@ export const getMedicationStats = (
     currentLevel: absoluteLevel,
     percentOfPeak,
     estimatedClearance: clearance,
-    halfLifeHours: halfLifeData.halfLifeHours
+    halfLifeHours: halfLifeData.halfLifeHours,
+    tMaxHours
   };
 };
