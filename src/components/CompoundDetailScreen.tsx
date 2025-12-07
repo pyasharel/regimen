@@ -163,8 +163,8 @@ export const CompoundDetailScreen = () => {
     }
   };
 
-  // Use more data points for smoother peaks/troughs visualization
-  const pointsPerDay = timeRange === '1W' ? 12 : timeRange === '1M' ? 8 : timeRange === '3M' ? 4 : 2;
+  // Use more data points for smoother, rounder curves like competitor apps
+  const pointsPerDay = timeRange === '1W' ? 24 : timeRange === '1M' ? 12 : timeRange === '3M' ? 6 : 4;
   
   const now = new Date();
   const nowTimestamp = now.getTime();
@@ -552,9 +552,9 @@ export const CompoundDetailScreen = () => {
                       return null;
                     }}
                   />
-                  {/* Past levels - solid */}
+                  {/* Past levels - solid with smooth monotone curves */}
                   <Area
-                    type="basis"
+                    type="monotone"
                     dataKey="pastLevel"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
@@ -564,7 +564,7 @@ export const CompoundDetailScreen = () => {
                   />
                   {/* Future projections - lighter with fading stroke */}
                   <Area
-                    type="basis"
+                    type="monotone"
                     dataKey="futureLevel"
                     stroke="url(#futureStrokeGradient)"
                     strokeWidth={1.5}
@@ -575,7 +575,7 @@ export const CompoundDetailScreen = () => {
                   />
                   {/* Continuous line for visual connection */}
                   <Area
-                    type="basis"
+                    type="monotone"
                     dataKey="level"
                     stroke="transparent"
                     strokeWidth={0}
