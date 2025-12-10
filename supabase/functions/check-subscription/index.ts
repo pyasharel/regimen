@@ -138,9 +138,9 @@ serve(async (req) => {
     
     // Determine subscription type from price ID
     const priceId = subscription.items.data[0].price.id;
-    // Price IDs from create-checkout function
-    const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
-    const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
+    // Production Price IDs (must match create-checkout function)
+    const monthlyPriceId = "price_1SXdIJCSTxWkewOuuThCXMmx";
+    const annualPriceId = "price_1SXdEcCSTxWkewOumNEu40U9";
     const subscriptionType = priceId === annualPriceId ? 'annual' : 'monthly';
 
     let mappedStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' = 'none';
