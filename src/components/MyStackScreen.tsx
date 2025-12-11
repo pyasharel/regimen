@@ -308,7 +308,7 @@ export const MyStackScreen = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="h-screen flex flex-col overflow-hidden bg-background pb-20">
         <MainHeader title="My Stack" />
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -327,7 +327,7 @@ export const MyStackScreen = () => {
   }
  
   return (
-    <div className="flex min-h-screen flex-col bg-background" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* Header */}
       <MainHeader title="My Stack" />
 

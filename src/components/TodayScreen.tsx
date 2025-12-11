@@ -658,7 +658,7 @@ export const TodayScreen = () => {
 
   if (loading || subscriptionLoading) {
     return (
-      <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="h-screen bg-background flex flex-col overflow-hidden pb-20">
         <MainHeader title="Today" />
         {/* Match the greeting block spacing exactly */}
         <div className="px-4 pt-4 pb-4 flex-shrink-0">
@@ -676,7 +676,7 @@ export const TodayScreen = () => {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen bg-background flex flex-col overflow-hidden pb-20">
       {/* Subscription Verification Overlay */}
       {verifyingSubscription && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">

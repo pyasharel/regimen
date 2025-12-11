@@ -393,7 +393,7 @@ export const ProgressScreen = () => {
   
   if (dataLoading) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+      <div className="h-screen flex flex-col overflow-hidden bg-background pb-24">
         <MainHeader title="Progress" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
@@ -407,7 +407,7 @@ export const ProgressScreen = () => {
   }
   
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+    <div className="h-screen flex flex-col overflow-hidden bg-background pb-24">
       <MainHeader title="Progress" />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">

@@ -155,6 +155,7 @@ All colors MUST be HSL.
     width: 100%;
     height: 100%;
     height: 100dvh; /* Dynamic viewport height for iOS */
+    overscroll-behavior: none;
   }
   
   #root {
@@ -162,6 +163,7 @@ All colors MUST be HSL.
     height: 100%;
     height: 100dvh;
     overflow: auto;
+    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
   
