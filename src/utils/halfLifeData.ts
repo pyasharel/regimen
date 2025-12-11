@@ -59,66 +59,67 @@ export const getTmax = (data: MedicationHalfLife): number => {
 
 // Map medication names (lowercase) to half-life data
 export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
-  // GLP-1 Agonists
+  // GLP-1 Agonists - Tmax values from FDA prescribing information & clinical studies
+  // Sources: NCBI StatPearls, FDA/EMA assessment reports, PMC clinical reviews
   'semaglutide': {
-    halfLifeHours: 168, // ~7 days
-    tMaxHours: 24, // Peak at ~1 day post-injection
+    halfLifeHours: 168, // ~7 days (FDA label)
+    tMaxHours: 48, // Peak at 1-3 days, median ~2 days (NCBI StatPearls)
     category: 'glp1',
     displayName: 'Semaglutide',
     notes: 'Ozempic, Wegovy, Rybelsus'
   },
   'tirzepatide': {
-    halfLifeHours: 120, // ~5 days
-    tMaxHours: 24, // Peak at ~1 day post-injection
+    halfLifeHours: 120, // ~5 days (FDA label)
+    tMaxHours: 41, // Peak at 8-72h, median ~1.7 days (FDA/EMA assessment reports)
     category: 'glp1',
     displayName: 'Tirzepatide',
     notes: 'Mounjaro, Zepbound'
   },
   'liraglutide': {
-    halfLifeHours: 13,
-    tMaxHours: 10, // Peak at ~8-12 hours
+    halfLifeHours: 13, // ~13 hours (FDA label)
+    tMaxHours: 11, // Peak at 8-12 hours (FDA label)
     category: 'glp1',
     displayName: 'Liraglutide',
     notes: 'Victoza, Saxenda'
   },
   'dulaglutide': {
-    halfLifeHours: 120, // ~5 days
-    tMaxHours: 48, // Peak at ~24-72 hours
+    halfLifeHours: 120, // ~5 days (FDA label)
+    tMaxHours: 48, // Peak at 24-72 hours (FDA label)
     category: 'glp1',
     displayName: 'Dulaglutide',
     notes: 'Trulicity'
   },
   'exenatide': {
-    halfLifeHours: 2.4,
-    tMaxHours: 2, // Peak at ~2 hours
+    halfLifeHours: 2.4, // ~2.4 hours (FDA label)
+    tMaxHours: 2, // Peak at ~2 hours (FDA label)
     category: 'glp1',
     displayName: 'Exenatide',
     notes: 'Byetta (immediate release)'
   },
   'exenatide er': {
-    halfLifeHours: 168, // ~7 days (extended release)
+    halfLifeHours: 168, // ~7 days extended release (FDA label)
     tMaxHours: 48, // Slow release peaks later
     category: 'glp1',
     displayName: 'Exenatide ER',
     notes: 'Bydureon'
   },
   'retatrutide': {
-    halfLifeHours: 144, // ~6 days (estimated from trials)
-    tMaxHours: 24, // Estimated similar to other weekly GLP-1s
+    halfLifeHours: 144, // ~6 days (phase 2 trial data)
+    tMaxHours: 36, // Estimated from trial PK data
     category: 'glp1',
     displayName: 'Retatrutide',
     notes: 'Triple agonist (GLP-1/GIP/Glucagon)'
   },
   'survodutide': {
-    halfLifeHours: 144, // ~6 days (estimated)
-    tMaxHours: 24,
+    halfLifeHours: 144, // ~6 days (estimated from trials)
+    tMaxHours: 36, // Estimated similar to other dual agonists
     category: 'glp1',
     displayName: 'Survodutide',
     notes: 'Dual agonist'
   },
   'mazdutide': {
     halfLifeHours: 144, // ~6 days (estimated)
-    tMaxHours: 24,
+    tMaxHours: 36, // Estimated similar to other dual agonists
     category: 'glp1',
     displayName: 'Mazdutide',
     notes: 'Dual agonist'
