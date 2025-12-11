@@ -112,6 +112,34 @@ Sometimes Xcode's Derived Data cache persists even after Clean Build Folder. Try
 - After `npx cap sync ios`, check that `ios/App/App/public/` contains your latest files
 - You can run `ls -la ios/App/App/public/` to see timestamps
 
+**If STILL not updating (Scorched Earth):**
+
+When nothing else works, try `cap update` (different from sync) or regenerate the entire iOS project:
+
+**Option A - Cap Update:**
+```bash
+npm run build
+npx cap update ios   # Different from sync - updates native dependencies too
+npx cap open ios
+```
+
+**Option B - Regenerate iOS project:**
+```bash
+# 1. Backup any custom iOS files if needed
+# 2. Delete and regenerate:
+rm -rf ios
+npx cap add ios
+cd ios/App && pod install && cd ../..
+npm run build
+npx cap sync ios
+npx cap open ios
+```
+
+**Option C - Check Xcode Build Location:**
+1. In Xcode: `File → Project Settings`
+2. Ensure "Derived Data" is set to "Project-relative Location" or "Default"
+3. If custom, reset to default
+
 ## Quick Reference Commands
 
 ```bash
