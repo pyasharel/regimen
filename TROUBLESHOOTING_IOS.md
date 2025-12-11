@@ -96,9 +96,21 @@ This allows CocoaPods scripts to run properly and copy fresh web assets.
 3. Run `npx cap sync ios` in terminal
 4. Build and run again in Xcode
 
-**If still not updating (Nuclear Option):**
+**WKWebView Cache Issue (MOST COMMON on Physical Devices):**
 
-Sometimes Xcode's Derived Data cache persists even after Clean Build Folder. Try this:
+On physical iOS devices, WKWebView uses a **shared cache that persists even after deleting the app**. This is the #1 cause of stale content.
+
+**The Fix - Clear Safari Website Data:**
+1. On your iPhone, go to **Settings → Safari → Advanced → Website Data**
+2. Scroll to find any entries related to your app or "localhost"
+3. Swipe left and **Delete** them (or use "Remove All Website Data")
+4. Now rebuild and run the app
+
+**Alternative: Reset the iPhone's WKWebView cache completely:**
+1. Settings → Safari → Clear History and Website Data
+2. This clears ALL Safari/WKWebView data but guarantees fresh content
+
+**If still not updating (Nuclear Option):**
 
 1. **Close Xcode completely**
 
@@ -109,14 +121,16 @@ Sometimes Xcode's Derived Data cache persists even after Clean Build Folder. Try
 
 3. **Delete app from iPhone** (long press → Remove App)
 
-4. **Rebuild:**
+4. **Clear Safari Website Data on iPhone** (see above)
+
+5. **Rebuild:**
    ```bash
    npm run build
    npx cap sync ios
    npx cap open ios
    ```
 
-5. **In Xcode:** `Cmd + Shift + K` then `Cmd + R`
+6. **In Xcode:** `Cmd + Shift + K` then `Cmd + R`
 
 **Verify the sync worked:**
 - After `npx cap sync ios`, check that `ios/App/App/public/` contains your latest files

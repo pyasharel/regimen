@@ -33,6 +33,13 @@ const config: CapacitorConfig = {
       },
     },
   },
+  ios: {
+    // Force WKWebView to not use persistent cache
+    contentInset: 'automatic',
+    backgroundColor: '#000000',
+    preferredContentMode: 'mobile',
+    limitsNavigationsToAppBoundDomains: true,
+  },
   // Comment out server config for production native apps
   // Uncomment only for hot-reload development from Lovable preview
   // server: {
