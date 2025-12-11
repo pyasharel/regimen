@@ -228,8 +228,8 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md flex flex-col max-h-[85vh]">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-md p-0 gap-0 max-h-[85vh] overflow-hidden">
+        <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="text-xl flex items-center gap-2">
             <NotebookPen className="w-5 h-5 text-primary" />
             Log Today
@@ -237,7 +237,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           <p className="text-sm text-muted-foreground">Track your daily metrics</p>
         </DialogHeader>
 
-        <div className="space-y-6 pt-2 overflow-y-auto flex-1 pr-2">
+        <div className="overflow-y-auto px-6 space-y-6 max-h-[50vh]">
           {/* Weight Section */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium">
@@ -330,13 +330,13 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={loadingEntry ? "Loading..." : "What's going on today?"}
-              className="min-h-[100px] resize-none"
+              className="min-h-[80px] resize-none"
               disabled={loadingEntry}
             />
           </div>
 
           {/* Date Section */}
-          <div className="space-y-2">
+          <div className="space-y-2 pb-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
               <CalendarIcon className="w-4 h-4" />
               Date
@@ -366,8 +366,10 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
               </PopoverContent>
             </Popover>
           </div>
+        </div>
 
-          {/* Save Button */}
+        {/* Fixed Footer */}
+        <div className="p-6 pt-4 border-t border-border/50 flex-shrink-0">
           <Button
             onClick={handleSave}
             disabled={loading || loadingEntry || !hasContent}
@@ -377,7 +379,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           </Button>
           
           {!hasContent && !loadingEntry && (
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center mt-2">
               Fill in at least one field to save
             </p>
           )}
