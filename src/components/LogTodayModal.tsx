@@ -228,8 +228,8 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-md flex flex-col max-h-[85vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-xl flex items-center gap-2">
             <NotebookPen className="w-5 h-5 text-primary" />
             Log Today
@@ -237,7 +237,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           <p className="text-sm text-muted-foreground">Track your daily metrics</p>
         </DialogHeader>
 
-        <div className="space-y-6 pt-2">
+        <div className="space-y-6 pt-2 overflow-y-auto flex-1 pr-2">
           {/* Weight Section */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium">
@@ -250,8 +250,8 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
                 step="0.1"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
-                placeholder={loadingEntry ? "Loading..." : "Enter weight"}
-                className="flex-1 h-12"
+                placeholder={loadingEntry ? "..." : "Weight"}
+                className="w-28 h-12"
                 disabled={loadingEntry}
               />
               <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
