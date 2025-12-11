@@ -146,7 +146,7 @@ export const SettingsScreen = () => {
   ];
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background pb-20">
+    <div className="fixed inset-0 bg-background flex flex-col">
       {/* Header */}
       <MainHeader
         title="Settings"
@@ -163,7 +163,7 @@ export const SettingsScreen = () => {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
+      <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-6 max-w-2xl mx-auto w-full">
         {/* Subscription Section */}
         <SettingsSubscriptionSection />
 

@@ -308,9 +308,9 @@ export const MyStackScreen = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden bg-background pb-20">
+      <div className="fixed inset-0 bg-background flex flex-col">
         <MainHeader title="My Stack" />
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="h-32 bg-muted animate-pulse rounded-xl" />
             <div className="h-32 bg-muted animate-pulse rounded-xl" />
@@ -327,49 +327,51 @@ export const MyStackScreen = () => {
   }
  
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-20">
+    <div className="fixed inset-0 bg-background flex flex-col">
       {/* Header */}
       <MainHeader title="My Stack" />
 
-      {/* Dashboard Stats - Single Row */}
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-3">
-          {/* Active Compounds */}
-          <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-              <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">{activeCompounds.length}</div>
-              <div className="text-xs text-white/80 mt-1">
-                {activeCompounds.length === 1 ? 'Medication' : 'Medications'}
+      {/* Scrollable Content */}
+      <div className="flex-1 min-h-0 scroll-container pb-24">
+        {/* Dashboard Stats - Single Row */}
+        <div className="p-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Active Compounds */}
+            <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">{activeCompounds.length}</div>
+                <div className="text-xs text-white/80 mt-1">
+                  {activeCompounds.length === 1 ? 'Medication' : 'Medications'}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Inactive Compounds */}
-          <div className="rounded-xl bg-muted border border-border p-4 shadow-sm">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-muted-foreground">{inactiveCompounds.length}</div>
-              <div className="text-xs text-muted-foreground/80 mt-1">
-                {inactiveCompounds.length === 1 ? 'Medication' : 'Medications'}
+            {/* Inactive Compounds */}
+            <div className="rounded-xl bg-muted border border-border p-4 shadow-sm">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="h-2 w-2 rounded-full bg-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-muted-foreground">{inactiveCompounds.length}</div>
+                <div className="text-xs text-muted-foreground/80 mt-1">
+                  {inactiveCompounds.length === 1 ? 'Medication' : 'Medications'}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Active Compounds */}
-      <div className="flex-1 space-y-4 px-4 pb-4">
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Active
-          </h2>
+        {/* Active Compounds */}
+        <div className="space-y-4 px-4 pb-4">
+          <div className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Active
+            </h2>
           
           {activeCompounds.length === 0 ? (
             <div className="flex items-center justify-center py-12">
@@ -596,21 +598,22 @@ export const MyStackScreen = () => {
               </div>
             </div>
           ))}
+          </div>
         </div>
-      </div>
 
-      {/* Share Link - Only show when has active compounds */}
-      {activeCompounds.length > 0 && (
-        <div className="px-4 pb-4">
-          <button
-            onClick={handleShareStack}
-            className="w-full flex items-center justify-center gap-2 py-2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            <span className="text-xs">Share Stack</span>
-          </button>
-        </div>
-      )}
+        {/* Share Link - Only show when has active compounds */}
+        {activeCompounds.length > 0 && (
+          <div className="px-4 pb-4">
+            <button
+              onClick={handleShareStack}
+              className="w-full flex items-center justify-center gap-2 py-2 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="text-xs">Share Stack</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* FAB Button - Only show when has active compounds */}
       {activeCompounds.length > 0 && (

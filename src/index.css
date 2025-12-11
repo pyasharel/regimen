@@ -148,7 +148,7 @@ All colors MUST be HSL.
     overscroll-behavior: none;
   }
   
-  /* Prevent iOS scroll bounce and hide scrollbar for native feel */
+  /* Prevent iOS scroll bounce - fixed viewport approach */
   html, body {
     position: fixed;
     overflow: hidden;
@@ -156,24 +156,35 @@ All colors MUST be HSL.
     height: 100%;
     height: 100dvh;
     overscroll-behavior: none;
-    -webkit-overflow-scrolling: auto; /* Disable momentum scrolling for native feel */
+    touch-action: none;
   }
   
+  /* Root container - NO scrolling here, screens handle their own scroll */
   #root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
     height: 100dvh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     overscroll-behavior: none;
-    -webkit-overflow-scrolling: auto;
-    /* Hide scrollbar for all browsers */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
   }
   
-  #root::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+  /* Scrollable content areas inside screens */
+  .scroll-container {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scroll-container::-webkit-scrollbar {
+    display: none;
   }
   
   /* Typography scale */

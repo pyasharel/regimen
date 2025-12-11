@@ -33,10 +33,7 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-sm z-50"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
       <div className="flex items-center justify-around py-2">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
@@ -46,7 +43,7 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center gap-0.5 transition-colors ${
+              className={`flex flex-col items-center gap-0.5 py-1 transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -56,6 +53,8 @@ export const BottomNavigation = () => {
           );
         })}
       </div>
+      {/* Safe area spacer for iOS home indicator */}
+      <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} className="bg-card" />
     </nav>
   );
 };
