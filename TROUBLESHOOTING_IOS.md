@@ -73,6 +73,16 @@ Requires:
 - **Solution**: Use iOS Simulator instead (see above)
 - Or wait for Apple Developer transfer to complete
 
+### "Could not create a sandbox extension" Error (COMMON!)
+This is a **macOS Sonoma/Xcode 15+** issue that can cause stale assets:
+
+1. In Xcode, select the **App** target (left sidebar)
+2. Go to **Build Settings** tab
+3. Search for **"User Script Sandboxing"**
+4. Set it to **No**
+
+This allows CocoaPods scripts to run properly and copy fresh web assets.
+
 ### Yellow "Run Script" Warnings
 - These are normal for CocoaPods projects
 - Won't prevent app from building/running
