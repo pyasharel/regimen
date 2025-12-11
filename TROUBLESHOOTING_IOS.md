@@ -90,27 +90,72 @@ This allows CocoaPods scripts to run properly and copy fresh web assets.
 
 ### App Not Updating After Code Changes
 
-**Basic steps:**
+**Symptoms:**
+- Made changes in Lovable but app still shows old content
+- Changes appear in `ios/App/App/public/` but not in the running app
+- App is stuck on an old version despite pulling latest code
+
+---
+
+## ✅ THE PROVEN FIX (Use This First!)
+
+When your iOS app is stuck on an old version and normal sync doesn't work, run this **full rebuild chain**:
+
+```bash
+# 1. Build the web app
+npm run build
+
+# 2. UPDATE (not just sync!) - THIS IS THE KEY DIFFERENCE
+npx cap update ios
+
+# 3. Refresh CocoaPods dependencies
+cd ios/App && pod install && cd ../..
+
+# 4. Build and run directly from Terminal (bypasses Xcode cache)
+npx cap run ios
+```
+
+**Why this works:**
+- `npx cap update ios` is **MORE THOROUGH** than `npx cap sync ios`
+- It updates native dependencies AND copies web assets
+- `pod install` ensures iOS dependencies are fresh
+- `npx cap run ios` builds from scratch, completely bypassing Xcode's cached build
+
+**For physical device:**
+```bash
+# List available devices (shows simulators AND connected iPhones)
+npx cap run ios --list
+
+# Run on specific device by name
+npx cap run ios --target="Your iPhone Name"
+```
+
+---
+
+## Basic Fix (Try First for Minor Issues)
+
 1. Stop the app in Xcode
-2. Run `npm run build` in terminal (CRITICAL - must build first!)
-3. Run `npx cap sync ios` in terminal
-4. Build and run again in Xcode
+2. `npm run build` in terminal
+3. `npx cap sync ios` in terminal
+4. In Xcode: `Cmd + Shift + K` (Clean Build Folder)
+5. `Cmd + R` to run again
+
+---
+
+## If Basic Fix Doesn't Work
 
 **WKWebView Cache Issue (MOST COMMON on Physical Devices):**
 
-On physical iOS devices, WKWebView uses a **shared cache that persists even after deleting the app**. This is the #1 cause of stale content.
+On physical iOS devices, WKWebView uses a **shared cache that persists even after deleting the app**.
 
-**The Fix - Clear Safari Website Data:**
-1. On your iPhone, go to **Settings → Safari → Advanced → Website Data**
-2. Scroll to find any entries related to your app or "localhost"
-3. Swipe left and **Delete** them (or use "Remove All Website Data")
-4. Now rebuild and run the app
+**Clear Safari Website Data:**
+1. On iPhone: **Settings → Safari → Advanced → Website Data**
+2. Find and delete entries related to your app or "localhost"
+3. Rebuild and run the app
 
-**Alternative: Reset the iPhone's WKWebView cache completely:**
-1. Settings → Safari → Clear History and Website Data
-2. This clears ALL Safari/WKWebView data but guarantees fresh content
+---
 
-**If still not updating (Nuclear Option):**
+## Nuclear Option (Last Resort)
 
 1. **Close Xcode completely**
 
@@ -123,46 +168,24 @@ On physical iOS devices, WKWebView uses a **shared cache that persists even afte
 
 4. **Clear Safari Website Data on iPhone** (see above)
 
-5. **Rebuild:**
+5. **Run the full rebuild chain:**
    ```bash
    npm run build
-   npx cap sync ios
-   npx cap open ios
+   npx cap update ios
+   cd ios/App && pod install && cd ../..
+   npx cap run ios
    ```
 
-6. **In Xcode:** `Cmd + Shift + K` then `Cmd + R`
+---
 
-**Verify the sync worked:**
-- After `npx cap sync ios`, check that `ios/App/App/public/` contains your latest files
-- You can run `ls -la ios/App/App/public/` to see timestamps
+## Verify Sync Worked
 
-**If STILL not updating (Scorched Earth):**
-
-When nothing else works, try `cap update` (different from sync) or regenerate the entire iOS project:
-
-**Option A - Cap Update:**
 ```bash
-npm run build
-npx cap update ios   # Different from sync - updates native dependencies too
-npx cap open ios
+# Check timestamps on synced files
+ls -la ios/App/App/public/
 ```
 
-**Option B - Regenerate iOS project:**
-```bash
-# 1. Backup any custom iOS files if needed
-# 2. Delete and regenerate:
-rm -rf ios
-npx cap add ios
-cd ios/App && pod install && cd ../..
-npm run build
-npx cap sync ios
-npx cap open ios
-```
-
-**Option C - Check Xcode Build Location:**
-1. In Xcode: `File → Project Settings`
-2. Ensure "Derived Data" is set to "Project-relative Location" or "Default"
-3. If custom, reset to default
+The files should show recent timestamps matching your last `npm run build`.
 
 ## Quick Reference Commands
 
