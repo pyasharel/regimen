@@ -148,17 +148,19 @@ All colors MUST be HSL.
     overscroll-behavior: none;
   }
   
-  /* Prevent iOS scroll bounce */
+  /* Prevent iOS scroll bounce - use dvh for proper iOS handling */
   html, body {
     position: fixed;
     overflow: hidden;
     width: 100%;
     height: 100%;
+    height: 100dvh; /* Dynamic viewport height for iOS */
   }
   
   #root {
     width: 100%;
     height: 100%;
+    height: 100dvh;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
   }
