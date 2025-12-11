@@ -240,6 +240,8 @@ export const TodayScreen = () => {
   };
 
   const loadDoses = async () => {
+    const startTime = Date.now();
+    console.log('[TodayScreen] 🚀 Starting loadDoses...');
     try {
       // Format date in local timezone to avoid UTC conversion issues
       const year = selectedDate.getFullYear();
@@ -255,6 +257,7 @@ export const TodayScreen = () => {
           compounds (name, schedule_type, is_active)
         `)
         .eq('scheduled_date', dateStr);
+      console.log('[TodayScreen] ⏱️ doses query took:', Date.now() - startTime, 'ms');
 
       if (dosesError) throw dosesError;
 
@@ -315,6 +318,7 @@ export const TodayScreen = () => {
       });
 
       setDoses(sortedDoses);
+      console.log('[TodayScreen] ⏱️ Total loadDoses took:', Date.now() - startTime, 'ms');
     } catch (error) {
       console.error('Error loading doses:', error);
     } finally {

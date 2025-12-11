@@ -108,9 +108,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     refreshingRef.current = true;
+    const startTime = Date.now();
+    console.log('[SubscriptionContext] 🚀 Starting refresh...');
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('[SubscriptionContext] ⏱️ getUser took:', Date.now() - startTime, 'ms');
+      
       if (!user) {
         setIsSubscribed(false);
         setSubscriptionStatus('none');
@@ -120,37 +124,41 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(user);
 
-      // First verify subscription with Stripe to ensure database is up to date
+      // Verify subscription with Stripe
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[SubscriptionContext] ⏱️ getSession took:', Date.now() - startTime, 'ms');
+        
         if (session) {
           console.log('[SubscriptionContext] Calling check-subscription...');
+          const edgeFnStart = Date.now();
           const { data, error } = await supabase.functions.invoke('check-subscription', {
             headers: {
               Authorization: `Bearer ${session.access_token}`
             }
           });
+          console.log('[SubscriptionContext] ⏱️ check-subscription took:', Date.now() - edgeFnStart, 'ms');
           
           if (error) {
             console.error('[SubscriptionContext] check-subscription error:', error);
           } else {
             console.log('[SubscriptionContext] check-subscription response:', data);
           }
-          
-          // Wait a bit to ensure database update propagates
-          await new Promise(resolve => setTimeout(resolve, 300));
         }
       } catch (error) {
         console.error('Error checking subscription with Stripe:', error);
       }
 
-      // Then fetch the updated profile with subscription info
+      // Fetch the updated profile with subscription info
       console.log('[SubscriptionContext] Fetching profile...');
+      const profileStart = Date.now();
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date')
         .eq('user_id', user.id)
         .maybeSingle();
+      console.log('[SubscriptionContext] ⏱️ profile fetch took:', Date.now() - profileStart, 'ms');
+      console.log('[SubscriptionContext] ⏱️ Total refresh took:', Date.now() - startTime, 'ms');
 
       if (profileError) {
         console.error('[SubscriptionContext] Profile fetch error:', profileError);
