@@ -167,7 +167,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
     switch (metricType) {
       case "energy": return "How's your energy today?";
       case "sleep": return "How well did you sleep last night?";
-      case "cravings": return "How are your food cravings? (1 = none, 5 = intense)";
+      case "cravings": return "How are your food cravings?";
       default: return "";
     }
   };
