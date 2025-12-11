@@ -50,10 +50,11 @@ const calculateDoseLevel = (
   const ke = Math.LN2 / halfLifeHours;
   
   // Calculate absorption rate constant (ka) from Tmax
-  // At Tmax, dC/dt = 0, which gives us: ka = ke * e^(ka * Tmax) / e^(ke * Tmax)
-  // Simplified: ka ≈ ln(ka/ke) / Tmax + ke when ka >> ke
-  // We use an approximation: ka ≈ 2.5 / Tmax (this gives peak at roughly Tmax)
-  const ka = Math.max(ke * 5, 2.5 / tMaxHours); // Ensure ka > ke for proper absorption
+  // Using a more accurate approximation that accounts for the Bateman equation relationship
+  // Lower ka values create smoother absorption curves (more gradual rise to peak)
+  // For GLP-1s with long half-lives and Tmax values, we need gentler absorption
+  // ka ≈ 1.8 / Tmax provides a better fit for weekly injectables
+  const ka = Math.max(ke * 2.5, 1.8 / tMaxHours); // Ensure ka > ke for proper absorption
   
   // Handle edge case where ka ≈ ke (would cause division by zero)
   if (Math.abs(ka - ke) < 0.0001) {
