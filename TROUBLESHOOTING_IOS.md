@@ -79,9 +79,38 @@ Requires:
 - Safe to ignore
 
 ### App Not Updating After Code Changes
+
+**Basic steps:**
 1. Stop the app in Xcode
-2. Run `npx cap sync ios` in terminal
-3. Build and run again in Xcode
+2. Run `npm run build` in terminal (CRITICAL - must build first!)
+3. Run `npx cap sync ios` in terminal
+4. Build and run again in Xcode
+
+**If still not updating (Nuclear Option):**
+
+Sometimes Xcode's Derived Data cache persists even after Clean Build Folder. Try this:
+
+1. **Close Xcode completely**
+
+2. **Delete Derived Data:**
+   ```bash
+   rm -rf ~/Library/Developer/Xcode/DerivedData
+   ```
+
+3. **Delete app from iPhone** (long press → Remove App)
+
+4. **Rebuild:**
+   ```bash
+   npm run build
+   npx cap sync ios
+   npx cap open ios
+   ```
+
+5. **In Xcode:** `Cmd + Shift + K` then `Cmd + R`
+
+**Verify the sync worked:**
+- After `npx cap sync ios`, check that `ios/App/App/public/` contains your latest files
+- You can run `ls -la ios/App/App/public/` to see timestamps
 
 ## Quick Reference Commands
 
