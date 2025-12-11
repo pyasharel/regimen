@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Scale, Zap, Moon, NotebookPen } from "lucide-react";
+import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Utensils } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +69,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [energy, setEnergy] = useState<number | null>(null);
   const [sleep, setSleep] = useState<number | null>(null);
+  const [cravings, setCravings] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(false);
@@ -96,6 +97,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
         setWeight("");
         setEnergy(null);
         setSleep(null);
+        setCravings(null);
         setNotes("");
 
         if (existingEntry && existingEntry.metrics) {
@@ -113,6 +115,9 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
             if (typeof metrics.sleep === 'number') {
               setSleep(metrics.sleep);
             }
+            if (typeof metrics.cravings === 'number') {
+              setCravings(metrics.cravings);
+            }
           }
           if (existingEntry.notes) {
             setNotes(existingEntry.notes);
@@ -129,7 +134,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   }, [entryDate, weightUnit]);
 
   const handleSave = async () => {
-    if (!weight && energy === null && sleep === null && !notes.trim()) {
+    if (!weight && energy === null && sleep === null && cravings === null && !notes.trim()) {
       toast.error('Please fill in at least one field');
       return;
     }
@@ -153,6 +158,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       
       if (energy !== null) metrics.energy = energy;
       if (sleep !== null) metrics.sleep = sleep;
+      if (cravings !== null) metrics.cravings = cravings;
 
       const { data: existingEntry } = await supabase
         .from('progress_entries')
@@ -192,6 +198,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       if (weight) logged.push('weight');
       if (energy !== null) logged.push('energy');
       if (sleep !== null) logged.push('sleep');
+      if (cravings !== null) logged.push('cravings');
       if (notes.trim()) logged.push('notes');
       
       toast.success(`Logged: ${logged.join(', ')}`);
@@ -204,7 +211,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
     }
   };
 
-  const hasContent = weight || energy !== null || sleep !== null || notes.trim();
+  const hasContent = weight || energy !== null || sleep !== null || cravings !== null || notes.trim();
 
   return (
     <div className="space-y-5">
@@ -252,6 +259,16 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           Last Night's Sleep
         </Label>
         <RatingSelector value={sleep} onChange={setSleep} />
+      </div>
+
+      {/* Cravings Section */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2 text-sm font-medium">
+          <Utensils className="w-4 h-4 text-emerald-500" />
+          Food Cravings
+        </Label>
+        <RatingSelector value={cravings} onChange={setCravings} />
+        <p className="text-xs text-muted-foreground">1 = intense cravings, 5 = no appetite</p>
       </div>
 
       {/* Notes Section */}
