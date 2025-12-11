@@ -167,7 +167,7 @@ export const NotificationsSettings = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 mt-5 bg-background/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 border-b border-border px-4 py-4 safe-top bg-background/95 backdrop-blur-sm">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <Button
             variant="ghost"

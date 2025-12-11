@@ -33,7 +33,7 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 pt-3" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 py-2 safe-bottom">
       {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
         const Icon = tab.icon;
