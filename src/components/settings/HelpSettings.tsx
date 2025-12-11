@@ -42,10 +42,10 @@ export const HelpSettings = () => {
             </div>
           </div>
           <a
-            href="mailto:hello@regimenstack.com"
+            href="mailto:support@helloregimen.com"
             className="flex items-center justify-between w-full p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
           >
-            <span className="text-sm">hello@regimenstack.com</span>
+            <span className="text-sm">support@helloregimen.com</span>
             <ExternalLink className="h-4 w-4 text-muted-foreground" />
           </a>
         </div>
