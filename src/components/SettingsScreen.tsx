@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, Trash2, HelpCircle, LogOut, Scale, FileText, Lock, MessageSquare, Volume2, Bell, Target, Ruler } from "lucide-react";
+import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -13,7 +13,6 @@ import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
-import { BodySettingsModal } from "@/components/progress/BodySettingsModal";
 
 // Version info
 const APP_VERSION = '0.1.2';
@@ -23,38 +22,9 @@ export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">(() => {
-    const saved = localStorage.getItem('weightUnit');
-    return saved === 'kg' ? 'kg' : 'lbs';
-  });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
-  const [showHeightModal, setShowHeightModal] = useState(false);
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [userHeight, setUserHeight] = useState<number | null>(() => {
-    const saved = localStorage.getItem('userHeight');
-    return saved ? parseFloat(saved) : null;
-  });
-  const [goalWeight, setGoalWeight] = useState<number | null>(() => {
-    const saved = localStorage.getItem('goalWeight');
-    return saved ? parseFloat(saved) : null;
-  });
-
-  // Save weightUnit to localStorage when it changes
-  const handleWeightUnitChange = (unit: "lbs" | "kg") => {
-    setWeightUnit(unit);
-    localStorage.setItem('weightUnit', unit);
-  };
-
-  // Convert goal weight for display based on unit (stored in lbs)
-  const getDisplayGoalWeight = () => {
-    if (!goalWeight) return null;
-    if (weightUnit === 'kg') {
-      return Math.round(goalWeight / 2.20462);
-    }
-    return Math.round(goalWeight);
-  };
 
   useEffect(() => {
     const savedSound = localStorage.getItem('soundEnabled');
@@ -104,7 +74,7 @@ export const SettingsScreen = () => {
   };
 
   const handleSendFeedback = () => {
-    const email = "hello@regimenstack.com";
+    const email = "support@helloregimen.com";
     const subject = "Feedback & Feature Requests - Regimen App";
     const body = "Hi there,\n\nI'd like to share feedback about the Regimen app:\n\n";
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -125,22 +95,9 @@ export const SettingsScreen = () => {
     },
     {
       icon: Ruler,
-      label: "Height",
-      description: userHeight ? `${Math.floor(userHeight / 12)}'${userHeight % 12}"` : "Not set",
-      onClick: () => setShowHeightModal(true),
-    },
-    {
-      icon: Target,
-      label: "Goal Weight",
-      description: getDisplayGoalWeight() ? `${getDisplayGoalWeight()} ${weightUnit}` : "Not set",
-      onClick: () => setShowGoalModal(true),
-    },
-    {
-      icon: Scale,
-      label: "Measurement Units",
-      description: weightUnit === "lbs" ? "Pounds (lbs)" : "Kilograms (kg)",
-      onClick: () => {}, // Inline toggle handled in render
-      isInline: true,
+      label: "Body & Measurements",
+      description: "Height, goal weight, units",
+      onClick: () => navigate("/settings/display"),
     },
     {
       icon: Palette,
@@ -214,36 +171,7 @@ export const SettingsScreen = () => {
         <div className="space-y-3">
           {settingsSections.map((section) => (
             <div key={section.label}>
-              {section.isInline && section.label === "Measurement Units" ? (
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                        <section.icon className="h-4 w-4 text-primary" />
-                      </div>
-                      <h3 className="font-semibold text-sm">{section.label}</h3>
-                    </div>
-                    <div className="flex gap-1 bg-muted rounded-lg p-1">
-                      <button
-                        onClick={() => handleWeightUnitChange("lbs")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          weightUnit === "lbs" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                        }`}
-                      >
-                        lbs
-                      </button>
-                      <button
-                        onClick={() => handleWeightUnitChange("kg")}
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          weightUnit === "kg" ? "bg-background shadow-sm" : "hover:bg-background/50"
-                        }`}
-                      >
-                        kg
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : section.isInline && section.label === "Theme" ? (
+              {section.isInline && section.label === "Theme" ? (
                 <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -332,30 +260,6 @@ export const SettingsScreen = () => {
       </div>
 
       <BottomNavigation />
-
-      {/* Body Settings Modals */}
-      <BodySettingsModal
-        open={showHeightModal}
-        onOpenChange={setShowHeightModal}
-        type="height"
-        currentValue={userHeight}
-        onSave={(value) => {
-          setUserHeight(value);
-          localStorage.setItem('userHeight', value.toString());
-          toast.success('Height saved');
-        }}
-      />
-      <BodySettingsModal
-        open={showGoalModal}
-        onOpenChange={setShowGoalModal}
-        type="goal"
-        currentValue={goalWeight}
-        onSave={(value) => {
-          setGoalWeight(value);
-          localStorage.setItem('goalWeight', value.toString());
-          toast.success('Goal weight saved');
-        }}
-      />
     </div>
   );
 };
