@@ -9,7 +9,10 @@ export const MainHeader = ({ title, rightSlot }: MainHeaderProps) => {
   return (
     <header 
       className="border-b border-border px-4 bg-background sticky top-0 flex-shrink-0 z-10 flex items-center"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', minHeight: 'calc(56px + env(safe-area-inset-top, 0px))' }}
+      style={{ 
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)', 
+        minHeight: 'calc(56px + env(safe-area-inset-top, 0px))' 
+      }}
     >
       <div className="flex items-center justify-between w-full h-14">
         <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
