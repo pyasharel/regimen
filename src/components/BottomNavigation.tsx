@@ -33,24 +33,29 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm z-50 pt-2 pb-2">
-      {tabs.map((tab) => {
-        const isActive = location.pathname === tab.path;
-        const Icon = tab.icon;
-        
-        return (
-          <button
-            key={tab.name}
-            onClick={() => handleNavigation(tab.path)}
-            className={`flex flex-col items-center gap-1 py-1 transition-colors ${
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
-          </button>
-        );
-      })}
+    <nav 
+      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-sm z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="flex items-center justify-around py-2">
+        {tabs.map((tab) => {
+          const isActive = location.pathname === tab.path;
+          const Icon = tab.icon;
+          
+          return (
+            <button
+              key={tab.name}
+              onClick={() => handleNavigation(tab.path)}
+              className={`flex flex-col items-center gap-0.5 transition-colors ${
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-[11px] font-medium">{tab.name}</span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 };
