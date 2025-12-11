@@ -393,7 +393,7 @@ export const ProgressScreen = () => {
   
   if (dataLoading) {
     return (
-      <div className="h-screen flex flex-col overflow-hidden bg-background pb-24">
+      <div className="fixed inset-0 bg-background flex flex-col">
         <MainHeader title="Progress" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
@@ -407,10 +407,10 @@ export const ProgressScreen = () => {
   }
   
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background pb-24">
+    <div className="fixed inset-0 bg-background flex flex-col">
       <MainHeader title="Progress" />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-2xl mx-auto w-full">
+      <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-6 max-w-2xl mx-auto w-full">
         {/* Stats Dashboard */}
         <ProgressStats 
           weightEntries={weightEntries}
