@@ -268,7 +268,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           Food Cravings
         </Label>
         <RatingSelector value={cravings} onChange={setCravings} />
-        <p className="text-xs text-muted-foreground">1 = intense cravings, 5 = no appetite</p>
+        <p className="text-xs text-muted-foreground">1 = no cravings, 5 = intense</p>
       </div>
 
       {/* Notes Section */}

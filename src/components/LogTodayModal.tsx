@@ -311,11 +311,11 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
             <RatingSelector value={cravings} onChange={setCravings} label="Cravings" disabled={loadingEntry} />
             {cravings !== null && (
               <p className="text-xs text-muted-foreground">
-                {cravings === 1 && "Intense cravings"}
-                {cravings === 2 && "Strong cravings"}
+                {cravings === 1 && "No cravings"}
+                {cravings === 2 && "Minimal cravings"}
                 {cravings === 3 && "Moderate"}
-                {cravings === 4 && "Minimal cravings"}
-                {cravings === 5 && "No appetite"}
+                {cravings === 4 && "Strong cravings"}
+                {cravings === 5 && "Intense cravings"}
               </p>
             )}
           </div>
