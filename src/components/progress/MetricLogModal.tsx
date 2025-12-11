@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type MetricType = "weight" | "energy" | "sleep" | "notes";
+type MetricType = "weight" | "energy" | "sleep" | "cravings" | "notes";
 
 interface MetricLogModalProps {
   open: boolean;
@@ -81,6 +81,8 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         metrics = { energy: rating };
       } else if (metricType === "sleep") {
         metrics = { sleep: rating };
+      } else if (metricType === "cravings") {
+        metrics = { cravings: rating };
       } else if (metricType === "notes") {
         if (!notes.trim()) {
           toast.error('Please enter some notes');
@@ -128,6 +130,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         weight: 'Weight',
         energy: 'Energy level',
         sleep: 'Sleep quality',
+        cravings: 'Cravings level',
         notes: 'Journal entry'
       };
       
@@ -155,6 +158,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
       case "weight": return "Log Weight";
       case "energy": return "Log Energy";
       case "sleep": return "Log Last Night's Sleep";
+      case "cravings": return "Log Food Cravings";
       case "notes": return "Add Journal Entry";
     }
   };
@@ -163,6 +167,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
     switch (metricType) {
       case "energy": return "How's your energy today?";
       case "sleep": return "How well did you sleep last night?";
+      case "cravings": return "How are your food cravings? (1 = intense, 5 = none)";
       default: return "";
     }
   };
@@ -196,16 +201,28 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
             </div>
           )}
 
-          {(metricType === "energy" || metricType === "sleep") && (
+          {(metricType === "energy" || metricType === "sleep" || metricType === "cravings") && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-2">{getHelperText()}</p>
               <RatingSelector value={rating} onChange={setRating} />
               <p className="text-xs text-muted-foreground">
-                {rating === 1 && "Poor"}
-                {rating === 2 && "Below average"}
-                {rating === 3 && "Average"}
-                {rating === 4 && "Good"}
-                {rating === 5 && "Excellent"}
+                {metricType === "cravings" ? (
+                  <>
+                    {rating === 1 && "Intense cravings"}
+                    {rating === 2 && "Strong cravings"}
+                    {rating === 3 && "Moderate"}
+                    {rating === 4 && "Minimal cravings"}
+                    {rating === 5 && "No appetite"}
+                  </>
+                ) : (
+                  <>
+                    {rating === 1 && "Poor"}
+                    {rating === 2 && "Below average"}
+                    {rating === 3 && "Average"}
+                    {rating === 4 && "Good"}
+                    {rating === 5 && "Excellent"}
+                  </>
+                )}
               </p>
             </div>
           )}

@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-type MetricType = "weight" | "energy" | "sleep";
+type MetricType = "weight" | "energy" | "sleep" | "cravings";
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
 
 interface DosageChange {
@@ -73,6 +73,7 @@ export const MetricChart = ({
       if (metricType === "weight") return e.metrics?.weight;
       if (metricType === "energy") return e.metrics?.energy;
       if (metricType === "sleep") return e.metrics?.sleep;
+      if (metricType === "cravings") return e.metrics?.cravings;
       return false;
     });
 
@@ -104,6 +105,7 @@ export const MetricChart = ({
         if (metricType === "weight") return convertWeight(entry.metrics.weight);
         if (metricType === "energy") return entry.metrics.energy;
         if (metricType === "sleep") return entry.metrics.sleep;
+        if (metricType === "cravings") return entry.metrics.cravings;
         return 0;
       };
 
@@ -201,7 +203,7 @@ export const MetricChart = ({
         {metricType === "weight" && (
           <p className="text-sm font-semibold text-foreground">{data.value} {weightUnit}</p>
         )}
-        {(metricType === "energy" || metricType === "sleep") && (
+        {(metricType === "energy" || metricType === "sleep" || metricType === "cravings") && (
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map(star => (
               <Star
@@ -228,7 +230,7 @@ export const MetricChart = ({
     }
     return {
       domain: [0, 5] as [number, number],
-      label: metricType === "energy" ? 'Energy' : 'Sleep Quality',
+      label: metricType === "energy" ? 'Energy' : metricType === "cravings" ? 'Cravings' : 'Sleep Quality',
       ticks: [1, 2, 3, 4, 5]
     };
   };
@@ -244,6 +246,7 @@ export const MetricChart = ({
       weight: "No weight data yet. Start logging to see your progress!",
       energy: "No energy data yet. Start tracking to see patterns!",
       sleep: "No sleep data yet. Start tracking to see patterns!",
+      cravings: "No cravings data yet. Start tracking to see patterns!",
       notes: ""
     };
     
@@ -254,18 +257,19 @@ export const MetricChart = ({
     );
   }
 
-  // Get color based on metric type - using purple/coral scheme
+  // Get color based on metric type - using purple/coral/emerald scheme
   const getMetricColor = () => {
     if (metricType === "energy") return { stroke: "hsl(350, 70%, 60%)", fill: "hsl(350, 70%, 60%)" }; // Coral/rose
     if (metricType === "sleep") return { stroke: "hsl(270, 60%, 55%)", fill: "hsl(270, 60%, 55%)" }; // Deeper purple
+    if (metricType === "cravings") return { stroke: "hsl(160, 60%, 45%)", fill: "hsl(160, 60%, 45%)" }; // Emerald
     return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" }; // Primary for weight
   };
 
   const metricColor = getMetricColor();
 
-  // Use area chart (filled underneath) for energy and sleep
+  // Use area chart (filled underneath) for energy, sleep, and cravings
   // Like the medication levels visualization
-  if (metricType === "energy" || metricType === "sleep") {
+  if (metricType === "energy" || metricType === "sleep" || metricType === "cravings") {
     return (
       <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
         <AreaChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>

@@ -43,7 +43,7 @@ type ProgressEntry = {
 };
 
 type TimeFrame = "1M" | "3M" | "6M" | "1Y" | "All";
-type MetricType = "weight" | "energy" | "sleep";
+type MetricType = "weight" | "energy" | "sleep" | "cravings";
 
 type Compound = {
   id: string;
@@ -385,6 +385,7 @@ export const ProgressScreen = () => {
       case "weight": return "Weight";
       case "energy": return "Energy";
       case "sleep": return "Sleep";
+      case "cravings": return "Cravings";
     }
   };
 
@@ -421,7 +422,7 @@ export const ProgressScreen = () => {
 
         {/* Metric Type Selector - More muted styling */}
         <div className="flex gap-2 border-b border-border/50">
-        {(["weight", "energy", "sleep"] as MetricType[]).map(type => (
+        {(["weight", "energy", "sleep", "cravings"] as MetricType[]).map(type => (
             <button
               key={type}
               onClick={() => {
