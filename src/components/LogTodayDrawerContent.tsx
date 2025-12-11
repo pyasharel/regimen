@@ -227,8 +227,8 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
             step="0.1"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            placeholder={loadingEntry ? "Loading..." : "Enter weight"}
-            className="flex-1 h-11"
+            placeholder={loadingEntry ? "..." : "Weight"}
+            className="w-28 h-11"
             disabled={loadingEntry}
           />
           <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
@@ -280,8 +280,8 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder={loadingEntry ? "Loading..." : "How are you feeling?"}
-          className="min-h-[70px] resize-none"
+          placeholder={loadingEntry ? "..." : "How are you feeling?"}
+          className="min-h-[60px] resize-none"
           disabled={loadingEntry}
         />
       </div>

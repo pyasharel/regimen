@@ -1326,8 +1326,8 @@ export const TodayScreen = () => {
         
         {/* Log Today Drawer Content */}
         <DrawerContent className="max-h-[85vh]">
-          <div className="mx-auto w-full max-w-lg">
-            <DrawerHeader>
+          <div className="mx-auto w-full max-w-lg flex flex-col max-h-[80vh]">
+            <DrawerHeader className="flex-shrink-0">
               <DrawerTitle className="flex items-center gap-2">
                 <ClipboardList className="h-5 w-5 text-primary" />
                 Log Today
@@ -1336,7 +1336,7 @@ export const TodayScreen = () => {
                 Track your daily metrics and notes
               </DrawerDescription>
             </DrawerHeader>
-            <div className="p-4 pb-8">
+            <div className="p-4 pb-8 overflow-y-auto flex-1">
               <LogTodayDrawerContent onSuccess={() => setShowLogTodayModal(false)} />
             </div>
           </div>
