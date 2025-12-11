@@ -167,7 +167,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
     switch (metricType) {
       case "energy": return "How's your energy today?";
       case "sleep": return "How well did you sleep last night?";
-      case "cravings": return "How are your food cravings? (1 = intense, 5 = none)";
+      case "cravings": return "How are your food cravings? (1 = none, 5 = intense)";
       default: return "";
     }
   };
@@ -208,11 +208,11 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
               <p className="text-xs text-muted-foreground">
                 {metricType === "cravings" ? (
                   <>
-                    {rating === 1 && "Intense cravings"}
-                    {rating === 2 && "Strong cravings"}
+                    {rating === 1 && "No cravings"}
+                    {rating === 2 && "Minimal cravings"}
                     {rating === 3 && "Moderate"}
-                    {rating === 4 && "Minimal cravings"}
-                    {rating === 5 && "No appetite"}
+                    {rating === 4 && "Strong cravings"}
+                    {rating === 5 && "Intense cravings"}
                   </>
                 ) : (
                   <>
