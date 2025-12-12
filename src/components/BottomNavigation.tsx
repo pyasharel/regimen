@@ -33,25 +33,25 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50 flex flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="h-14 flex items-center justify-around">
-      {tabs.map((tab) => {
-        const isActive = location.pathname === tab.path;
-        const Icon = tab.icon;
-        
-        return (
-          <button
-            key={tab.name}
-            onClick={() => handleNavigation(tab.path)}
-            className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-            <span className="text-[11px] font-medium">{tab.name}</span>
-          </button>
-        );
-      })}
+        {tabs.map((tab) => {
+          const isActive = location.pathname === tab.path;
+          const Icon = tab.icon;
+          
+          return (
+            <button
+              key={tab.name}
+              onClick={() => handleNavigation(tab.path)}
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-4 transition-colors ${
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-[11px] font-medium">{tab.name}</span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
