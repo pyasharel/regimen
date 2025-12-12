@@ -663,16 +663,18 @@ export const TodayScreen = () => {
   if (loading || subscriptionLoading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col">
-        <MainHeader title="Today" />
-        {/* Match the greeting block spacing exactly */}
-        <div className="px-4 pt-4 pb-4 flex-shrink-0">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-        </div>
-        {/* Rest of skeleton content */}
-        <div className="flex-1 px-4 space-y-3 overflow-hidden">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
-          ))}
+        <div className="flex-1 min-h-0 scroll-container pb-24">
+          <MainHeader title="Today" />
+          {/* Match the greeting block spacing exactly */}
+          <div className="px-4 pt-4 pb-4 flex-shrink-0">
+            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          </div>
+          {/* Rest of skeleton content */}
+          <div className="px-4 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
+            ))}
+          </div>
         </div>
         <BottomNavigation />
       </div>
@@ -764,11 +766,14 @@ export const TodayScreen = () => {
           }
         }
       `}</style>
-      {/* Header */}
-      <MainHeader title="Today" />
+      
+      {/* Scrollable Content - Header inside scroll area */}
+      <div className="flex-1 min-h-0 scroll-container pb-24">
+        {/* Header */}
+        <MainHeader title="Today" />
 
-      {/* Greeting */}
-      <div className="px-4 pt-4 pb-4 flex-shrink-0">
+        {/* Greeting */}
+        <div className="px-4 pt-4 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
@@ -877,7 +882,7 @@ export const TodayScreen = () => {
       <TodayBanner />
 
       {/* Doses */}
-      <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-4 relative">
+      <div className="p-4 space-y-4 relative">
         {/* Day Complete Celebration */}
         {showDayComplete && (
           <>
@@ -1315,6 +1320,8 @@ export const TodayScreen = () => {
           </>
         )}
       </div>
+      </div>
+      {/* End of scroll-container */}
 
       {/* Log Today FAB - primary daily action */}
       <Drawer open={showLogTodayModal} onOpenChange={setShowLogTodayModal}>

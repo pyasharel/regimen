@@ -309,16 +309,18 @@ export const MyStackScreen = () => {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col">
-        <MainHeader title="My Stack" />
-        <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-32 bg-muted animate-pulse rounded-xl" />
-            <div className="h-32 bg-muted animate-pulse rounded-xl" />
-          </div>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-muted animate-pulse rounded-2xl" />
-            ))}
+        <div className="flex-1 min-h-0 scroll-container pb-24">
+          <MainHeader title="My Stack" />
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-32 bg-muted animate-pulse rounded-xl" />
+              <div className="h-32 bg-muted animate-pulse rounded-xl" />
+            </div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-muted animate-pulse rounded-2xl" />
+              ))}
+            </div>
           </div>
         </div>
         <BottomNavigation />
@@ -328,11 +330,10 @@ export const MyStackScreen = () => {
  
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      {/* Header */}
-      <MainHeader title="My Stack" />
-
-      {/* Scrollable Content */}
+      {/* Scrollable Content - Header inside scroll area */}
       <div className="flex-1 min-h-0 scroll-container pb-24">
+        {/* Header */}
+        <MainHeader title="My Stack" />
         {/* Dashboard Stats - Single Row */}
         <div className="p-4">
           <div className="grid grid-cols-2 gap-3">
@@ -614,6 +615,7 @@ export const MyStackScreen = () => {
           </div>
         )}
       </div>
+      {/* End of scroll-container */}
 
       {/* FAB Button - Only show when has active compounds */}
       {activeCompounds.length > 0 && (
