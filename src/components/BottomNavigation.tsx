@@ -56,7 +56,7 @@ export const BottomNavigation = () => {
       
       {/* Layer 2: Safe area filler - background only, no interactive content */}
       <div 
-        className="bg-card"
+        className="bg-destructive"
         style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
       />
     </nav>
