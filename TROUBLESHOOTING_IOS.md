@@ -187,6 +187,56 @@ ls -la ios/App/App/public/
 
 The files should show recent timestamps matching your last `npm run build`.
 
+---
+
+## Layout & UI Fixes
+
+### Screen Rotation Lock
+
+**Problem:** App rotates when phone is flipped to landscape orientation.
+
+**Solution:** Lock orientation to portrait in native config files:
+
+**iOS (Info.plist):** Remove landscape orientations from `UISupportedInterfaceOrientations`:
+```xml
+<key>UISupportedInterfaceOrientations</key>
+<array>
+    <string>UIInterfaceOrientationPortrait</string>
+</array>
+```
+
+**Android (AndroidManifest.xml):** Add `screenOrientation` to the activity:
+```xml
+<activity
+    android:screenOrientation="portrait"
+    ...>
+```
+
+### Bottom Navigation Vertical Centering
+
+**Problem:** Bottom nav icons/text not vertically centered, especially with safe area insets.
+
+**Solution:** Apply safe-area padding to the nav wrapper, not the content container:
+```tsx
+<nav style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+  <div className="flex items-center justify-around h-14">
+    {/* buttons with h-full to fill the fixed height */}
+  </div>
+</nav>
+```
+
+### Page Sliding / Bounce Issues
+
+**Problem:** Page content slides or bounces when scrolling, especially on iOS.
+
+**Solution:** 
+1. Use `overflow-y-auto` instead of `overflow-scroll` on scroll containers
+2. Add `overscroll-behavior-y-contain` to prevent pull-to-refresh interference
+3. Ensure fixed elements (header, bottom nav) don't overlap scrollable content
+4. Use proper safe-area padding: `pb-[calc(4rem+env(safe-area-inset-bottom))]`
+
+---
+
 ## Quick Reference Commands
 
 ```bash
