@@ -34,8 +34,8 @@ const config: CapacitorConfig = {
     },
   },
   ios: {
-    // Force WKWebView to not use persistent cache
-    contentInset: 'automatic',
+    // Disable automatic safe area handling - we control it manually
+    contentInset: 'never',
     backgroundColor: '#000000',
     preferredContentMode: 'mobile',
     limitsNavigationsToAppBoundDomains: true,
