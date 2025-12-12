@@ -16,7 +16,7 @@ import { MainHeader } from "@/components/MainHeader";
 
 // Version info - Update these when making changes to verify sync
 const APP_VERSION = '0.2.0';
-const APP_BUILD = '13';
+const APP_BUILD = '14';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
