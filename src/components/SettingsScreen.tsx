@@ -14,9 +14,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
 
-// Version info
-const APP_VERSION = '0.1.2';
-const APP_BUILD = '5';
+// Version info - Update these when making changes to verify sync
+const APP_VERSION = '0.1.3';
+const APP_BUILD = '6';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();

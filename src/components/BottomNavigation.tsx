@@ -33,10 +33,8 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
+      {/* Navigation content - fixed height */}
       <div className="flex items-center justify-around h-14">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
@@ -56,6 +54,11 @@ export const BottomNavigation = () => {
           );
         })}
       </div>
+      {/* Safe area spacer - extends background into home indicator area */}
+      <div 
+        className="bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
+      />
     </nav>
   );
 };
