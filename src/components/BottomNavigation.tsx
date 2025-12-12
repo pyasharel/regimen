@@ -32,9 +32,25 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
-      {/* Interactive navigation bar - fixed 56px height */}
-      <div className="flex items-center justify-around h-14">
+    <nav style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      borderTop: '1px solid hsl(var(--border))',
+      backgroundColor: 'hsl(var(--card))',
+      zIndex: 50
+    }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        height: '56px',
+        width: '100%',
+        margin: 0,
+        padding: 0
+      }}>
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -43,22 +59,45 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center justify-center gap-1 h-12 px-3 transition-colors ${
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
+              style={{
+                all: 'unset', // Removes ALL default button styles
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '56px', // Full height of container
+                margin: 0,
+                padding: 0,
+                boxSizing: 'border-box',
+                cursor: 'pointer',
+                color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                transition: 'color 0.2s'
+              }}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              <span className="text-[11px] font-medium leading-none">{tab.name}</span>
+              <Icon style={{ 
+                width: '20px', 
+                height: '20px',
+                flexShrink: 0,
+                marginBottom: '2px'
+              }} />
+              <span style={{ 
+                fontSize: '11px',
+                fontWeight: 500,
+                lineHeight: 1,
+                marginTop: '2px'
+              }}>
+                {tab.name}
+              </span>
             </button>
           );
         })}
       </div>
       
-      {/* Safe area filler - background only, no interactive content */}
-      <div 
-        className="bg-card"
-        style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
-      />
+      <div style={{ 
+        height: 'env(safe-area-inset-bottom, 0px)',
+        backgroundColor: 'hsl(var(--card))'
+      }} />
     </nav>
   );
 };
