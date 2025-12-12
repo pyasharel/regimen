@@ -32,9 +32,18 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
-      {/* Layer 1: Interactive navigation bar - fixed 56px height */}
-      <div className="flex items-center justify-around h-14">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 border-t border-border z-50"
+      style={{ backgroundColor: "#1a1a1a" }}
+    >
+      {/* Interactive bar - DEBUG LAYER */}
+      <div 
+        className="flex items-center justify-around"
+        style={{ 
+          height: "56px",
+          backgroundColor: "#00FF00", // bright green - should be exactly 56px tall
+        }}
+      >
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -43,21 +52,47 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center justify-center gap-1 py-2 px-3 transition-colors ${
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                backgroundColor: "#0000FF", // blue - button area
+                height: "48px", // explicit button height
+                padding: "0 12px",
+                border: "none",
+                color: isActive ? "#FF6F61" : "#888888",
+              }}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              <span className="text-[11px] font-medium leading-none">{tab.name}</span>
+              <Icon 
+                style={{ 
+                  width: "20px", 
+                  height: "20px",
+                  flexShrink: 0,
+                  backgroundColor: "#FFFF00", // yellow - icon box
+                }} 
+              />
+              <span 
+                style={{ 
+                  fontSize: "11px",
+                  lineHeight: "1",
+                  backgroundColor: "#FF00FF", // magenta - label box
+                }}
+              >
+                {tab.name}
+              </span>
             </button>
           );
         })}
       </div>
       
-      {/* Layer 2: Safe area filler - background only, no interactive content */}
+      {/* Safe area - DEBUG STRIP */}
       <div 
-        className="bg-destructive"
-        style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ 
+          height: 'env(safe-area-inset-bottom, 0px)',
+          backgroundColor: '#FF0000', // red - safe-area only
+        }}
       />
     </nav>
   );
