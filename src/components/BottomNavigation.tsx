@@ -32,15 +32,12 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
-      {/* Navigation content with proper vertical centering */}
-      <div 
-        className="flex items-center justify-around"
-        style={{
-          height: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)'
-        }}
-      >
+    <nav 
+      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      {/* Navigation content - fixed height, centered content */}
+      <div className="flex items-center justify-around h-14">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -49,7 +46,7 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center justify-center gap-1 px-4 py-2 transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 px-4 h-full transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
