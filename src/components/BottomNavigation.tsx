@@ -32,11 +32,9 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
-      <div className="h-14 flex items-center justify-around px-2">
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50">
+      {/* Layer 1: Interactive navigation bar - fixed 56px height */}
+      <div className="flex items-center justify-around h-14">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -45,16 +43,22 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center justify-center h-12 px-4 transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 py-2 px-3 transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span className="text-[11px] font-medium mt-0.5">{tab.name}</span>
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              <span className="text-[11px] font-medium leading-none">{tab.name}</span>
             </button>
           );
         })}
       </div>
+      
+      {/* Layer 2: Safe area filler - background only, no interactive content */}
+      <div 
+        className="bg-card"
+        style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
+      />
     </nav>
   );
 };
