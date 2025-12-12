@@ -31,6 +31,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 type ProgressEntry = {
   id: string;
@@ -84,16 +85,45 @@ export const ProgressScreen = () => {
   const [weightUnit, setWeightUnit] = useState<string>('lbs');
   const [goalWeight, setGoalWeight] = useState<number | undefined>();
   
-  // Load user settings
+  // Load user settings from persistent storage (survives app updates)
   useEffect(() => {
-    const savedUnit = localStorage.getItem('weightUnit') || 'lbs';
-    const savedGoal = localStorage.getItem('goalWeight');
-    setWeightUnit(savedUnit);
-    if (savedGoal) setGoalWeight(Number(savedGoal));
+    const loadSettings = async () => {
+      const savedUnit = await persistentStorage.get('weightUnit');
+      const savedGoal = await persistentStorage.get('goalWeight');
+      if (savedUnit) setWeightUnit(savedUnit);
+      // Goal weight is stored in the user's preferred unit, convert to lbs for internal use
+      if (savedGoal) {
+        const goalValue = parseFloat(savedGoal);
+        // If user uses kg, convert to lbs for internal storage consistency
+        const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+        setGoalWeight(goalInLbs);
+      }
+    };
+    loadSettings();
   }, []);
 
-  const handleSaveGoal = (value: number) => {
-    localStorage.setItem('goalWeight', value.toString());
+  // Re-load settings when returning from settings page
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const savedUnit = await persistentStorage.get('weightUnit');
+        const savedGoal = await persistentStorage.get('goalWeight');
+        if (savedUnit) setWeightUnit(savedUnit);
+        if (savedGoal) {
+          const goalValue = parseFloat(savedGoal);
+          const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+          setGoalWeight(goalInLbs);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  const handleSaveGoal = async (value: number) => {
+    // value comes in as lbs (internal format), convert to user's unit for storage
+    const displayValue = weightUnit === 'kg' ? Math.round(value / 2.20462) : Math.round(value);
+    await persistentStorage.set('goalWeight', displayValue.toString());
     setGoalWeight(value);
     toast.success('Goal weight saved');
   };
