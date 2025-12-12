@@ -15,8 +15,8 @@ import { SettingsSubscriptionSection } from "@/components/subscription/SettingsS
 import { MainHeader } from "@/components/MainHeader";
 
 // Version info - Update these when making changes to verify sync
-const APP_VERSION = '0.1.7';
-const APP_BUILD = '10';
+const APP_VERSION = '0.1.8';
+const APP_BUILD = '11';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
