@@ -143,33 +143,15 @@ All colors MUST be HSL.
     padding-right: env(safe-area-inset-right);
   }
   
-  /* Hide white line indicator on iOS */
+  /* Simplified layout - let iOS handle safe areas with contentInset: automatic */
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
+
   body {
-    overscroll-behavior: none;
-  }
-  
-  /* Prevent iOS scroll bounce - fixed viewport approach */
-  html, body {
-    position: fixed;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    overscroll-behavior: none;
-    /* Removed touch-action: none - it blocks touch responsiveness */
-  }
-  
-  /* Root container - NO scrolling here, screens handle their own scroll */
-  #root {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    overflow: hidden;
     overscroll-behavior: none;
   }
   
