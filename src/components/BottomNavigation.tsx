@@ -33,7 +33,8 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50 h-14 flex items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50 flex flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="h-14 flex items-center justify-around">
       {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
         const Icon = tab.icon;
@@ -51,6 +52,7 @@ export const BottomNavigation = () => {
           </button>
         );
       })}
+      </div>
     </nav>
   );
 };
