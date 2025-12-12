@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 type MetricType = "weight" | "energy" | "sleep" | "cravings" | "notes";
 
@@ -58,6 +59,19 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
   const [rating, setRating] = useState(3);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Load user's preferred weight unit from persistent storage
+  useEffect(() => {
+    const loadWeightUnit = async () => {
+      const savedUnit = await persistentStorage.get('weightUnit');
+      if (savedUnit === 'kg' || savedUnit === 'lbs') {
+        setWeightUnit(savedUnit);
+      }
+    };
+    if (open) {
+      loadWeightUnit();
+    }
+  }, [open]);
 
   const handleSave = async () => {
     setLoading(true);

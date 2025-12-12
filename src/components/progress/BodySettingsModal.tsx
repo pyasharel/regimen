@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 interface BodySettingsModalProps {
   open: boolean;
@@ -27,6 +28,23 @@ export const BodySettingsModal = ({
   const [heightUnit, setHeightUnit] = useState<"imperial" | "metric">("imperial");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
 
+  // Load user's preferred units from persistent storage
+  useEffect(() => {
+    const loadUnits = async () => {
+      const savedHeightUnit = await persistentStorage.get('heightUnit');
+      const savedWeightUnit = await persistentStorage.get('weightUnit');
+      if (savedHeightUnit === 'imperial' || savedHeightUnit === 'metric') {
+        setHeightUnit(savedHeightUnit);
+      }
+      if (savedWeightUnit === 'kg' || savedWeightUnit === 'lbs') {
+        setWeightUnit(savedWeightUnit);
+      }
+    };
+    if (open) {
+      loadUnits();
+    }
+  }, [open]);
+
   useEffect(() => {
     if (type === "height" && currentValue) {
       const totalInches = currentValue;
@@ -34,9 +52,13 @@ export const BodySettingsModal = ({
       setInches((totalInches % 12).toString());
       setCm(Math.round(totalInches * 2.54).toString());
     } else if (type === "goal" && currentValue) {
-      setWeight(currentValue.toString());
+      // currentValue is in lbs, convert to user's preferred unit for display
+      const displayValue = weightUnit === 'kg' 
+        ? Math.round(currentValue / 2.20462) 
+        : Math.round(currentValue);
+      setWeight(displayValue.toString());
     }
-  }, [currentValue, type, open]);
+  }, [currentValue, type, open, weightUnit]);
 
   const handleSave = () => {
     if (type === "height") {
