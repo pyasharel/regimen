@@ -33,8 +33,11 @@ export const BottomNavigation = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-      <div className="h-14 flex items-center justify-around">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 border-t border-border bg-card z-50" 
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="h-14 grid grid-cols-4">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
@@ -43,7 +46,7 @@ export const BottomNavigation = () => {
             <button
               key={tab.name}
               onClick={() => handleNavigation(tab.path)}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-4 transition-colors ${
+              className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
