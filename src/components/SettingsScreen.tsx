@@ -15,8 +15,8 @@ import { SettingsSubscriptionSection } from "@/components/subscription/SettingsS
 import { MainHeader } from "@/components/MainHeader";
 
 // Version info - Update these when making changes to verify sync
-const APP_VERSION = '0.1.6';
-const APP_BUILD = '9';
+const APP_VERSION = '0.1.7';
+const APP_BUILD = '10';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -147,23 +147,24 @@ export const SettingsScreen = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col">
-      {/* Header */}
-      <MainHeader
-        title="Settings"
-        rightSlot={
-          <Avatar 
-            className="h-9 w-9 cursor-pointer" 
-            onClick={() => navigate('/settings/account')}
-          >
-            <AvatarImage src={avatarUrl || undefined} />
-            <AvatarFallback className="text-xs">
-              {userName.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        }
-      />
+      <div className="flex-1 min-h-0 scroll-container pb-24">
+        {/* Header */}
+        <MainHeader
+          title="Settings"
+          rightSlot={
+            <Avatar 
+              className="h-9 w-9 cursor-pointer" 
+              onClick={() => navigate('/settings/account')}
+            >
+              <AvatarImage src={avatarUrl || undefined} />
+              <AvatarFallback className="text-xs">
+                {userName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          }
+        />
 
-      <div className="flex-1 min-h-0 scroll-container p-4 pb-24 space-y-6 max-w-2xl mx-auto w-full">
+        <div className="p-4 space-y-6 max-w-2xl mx-auto w-full">
         {/* Subscription Section */}
         <SettingsSubscriptionSection />
 
@@ -257,7 +258,9 @@ export const SettingsScreen = () => {
         <div className="text-center text-xs text-muted-foreground/60 mt-4">
           Version {APP_VERSION} {Capacitor.isNativePlatform() && `(Build ${APP_BUILD})`}
         </div>
+        </div>
       </div>
+      {/* End of scroll-container */}
 
       <BottomNavigation />
     </div>
