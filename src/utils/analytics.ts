@@ -113,28 +113,28 @@ export const trackProgressViewed = (category: string) => {
   });
 };
 
-// Premium feature tracking
-export const trackPremiumModalOpened = (source: string) => {
+// Paywall tracking (replaces premium tracking)
+export const trackPaywallShown = (trigger: string) => {
   ReactGA.event({
-    category: 'Premium',
-    action: 'Modal Opened',
-    label: source,
+    category: 'Paywall',
+    action: 'Shown',
+    label: trigger,
   });
 };
 
-export const trackPremiumFeatureAttempt = (feature: string) => {
+export const trackPaywallDismissed = (trigger: string) => {
   ReactGA.event({
-    category: 'Premium',
-    action: 'Feature Attempted',
-    label: feature,
+    category: 'Paywall',
+    action: 'Dismissed',
+    label: trigger,
   });
 };
 
-export const trackPremiumToggled = (enabled: boolean) => {
+export const trackSubscriptionStarted = (plan: string) => {
   ReactGA.event({
-    category: 'Premium',
-    action: enabled ? 'Enabled' : 'Disabled',
-    label: 'Test Mode',
+    category: 'Subscription',
+    action: 'Started',
+    label: plan,
   });
 };
 

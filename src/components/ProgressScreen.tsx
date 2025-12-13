@@ -32,6 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { trackPhotoUploaded, trackPaywallShown } from "@/utils/analytics";
 
 type ProgressEntry = {
   id: string;
@@ -285,6 +286,7 @@ export const ProgressScreen = () => {
 
   const handleCapturePhoto = async () => {
     if (!isSubscribed) {
+      trackPaywallShown('photo_capture');
       setShowPaywall(true);
       return;
     }
@@ -306,6 +308,7 @@ export const ProgressScreen = () => {
 
   const handleSelectPhoto = async () => {
     if (!isSubscribed) {
+      trackPaywallShown('photo_select');
       setShowPaywall(true);
       return;
     }
@@ -370,6 +373,7 @@ export const ProgressScreen = () => {
       if (entryError) throw entryError;
 
       triggerHaptic('medium');
+      trackPhotoUploaded('progress');
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
       refetchEntries();

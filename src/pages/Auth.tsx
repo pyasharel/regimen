@@ -12,6 +12,7 @@ import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
+import { trackSignup, trackLogin } from "@/utils/analytics";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -268,6 +269,7 @@ export default function Auth() {
 
         if (error) throw error;
         console.log('Successfully signed in with Google');
+        trackLogin('google');
       } else {
         // Web: Use OAuth flow with forced account selection
         console.log('Starting web Google Sign-In with account picker');
@@ -337,6 +339,7 @@ export default function Auth() {
         if (error) throw error;
         // Account created - onAuthStateChange will handle navigation
         // Welcome email will be sent in checkOnboardingStatus
+        trackSignup('email');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -345,6 +348,7 @@ export default function Auth() {
 
         if (error) throw error;
         // Signed in - onAuthStateChange will handle navigation
+        trackLogin('email');
       }
     } catch (error: any) {
       console.error("Auth error:", error);

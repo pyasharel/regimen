@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { trackProgressEntryAdded } from "@/utils/analytics";
 
 interface LogTodayDrawerContentProps {
   onSuccess: () => void;
@@ -200,6 +201,9 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       if (sleep !== null) logged.push('sleep');
       if (cravings !== null) logged.push('cravings');
       if (notes.trim()) logged.push('notes');
+      
+      // Track analytics
+      trackProgressEntryAdded('metrics', false, logged.length > 0);
       
       toast.success(`Logged: ${logged.join(', ')}`);
       onSuccess();

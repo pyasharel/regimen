@@ -14,6 +14,7 @@ import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
+import { trackCompoundDeleted, trackCompoundViewed } from "@/utils/analytics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,6 +164,9 @@ export const MyStackScreen = () => {
   const deleteCompound = async (id: string) => {
     if (!confirm('Are you sure you want to delete this compound?')) return;
 
+    // Find compound name for analytics before deleting
+    const compound = compounds.find(c => c.id === id);
+
     try {
       const { error } = await supabase
         .from('compounds')
@@ -170,6 +174,10 @@ export const MyStackScreen = () => {
         .eq('id', id);
 
       if (error) throw error;
+
+      if (compound) {
+        trackCompoundDeleted(compound.name);
+      }
 
       toast({
         title: "Compound deleted",
