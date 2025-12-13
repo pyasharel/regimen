@@ -7,6 +7,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { trackPreferenceSet } from "@/utils/analytics";
 
 export const DisplaySettings = () => {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ export const DisplaySettings = () => {
     }
     setWeightUnit(unit);
     await persistentStorage.set('weightUnit', unit);
+    trackPreferenceSet('weightUnit', unit);
   };
 
   const handleHeightUnitChange = async (unit: "imperial" | "metric") => {
@@ -83,6 +85,7 @@ export const DisplaySettings = () => {
     }
     setHeightUnit(unit);
     await persistentStorage.set('heightUnit', unit);
+    trackPreferenceSet('heightUnit', unit);
   };
 
   const handleHeightFeetChange = async (value: string) => {
