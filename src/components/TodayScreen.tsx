@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
 import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
+import { trackDoseLogged, trackDoseSkipped, trackPaywallShown } from "@/utils/analytics";
 import {
   Drawer,
   DrawerContent,
@@ -415,6 +416,11 @@ export const TodayScreen = () => {
       // Cancel notification when dose is marked as taken
       if (!currentStatus) {
         await cancelDoseNotification(doseId);
+        // Track dose logged analytics
+        trackDoseLogged(dose.compound_name || 'Unknown', true);
+      } else {
+        // Track dose unmarked
+        trackDoseLogged(dose.compound_name || 'Unknown', false);
       }
 
       // Update local state
@@ -499,6 +505,7 @@ export const TodayScreen = () => {
       // Cancel notification when dose is skipped
       if (!isCurrentlySkipped) {
         await cancelDoseNotification(doseId);
+        trackDoseSkipped(dose.compound_name || 'Unknown');
       }
 
       // Invalidate streak query to refresh

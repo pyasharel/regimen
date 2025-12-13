@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted } from '@/utils/analytics';
 
 interface SubscriptionPaywallProps {
   open: boolean;
@@ -27,17 +28,18 @@ export const SubscriptionPaywall = ({
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Debug: Log when component mounts/opens
+  // Track when paywall opens
   useEffect(() => {
     if (open) {
       console.log('[PAYWALL] Component opened/mounted');
+      trackPaywallShown(message || 'add_compound');
       console.log('[PAYWALL] Supabase client check:', {
         hasSupabase: typeof supabase !== 'undefined',
         hasFunctions: typeof supabase?.functions !== 'undefined',
         canInvoke: typeof supabase?.functions?.invoke === 'function'
       });
     }
-  }, [open]);
+  }, [open, message]);
 
   const promoCodes: Record<string, {duration: number, type: 'free' | 'discount' | 'beta', value: number}> = {
     'BETA3': { duration: 3, type: 'free', value: 100 },
@@ -172,6 +174,7 @@ export const SubscriptionPaywall = ({
       
       if (data?.url) {
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
+        trackSubscriptionStarted(selectedPlan);
         
         if (Capacitor.isNativePlatform()) {
           // Native app: Open in system browser
@@ -209,6 +212,7 @@ export const SubscriptionPaywall = ({
   };
 
   const handleClose = () => {
+    trackPaywallDismissed(message || 'add_compound');
     onOpenChange(false);
     onDismiss?.();
   };

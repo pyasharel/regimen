@@ -3,6 +3,7 @@ import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
+import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted } from "@/utils/analytics";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -620,6 +621,7 @@ export const AddCompoundScreen = () => {
       if (compoundError) throw compoundError;
 
       triggerHaptic('medium');
+      trackCompoundDeleted(name);
       toast({
         title: "Compound removed",
         description: `${name} has been removed from your stack. Dose history preserved.`
@@ -744,6 +746,7 @@ export const AddCompoundScreen = () => {
 
         // Success haptic and navigate immediately
         triggerHaptic('medium');
+        trackCompoundEdited(name);
         navigate("/stack");
 
         // Reschedule notifications in background (non-blocking) - only for active compounds
@@ -865,6 +868,7 @@ export const AddCompoundScreen = () => {
 
       // Success haptic and navigate immediately
       triggerHaptic('medium');
+      trackCompoundAdded(name, frequency);
       navigate('/today');
 
       // Schedule notifications in background (non-blocking) - only for active compounds
