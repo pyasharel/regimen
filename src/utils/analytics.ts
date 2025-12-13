@@ -50,8 +50,13 @@ export const trackCompoundAdded = (compoundName: string, scheduleType: string) =
   ReactGA.event({
     category: 'Compound',
     action: 'Added',
-    label: compoundName,
-    value: scheduleType === 'daily' ? 1 : 2,
+    label: `${compoundName} - ${scheduleType}`,
+  });
+  // Also track the schedule type separately for easier filtering
+  ReactGA.event({
+    category: 'Schedule',
+    action: 'Type Selected',
+    label: scheduleType,
   });
 };
 
@@ -76,6 +81,42 @@ export const trackCompoundViewed = (compoundName: string) => {
     category: 'Compound',
     action: 'Viewed',
     label: compoundName,
+  });
+};
+
+// Cycle tracking
+export const trackCycleEnabled = (compoundName: string, weeksOn: number, weeksOff: number | null) => {
+  ReactGA.event({
+    category: 'Compound',
+    action: 'Cycle Enabled',
+    label: weeksOff ? `${compoundName} - ${weeksOn}on/${weeksOff}off` : `${compoundName} - ${weeksOn} weeks`,
+  });
+};
+
+// Calculator tracking
+export const trackCalculatorUsed = (calculatorType: 'iu' | 'ml') => {
+  ReactGA.event({
+    category: 'Calculator',
+    action: 'Used',
+    label: calculatorType.toUpperCase(),
+  });
+};
+
+// Half-life/Levels tracking
+export const trackLevelsViewed = (compoundName: string) => {
+  ReactGA.event({
+    category: 'Feature',
+    action: 'Levels Viewed',
+    label: compoundName,
+  });
+};
+
+// Share tracking
+export const trackShareAction = (shareType: 'stack' | 'progress' | 'photo') => {
+  ReactGA.event({
+    category: 'Social',
+    action: 'Share',
+    label: shareType,
   });
 };
 
@@ -110,6 +151,23 @@ export const trackProgressViewed = (category: string) => {
     category: 'Progress',
     action: 'Viewed',
     label: category,
+  });
+};
+
+// Weight logging - specific tracking
+export const trackWeightLogged = (unit: 'lbs' | 'kg') => {
+  ReactGA.event({
+    category: 'Progress',
+    action: 'Weight Logged',
+    label: unit,
+  });
+};
+
+// Photo compare tracking
+export const trackPhotoCompareUsed = () => {
+  ReactGA.event({
+    category: 'Feature',
+    action: 'Photo Compare Used',
   });
 };
 

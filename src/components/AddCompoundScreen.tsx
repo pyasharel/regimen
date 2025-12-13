@@ -3,7 +3,7 @@ import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
-import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted } from "@/utils/analytics";
+import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted, trackCycleEnabled, trackCalculatorUsed } from "@/utils/analytics";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -851,14 +851,19 @@ export const AddCompoundScreen = () => {
 
         // Schedule cycle reminders if enabled
         if (enableCycle) {
+          // Track cycle enabled analytics
+          const weeksOnValue = cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn;
+          const weeksOffValue = cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null;
+          trackCycleEnabled(name, weeksOnValue, weeksOffValue);
+          
           const cycleRemindersEnabled = localStorage.getItem('cycleReminders') !== 'false';
           if (cycleRemindersEnabled) {
           scheduleCycleReminders({
               id: compound.id,
               name,
               start_date: startDate,
-              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+              cycle_weeks_on: weeksOnValue,
+              cycle_weeks_off: weeksOffValue,
               has_cycles: true,
               cycle_reminders_enabled: true
             });
@@ -868,7 +873,12 @@ export const AddCompoundScreen = () => {
 
       // Success haptic and navigate immediately
       triggerHaptic('medium');
-      trackCompoundAdded(name, frequency);
+      trackCompoundAdded(name, frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency);
+      
+      // Track calculator usage if used
+      if (activeCalculator === 'iu') trackCalculatorUsed('iu');
+      if (activeCalculator === 'ml') trackCalculatorUsed('ml');
+      
       navigate('/today');
 
       // Schedule notifications in background (non-blocking) - only for active compounds

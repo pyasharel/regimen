@@ -25,6 +25,7 @@ import { Capacitor } from '@capacitor/core';
 import logoSquare from "@/assets/logo-regimen-vertical-new.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { getSignedUrl } from "@/utils/storageUtils";
+import { trackPhotoCompareUsed, trackShareAction } from "@/utils/analytics";
 
 interface PhotoEntry {
   id: string;
@@ -53,6 +54,7 @@ export default function PhotoCompareScreen() {
 
   useEffect(() => {
     fetchPhotos();
+    trackPhotoCompareUsed();
   }, []);
 
   const fetchPhotos = async () => {
@@ -466,6 +468,7 @@ export default function PhotoCompareScreen() {
   };
 
   const handleShare = async () => {
+    trackShareAction('photo');
     setShowShareSheet(true);
   };
 

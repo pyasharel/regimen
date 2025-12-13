@@ -15,6 +15,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { CompoundShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
+import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/utils/analytics";
 
 interface Compound {
   id: string;
@@ -91,6 +92,11 @@ export const CompoundDetailScreen = () => {
 
       if (compoundError) throw compoundError;
       setCompound(compoundData);
+      
+      // Track compound viewed
+      if (compoundData) {
+        trackCompoundViewed(compoundData.name);
+      }
 
       const { data: dosesData, error: dosesError } = await supabase
         .from('doses')
@@ -153,6 +159,15 @@ export const CompoundDetailScreen = () => {
   const currentLevel = halfLifeData && takenDosesForCalc.length > 0
     ? calculateCurrentLevel(takenDosesForCalc, halfLifeData.halfLifeHours, getTmax(halfLifeData))
     : null;
+
+  // Track when levels chart is viewed (has half-life data and doses)
+  const levelsTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!loading && compound && halfLifeData && takenDosesForCalc.length > 0 && !levelsTrackedRef.current) {
+      trackLevelsViewed(compound.name);
+      levelsTrackedRef.current = true;
+    }
+  }, [loading, compound, halfLifeData, takenDosesForCalc.length]);
 
   const getRangeInDays = () => {
     switch (timeRange) {
@@ -298,6 +313,7 @@ export const CompoundDetailScreen = () => {
     if (!compound) return;
     
     triggerHaptic();
+    trackShareAction('stack');
     
     // Try visual share first
     if (shareCardRef.current) {
