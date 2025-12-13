@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { trackMetricLogged, trackWeightLogged } from "@/utils/analytics";
 
 type MetricType = "weight" | "energy" | "sleep" | "cravings" | "notes";
 
@@ -149,6 +150,17 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
       };
       
       toast.success(`${labels[metricType]} logged successfully`);
+      
+      // Track the metric logged
+      if (metricType === "weight") {
+        trackWeightLogged(weightUnit);
+        trackMetricLogged("weight", parseFloat(weight));
+      } else if (metricType === "energy" || metricType === "sleep" || metricType === "cravings") {
+        trackMetricLogged(metricType, rating);
+      } else if (metricType === "notes") {
+        trackMetricLogged("notes");
+      }
+      
       onOpenChange(false);
       resetForm();
       onSuccess();

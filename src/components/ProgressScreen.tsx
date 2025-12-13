@@ -32,7 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { persistentStorage } from "@/utils/persistentStorage";
-import { trackPhotoUploaded, trackPaywallShown } from "@/utils/analytics";
+import { trackPhotoUploaded, trackPaywallShown, trackCorrelationUsed, trackMetricLogged } from "@/utils/analytics";
 
 type ProgressEntry = {
   id: string;
@@ -532,7 +532,15 @@ export const ProgressScreen = () => {
               <div className="space-y-2">
                 <Select
                   value={selectedCompoundId || "none"}
-                  onValueChange={(value) => setSelectedCompoundId(value === "none" ? "" : value)}
+                  onValueChange={(value) => {
+                    setSelectedCompoundId(value === "none" ? "" : value);
+                    if (value !== "none") {
+                      const compound = compounds.find(c => c.id === value);
+                      if (compound) {
+                        trackCorrelationUsed(metricType, compound.name);
+                      }
+                    }
+                  }}
                 >
                   <SelectTrigger className="w-full h-9 text-xs bg-muted/50 border-border">
                     <SelectValue placeholder="Correlation" />

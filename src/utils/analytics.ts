@@ -154,6 +154,34 @@ export const trackProgressViewed = (category: string) => {
   });
 };
 
+// Individual wellness metrics tracking
+export const trackMetricLogged = (metricType: 'weight' | 'energy' | 'sleep' | 'cravings' | 'notes', value?: number | string) => {
+  ReactGA.event({
+    category: 'Wellness',
+    action: 'Metric Logged',
+    label: metricType,
+    value: typeof value === 'number' ? value : undefined,
+  });
+};
+
+// Medication correlation tracking
+export const trackCorrelationUsed = (metricType: string, compoundName: string) => {
+  ReactGA.event({
+    category: 'Analysis',
+    action: 'Correlation Viewed',
+    label: `${metricType} - ${compoundName}`,
+  });
+};
+
+// User preference tracking
+export const trackPreferenceSet = (preference: string, value: string) => {
+  ReactGA.event({
+    category: 'Preferences',
+    action: 'Set',
+    label: `${preference}: ${value}`,
+  });
+};
+
 // Weight logging - specific tracking
 export const trackWeightLogged = (unit: 'lbs' | 'kg') => {
   ReactGA.event({
