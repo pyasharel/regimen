@@ -997,38 +997,7 @@ export const TodayScreen = () => {
                 return false;
               });
 
-              // Check if dose is past due (for subtle pulse animation)
-              const isDosePastDue = (dose: typeof doses[0]) => {
-                if (dose.taken || dose.skipped) return false;
-                const now = new Date();
-                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                
-                // Only pulse for today's doses
-                if (dose.scheduled_date !== todayStr) return false;
-                
-                // Parse scheduled time
-                let scheduledHour = 8;
-                let scheduledMinute = 0;
-                if (dose.scheduled_time === 'Morning') { scheduledHour = 8; scheduledMinute = 0; }
-                else if (dose.scheduled_time === 'Afternoon') { scheduledHour = 14; scheduledMinute = 0; }
-                else if (dose.scheduled_time === 'Evening') { scheduledHour = 18; scheduledMinute = 0; }
-                else {
-                  const match = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
-                  if (match) {
-                    scheduledHour = parseInt(match[1]);
-                    scheduledMinute = parseInt(match[2]);
-                  }
-                }
-                
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                
-                // Pulse only if current time is past the scheduled time
-                return (currentHour > scheduledHour) || (currentHour === scheduledHour && currentMinute >= scheduledMinute);
-              };
-              
               const renderDoseCard = (dose: typeof doses[0]) => {
-                const shouldPulse = isDosePastDue(dose);
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
@@ -1178,7 +1147,7 @@ export const TodayScreen = () => {
                               dose.taken
                                 ? 'bg-success border-success'
                                 : 'border-white/40 hover:border-white active:scale-95'
-                            } ${shouldPulse ? 'animate-gentle-pulse' : ''}`}
+                            }`}
                             style={{
                               ...(animatingDoses.has(dose.id) && dose.taken ? {
                                 animation: 'checkbox-check 0.2s ease-out'
