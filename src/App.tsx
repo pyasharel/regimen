@@ -67,7 +67,7 @@ const AppContent = () => {
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
             <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
