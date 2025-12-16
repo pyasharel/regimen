@@ -39,6 +39,8 @@ import EmailTest from "./pages/EmailTest";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import WidgetPreview from "./pages/WidgetPreview";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutCancel from "./pages/CheckoutCancel";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +67,8 @@ const AppContent = () => {
             <Route path="/auth" element={<Auth />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+            <Route path="/checkout/cancel" element={<CheckoutCancel />} />
             <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
             <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
