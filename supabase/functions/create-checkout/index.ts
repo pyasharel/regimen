@@ -74,11 +74,12 @@ serve(async (req) => {
     const priceId = plan === 'annual' ? annualPriceId : monthlyPriceId;
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
-    // Use custom app URL scheme for native app redirect
-    // Stripe will attempt to open this URL, which brings the user back into the app
-    const successUrl = 'regimen://checkout/success';
-    const cancelUrl = 'regimen://checkout/cancel';
-    console.log('[CREATE-CHECKOUT] Using custom scheme for native checkout return');
+    // Use web URLs for Stripe redirect (custom URL schemes not supported by Stripe)
+    // The web pages will handle redirecting back to the native app
+    const origin = req.headers.get("origin") || "https://getregimen.app";
+    const successUrl = `${origin}/checkout/success`;
+    const cancelUrl = `${origin}/checkout/cancel`;
+    console.log('[CREATE-CHECKOUT] Using web URLs for checkout return:', { successUrl, cancelUrl });
 
     // Build session parameters
     const sessionParams: any = {
