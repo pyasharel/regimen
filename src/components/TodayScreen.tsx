@@ -1148,11 +1148,6 @@ export const TodayScreen = () => {
                                 ? 'bg-success border-success'
                                 : 'border-white/40 hover:border-white active:scale-95'
                             }`}
-                            style={{
-                              ...(animatingDoses.has(dose.id) && dose.taken ? {
-                                animation: 'checkbox-check 0.2s ease-out'
-                              } : {})
-                            }}
                           >
                             {dose.taken && (
                               <svg
@@ -1161,11 +1156,6 @@ export const TodayScreen = () => {
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="3"
-                                strokeDasharray="24"
-                                strokeDashoffset="0"
-                                style={{
-                                  animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
-                                }}
                               >
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
