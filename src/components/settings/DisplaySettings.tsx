@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Palette, Ruler, Target } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/components/ThemeProvider";
 import { persistentStorage } from "@/utils/persistentStorage";
@@ -173,49 +174,33 @@ export const DisplaySettings = () => {
           </div>
           
           {/* Weight Unit */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label className="text-sm font-medium">Weight Unit</Label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleWeightUnitChange("lbs")}
-                className={`flex-1 rounded-lg border p-3 text-center transition-all ${
-                  weightUnit === "lbs" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-muted"
-                }`}
-              >
-                Pounds (lbs)
-              </button>
-              <button
-                onClick={() => handleWeightUnitChange("kg")}
-                className={`flex-1 rounded-lg border p-3 text-center transition-all ${
-                  weightUnit === "kg" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-muted"
-                }`}
-              >
-                Kilograms (kg)
-              </button>
-            </div>
+            <SegmentedControl
+              options={[
+                { value: 'lbs' as const, label: 'lbs', sublabel: 'Pounds' },
+                { value: 'kg' as const, label: 'kg', sublabel: 'Kilograms' }
+              ]}
+              value={weightUnit}
+              onChange={handleWeightUnitChange}
+              size="lg"
+              className="w-full"
+            />
           </div>
 
           {/* Height Unit */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label className="text-sm font-medium">Height Unit</Label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleHeightUnitChange("imperial")}
-                className={`flex-1 rounded-lg border p-3 text-center transition-all ${
-                  heightUnit === "imperial" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-muted"
-                }`}
-              >
-                Imperial (ft/in)
-              </button>
-              <button
-                onClick={() => handleHeightUnitChange("metric")}
-                className={`flex-1 rounded-lg border p-3 text-center transition-all ${
-                  heightUnit === "metric" ? "border-primary bg-primary/10 font-semibold" : "border-border hover:bg-muted"
-                }`}
-              >
-                Metric (cm)
-              </button>
-            </div>
+            <SegmentedControl
+              options={[
+                { value: 'imperial' as const, label: 'ft/in', sublabel: 'Imperial' },
+                { value: 'metric' as const, label: 'cm', sublabel: 'Metric' }
+              ]}
+              value={heightUnit}
+              onChange={handleHeightUnitChange}
+              size="lg"
+              className="w-full"
+            />
           </div>
 
           {/* Height Input */}

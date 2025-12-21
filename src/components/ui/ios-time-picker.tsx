@@ -44,51 +44,79 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
 
   const hourRef = React.useRef<HTMLDivElement>(null);
   const minuteRef = React.useRef<HTMLDivElement>(null);
-  const periodRef = React.useRef<HTMLDivElement>(null);
+  
+  // Debounce refs to prevent over-sensitive scrolling
+  const scrollTimeoutRef = React.useRef<{ hour?: NodeJS.Timeout; minute?: NodeJS.Timeout }>({});
 
   const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
   const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
-  const periodOptions = ['AM', 'PM'];
 
-  // Scroll to selected value when opening
+  // Reset state when opening
   React.useEffect(() => {
     if (open) {
+      const parsed = parseTime(value);
+      setSelectedHour(parsed.hours);
+      setSelectedMinute(parsed.minutes);
+      setSelectedPeriod(parsed.period);
       setTimeout(() => {
-        scrollToSelected();
+        scrollToSelected(parsed.hours, parsed.minutes);
       }, 100);
     }
-  }, [open]);
+  }, [open, value]);
 
-  const scrollToSelected = () => {
-    const itemHeight = 48; // Height of each item
-    const containerHeight = 5 * itemHeight; // Show 5 items
+  const scrollToSelected = (hour: number, minute: number) => {
+    const itemHeight = 48;
     const offset = 2 * itemHeight; // Center item is at index 2
 
     if (hourRef.current) {
-      const hourIndex = hourOptions.indexOf(selectedHour);
-      hourRef.current.scrollTop = hourIndex * itemHeight - offset;
+      const hourIndex = hourOptions.indexOf(hour);
+      hourRef.current.scrollTop = hourIndex * itemHeight;
     }
     if (minuteRef.current) {
-      const minuteIndex = minuteOptions.indexOf(selectedMinute);
-      minuteRef.current.scrollTop = minuteIndex * itemHeight - offset;
-    }
-    if (periodRef.current) {
-      const periodIndex = periodOptions.indexOf(selectedPeriod);
-      periodRef.current.scrollTop = periodIndex * itemHeight - offset;
+      const minuteIndex = minuteOptions.indexOf(minute);
+      minuteRef.current.scrollTop = minuteIndex * itemHeight;
     }
   };
 
   const handleScroll = (
     ref: React.RefObject<HTMLDivElement>,
     options: any[],
-    setter: (value: any) => void
+    setter: (value: any) => void,
+    key: 'hour' | 'minute'
   ) => {
     if (!ref.current) return;
-    const itemHeight = 48;
-    const scrollTop = ref.current.scrollTop;
-    const index = Math.round(scrollTop / itemHeight);
-    const boundedIndex = Math.max(0, Math.min(options.length - 1, index));
-    setter(options[boundedIndex]);
+    
+    // Clear existing timeout for this wheel
+    if (scrollTimeoutRef.current[key]) {
+      clearTimeout(scrollTimeoutRef.current[key]);
+    }
+    
+    // Debounce the scroll handler to prevent over-sensitivity
+    scrollTimeoutRef.current[key] = setTimeout(() => {
+      if (!ref.current) return;
+      const itemHeight = 48;
+      const scrollTop = ref.current.scrollTop;
+      const index = Math.round(scrollTop / itemHeight);
+      const boundedIndex = Math.max(0, Math.min(options.length - 1, index));
+      setter(options[boundedIndex]);
+    }, 50);
+  };
+
+  const handleItemTap = (
+    ref: React.RefObject<HTMLDivElement>,
+    options: any[],
+    value: any,
+    setter: (value: any) => void
+  ) => {
+    setter(value);
+    if (ref.current) {
+      const itemHeight = 48;
+      const index = options.indexOf(value);
+      ref.current.scrollTo({
+        top: index * itemHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const handleDone = () => {
@@ -128,7 +156,7 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
               <div className="flex-1 max-w-[100px]">
                 <div
                   ref={hourRef}
-                  onScroll={() => handleScroll(hourRef, hourOptions, setSelectedHour)}
+                  onScroll={() => handleScroll(hourRef, hourOptions, setSelectedHour, 'hour')}
                   className="h-[240px] overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
                   style={{ scrollSnapType: 'y mandatory' }}
                 >
@@ -136,7 +164,8 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
                     {hourOptions.map((hour) => (
                       <div
                         key={hour}
-                        className="h-12 flex items-center justify-center snap-center text-lg font-medium transition-opacity"
+                        onClick={() => handleItemTap(hourRef, hourOptions, hour, setSelectedHour)}
+                        className="h-12 flex items-center justify-center snap-center text-lg font-medium transition-opacity cursor-pointer active:scale-95"
                         style={{
                           opacity: selectedHour === hour ? 1 : 0.3,
                         }}
@@ -154,7 +183,7 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
               <div className="flex-1 max-w-[100px]">
                 <div
                   ref={minuteRef}
-                  onScroll={() => handleScroll(minuteRef, minuteOptions, setSelectedMinute)}
+                  onScroll={() => handleScroll(minuteRef, minuteOptions, setSelectedMinute, 'minute')}
                   className="h-[240px] overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
                   style={{ scrollSnapType: 'y mandatory' }}
                 >
@@ -162,7 +191,8 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
                     {minuteOptions.map((minute) => (
                       <div
                         key={minute}
-                        className="h-12 flex items-center justify-center snap-center text-lg font-medium transition-opacity"
+                        onClick={() => handleItemTap(minuteRef, minuteOptions, minute, setSelectedMinute)}
+                        className="h-12 flex items-center justify-center snap-center text-lg font-medium transition-opacity cursor-pointer active:scale-95"
                         style={{
                           opacity: selectedMinute === minute ? 1 : 0.3,
                         }}
@@ -174,27 +204,33 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
                 </div>
               </div>
 
-              {/* Period wheel */}
-              <div className="flex-1 max-w-[100px]">
-                <div
-                  ref={periodRef}
-                  onScroll={() => handleScroll(periodRef, periodOptions, setSelectedPeriod)}
-                  className="h-[240px] overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-                  style={{ scrollSnapType: 'y mandatory' }}
-                >
-                  <div className="py-[96px]">
-                    {periodOptions.map((p) => (
-                      <div
-                        key={p}
-                        className="h-12 flex items-center justify-center snap-center text-lg font-medium transition-opacity"
-                        style={{
-                          opacity: selectedPeriod === p ? 1 : 0.3,
-                        }}
-                      >
-                        {p}
-                      </div>
-                    ))}
-                  </div>
+              {/* AM/PM Toggle - Large tap targets instead of scroll wheel */}
+              <div className="flex-1 max-w-[80px]">
+                <div className="h-[240px] flex flex-col items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriod('AM')}
+                    className={cn(
+                      "w-full py-4 rounded-xl text-lg font-semibold transition-all active:scale-95",
+                      selectedPeriod === 'AM'
+                        ? "bg-primary text-primary-foreground shadow-lg"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPeriod('PM')}
+                    className={cn(
+                      "w-full py-4 rounded-xl text-lg font-semibold transition-all active:scale-95",
+                      selectedPeriod === 'PM'
+                        ? "bg-primary text-primary-foreground shadow-lg"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    PM
+                  </button>
                 </div>
               </div>
             </div>
