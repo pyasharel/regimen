@@ -535,6 +535,9 @@ export const AddCompoundScreen = () => {
       date.setDate(date.getDate() + i);
       const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
       
+      // Calculate days since ORIGINAL start date (not effective start) for schedule calculations
+      const daysSinceOriginalStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      
       // Check if should generate based on frequency
       if (frequency === 'Specific day(s)') {
         if (!customDays.includes(dayOfWeek)) {
@@ -542,7 +545,8 @@ export const AddCompoundScreen = () => {
         }
       }
       
-      if (frequency === 'Every X Days' && i % everyXDays !== 0) {
+      // For "Every X Days", use days since ORIGINAL start to maintain schedule continuity
+      if (frequency === 'Every X Days' && daysSinceOriginalStart % everyXDays !== 0) {
         continue;
       }
 
