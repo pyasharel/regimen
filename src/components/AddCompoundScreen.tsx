@@ -117,6 +117,9 @@ const COMMON_PEPTIDES = [
   // Specialty Compounds
   "Foxdri",
   
+  // Sexual Health / ED Medications
+  "Cialis", "Tadalafil", "Viagra", "Sildenafil",
+  
   // Blends and Stacks
   "Wolverine Stack", "GHK-Cu + BPC-157 Blend"
 ];
@@ -191,6 +194,11 @@ export const AddCompoundScreen = () => {
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  
+  // Past doses dialog state
+  const [showPastDosesDialog, setShowPastDosesDialog] = useState(false);
+  const [pendingCompoundId, setPendingCompoundId] = useState<string | null>(null);
+  const [markingPastDoses, setMarkingPastDoses] = useState(false);
 
   // Check if user can add/edit compound and trigger preview timer
   useEffect(() => {
@@ -644,6 +652,94 @@ export const AddCompoundScreen = () => {
     }
   };
 
+  // Helper function to schedule notifications in background
+  const scheduleNotificationsInBackground = (userId: string) => {
+    supabase
+      .from('doses')
+      .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
+      .eq('user_id', userId)
+      .eq('taken', false)
+      .then(({ data: allDoses }) => {
+        if (allDoses) {
+          const activeDoses = allDoses.filter(dose => {
+            if (dose.compounds?.is_active === false) return false;
+            if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
+              const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
+              const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+              const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+              const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+              if (dose.compounds.cycle_weeks_off) {
+                const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
+                const cycleLength = weeksOnInDays + weeksOffInDays;
+                const positionInCycle = daysSinceStart % cycleLength;
+                if (positionInCycle >= weeksOnInDays) return false;
+              } else if (daysSinceStart >= weeksOnInDays) return false;
+            }
+            return true;
+          });
+          const dosesWithCompoundName = activeDoses.map(dose => ({
+            ...dose,
+            compound_name: dose.compounds?.name || 'Medication'
+          }));
+          scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
+        }
+      });
+  };
+
+  // Handle marking all past doses as taken
+  const handleMarkPastDosesTaken = async () => {
+    if (!pendingCompoundId) return;
+    
+    setMarkingPastDoses(true);
+    try {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
+      // Mark all past doses for this compound as taken
+      const { error } = await supabase
+        .from('doses')
+        .update({ taken: true, taken_at: new Date().toISOString() })
+        .eq('compound_id', pendingCompoundId)
+        .lt('scheduled_date', todayStr);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Past doses marked",
+        description: "All previous doses have been marked as taken",
+      });
+    } catch (error) {
+      console.error('Error marking past doses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark past doses as taken",
+        variant: "destructive"
+      });
+    } finally {
+      setMarkingPastDoses(false);
+      setShowPastDosesDialog(false);
+      setPendingCompoundId(null);
+      
+      // Get user and schedule notifications
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) scheduleNotificationsInBackground(user.id);
+      
+      navigate('/today');
+    }
+  };
+
+  // Handle skipping past doses marking
+  const handleSkipPastDoses = async () => {
+    setShowPastDosesDialog(false);
+    setPendingCompoundId(null);
+    
+    // Get user and schedule notifications
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) scheduleNotificationsInBackground(user.id);
+    
+    navigate('/today');
+  };
+
   const handleSave = async () => {
     if (!name || !intendedDose) {
       toast({
@@ -873,9 +969,21 @@ export const AddCompoundScreen = () => {
             });
           }
         }
+        
+        // If there are past doses, show dialog to ask user if they want to mark them as taken
+        if (shouldIncludePast) {
+          setPendingCompoundId(compound.id);
+          setShowPastDosesDialog(true);
+          triggerHaptic('medium');
+          trackCompoundAdded(name, frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency);
+          if (activeCalculator === 'iu') trackCalculatorUsed('iu');
+          if (activeCalculator === 'ml') trackCalculatorUsed('ml');
+          // Don't navigate yet - wait for dialog response
+          return;
+        }
       }
 
-      // Success haptic and navigate immediately
+      // Success haptic and navigate immediately (no past doses)
       triggerHaptic('medium');
       trackCompoundAdded(name, frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency);
       
@@ -886,37 +994,7 @@ export const AddCompoundScreen = () => {
       navigate('/today');
 
       // Schedule notifications in background (non-blocking) - only for active compounds
-      supabase
-        .from('doses')
-        .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
-        .eq('user_id', user.id)
-        .eq('taken', false)
-        .then(({ data: allDoses }) => {
-          if (allDoses) {
-            // Filter active compounds and non-off-cycle doses
-            const activeDoses = allDoses.filter(dose => {
-              if (dose.compounds?.is_active === false) return false;
-              if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
-                const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
-                const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
-                const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-                const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
-                if (dose.compounds.cycle_weeks_off) {
-                  const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
-                  const cycleLength = weeksOnInDays + weeksOffInDays;
-                  const positionInCycle = daysSinceStart % cycleLength;
-                  if (positionInCycle >= weeksOnInDays) return false;
-                } else if (daysSinceStart >= weeksOnInDays) return false;
-              }
-              return true;
-            });
-            const dosesWithCompoundName = activeDoses.map(dose => ({
-              ...dose,
-              compound_name: dose.compounds?.name || 'Medication'
-            }));
-            scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
-          }
-        });
+      scheduleNotificationsInBackground(user.id);
     } catch (error) {
       console.error('Error saving compound:', error);
       toast({
@@ -1701,6 +1779,27 @@ export const AddCompoundScreen = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? 'Removing...' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Past Doses Dialog */}
+      <AlertDialog open={showPastDosesDialog} onOpenChange={setShowPastDosesDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark past doses as taken?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your start date is in the past. Would you like to mark all previous doses as taken? This will help calculate your current levels accurately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSkipPastDoses}>Skip</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarkPastDosesTaken}
+              disabled={markingPastDoses}
+            >
+              {markingPastDoses ? 'Marking...' : 'Mark All Taken'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

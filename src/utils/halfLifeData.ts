@@ -397,6 +397,36 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Superdrol',
   },
   
+  // Sexual Health / ED Medications
+  'cialis': {
+    halfLifeHours: 17.5, // ~17.5 hours (FDA label)
+    tMaxHours: 2, // Peak at ~2 hours (range 0.5-6 hours)
+    category: 'other',
+    displayName: 'Cialis',
+    notes: 'Tadalafil - half-life allows for daily or as-needed dosing'
+  },
+  'tadalafil': {
+    halfLifeHours: 17.5,
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'Tadalafil',
+    notes: 'Generic Cialis'
+  },
+  'viagra': {
+    halfLifeHours: 4, // ~4 hours
+    tMaxHours: 1, // Peak at ~1 hour
+    category: 'other',
+    displayName: 'Viagra',
+    notes: 'Sildenafil'
+  },
+  'sildenafil': {
+    halfLifeHours: 4,
+    tMaxHours: 1,
+    category: 'other',
+    displayName: 'Sildenafil',
+    notes: 'Generic Viagra'
+  },
+  
   // Peptides with known half-lives and Tmax values
   'bpc-157': {
     halfLifeHours: 5, // ~4-6 hours estimated
