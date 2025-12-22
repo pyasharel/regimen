@@ -47,6 +47,20 @@ export const scheduleCycleReminders = async (compound: CycleCompound): Promise<v
 };
 
 /**
+ * Calculate smart lead time for advance reminders
+ * - 7+ days: remind 7 days before
+ * - 4-6 days: remind 2 days before  
+ * - 2-3 days: remind 1 day before
+ * - <2 days: no advance reminder (only day-of)
+ */
+const getAdvanceReminderDays = (phaseDays: number): number | null => {
+  if (phaseDays >= 7) return 7;
+  if (phaseDays >= 4) return 2;
+  if (phaseDays >= 2) return 1;
+  return null; // Too short for advance reminder
+};
+
+/**
  * Schedule reminders for one-time cycles (ending permanently)
  */
 const scheduleOneTimeCycleReminders = async (
@@ -64,21 +78,22 @@ const scheduleOneTimeCycleReminders = async (
   }
 
   const notifications: any[] = [];
+  const advanceDays = getAdvanceReminderDays(daysOn);
 
-  // 7 days before end (if cycle is at least 7 days)
-  if (daysOn >= 7) {
-    const weekBefore = new Date(endDate);
-    weekBefore.setDate(weekBefore.getDate() - 7);
+  // Advance reminder (scaled to cycle length)
+  if (advanceDays !== null) {
+    const advanceDate = new Date(endDate);
+    advanceDate.setDate(advanceDate.getDate() - advanceDays);
     
-    if (weekBefore > now) {
-      const weekBeforeAt8AM = new Date(weekBefore);
-      weekBeforeAt8AM.setHours(8, 0, 0, 0);
+    if (advanceDate > now) {
+      const advanceAt8AM = new Date(advanceDate);
+      advanceAt8AM.setHours(8, 0, 0, 0);
       
       notifications.push({
-        id: generateNotificationId(compound.id, 'end_week'),
+        id: generateNotificationId(compound.id, 'end_advance'),
         title: `${compound.name}: Cycle Ending Soon`,
-        body: `Your cycle ends in 7 days on ${formatDate(endDate)}.`,
-        schedule: { at: weekBeforeAt8AM },
+        body: `Your cycle ends in ${advanceDays} day${advanceDays > 1 ? 's' : ''} on ${formatDate(endDate)}.`,
+        schedule: { at: advanceAt8AM },
       });
     }
   }
@@ -124,6 +139,10 @@ const scheduleRecurringCycleReminders = async (
   let notificationCount = 0;
   const maxNotifications = 8; // 4 transitions × 2 notifications each
 
+  // Get smart advance days for each phase
+  const onAdvanceDays = getAdvanceReminderDays(daysOn);
+  const offAdvanceDays = getAdvanceReminderDays(daysOff);
+
   // Calculate next few transitions
   for (let cycleOffset = 0; cycleOffset < 3; cycleOffset++) {
     if (notificationCount >= maxNotifications) break;
@@ -136,20 +155,20 @@ const scheduleRecurringCycleReminders = async (
     offTransition.setDate(offTransition.getDate() + daysOn);
     
     if (offTransition > now) {
-      // 7 days before (if ON phase is >= 7 days)
-      if (daysOn >= 7) {
-        const weekBefore = new Date(offTransition);
-        weekBefore.setDate(weekBefore.getDate() - 7);
+      // Advance reminder (scaled to ON phase length)
+      if (onAdvanceDays !== null) {
+        const advanceDate = new Date(offTransition);
+        advanceDate.setDate(advanceDate.getDate() - onAdvanceDays);
         
-        if (weekBefore > now) {
-          const weekBeforeAt8AM = new Date(weekBefore);
-          weekBeforeAt8AM.setHours(8, 0, 0, 0);
+        if (advanceDate > now) {
+          const advanceAt8AM = new Date(advanceDate);
+          advanceAt8AM.setHours(8, 0, 0, 0);
           
           notifications.push({
-            id: generateNotificationId(compound.id, `off_week_${cycleOffset}`),
+            id: generateNotificationId(compound.id, `off_advance_${cycleOffset}`),
             title: `${compound.name}: Cycle Ending Soon`,
-            body: `Your cycle ends in 7 days. Off-phase begins on ${formatDate(offTransition)}.`,
-            schedule: { at: weekBeforeAt8AM },
+            body: `Your cycle ends in ${onAdvanceDays} day${onAdvanceDays > 1 ? 's' : ''}. Off-phase begins on ${formatDate(offTransition)}.`,
+            schedule: { at: advanceAt8AM },
           });
           notificationCount++;
         }
@@ -173,20 +192,20 @@ const scheduleRecurringCycleReminders = async (
     onTransition.setDate(onTransition.getDate() + daysOn + daysOff);
     
     if (onTransition > now && notificationCount < maxNotifications) {
-      // 7 days before (if OFF phase is >= 7 days)
-      if (daysOff >= 7) {
-        const weekBefore = new Date(onTransition);
-        weekBefore.setDate(weekBefore.getDate() - 7);
+      // Advance reminder (scaled to OFF phase length)
+      if (offAdvanceDays !== null) {
+        const advanceDate = new Date(onTransition);
+        advanceDate.setDate(advanceDate.getDate() - offAdvanceDays);
         
-        if (weekBefore > now) {
-          const weekBeforeAt8AM = new Date(weekBefore);
-          weekBeforeAt8AM.setHours(8, 0, 0, 0);
+        if (advanceDate > now) {
+          const advanceAt8AM = new Date(advanceDate);
+          advanceAt8AM.setHours(8, 0, 0, 0);
           
           notifications.push({
-            id: generateNotificationId(compound.id, `on_week_${cycleOffset}`),
+            id: generateNotificationId(compound.id, `on_advance_${cycleOffset}`),
             title: `${compound.name}: Cycle Resuming Soon`,
-            body: `Your cycle resumes in 7 days on ${formatDate(onTransition)}.`,
-            schedule: { at: weekBeforeAt8AM },
+            body: `Your cycle resumes in ${offAdvanceDays} day${offAdvanceDays > 1 ? 's' : ''} on ${formatDate(onTransition)}.`,
+            schedule: { at: advanceAt8AM },
           });
           notificationCount++;
         }

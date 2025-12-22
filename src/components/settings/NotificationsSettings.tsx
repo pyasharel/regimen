@@ -121,7 +121,7 @@ export const NotificationsSettings = () => {
       await rescheduleAllCycleReminders();
 
       if (checked) {
-        toast.success("Cycle reminders enabled - You'll be notified 1 week before and on the day of transitions");
+        toast.success("Cycle reminders enabled - You'll be notified before and on the day of transitions");
       } else {
         toast.success("Cycle reminders disabled");
       }
