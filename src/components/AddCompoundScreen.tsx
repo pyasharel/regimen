@@ -39,35 +39,32 @@ const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
   "AOD-9604", "ARA-290",
   "BPC-157", "BPC-157 + KPV Blend", "Bremelanotide", "PT-141",
-  "CJC-1295 with DAC", "CJC-1295 without DAC", "Cerebrolysin",
+  "CJC-1295 with DAC", "CJC-1295 without DAC",
   "DSIP", "Dihexa",
-  "Follistatin", "FTPP", "Adipotide",
   "GHK-Cu", "GHRP-2", "GHRP-6", "Gonadorelin", "GRF 1-29",
   "HCG", "Hexarelin", "HMG",
   "IGF-1 LR3",
   "Ipamorelin", "Ibutamoren", "MK-677",
   "Kisspeptin", "KPV",
-  "Mazdutide", "MOTS-c", "Melanotan II",
+  "MOTS-c", "Melanotan II",
   "NAD+", "N-Acetyl Semax", "N-Acetyl Selank",
-  "P21", "PEG-MGF", "Pinealon",
-  "Selank", "Semaglutide", "Semax", "Sermorelin", "SLUPP", "SS-31", "Elamipretide", "Survodutide",
+  "PEG-MGF",
+  "Selank", "Semaglutide", "Semax", "Sermorelin", "SS-31", "Elamipretide",
   "TB-500", "TB4-FRAG", "Tesamorelin", "Tesofensine",
   "Thymosin Alpha-1", "Thymosin Beta-4", "Thymulin",
   
-  // Khavinson Bioregulators (Popular Ones)
-  "Epitalon", "Pinealon", "Thymalin", "Cortagen", "Testagen", 
-  "Cartalax", "Vilon", "Endoluten", "Cerluten", "Ventfort",
-  "Sigumir", "Chonluten", "Chelohart", "Libidon", "Vesugen",
+  // Select Bioregulators (Popular Ones)
+  "Epitalon", "Thymalin",
   
   // Mitochondrial & Longevity
-  "5-Amino-1MQ", "Glutathione", "NMN", "Urolithin A",
+  "5-Amino-1MQ", "Glutathione", "NMN",
   
   // GLP-1 Agonists (Weight Loss)
   "Semaglutide", "Ozempic", "Wegovy",
   "Tirzepatide", "Mounjaro", "Zepbound",
-  "Retatrutide", "CagriSema", 
+  "Retatrutide", "CagriSema", "Mazdutide", "Survodutide",
   "Dulaglutide", "Trulicity",
-  "Liraglutide", "Victoza", "Saxenda", 
+  "Liraglutide", "Saxenda", 
   "Rybelsus",
   
   // Testosterone - Men's TRT
@@ -86,7 +83,6 @@ const COMMON_PEPTIDES = [
   // Women's HRT - Estrogen
   "Estradiol", "Estradiol Valerate", "Estradiol Cypionate",
   "Estradiol Patch", "Estradiol Gel", "Estradiol Cream",
-  "Premarin", "Climara", "Vivelle-Dot", "Estrace",
   
   // Women's HRT - Progesterone
   "Progesterone", "Micronized Progesterone", "Prometrium", 
@@ -96,7 +92,7 @@ const COMMON_PEPTIDES = [
   "Testosterone Cream", "Testosterone Pellets",
   
   // HGH & Growth Hormone
-  "Somatropin", "HGH", "Genotropin", "Humatrope", "Norditropin", "Saizen",
+  "Somatropin", "HGH", "Genotropin", "Humatrope", "Norditropin",
   
   // Post-Cycle Therapy (PCT) & Ancillaries
   "Anastrozole", "Arimidex", "Letrozole", "Femara", "Exemestane", "Aromasin",
@@ -111,11 +107,16 @@ const COMMON_PEPTIDES = [
   "Modafinil", "Armodafinil",
   
   // Injectable Vitamins & Supplements
-  "L-Carnitine", "B12", "Methylcobalamin", "Cyanocobalamin", 
+  "L-Carnitine", "B12", "Methylcobalamin",
   "B-Complex Injectable",
   
-  // Specialty Compounds
-  "Foxdri",
+  // Health & Metabolic
+  "Metformin", "Berberine",
+  "DHEA", "Pregnenolone",
+  "Levothyroxine", "Synthroid", "Liothyronine", "Cytomel", "Armour Thyroid",
+  "Low-dose Aspirin",
+  "Atorvastatin", "Rosuvastatin",
+  "Lisinopril", "Losartan", "Amlodipine",
   
   // Sexual Health / ED Medications
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
@@ -144,15 +145,18 @@ export const AddCompoundScreen = () => {
 
   // Calculator state
   const [showCalculator, setShowCalculator] = useState(false);
-  const [activeCalculator, setActiveCalculator] = useState<'iu' | 'ml' | null>(null);
+  const [activeCalculator, setActiveCalculator] = useState<'iu' | 'ml' | 'iu-ml' | null>(null);
   const [vialSize, setVialSize] = useState("");
   const [vialUnit, setVialUnit] = useState("mg");
   const [bacWater, setBacWater] = useState("");
   const [isCustomVialSize, setIsCustomVialSize] = useState(false);
   const [isCustomBacWater, setIsCustomBacWater] = useState(false);
 
-  // mL calculator (for oils/injections)
+  // mL calculator (for oils/injections - mg/mL)
   const [concentration, setConcentration] = useState("");
+  
+  // IU/mL calculator (for pre-mixed IU-based compounds like HGH)
+  const [iuConcentration, setIuConcentration] = useState("");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -429,6 +433,34 @@ export const AddCompoundScreen = () => {
 
   const calculatedML = activeCalculator === 'ml' && doseUnit === 'mg' ? calculateML() : null;
 
+  // Calculate mL needed for IU-based compounds (like HGH)
+  // Formula: mL = Dose (IU) / Concentration (IU/mL)
+  const calculateIUtoML = () => {
+    if (!iuConcentration || !intendedDose) return null;
+    
+    const concentrationNum = parseFloat(iuConcentration);
+    const doseNum = parseFloat(intendedDose);
+    
+    // Validate inputs
+    if (isNaN(concentrationNum) || isNaN(doseNum) || 
+        concentrationNum <= 0 || doseNum <= 0) {
+      return null;
+    }
+    
+    // Formula: mL needed = dose (IU) / concentration (IU/mL)
+    const mlNeeded = doseNum / concentrationNum;
+    
+    // Validate result
+    if (mlNeeded <= 0 || !isFinite(mlNeeded)) {
+      return null;
+    }
+    
+    // Round to 2 decimal places
+    return parseFloat(mlNeeded.toFixed(2)).toString();
+  };
+
+  const calculatedIUtoML = activeCalculator === 'iu-ml' && doseUnit === 'iu' ? calculateIUtoML() : null;
+
   // Don't auto-populate dose - let user enter their intended dose
   // The calculator will show them the IU amount based on their dose
 
@@ -464,7 +496,18 @@ export const AddCompoundScreen = () => {
     return null;
   };
   
-  // Validation for mL calculator
+  // Validation for IU to mL calculator
+  const getIUtoMLWarning = () => {
+    if (!calculatedIUtoML) return null;
+    const ml = parseFloat(calculatedIUtoML);
+    
+    if (isNaN(ml) || ml <= 0) return "❌ Invalid calculation";
+    if (ml > 1) return "⚠️ Large volume - verify your concentration";
+    if (ml < 0.05) return "⚠️ Very small volume - difficult to measure accurately";
+    
+    return null;
+  };
+
   const getMLWarning = () => {
     if (!calculatedML) return null;
     const ml = parseFloat(calculatedML);
@@ -1131,6 +1174,18 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
+          {/* IU/mL Calculator button - for IU-based compounds like HGH */}
+          {doseUnit === 'iu' && (
+            <button
+              onClick={() => {
+                setActiveCalculator(activeCalculator === 'iu-ml' ? null : 'iu-ml');
+              }}
+              className="text-sm text-primary hover:underline"
+            >
+              {activeCalculator === 'iu-ml' ? '- Hide' : '+ Show'} mL Calculator
+            </button>
+          )}
+
           {activeCalculator === 'iu' && (doseUnit === 'mcg' || doseUnit === 'mg') && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
               <div className="space-y-2">
@@ -1339,6 +1394,59 @@ export const AddCompoundScreen = () => {
                         <span className="text-center">{getMLWarning()}</span>
                       </div>
                     )}
+                  </div>
+                  
+                  {/* Medical disclaimer */}
+                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Always verify your calculations before use</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* IU/mL Calculator - for pre-mixed IU-based compounds like HGH */}
+          {activeCalculator === 'iu-ml' && doseUnit === 'iu' && (
+            <div className="space-y-4 p-4 bg-surface rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <Label className="sm:mb-0">Concentration (IU/mL)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={iuConcentration}
+                  onChange={(e) => setIuConcentration(e.target.value)}
+                  placeholder="e.g., 10"
+                  className="text-lg h-12 w-full sm:w-64"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the IU/mL shown on your vial label or calculated from reconstitution
+              </p>
+
+              {calculatedIUtoML && (
+                <>
+                  <div className={cn(
+                    "border-2 rounded-lg p-4 text-center",
+                    getIUtoMLWarning()?.startsWith("❌") 
+                      ? "bg-destructive/10 border-destructive" 
+                      : "bg-card border-secondary"
+                  )}>
+                    <div className="text-3xl font-bold text-primary">{calculatedIUtoML} mL</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Volume to inject
+                    </div>
+                    {getIUtoMLWarning() && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-center">{getIUtoMLWarning()}</span>
+                      </div>
+                    )}
+                    
+                    {/* Show the calculation breakdown for transparency */}
+                    <div className="mt-4 pt-4 border-t border-border/50 text-xs text-muted-foreground">
+                      <div>{intendedDose} IU ÷ {iuConcentration} IU/mL = {calculatedIUtoML} mL</div>
+                    </div>
                   </div>
                   
                   {/* Medical disclaimer */}
