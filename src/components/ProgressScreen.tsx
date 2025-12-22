@@ -427,7 +427,7 @@ export const ProgressScreen = () => {
   
   if (dataLoading) {
     return (
-      <div className="fixed inset-0 bg-background flex flex-col">
+      <div className="fixed inset-0 bg-background flex flex-col pt-14">
         <div className="flex-1 min-h-0 scroll-container pb-24">
           <MainHeader title="Progress" />
           <div className="flex-1 flex items-center justify-center">
@@ -443,7 +443,7 @@ export const ProgressScreen = () => {
   }
   
   return (
-    <div className="fixed inset-0 bg-background flex flex-col">
+    <div className="fixed inset-0 bg-background flex flex-col pt-14">
       <div className="flex-1 min-h-0 scroll-container pb-24">
         <MainHeader title="Progress" />
 

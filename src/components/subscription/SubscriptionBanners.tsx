@@ -167,18 +167,22 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   }
 
   // Show preview mode banner only when truly in preview/none state
-  // ALWAYS reserve safe-area space to prevent layout shift
+  // Use fixed positioning with high z-index to ensure visibility over fixed-inset screens
   const { isLoading } = useSubscription();
   
   if (isLoading) {
     // While loading, reserve the safe-area space to prevent layout shift
-    return <div className="safe-top" />;
+    return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
   }
   
   if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
-    return <PreviewModeBanner onUpgrade={onUpgrade} />;
+    return (
+      <div className="fixed top-0 left-0 right-0 z-[100]">
+        <PreviewModeBanner onUpgrade={onUpgrade} />
+      </div>
+    );
   }
 
-  // Even when subscribed, maintain safe-area space
-  return <div className="safe-top" />;
+  // Even when subscribed, maintain safe-area space with fixed positioning
+  return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
 };
