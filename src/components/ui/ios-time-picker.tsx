@@ -148,13 +148,11 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
         <div className="px-4 pb-4">
           {/* iOS-style picker wheels */}
           <div className="relative">
-            {/* Selection highlight - only covers hour/minute columns, not AM/PM */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-lg" 
-                 style={{ width: 'calc(100% - 96px)' }} />
-            
             <div className="flex gap-2 justify-center items-center">
-              {/* Hours wheel */}
-              <div className="flex-1 max-w-[100px]">
+              {/* Hours wheel with selection highlight */}
+              <div className="flex-1 max-w-[100px] relative">
+                {/* Selection highlight for hours */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-l-lg" />
                 <div
                   ref={hourRef}
                   onScroll={() => handleScroll(hourRef, hourOptions, setSelectedHour, 'hour')}
@@ -178,10 +176,12 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
                 </div>
               </div>
 
-              <div className="text-2xl font-bold text-muted-foreground">:</div>
+              <div className="text-2xl font-bold text-muted-foreground z-20">:</div>
 
-              {/* Minutes wheel */}
-              <div className="flex-1 max-w-[100px]">
+              {/* Minutes wheel with selection highlight */}
+              <div className="flex-1 max-w-[100px] relative">
+                {/* Selection highlight for minutes */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-r-lg" />
                 <div
                   ref={minuteRef}
                   onScroll={() => handleScroll(minuteRef, minuteOptions, setSelectedMinute, 'minute')}
