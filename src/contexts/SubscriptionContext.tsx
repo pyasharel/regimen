@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
@@ -290,7 +292,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for app resume to refresh subscription (important for returning from Stripe checkout)
+    let appStateListener: { remove: () => void } | undefined;
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          console.log('[SubscriptionContext] App resumed, refreshing subscription...');
+          refreshSubscription();
+        }
+      }).then(listener => {
+        appStateListener = listener;
+      });
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      appStateListener?.remove();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

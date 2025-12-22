@@ -8,9 +8,10 @@ import { useLocation } from "react-router-dom";
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
   onUpgrade: () => void;
+  paywallOpen?: boolean;
 }
 
-export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
+export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen = false }: SubscriptionBannersProps) => {
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
   const { trialEndDate, subscriptionEndDate } = useSubscription();
@@ -30,6 +31,11 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
   if (hideOnRoutes.includes(location.pathname)) {
     return null;
+  }
+
+  // Don't show preview banner when paywall is open - it's redundant
+  if (paywallOpen) {
+    return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
   }
 
   const calculateDaysRemaining = (endDate: string | null) => {
@@ -67,32 +73,36 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     };
 
     return (
-      <div className="bg-destructive/5 border-b border-destructive/20 px-4 py-3">
-        <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 flex-1">
-            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-[13px] font-medium text-destructive">
-                Payment Failed
-              </p>
-              <p className="text-[12px] text-destructive/80">
-                Update payment method to continue access
-              </p>
+      <div className="fixed top-0 left-0 right-0 z-[100]">
+        <div className="safe-top">
+          <div className="bg-destructive/5 border-b border-destructive/20 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 flex-1">
+                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-[13px] font-medium text-destructive">
+                    Payment Failed
+                  </p>
+                  <p className="text-[12px] text-destructive/80">
+                    Update payment method to continue access
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleFixNow}
+                  className="text-[13px] text-destructive hover:text-destructive/80 font-medium transition-colors"
+                >
+                  Fix Now
+                </button>
+                <button
+                  onClick={() => setDismissed('past_due')}
+                  className="w-6 h-6 rounded-md hover:bg-destructive/10 flex items-center justify-center transition-colors text-destructive"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleFixNow}
-              className="text-[13px] text-destructive hover:text-destructive/80 font-medium transition-colors"
-            >
-              Fix Now
-            </button>
-            <button
-              onClick={() => setDismissed('past_due')}
-              className="w-6 h-6 rounded-md hover:bg-destructive/10 flex items-center justify-center transition-colors text-destructive"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
       </div>
@@ -133,32 +143,36 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       };
       
       return (
-        <div className="bg-muted/30 border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 flex-1">
-              <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-[13px] font-medium text-foreground">
-                  Subscription Ends {endDate}
-                </p>
-                <p className="text-[12px] text-muted-foreground">
-                  {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
-                </p>
+        <div className="fixed top-0 left-0 right-0 z-[100]">
+          <div className="safe-top">
+            <div className="bg-muted/30 border-b border-border px-4 py-3">
+              <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+                <div className="flex items-center gap-3 flex-1">
+                  <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-[13px] font-medium text-foreground">
+                      Subscription Ends {endDate}
+                    </p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleResubscribe}
+                    className="text-[13px] text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Renew
+                  </button>
+                  <button
+                    onClick={() => setDismissed('canceled')}
+                    className="w-6 h-6 rounded-md hover:bg-muted/80 flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={handleResubscribe}
-                className="text-[13px] text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                Renew
-              </button>
-              <button
-                onClick={() => setDismissed('canceled')}
-                className="w-6 h-6 rounded-md hover:bg-muted/80 flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
             </div>
           </div>
         </div>
