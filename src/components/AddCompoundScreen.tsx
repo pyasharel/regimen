@@ -301,26 +301,30 @@ export const AddCompoundScreen = () => {
       
       if (editingCompound.has_cycles) {
         setEnableCycle(true);
-        const weeksOn = editingCompound.cycle_weeks_on || 4;
-        // Auto-detect if it's in months (if divisible by 4 and >= 4)
-        const shouldUseMonths = weeksOn >= 4 && weeksOn % 4 === 0;
-        if (shouldUseMonths) {
-          setCycleTimeUnit('months');
-          setCycleWeeksOn(weeksOn / 4);
-        } else {
-          setCycleTimeUnit('weeks');
-          setCycleWeeksOn(weeksOn);
-        }
+        // Values are stored as DAYS in the database
+        const daysOn = editingCompound.cycle_weeks_on || 7;
+        const daysOff = editingCompound.cycle_weeks_off || 0;
         
-        if (editingCompound.cycle_weeks_off) {
-          setCycleMode('continuous');
-          const weeksOff = editingCompound.cycle_weeks_off;
-          // Use months for off period if on period is in months
-          if (shouldUseMonths && weeksOff >= 4 && weeksOff % 4 === 0) {
-            setCycleWeeksOff(weeksOff / 4);
+        // Infer the best display unit from stored days
+        const inferUnit = (days: number): { value: number; unit: 'days' | 'weeks' | 'months' } => {
+          if (days >= 30 && days % 30 === 0) {
+            return { value: days / 30, unit: 'months' };
+          } else if (days >= 7 && days % 7 === 0) {
+            return { value: days / 7, unit: 'weeks' };
           } else {
-            setCycleWeeksOff(weeksOff);
+            return { value: days, unit: 'days' };
           }
+        };
+        
+        const onPeriod = inferUnit(daysOn);
+        setCycleTimeUnit(onPeriod.unit);
+        setCycleWeeksOn(onPeriod.value);
+        
+        if (daysOff > 0) {
+          setCycleMode('continuous');
+          // Use same unit as on period for consistency
+          const offValue = onPeriod.unit === 'months' ? daysOff / 30 : onPeriod.unit === 'weeks' ? daysOff / 7 : daysOff;
+          setCycleWeeksOff(offValue);
         } else {
           setCycleMode('one-time');
         }
@@ -602,10 +606,11 @@ export const AddCompoundScreen = () => {
       }
 
       // Check cycle logic - skip if in "off" period
+      // Note: cycleWeeksOn/Off are in UI units, need to convert to days for calculation
       if (enableCycle && cycleMode === 'continuous') {
         // Calculate days since original start date (not effective start)
         const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        // Convert to days based on unit: days=1, weeks=7, months=30
+        // Convert UI values to days: days=1, weeks=7, months=30
         const unitMultiplier = cycleTimeUnit === 'days' ? 1 : cycleTimeUnit === 'months' ? 30 : 7;
         const onPeriodDays = Math.round(cycleWeeksOn * unitMultiplier);
         const offPeriodDays = Math.round(cycleWeeksOff * unitMultiplier);
@@ -712,13 +717,14 @@ export const AddCompoundScreen = () => {
               const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
               const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
               const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-              const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+              // Values are stored as DAYS in the database
+              const daysOn = dose.compounds.cycle_weeks_on;
               if (dose.compounds.cycle_weeks_off) {
-                const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
-                const cycleLength = weeksOnInDays + weeksOffInDays;
+                const daysOff = dose.compounds.cycle_weeks_off;
+                const cycleLength = daysOn + daysOff;
                 const positionInCycle = daysSinceStart % cycleLength;
-                if (positionInCycle >= weeksOnInDays) return false;
-              } else if (daysSinceStart >= weeksOnInDays) return false;
+                if (positionInCycle >= daysOn) return false;
+              } else if (daysSinceStart >= daysOn) return false;
             }
             return true;
           });
@@ -833,8 +839,9 @@ export const AddCompoundScreen = () => {
             end_date: endDate || null,
             notes: notes || null,
         has_cycles: enableCycle,
-        cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
-        cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+        // Store cycle duration in DAYS for consistent handling
+        cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'days' ? cycleWeeksOn : cycleTimeUnit === 'months' ? cycleWeeksOn * 30 : cycleWeeksOn * 7) : null,
+        cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'days' ? cycleWeeksOff : cycleTimeUnit === 'months' ? cycleWeeksOff * 30 : cycleWeeksOff * 7) : null,
         cycle_reminders_enabled: enableCycle ? cycleReminders : false,
             is_active: isActive
           })
@@ -909,13 +916,14 @@ export const AddCompoundScreen = () => {
                   const startDateObj = new Date(dose.compounds.start_date + 'T00:00:00');
                   const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
                   const daysSinceStart = Math.floor((doseDate.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-                  const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+                  // Values are stored as DAYS in the database
+                  const daysOn = dose.compounds.cycle_weeks_on;
                   if (dose.compounds.cycle_weeks_off) {
-                    const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
-                    const cycleLength = weeksOnInDays + weeksOffInDays;
+                    const daysOff = dose.compounds.cycle_weeks_off;
+                    const cycleLength = daysOn + daysOff;
                     const positionInCycle = daysSinceStart % cycleLength;
-                    if (positionInCycle >= weeksOnInDays) return false;
-                  } else if (daysSinceStart >= weeksOnInDays) return false;
+                    if (positionInCycle >= daysOn) return false;
+                  } else if (daysSinceStart >= daysOn) return false;
                 }
                 return true;
               });
@@ -935,8 +943,9 @@ export const AddCompoundScreen = () => {
               id: editingCompound.id,
               name,
               start_date: startDate,
-              cycle_weeks_on: cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn,
-              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+              // Pass days directly (already converted)
+              cycle_weeks_on: cycleTimeUnit === 'days' ? cycleWeeksOn : cycleTimeUnit === 'months' ? cycleWeeksOn * 30 : cycleWeeksOn * 7,
+              cycle_weeks_off: cycleMode === 'continuous' ? (cycleTimeUnit === 'days' ? cycleWeeksOff : cycleTimeUnit === 'months' ? cycleWeeksOff * 30 : cycleWeeksOff * 7) : null,
               has_cycles: true,
               cycle_reminders_enabled: true
             });
@@ -967,8 +976,9 @@ export const AddCompoundScreen = () => {
             end_date: endDate || null,
             notes: notes || null,
             has_cycles: enableCycle,
-            cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'months' ? cycleWeeksOn * 4 : cycleWeeksOn) : null,
-            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'months' ? cycleWeeksOff * 4 : cycleWeeksOff) : null,
+            // Store cycle duration in DAYS for consistent handling
+            cycle_weeks_on: enableCycle ? (cycleTimeUnit === 'days' ? cycleWeeksOn : cycleTimeUnit === 'months' ? cycleWeeksOn * 30 : cycleWeeksOn * 7) : null,
+            cycle_weeks_off: enableCycle && cycleMode === 'continuous' ? (cycleTimeUnit === 'days' ? cycleWeeksOff : cycleTimeUnit === 'months' ? cycleWeeksOff * 30 : cycleWeeksOff * 7) : null,
             is_active: isActive
           }])
           .select()

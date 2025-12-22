@@ -65,19 +65,20 @@ export const useAppStateSync = () => {
               const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
               const daysSinceStart = Math.floor((doseDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
               
-              const weeksOnInDays = Math.round(dose.compounds.cycle_weeks_on * 7);
+              // Values are stored as DAYS in the database
+              const daysOn = dose.compounds.cycle_weeks_on;
               
               if (dose.compounds.cycle_weeks_off) {
                 // Continuous cycling
-                const weeksOffInDays = Math.round(dose.compounds.cycle_weeks_off * 7);
-                const cycleLength = weeksOnInDays + weeksOffInDays;
+                const daysOff = dose.compounds.cycle_weeks_off;
+                const cycleLength = daysOn + daysOff;
                 const positionInCycle = daysSinceStart % cycleLength;
                 
                 // If in off period, skip this dose
-                if (positionInCycle >= weeksOnInDays) return false;
+                if (positionInCycle >= daysOn) return false;
               } else {
                 // One-time cycle - after on period, skip
-                if (daysSinceStart >= weeksOnInDays) return false;
+                if (daysSinceStart >= daysOn) return false;
               }
             }
             

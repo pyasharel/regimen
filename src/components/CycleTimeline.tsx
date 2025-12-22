@@ -27,27 +27,31 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
   const now = new Date();
   const sixMonthsFromStart = addDays(startDate, 180);
   
-  // Calculate cycle periods
-  const weeksOn = compound.cycle_weeks_on;
-  const weeksOff = compound.cycle_weeks_off || 0;
-  const isOnOffCycle = weeksOff > 0;
+  // cycle_weeks_on/off are stored as DAYS in the database
+  const daysOn = compound.cycle_weeks_on;
+  const daysOff = compound.cycle_weeks_off || 0;
+  const isOnOffCycle = daysOff > 0;
   
-  // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
-  const convertWeeksToDays = (weeks: number) => {
-    if (weeks >= 4 && weeks % 4 === 0) {
-      return (weeks / 4) * 30; // Treat as months
+  // Helper to format duration for display - infer the best unit
+  const formatDuration = (days: number): string => {
+    if (days >= 30 && days % 30 === 0) {
+      const months = days / 30;
+      return `${months}mo`;
+    } else if (days >= 7 && days % 7 === 0) {
+      const weeks = days / 7;
+      return `${weeks}w`;
+    } else {
+      return `${days}d`;
     }
-    return weeks * 7;
   };
   
-  // Generate cycle periods for display
+  // Generate cycle periods for display - values are already in days
   const segments: { start: Date; end: Date; isOn: boolean }[] = [];
   let currentDate = new Date(startDate);
   let isOnPeriod = true;
   
   while (currentDate < sixMonthsFromStart && segments.length < 20) {
-    const periodWeeks = isOnPeriod ? weeksOn : weeksOff;
-    const periodDays = convertWeeksToDays(periodWeeks);
+    const periodDays = isOnPeriod ? daysOn : daysOff;
     const periodEnd = addDays(currentDate, periodDays);
     
     segments.push({
@@ -74,8 +78,8 @@ export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
     <div className="mt-3 space-y-3">
       <div className="text-xs font-medium text-muted-foreground">
         {isOnOffCycle 
-          ? `Cycle: ${weeksOn}w on, ${weeksOff}w off` 
-          : `One-time: ${weeksOn} week${weeksOn > 1 ? 's' : ''}`}
+          ? `Cycle: ${formatDuration(daysOn)} on, ${formatDuration(daysOff)} off` 
+          : `One-time: ${formatDuration(daysOn)}`}
       </div>
       
       {/* Horizontal timeline visualization */}

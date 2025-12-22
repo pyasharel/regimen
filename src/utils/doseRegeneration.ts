@@ -146,16 +146,16 @@ const generateDosesForDate = (compound: any, dateStr: string) => {
     if (daysSinceStart % everyXDays !== 0) return doses;
   }
   
-  // Check cycle logic
+  // Check cycle logic - values are stored as DAYS in the database
   if (compound.has_cycles && compound.cycle_weeks_on) {
-    const weeksOnInDays = Math.round(compound.cycle_weeks_on * 7);
+    const daysOn = compound.cycle_weeks_on;
     if (compound.cycle_weeks_off) {
-      const weeksOffInDays = Math.round(compound.cycle_weeks_off * 7);
-      const cycleLength = weeksOnInDays + weeksOffInDays;
+      const daysOff = compound.cycle_weeks_off;
+      const cycleLength = daysOn + daysOff;
       const positionInCycle = daysSinceStart % cycleLength;
-      if (positionInCycle >= weeksOnInDays) return doses;
+      if (positionInCycle >= daysOn) return doses;
     } else {
-      if (daysSinceStart >= weeksOnInDays) return doses;
+      if (daysSinceStart >= daysOn) return doses;
     }
   }
   
@@ -253,22 +253,22 @@ const generateDoses = (compound: any, fromDateStr?: string) => {
       }
     }
 
-    // Check cycle logic
+    // Check cycle logic - values are stored as DAYS in the database
     if (compound.has_cycles && compound.cycle_weeks_on) {
-      const weeksOnInDays = Math.round(compound.cycle_weeks_on * 7);
+      const daysOn = compound.cycle_weeks_on;
       
       if (compound.cycle_weeks_off) {
         // Continuous cycle (on/off/on/off...)
-        const weeksOffInDays = Math.round(compound.cycle_weeks_off * 7);
-        const cycleLength = weeksOnInDays + weeksOffInDays;
+        const daysOff = compound.cycle_weeks_off;
+        const cycleLength = daysOn + daysOff;
         const positionInCycle = daysSinceStart % cycleLength;
         
-        if (positionInCycle >= weeksOnInDays) {
+        if (positionInCycle >= daysOn) {
           continue;
         }
       } else {
         // One-time cycle - stop after the "on" period
-        if (daysSinceStart >= weeksOnInDays) {
+        if (daysSinceStart >= daysOn) {
           continue;
         }
       }

@@ -32,8 +32,9 @@ export const scheduleCycleReminders = async (compound: CycleCompound): Promise<v
     return;
   }
   
-  const daysOn = compound.cycle_weeks_on * 7;
-  const daysOff = compound.cycle_weeks_off ? compound.cycle_weeks_off * 7 : 0;
+  // Values are already stored in DAYS in the database
+  const daysOn = compound.cycle_weeks_on;
+  const daysOff = compound.cycle_weeks_off || 0;
   const now = new Date();
   
   // One-time cycle (no off period)

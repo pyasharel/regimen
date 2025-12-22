@@ -699,16 +699,12 @@ export const ProgressScreen = () => {
                               
                               const isActive = compound.is_active && (!compound.end_date || (endDate && endDate >= now));
                               
-                              const convertWeeksToDays = (weeks: number) => {
-                                if (weeks >= 4 && weeks % 4 === 0) return (weeks / 4) * 30;
-                                return weeks * 7;
-                              };
-                              
+                              // Values are stored as DAYS in the database
                               const periods: Array<{ start: Date; end: Date; isOn: boolean }> = [];
                               
                               if (compound.has_cycles && compound.cycle_weeks_on && compound.cycle_weeks_off) {
-                                const daysOn = convertWeeksToDays(compound.cycle_weeks_on);
-                                const daysOff = convertWeeksToDays(compound.cycle_weeks_off);
+                                const daysOn = compound.cycle_weeks_on;
+                                const daysOff = compound.cycle_weeks_off;
                                 
                                 let currentStart = startDate;
                                 const finalEnd = endDate;
