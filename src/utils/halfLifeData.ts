@@ -541,6 +541,163 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     category: 'peptide',
     displayName: 'Melanotan 2',
   },
+  
+  // HGH & Growth Hormone
+  'hgh': {
+    halfLifeHours: 4, // ~3-5 hours (FDA label)
+    tMaxHours: 3, // Peak at 2-4 hours
+    category: 'peptide',
+    displayName: 'HGH',
+    notes: 'Human Growth Hormone / Somatropin'
+  },
+  'somatropin': {
+    halfLifeHours: 4,
+    tMaxHours: 3,
+    category: 'peptide',
+    displayName: 'Somatropin',
+    notes: 'Genotropin, Humatrope, Norditropin'
+  },
+  'genotropin': {
+    halfLifeHours: 4,
+    tMaxHours: 3,
+    category: 'peptide',
+    displayName: 'Genotropin',
+  },
+  'humatrope': {
+    halfLifeHours: 4,
+    tMaxHours: 3,
+    category: 'peptide',
+    displayName: 'Humatrope',
+  },
+  'norditropin': {
+    halfLifeHours: 4,
+    tMaxHours: 3,
+    category: 'peptide',
+    displayName: 'Norditropin',
+  },
+  
+  // Health & Metabolic Medications
+  'metformin': {
+    halfLifeHours: 6, // ~4-8.7 hours
+    tMaxHours: 2.5, // Peak at 2-3 hours
+    category: 'other',
+    displayName: 'Metformin',
+    notes: 'Glucophage - blood sugar control & longevity'
+  },
+  'berberine': {
+    halfLifeHours: 4, // ~4 hours
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'Berberine',
+    notes: 'Natural supplement for blood sugar'
+  },
+  'dhea': {
+    halfLifeHours: 12, // Variable, ~12 hours
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'DHEA',
+    notes: 'Hormone precursor'
+  },
+  'pregnenolone': {
+    halfLifeHours: 24, // Estimated
+    tMaxHours: 3,
+    category: 'other',
+    displayName: 'Pregnenolone',
+    notes: 'Hormone precursor'
+  },
+  'levothyroxine': {
+    halfLifeHours: 168, // ~7 days
+    tMaxHours: 6,
+    category: 'other',
+    displayName: 'Levothyroxine',
+    notes: 'Synthroid - thyroid hormone (T4)'
+  },
+  'synthroid': {
+    halfLifeHours: 168,
+    tMaxHours: 6,
+    category: 'other',
+    displayName: 'Synthroid',
+    notes: 'Levothyroxine (T4)'
+  },
+  'liothyronine': {
+    halfLifeHours: 24, // ~1 day
+    tMaxHours: 3,
+    category: 'other',
+    displayName: 'Liothyronine',
+    notes: 'Cytomel - thyroid hormone (T3)'
+  },
+  'cytomel': {
+    halfLifeHours: 24,
+    tMaxHours: 3,
+    category: 'other',
+    displayName: 'Cytomel',
+    notes: 'Liothyronine (T3)'
+  },
+  'armour thyroid': {
+    halfLifeHours: 48, // Blend of T3/T4
+    tMaxHours: 4,
+    category: 'other',
+    displayName: 'Armour Thyroid',
+    notes: 'Natural desiccated thyroid (T3+T4)'
+  },
+  'aspirin': {
+    halfLifeHours: 4, // ~4 hours for acetylsalicylic acid (effect lasts longer)
+    tMaxHours: 1,
+    category: 'other',
+    displayName: 'Low-dose Aspirin',
+    notes: 'Baby aspirin 81mg - cardiovascular protection'
+  },
+  'atorvastatin': {
+    halfLifeHours: 14, // ~14 hours
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'Atorvastatin',
+    notes: 'Lipitor - cholesterol'
+  },
+  'rosuvastatin': {
+    halfLifeHours: 19, // ~19 hours
+    tMaxHours: 5,
+    category: 'other',
+    displayName: 'Rosuvastatin',
+    notes: 'Crestor - cholesterol'
+  },
+  'lisinopril': {
+    halfLifeHours: 12, // ~12 hours
+    tMaxHours: 7,
+    category: 'other',
+    displayName: 'Lisinopril',
+    notes: 'ACE inhibitor - blood pressure'
+  },
+  'losartan': {
+    halfLifeHours: 6, // ~2 hours for losartan, ~6-9 for active metabolite
+    tMaxHours: 3,
+    category: 'other',
+    displayName: 'Losartan',
+    notes: 'ARB - blood pressure'
+  },
+  'amlodipine': {
+    halfLifeHours: 40, // ~30-50 hours
+    tMaxHours: 8,
+    category: 'other',
+    displayName: 'Amlodipine',
+    notes: 'Calcium channel blocker - blood pressure'
+  },
+  
+  // Bioregulators (keeping popular ones)
+  'epitalon': {
+    halfLifeHours: 4, // Short peptide half-life
+    tMaxHours: 0.5,
+    category: 'peptide',
+    displayName: 'Epitalon',
+    notes: 'Telomere/longevity peptide'
+  },
+  'thymalin': {
+    halfLifeHours: 4,
+    tMaxHours: 0.5,
+    category: 'peptide',
+    displayName: 'Thymalin',
+    notes: 'Immune peptide'
+  },
 };
 
 /**

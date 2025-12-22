@@ -5,24 +5,22 @@ This file contains all compounds currently available in the autocomplete databas
 ## GLP-1 Agonists (Weight Loss)
 - CagriSema
 - Dulaglutide / Trulicity
-- Liraglutide / Victoza / Saxenda
-- Mazdutide *(new)*
+- Liraglutide / Saxenda
+- Mazdutide
 - Mounjaro / Zepbound
 - Ozempic / Wegovy / Rybelsus
 - Retatrutide
 - Semaglutide
-- Survodutide *(new)*
+- Survodutide
 - Tirzepatide
 
 ## Research Peptides - Healing & Recovery
 - AOD-9604
-- ARA-290 *(new)*
+- ARA-290
 - BPC-157 / BPC-157 + KPV Blend
-- Cerebrolysin
 - CJC-1295 with DAC / without DAC
 - Dihexa
 - DSIP
-- Follistatin
 - GHK-Cu
 - GHRP-2 / GHRP-6
 - Gonadorelin
@@ -32,46 +30,29 @@ This file contains all compounds currently available in the autocomplete databas
 - IGF-1 LR3
 - Ibutamoren / MK-677
 - Ipamorelin
-- Kisspeptin *(new)*
+- Kisspeptin
 - KPV
 - Melanotan II
 - MOTS-c
 - NAD+
 - N-Acetyl Semax / N-Acetyl Selank
-- P21
 - PEG-MGF
-- Pinealon
 - PT-141 / Bremelanotide
 - Selank / Semax
 - Sermorelin
 - SS-31 / Elamipretide
-- Survodutide *(new)*
 - TB-500 / TB4-FRAG
 - Tesamorelin / Tesofensine
 - Thymosin Alpha-1 / Thymosin Beta-4 / Thymulin
 
-## Khavinson Bioregulators
-- Cartalax
-- Cerluten
-- Chelohart
-- Chonluten
-- Cortagen
-- Endoluten
+## Select Bioregulators
 - Epitalon
-- Libidon
-- Pinealon
-- Sigumir
-- Testagen
 - Thymalin
-- Ventfort
-- Vesugen
-- Vilon
 
 ## Mitochondrial & Longevity
 - 5-Amino-1MQ
 - Glutathione
 - NMN
-- Urolithin A
 
 ## Testosterone - Men's TRT
 - Testosterone Cypionate
@@ -94,15 +75,14 @@ This file contains all compounds currently available in the autocomplete databas
 - Winstrol / Stanozolol
 
 ## Women's HRT
-- Climara / Estrace / Premarin / Vivelle-Dot
-- Estradiol (various forms)
+- Estradiol (various forms: Valerate, Cypionate, Patch, Gel, Cream)
 - Medroxyprogesterone / Provera
 - Micronized Progesterone / Prometrium
 - Norethindrone
 - Testosterone Cream / Pellets
 
 ## HGH & Growth Hormone
-- Genotropin / Humatrope / Norditropin / Saizen
+- Genotropin / Humatrope / Norditropin
 - HGH / Somatropin
 
 ## Post-Cycle Therapy (PCT) & Ancillaries
@@ -124,15 +104,31 @@ This file contains all compounds currently available in the autocomplete databas
 
 ## Injectable Vitamins & Supplements
 - B-Complex Injectable
-- B12 / Cyanocobalamin / Methylcobalamin
+- B12 / Methylcobalamin
 - L-Carnitine
 
+## Sexual Health / ED Medications
+- Cialis / Tadalafil
+- Viagra / Sildenafil
+
+## Health & Metabolic
+- Metformin
+- Berberine
+- DHEA
+- Pregnenolone
+- Levothyroxine / Synthroid (T4)
+- Liothyronine / Cytomel (T3)
+- Armour Thyroid
+- Low-dose Aspirin
+- Atorvastatin (Lipitor)
+- Rosuvastatin (Crestor)
+- Lisinopril
+- Losartan
+- Amlodipine
+
 ## Specialty Compounds
-- Adipotide / FTPP
-- Foxdri
-- GHK-Cu + BPC-157 Blend
-- SLUPP
 - Wolverine Stack
+- GHK-Cu + BPC-157 Blend
 
 ---
 
