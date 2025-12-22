@@ -148,8 +148,9 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
         <div className="px-4 pb-4">
           {/* iOS-style picker wheels */}
           <div className="relative">
-            {/* Selection highlight */}
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-lg" />
+            {/* Selection highlight - only covers hour/minute columns, not AM/PM */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-lg" 
+                 style={{ width: 'calc(100% - 96px)' }} />
             
             <div className="flex gap-2 justify-center items-center">
               {/* Hours wheel */}
