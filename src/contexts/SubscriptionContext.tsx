@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
@@ -94,7 +94,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, [mockState]);
 
   // Prevent concurrent refreshes
-  const refreshingRef = { current: false };
+  const refreshingRef = useRef(false);
 
   const refreshSubscription = async () => {
     // Prevent concurrent calls
