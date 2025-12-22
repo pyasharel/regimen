@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted } from '@/utils/analytics';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface SubscriptionPaywallProps {
   open: boolean;
@@ -28,6 +29,7 @@ export const SubscriptionPaywall = ({
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { refreshSubscription } = useSubscription();
   // Track when paywall opens
   useEffect(() => {
     if (open) {
@@ -154,13 +156,16 @@ export const SubscriptionPaywall = ({
       console.log('[PAYWALL] About to invoke create-checkout...');
       console.log('[PAYWALL] Request body:', { 
         plan: selectedPlan,
-        promoCode: appliedPromo?.code 
+        promoCode: appliedPromo?.code,
+        platform: Capacitor.isNativePlatform() ? 'native' : 'web',
       });
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan: selectedPlan,
-          promoCode: appliedPromo?.code 
+          promoCode: appliedPromo?.code,
+          // IMPORTANT: for native, force return URLs to the production domain that has Universal Links
+          platform: Capacitor.isNativePlatform() ? 'native' : 'web',
         }
       });
 
@@ -177,14 +182,35 @@ export const SubscriptionPaywall = ({
         trackSubscriptionStarted(selectedPlan);
         
         if (Capacitor.isNativePlatform()) {
-          // Native app: Open in system browser
-          // Universal links (https://getregimen.app/checkout/success) will automatically
-          // redirect back to the app after successful payment
+          // Native app: Open in system browser modal (inside the app)
+          // NOTE: Stripe may not automatically "return to app" unless the user taps the return button
+          // or your production domain is configured for universal links.
           console.log('[PAYWALL] Native platform detected, opening in system browser');
-          
+
+          // When the user closes the browser (X/Done), refresh subscription so Settings updates immediately.
+          let browserFinishedListener: any;
+          try {
+            browserFinishedListener = await Browser.addListener('browserFinished', async () => {
+              try {
+                console.log('[PAYWALL] Browser finished, refreshing subscription...');
+                toast.info('Welcome back — checking your subscription...');
+                await new Promise((r) => setTimeout(r, 1500));
+                await refreshSubscription();
+              } finally {
+                try {
+                  browserFinishedListener?.remove?.();
+                } catch {
+                  // ignore
+                }
+              }
+            });
+          } catch (e) {
+            console.warn('[PAYWALL] Failed to attach browserFinished listener', e);
+          }
+
           await Browser.open({ url: data.url });
           toast.success('Complete checkout to activate your subscription');
-          
+
           // Close the paywall so user sees the browser
           onOpenChange(false);
         } else {

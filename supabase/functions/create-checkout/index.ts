@@ -75,11 +75,18 @@ serve(async (req) => {
     console.log('[CREATE-CHECKOUT] Using price:', priceId, 'for plan:', plan);
 
     // Use web URLs for Stripe redirect (custom URL schemes not supported by Stripe)
-    // The web pages will handle redirecting back to the native app
-    const origin = req.headers.get("origin") || "https://getregimen.app";
+    // IMPORTANT: In native, we must use the production domain that is configured for Universal Links,
+    // otherwise Stripe will redirect to a normal web page inside the in-app browser and it won't auto-return.
+    const originHeader = req.headers.get("origin");
+    const platform = String(plan ? body?.platform : body?.platform || '');
+
+    const origin = platform === 'native'
+      ? "https://getregimen.app"
+      : (originHeader || "https://getregimen.app");
+
     const successUrl = `${origin}/checkout/success`;
     const cancelUrl = `${origin}/checkout/cancel`;
-    console.log('[CREATE-CHECKOUT] Using web URLs for checkout return:', { successUrl, cancelUrl });
+    console.log('[CREATE-CHECKOUT] Using checkout return URLs:', { platform, origin, successUrl, cancelUrl });
 
     // Build session parameters
     const sessionParams: any = {
