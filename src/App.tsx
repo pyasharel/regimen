@@ -44,6 +44,7 @@ import CheckoutCancel from "./pages/CheckoutCancel";
 
 const queryClient = new QueryClient();
 
+// AppContent must be inside SubscriptionProvider to use useSubscription
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
