@@ -1776,6 +1776,7 @@ export const AddCompoundScreen = () => {
                       }
                     }
                   }}
+                  onFocus={(e) => e.target.select()}
                   onBlur={() => {
                     if (cycleWeeksOn === 0 || cycleWeeksOn < 1) {
                       setCycleWeeksOn(1);
@@ -1807,6 +1808,7 @@ export const AddCompoundScreen = () => {
                         }
                       }
                     }}
+                    onFocus={(e) => e.target.select()}
                     onBlur={() => {
                       if (cycleWeeksOff === 0 || cycleWeeksOff < 1) {
                         setCycleWeeksOff(1);
