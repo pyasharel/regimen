@@ -1740,25 +1740,8 @@ export const AddCompoundScreen = () => {
                 </button>
               </div>
 
-              {/* Time unit segmented control */}
-              <div className="flex rounded-lg bg-muted/50 p-1 gap-1">
-                {(['days', 'weeks', 'months'] as const).map((unit) => (
-                  <button
-                    key={unit}
-                    type="button"
-                    onClick={() => setCycleTimeUnit(unit)}
-                    className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                      cycleTimeUnit === unit
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {unit.charAt(0).toUpperCase() + unit.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-3">
+              {/* Duration input with inline unit dropdown */}
+              <div className="flex items-center gap-2">
                 <Input
                   type="text"
                   inputMode="numeric"
@@ -1769,7 +1752,6 @@ export const AddCompoundScreen = () => {
                       setCycleWeeksOn(0);
                       return;
                     }
-                    // Allow digits and decimal
                     if (/^\d*\.?\d*$/.test(val)) {
                       const num = parseFloat(val);
                       if (!isNaN(num) && num >= 0) {
@@ -1786,11 +1768,20 @@ export const AddCompoundScreen = () => {
                   className="w-20 text-center"
                   placeholder="4"
                 />
-                <span className="text-sm text-muted-foreground">{cycleTimeUnit} on</span>
+                <select
+                  value={cycleTimeUnit}
+                  onChange={(e) => setCycleTimeUnit(e.target.value as 'days' | 'weeks' | 'months')}
+                  className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <option value="days">days</option>
+                  <option value="weeks">weeks</option>
+                  <option value="months">months</option>
+                </select>
+                <span className="text-sm text-muted-foreground">on</span>
               </div>
 
               {cycleMode === 'continuous' && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -1801,7 +1792,6 @@ export const AddCompoundScreen = () => {
                         setCycleWeeksOff(0);
                         return;
                       }
-                      // Allow digits and decimal
                       if (/^\d*\.?\d*$/.test(val)) {
                         const num = parseFloat(val);
                         if (!isNaN(num) && num >= 0) {
@@ -1818,7 +1808,16 @@ export const AddCompoundScreen = () => {
                     className="w-20 text-center"
                     placeholder="2"
                   />
-                  <span className="text-sm text-muted-foreground">{cycleTimeUnit} off</span>
+                  <select
+                    value={cycleTimeUnit}
+                    onChange={(e) => setCycleTimeUnit(e.target.value as 'days' | 'weeks' | 'months')}
+                    className="h-10 px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="days">days</option>
+                    <option value="weeks">weeks</option>
+                    <option value="months">months</option>
+                  </select>
+                  <span className="text-sm text-muted-foreground">off</span>
                 </div>
               )}
               
