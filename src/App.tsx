@@ -58,6 +58,7 @@ const AppContent = () => {
         <SubscriptionBanners 
           subscriptionStatus={subscriptionStatus}
           onUpgrade={() => setShowPaywall(true)}
+          paywallOpen={showPaywall}
         />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
