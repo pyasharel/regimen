@@ -1063,9 +1063,9 @@ export const AddCompoundScreen = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background pb-8">
+    <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 safe-top">
+      <header className="border-b border-border px-4 py-4 safe-top flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -1081,7 +1081,8 @@ export const AddCompoundScreen = () => {
         </div>
       </header>
 
-      <div className="flex-1 space-y-6 p-4 max-w-2xl mx-auto">
+      <div className="flex-1 overflow-y-auto pb-32">
+        <div className="space-y-6 p-4 max-w-2xl mx-auto">
         {/* Basic Info */}
         <div className="space-y-4">
           <div className="space-y-2 relative">
@@ -1886,6 +1887,7 @@ export const AddCompoundScreen = () => {
           >
             {saving ? 'Saving...' : isEditing ? 'Update Compound' : 'Save Compound'}
           </Button>
+        </div>
         </div>
       </div>
 
