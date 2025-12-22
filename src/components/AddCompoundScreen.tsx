@@ -180,7 +180,7 @@ export const AddCompoundScreen = () => {
   const [cycleWeeksOn, setCycleWeeksOn] = useState(4);
   const [cycleWeeksOff, setCycleWeeksOff] = useState(2);
   const [cycleReminders, setCycleReminders] = useState(true);
-  const [cycleTimeUnit, setCycleTimeUnit] = useState<'weeks' | 'months'>('weeks');
+  const [cycleTimeUnit, setCycleTimeUnit] = useState<'days' | 'weeks' | 'months'>('weeks');
 
   // Active status
   const [isActive, setIsActive] = useState(true);
@@ -605,19 +605,21 @@ export const AddCompoundScreen = () => {
       if (enableCycle && cycleMode === 'continuous') {
         // Calculate days since original start date (not effective start)
         const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        // Convert to days: if cycleTimeUnit is months, multiply by ~30 days, else by 7
-        const weeksOnInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
-        const weeksOffInDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOff * 30) : Math.round(cycleWeeksOff * 7);
-        const cycleLength = weeksOnInDays + weeksOffInDays;
+        // Convert to days based on unit: days=1, weeks=7, months=30
+        const unitMultiplier = cycleTimeUnit === 'days' ? 1 : cycleTimeUnit === 'months' ? 30 : 7;
+        const onPeriodDays = Math.round(cycleWeeksOn * unitMultiplier);
+        const offPeriodDays = Math.round(cycleWeeksOff * unitMultiplier);
+        const cycleLength = onPeriodDays + offPeriodDays;
         const positionInCycle = daysSinceStart % cycleLength;
         
         // Skip if we're in the "off" period
-        if (positionInCycle >= weeksOnInDays) {
+        if (positionInCycle >= onPeriodDays) {
           continue;
         }
       } else if (enableCycle && cycleMode === 'one-time') {
-        // For one-time cycles, only generate for the "on" weeks
-        const onPeriodDays = cycleTimeUnit === 'months' ? Math.round(cycleWeeksOn * 30) : Math.round(cycleWeeksOn * 7);
+        // For one-time cycles, only generate for the "on" period
+        const unitMultiplier = cycleTimeUnit === 'days' ? 1 : cycleTimeUnit === 'months' ? 30 : 7;
+        const onPeriodDays = Math.round(cycleWeeksOn * unitMultiplier);
         const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         if (daysSinceStart >= onPeriodDays) {
           continue;
@@ -1485,23 +1487,32 @@ export const AddCompoundScreen = () => {
             <div className="space-y-2">
               <Label>Select Days</Label>
               <div className="grid grid-cols-7 gap-2">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                {/* Days starting Monday: M=1, T=2, W=3, T=4, F=5, S=6, S=0 */}
+                {[
+                  { label: 'M', dayIndex: 1 },
+                  { label: 'T', dayIndex: 2 },
+                  { label: 'W', dayIndex: 3 },
+                  { label: 'T', dayIndex: 4 },
+                  { label: 'F', dayIndex: 5 },
+                  { label: 'S', dayIndex: 6 },
+                  { label: 'S', dayIndex: 0 },
+                ].map(({ label, dayIndex }) => (
                   <button
-                    key={idx}
+                    key={dayIndex}
                     onClick={() => {
-                      if (customDays.includes(idx)) {
-                        setCustomDays(customDays.filter(d => d !== idx));
+                      if (customDays.includes(dayIndex)) {
+                        setCustomDays(customDays.filter(d => d !== dayIndex));
                       } else {
-                        setCustomDays([...customDays, idx]);
+                        setCustomDays([...customDays, dayIndex]);
                       }
                     }}
                     className={`p-2 rounded-lg text-sm font-medium transition-colors ${
-                      customDays.includes(idx)
+                      customDays.includes(dayIndex)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-card border border-border hover:bg-muted'
                     }`}
                   >
-                    {day}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -1718,55 +1729,83 @@ export const AddCompoundScreen = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Time unit segmented control */}
+              <div className="flex rounded-lg bg-muted/50 p-1 gap-1">
+                {(['days', 'weeks', 'months'] as const).map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => setCycleTimeUnit(unit)}
+                    className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                      cycleTimeUnit === unit
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3">
                 <Input
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  value={cycleWeeksOn}
+                  type="text"
+                  inputMode="numeric"
+                  value={cycleWeeksOn === 0 ? '' : cycleWeeksOn}
                   onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    if (!isNaN(val) && val >= 0.5) {
-                      setCycleWeeksOn(val);
+                    const val = e.target.value;
+                    if (val === '') {
+                      setCycleWeeksOn(0);
+                      return;
+                    }
+                    // Allow digits and decimal
+                    if (/^\d*\.?\d*$/.test(val)) {
+                      const num = parseFloat(val);
+                      if (!isNaN(num) && num >= 0) {
+                        setCycleWeeksOn(num);
+                      }
                     }
                   }}
-                  className="w-20"
+                  onBlur={() => {
+                    if (cycleWeeksOn === 0 || cycleWeeksOn < 1) {
+                      setCycleWeeksOn(1);
+                    }
+                  }}
+                  className="w-20 text-center"
+                  placeholder="4"
                 />
-                <select
-                  value={cycleTimeUnit}
-                  onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                  className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
-                >
-                  <option value="weeks">weeks</option>
-                  <option value="months">months</option>
-                </select>
-                <span className="text-sm">on</span>
+                <span className="text-sm text-muted-foreground">{cycleTimeUnit} on</span>
               </div>
 
               {cycleMode === 'continuous' && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Input
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    value={cycleWeeksOff}
+                    type="text"
+                    inputMode="numeric"
+                    value={cycleWeeksOff === 0 ? '' : cycleWeeksOff}
                     onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0.5) {
-                        setCycleWeeksOff(val);
+                      const val = e.target.value;
+                      if (val === '') {
+                        setCycleWeeksOff(0);
+                        return;
+                      }
+                      // Allow digits and decimal
+                      if (/^\d*\.?\d*$/.test(val)) {
+                        const num = parseFloat(val);
+                        if (!isNaN(num) && num >= 0) {
+                          setCycleWeeksOff(num);
+                        }
                       }
                     }}
-                    className="w-20"
+                    onBlur={() => {
+                      if (cycleWeeksOff === 0 || cycleWeeksOff < 1) {
+                        setCycleWeeksOff(1);
+                      }
+                    }}
+                    className="w-20 text-center"
+                    placeholder="2"
                   />
-                  <select
-                    value={cycleTimeUnit}
-                    onChange={(e) => setCycleTimeUnit(e.target.value as 'weeks' | 'months')}
-                    className="h-9 bg-input border-border rounded-lg border px-2 text-sm"
-                  >
-                    <option value="weeks">weeks</option>
-                    <option value="months">months</option>
-                  </select>
-                  <span className="text-sm">off</span>
+                  <span className="text-sm text-muted-foreground">{cycleTimeUnit} off</span>
                 </div>
               )}
               
@@ -1785,7 +1824,7 @@ export const AddCompoundScreen = () => {
 
               {cycleMode === 'one-time' && (
                 <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                  After {cycleWeeksOn} {cycleTimeUnit === 'months' ? (cycleWeeksOn !== 1 ? 'months' : 'month') : (cycleWeeksOn !== 1 ? 'weeks' : 'week')}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
+                  After {cycleWeeksOn} {cycleTimeUnit === 'days' ? (cycleWeeksOn !== 1 ? 'days' : 'day') : cycleTimeUnit === 'months' ? (cycleWeeksOn !== 1 ? 'months' : 'month') : (cycleWeeksOn !== 1 ? 'weeks' : 'week')}, this compound will automatically become inactive. You can reactivate it manually from My Stack.
                 </p>
               )}
             </div>

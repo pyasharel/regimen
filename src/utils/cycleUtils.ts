@@ -30,8 +30,11 @@ export const calculateCycleStatus = (
   // Calculate days since start
   const daysSinceStart = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   
-  // Convert weeks to days using calendar month approximation (30 days per 4 weeks)
-  // This gives users more intuitive cycle behavior
+  // Convert weeks to days
+  // Note: cycleWeeksOn/Off are stored in the unit the user selected
+  // For months: 4 weeks = ~30 days for intuitive month behavior
+  // For weeks: exact 7 days
+  // For days: exact 1 day
   const convertWeeksToDays = (weeks: number) => {
     if (weeks >= 4 && weeks % 4 === 0) {
       // Treat as months: 4 weeks = 30 days (not 28)

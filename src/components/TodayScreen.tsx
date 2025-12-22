@@ -87,16 +87,18 @@ export const TodayScreen = () => {
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
 
-  // Generate week days - keep the current week stable
+  // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
     const days = [];
-    // Start from the beginning of the current week (Sunday)
+    // Start from the beginning of the current week (Monday)
     const current = new Date(selectedDate);
     const dayOfWeek = current.getDay();
+    // Convert Sunday (0) to 7 for Monday-based calculation
+    const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
     const startOfWeek = new Date(current);
-    startOfWeek.setDate(current.getDate() - dayOfWeek);
+    startOfWeek.setDate(current.getDate() - adjustedDay + 1); // +1 to start on Monday
     
-    // Generate 7 days starting from Sunday
+    // Generate 7 days starting from Monday
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
       day.setDate(startOfWeek.getDate() + i);
