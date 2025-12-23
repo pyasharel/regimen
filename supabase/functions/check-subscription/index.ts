@@ -44,31 +44,51 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      logStep("No customer found, updating unsubscribed state");
-      
-      // Don't touch beta_access_end_date - only update Stripe-related fields
+
+    // Prefer the stored customer id to avoid mismatches when multiple Stripe customers share the same email.
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    let customerId: string | null = profile?.stripe_customer_id ?? null;
+
+    if (!customerId) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+
+      if (customers.data.length === 0) {
+        logStep("No customer found, updating unsubscribed state");
+
+        // Don't touch beta_access_end_date - only update Stripe-related fields
+        await supabaseClient
+          .from('profiles')
+          .update({
+            subscription_status: 'none',
+            subscription_type: null,
+            subscription_end_date: null,
+            trial_end_date: null,
+            stripe_customer_id: null
+          })
+          .eq('user_id', user.id);
+
+        return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      customerId = customers.data[0].id;
+      logStep("Found Stripe customer", { customerId });
+
+      // Persist for future calls so we don't rely on email searches.
       await supabaseClient
         .from('profiles')
-        .update({ 
-          subscription_status: 'none',
-          subscription_type: null,
-          subscription_end_date: null,
-          trial_end_date: null,
-          stripe_customer_id: null
-        })
+        .update({ stripe_customer_id: customerId })
         .eq('user_id', user.id);
-
-      return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+    } else {
+      logStep("Using stored Stripe customer", { customerId });
     }
-
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
 
     // Fetch active or trialing subscriptions first
     const activeSubscriptions = await stripe.subscriptions.list({

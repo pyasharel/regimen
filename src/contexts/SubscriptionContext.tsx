@@ -130,7 +130,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         console.log('[SubscriptionContext] ⏱️ getSession took:', Date.now() - startTime, 'ms');
-        
+
         if (session) {
           console.log('[SubscriptionContext] Calling check-subscription...');
           const edgeFnStart = Date.now();
@@ -140,11 +140,21 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             }
           });
           console.log('[SubscriptionContext] ⏱️ check-subscription took:', Date.now() - edgeFnStart, 'ms');
-          
+
           if (error) {
             console.error('[SubscriptionContext] check-subscription error:', error);
           } else {
             console.log('[SubscriptionContext] check-subscription response:', data);
+
+            // Apply server response immediately so the UI updates even if the profile read is slow.
+            if (data?.status) {
+              const status = (data.status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+              setSubscriptionStatus(status);
+              setSubscriptionType((data.subscription_type as 'monthly' | 'annual' | null) ?? null);
+              setSubscriptionEndDate(data.subscription_end ?? null);
+              setTrialEndDate(data.trial_end ?? null);
+              setIsSubscribed(!!data.subscribed);
+            }
           }
         }
       } catch (error) {

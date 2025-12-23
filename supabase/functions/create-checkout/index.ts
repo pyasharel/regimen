@@ -53,6 +53,12 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       console.log('[CREATE-CHECKOUT] Found existing customer:', customerId);
+
+      // Keep profiles in sync even when customer already existed
+      await supabaseClient
+        .from('profiles')
+        .update({ stripe_customer_id: customerId })
+        .eq('user_id', user.id);
     } else {
       console.log('[CREATE-CHECKOUT] Creating new customer');
       const customer = await stripe.customers.create({
