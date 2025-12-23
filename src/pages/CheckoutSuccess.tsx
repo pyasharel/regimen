@@ -11,12 +11,17 @@ import { Button } from '@/components/ui/button';
 const CheckoutSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refreshSubscription } = useSubscription();
+  const { refreshSubscription, subscriptionStatus } = useSubscription();
   const [isProcessing, setIsProcessing] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    let pollAttempts = 0;
+    const MAX_POLL_ATTEMPTS = 10;
+    let hasNavigated = false;
+
     const handleSuccess = async () => {
       console.log('[CHECKOUT-SUCCESS] Processing successful checkout, session:', sessionId);
 
@@ -40,19 +45,61 @@ const CheckoutSuccess = () => {
         // Give Stripe a moment to finalize
         await new Promise(resolve => setTimeout(resolve, 1500));
         await refreshSubscription();
-        toast.success('Subscription activated! Welcome to Regimen Pro.');
         
-        // Navigate to today screen
+        // Start polling if subscription isn't active yet (Stripe webhook delay)
+        pollInterval = setInterval(async () => {
+          if (hasNavigated) return;
+          
+          pollAttempts++;
+          console.log(`[CHECKOUT-SUCCESS] Polling subscription status (attempt ${pollAttempts}/${MAX_POLL_ATTEMPTS})`);
+          
+          await refreshSubscription();
+          
+          // Max attempts reached - navigate anyway
+          if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+            if (pollInterval) clearInterval(pollInterval);
+            hasNavigated = true;
+            
+            toast.success('Subscription activated! Welcome to Regimen Pro.');
+            setIsProcessing(false);
+            
+            setTimeout(() => {
+              navigate('/today', { replace: true });
+            }, 1000);
+          }
+        }, 2000);
+        
+        // Also set a max timeout fallback
         setTimeout(() => {
-          navigate('/today', { replace: true });
-        }, 1000);
+          if (pollInterval && !hasNavigated) {
+            clearInterval(pollInterval);
+            hasNavigated = true;
+            setIsProcessing(false);
+            toast.success('Subscription activated! Welcome to Regimen Pro.');
+            navigate('/today', { replace: true });
+          }
+        }, 25000);
+      } else {
+        setIsProcessing(false);
       }
-      
-      setIsProcessing(false);
     };
 
     handleSuccess();
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [sessionId, refreshSubscription, navigate]);
+
+  // Auto-navigate when subscription becomes active
+  useEffect(() => {
+    if (isAuthenticated && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')) {
+      console.log('[CHECKOUT-SUCCESS] Subscription confirmed active, navigating...');
+      setIsProcessing(false);
+      toast.success('Subscription activated! Welcome to Regimen Pro.');
+      navigate('/today', { replace: true });
+    }
+  }, [subscriptionStatus, isAuthenticated, navigate]);
 
   // If opened in Safari without auth, show "Open App" button
   const showOpenAppButton = isAuthenticated === false && !isProcessing;
