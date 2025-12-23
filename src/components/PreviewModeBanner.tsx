@@ -38,8 +38,6 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
               </p>
             </div>
           </div>
-            </div>
-          </div>
           <button
             onClick={() => setIsDismissed(true)}
             className="flex-shrink-0 w-6 h-6 rounded-md hover:bg-muted/80 flex items-center justify-center transition-colors text-muted-foreground/50 hover:text-muted-foreground"
