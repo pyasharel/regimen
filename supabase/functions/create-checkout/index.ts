@@ -77,8 +77,16 @@ serve(async (req) => {
     // Use web URLs for Stripe redirect (custom URL schemes not supported by Stripe)
     // IMPORTANT: In native, we must use the production domain that is configured for Universal Links,
     // otherwise Stripe will redirect to a normal web page inside the in-app browser and it won't auto-return.
-    const originHeader = req.headers.get("origin");
-    const platform = String(plan ? body?.platform : body?.platform || '');
+    const originHeader = req.headers.get("origin") || "";
+
+    // Some clients (older builds) may not send platform. Detect native by origin.
+    const originLooksNative =
+      originHeader.startsWith("capacitor://") ||
+      originHeader.startsWith("ionic://") ||
+      originHeader === "http://localhost" ||
+      originHeader.startsWith("http://localhost:");
+
+    const platform = body?.platform === "native" || originLooksNative ? "native" : "web";
 
     const origin = platform === 'native'
       ? "https://getregimen.app"

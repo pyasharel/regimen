@@ -19,10 +19,10 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
 
   return (
     <div className="safe-top">
-      <div className="bg-white/80 dark:bg-white/5 backdrop-blur-sm border-b border-border/50 px-4 py-2">
-        <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
+      <div className="bg-background border-b border-border/60 px-4 h-14 flex items-center">
+        <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto w-full">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="flex-shrink-0 w-1 h-8 bg-[#8B5CF6] rounded-full" />
+            <div className="flex-shrink-0 w-1 h-8 bg-secondary rounded-full" />
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-medium text-foreground/90">
                 Preview Mode
@@ -30,12 +30,14 @@ export const PreviewModeBanner = ({ onUpgrade }: PreviewModeBannerProps) => {
               <p className="text-[12px] text-muted-foreground truncate">
                 <button
                   onClick={handleSubscribeClick}
-                  className="text-[#8B5CF6] hover:text-[#7C3AED] font-medium transition-colors"
+                  className="text-secondary hover:text-secondary/90 font-medium transition-colors"
                 >
                   Subscribe
                 </button>
                 {' '}for unlimited access
               </p>
+            </div>
+          </div>
             </div>
           </div>
           <button

@@ -190,20 +190,24 @@ export const SubscriptionPaywall = ({
           // When the user closes the browser (X/Done), refresh subscription so Settings updates immediately.
           let browserFinishedListener: any;
           try {
-            browserFinishedListener = await Browser.addListener('browserFinished', async () => {
-              try {
-                console.log('[PAYWALL] Browser finished, refreshing subscription...');
-                toast.info('Welcome back — checking your subscription...');
-                await new Promise((r) => setTimeout(r, 1500));
-                await refreshSubscription();
-              } finally {
-                try {
-                  browserFinishedListener?.remove?.();
-                } catch {
-                  // ignore
-                }
-              }
-            });
+             browserFinishedListener = await Browser.addListener('browserFinished', async () => {
+               try {
+                 console.log('[PAYWALL] Browser finished, refreshing subscription...');
+                 toast.info('Welcome back — checking your subscription...');
+
+                 // Stripe can take a moment to finalize + propagate.
+                 await new Promise((r) => setTimeout(r, 2500));
+                 await refreshSubscription();
+                 await new Promise((r) => setTimeout(r, 2500));
+                 await refreshSubscription();
+               } finally {
+                 try {
+                   browserFinishedListener?.remove?.();
+                 } catch {
+                   // ignore
+                 }
+               }
+             });
           } catch (e) {
             console.warn('[PAYWALL] Failed to attach browserFinished listener', e);
           }

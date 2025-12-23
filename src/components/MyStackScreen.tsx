@@ -316,7 +316,7 @@ export const MyStackScreen = () => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background flex flex-col pt-14">
+      <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
         <div className="flex-1 min-h-0 scroll-container pb-24">
           <MainHeader title="My Stack" />
           <div className="p-4 space-y-4">
@@ -337,7 +337,7 @@ export const MyStackScreen = () => {
   }
  
   return (
-    <div className="fixed inset-0 bg-background flex flex-col pt-14">
+    <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
       {/* Scrollable Content - Header inside scroll area */}
       <div className="flex-1 min-h-0 scroll-container pb-24">
         {/* Header */}

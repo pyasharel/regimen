@@ -14,7 +14,7 @@ interface SubscriptionBannersProps {
 export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen = false }: SubscriptionBannersProps) => {
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
-  const { trialEndDate, subscriptionEndDate } = useSubscription();
+  const { subscriptionEndDate, isLoading } = useSubscription();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
   });
@@ -29,13 +29,28 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
 
   // Don't show any banners on auth, onboarding, or landing pages
   const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
-  if (hideOnRoutes.includes(location.pathname)) {
+  const isHiddenRoute = hideOnRoutes.includes(location.pathname);
+
+  const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
+  const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
+  const shouldShowPreview = !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none');
+
+  const shouldReserveBannerSpace = !paywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
+
+  // Expose a single source of truth for screen top padding (fixed screens use .app-top-padding)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--app-banner-height', shouldReserveBannerSpace ? '56px' : '0px');
+    return () => root.style.setProperty('--app-banner-height', '0px');
+  }, [shouldReserveBannerSpace]);
+
+  if (isHiddenRoute) {
     return null;
   }
 
   // Don't show preview banner when paywall is open - it's redundant
   if (paywallOpen) {
-    return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
+    return null;
   }
 
   const calculateDaysRemaining = (endDate: string | null) => {
@@ -48,7 +63,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
 
   // Trial banner removed - users can see trial status in settings for cleaner UX
 
-  if (subscriptionStatus === 'past_due' && dismissed !== 'past_due') {
+  if (shouldShowPastDue) {
     const handleFixNow = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -109,7 +124,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
     );
   }
 
-  if (subscriptionStatus === 'canceled' && subscriptionEndDate && dismissed !== 'canceled') {
+  if (shouldShowCanceled) {
     const daysRemaining = calculateDaysRemaining(subscriptionEndDate);
     
     if (daysRemaining > 0) {
@@ -180,16 +195,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
     }
   }
 
-  // Show preview mode banner only when truly in preview/none state
-  // Use fixed positioning with high z-index to ensure visibility over fixed-inset screens
-  const { isLoading } = useSubscription();
-  
-  if (isLoading) {
-    // While loading, reserve the safe-area space to prevent layout shift
-    return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
-  }
-  
-  if (subscriptionStatus === 'preview' || subscriptionStatus === 'none') {
+  if (shouldShowPreview) {
     return (
       <div className="fixed top-0 left-0 right-0 z-[100]">
         <PreviewModeBanner onUpgrade={onUpgrade} />
@@ -197,6 +203,5 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
     );
   }
 
-  // Even when subscribed, maintain safe-area space with fixed positioning
-  return <div className="fixed top-0 left-0 right-0 z-[100] safe-top" />;
+  return null;
 };
