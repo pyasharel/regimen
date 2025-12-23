@@ -14,7 +14,14 @@ const CheckoutSuccess = () => {
   const { refreshSubscription, subscriptionStatus } = useSubscription();
   const [isProcessing, setIsProcessing] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [mounted, setMounted] = useState(false);
   const sessionId = searchParams.get('session_id');
+
+  // Mark as mounted immediately for debugging
+  useEffect(() => {
+    console.log('[CHECKOUT-SUCCESS] Component mounted');
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout | null = null;
@@ -25,22 +32,23 @@ const CheckoutSuccess = () => {
     const handleSuccess = async () => {
       console.log('[CHECKOUT-SUCCESS] Processing successful checkout, session:', sessionId);
 
-      // Check if user is authenticated (will be true in native app, false in Safari)
-      const { data: { user } } = await supabase.auth.getUser();
-      const hasAuth = !!user;
-      setIsAuthenticated(hasAuth);
-      console.log('[CHECKOUT-SUCCESS] User authenticated:', hasAuth);
-
-      // If we're in the native app context, close browser
+      // Close the in-app browser immediately if on native
       if (Capacitor.isNativePlatform()) {
+        console.log('[CHECKOUT-SUCCESS] Native platform detected, attempting to close browser');
         try {
           await Browser.close();
+          console.log('[CHECKOUT-SUCCESS] Browser closed successfully');
         } catch (e) {
-          console.log('[CHECKOUT-SUCCESS] Browser.close not needed or failed:', e);
+          console.log('[CHECKOUT-SUCCESS] Browser.close failed (may already be closed):', e);
         }
       }
 
-      // Only try to refresh subscription if authenticated
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      const hasAuth = !!user;
+      setIsAuthenticated(hasAuth);
+      console.log('[CHECKOUT-SUCCESS] User authenticated:', hasAuth, user?.email);
+
       if (hasAuth) {
         // Give Stripe a moment to finalize
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -69,7 +77,7 @@ const CheckoutSuccess = () => {
           }
         }, 2000);
         
-        // Also set a max timeout fallback
+        // Max timeout fallback
         setTimeout(() => {
           if (pollInterval && !hasNavigated) {
             clearInterval(pollInterval);
@@ -80,6 +88,7 @@ const CheckoutSuccess = () => {
           }
         }, 25000);
       } else {
+        // Not authenticated - show open app button
         setIsProcessing(false);
       }
     };
@@ -106,27 +115,34 @@ const CheckoutSuccess = () => {
 
   // Try to open the native app via custom URL scheme
   const handleOpenApp = () => {
-    // This will attempt to open the app via custom URL scheme
-    window.location.href = 'regimen://checkout/success';
+    const deepLink = `regimen://checkout/success${sessionId ? `?session_id=${sessionId}` : ''}`;
+    console.log('[CHECKOUT-SUCCESS] Attempting deep link:', deepLink);
+    window.location.href = deepLink;
     
-    // Fallback: if app doesn't open after 2 seconds, show message
+    // Fallback message
     setTimeout(() => {
       toast.info('If the app didn\'t open, please open Regimen manually.');
     }, 2000);
   };
 
+  // Always render something visible immediately
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 flex items-center justify-center p-6">
       <div className="text-center space-y-6 max-w-sm">
-        <div className="mx-auto w-20 h-20 rounded-full bg-success/20 flex items-center justify-center">
+        {/* Debug info for troubleshooting */}
+        {!mounted && (
+          <p className="text-xs text-muted-foreground">Loading...</p>
+        )}
+        
+        <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center animate-in fade-in duration-300">
           {isProcessing ? (
-            <Loader2 className="w-10 h-10 text-success animate-spin" />
+            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
           ) : (
-            <Check className="w-10 h-10 text-success" />
+            <Check className="w-10 h-10 text-emerald-500" />
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <h1 className="text-2xl font-bold text-foreground">
             {isProcessing ? 'Processing Payment...' : 'Payment Successful!'}
           </h1>
@@ -153,10 +169,10 @@ const CheckoutSuccess = () => {
 
         {/* Not authenticated (Safari): show open app button */}
         {showOpenAppButton && (
-          <div className="space-y-3">
+          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Button 
               onClick={handleOpenApp}
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90"
               size="lg"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
