@@ -43,6 +43,9 @@ All colors MUST be HSL.
 
     --radius: 0.75rem; /* 12px default */
 
+    /* Layout offsets */
+    --app-banner-height: 0px;
+
     /* Surface levels */
     --surface: 0 0% 96%; /* #F5F5F5 - Slightly darker */
     --surface-elevated: 0 0% 99%; /* #FCFCFC - For sections that need to stand out */
@@ -125,6 +128,10 @@ All colors MUST be HSL.
   /* iOS Safe Area Support */
   .safe-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  .app-top-padding {
+    padding-top: calc(env(safe-area-inset-top) + var(--app-banner-height));
   }
   
   .safe-top-margin {
