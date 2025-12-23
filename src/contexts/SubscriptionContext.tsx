@@ -113,6 +113,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     const startTime = Date.now();
     console.log('[SubscriptionContext] 🚀 Starting refresh...');
 
+    // Track edge-function status so we don't overwrite it with a stale profile read.
+    let edgeStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' | null = null;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       console.log('[SubscriptionContext] ⏱️ getUser took:', Date.now() - startTime, 'ms');
@@ -149,6 +152,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             // Apply server response immediately so the UI updates even if the profile read is slow.
             if (data?.status) {
               const status = (data.status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+              edgeStatus = status;
               setSubscriptionStatus(status);
               setSubscriptionType((data.subscription_type as 'monthly' | 'annual' | null) ?? null);
               setSubscriptionEndDate(data.subscription_end ?? null);
@@ -191,12 +195,20 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           setSubscriptionEndDate(profile.beta_access_end_date);
           setTrialEndDate(null);
         } else {
-          const status = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
-          setSubscriptionStatus(status);
-          setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
-          setSubscriptionEndDate(profile.subscription_end_date);
-          setTrialEndDate(profile.trial_end_date);
-          setIsSubscribed(status === 'active' || status === 'trialing');
+          const statusFromProfile = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+
+          // If Stripe just told us the user is active/trialing, don't downgrade to "none" due to a stale profile read.
+          const shouldPreventDowngrade =
+            (edgeStatus === 'active' || edgeStatus === 'trialing') &&
+            statusFromProfile === 'none';
+
+          if (!shouldPreventDowngrade) {
+            setSubscriptionStatus(statusFromProfile);
+            setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
+            setSubscriptionEndDate(profile.subscription_end_date);
+            setTrialEndDate(profile.trial_end_date);
+            setIsSubscribed(statusFromProfile === 'active' || statusFromProfile === 'trialing');
+          }
         }
         
         setPreviewModeCompoundAdded(profile.preview_mode_compound_added || false);
