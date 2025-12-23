@@ -33,7 +33,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
 
   const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
-  const shouldShowPreview = !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none');
+  const shouldShowPreview = !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
   const shouldReserveBannerSpace = !paywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
@@ -198,7 +198,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
   if (shouldShowPreview) {
     return (
       <div className="fixed top-0 left-0 right-0 z-[100]">
-        <PreviewModeBanner onUpgrade={onUpgrade} />
+        <PreviewModeBanner onUpgrade={onUpgrade} onDismiss={() => setDismissed('preview')} />
       </div>
     );
   }
