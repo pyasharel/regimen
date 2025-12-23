@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Checkout Cancelled - Regimen</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      padding: 20px;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+    
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: scaleIn 0.5s ease-out;
+    }
+    
+    .icon svg {
+      width: 40px;
+      height: 40px;
+      stroke: white;
+      stroke-width: 3;
+      fill: none;
+    }
+    
+    @keyframes scaleIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #a0a0a0;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 16px 48px;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    }
+    
+    .button:hover, .button:active {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(99, 102, 241, 0.5);
+    }
+    
+    .status {
+      margin-top: 24px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #666;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </div>
+    
+    <h1>Checkout Cancelled</h1>
+    <p>No worries! You can subscribe anytime.<br>Tap below to return to Regimen.</p>
+    
+    <a href="#" class="button" id="openAppBtn">Return to App</a>
+    
+    <p class="status" id="status">
+      <span class="spinner"></span>
+      Opening app automatically...
+    </p>
+  </div>
+
+  <script>
+    // Build the deep link URL for cancel
+    const deepLinkUrl = 'regimen://checkout/cancel';
+    
+    // Function to attempt opening the app
+    function openApp() {
+      console.log('[CHECKOUT-HTML] Attempting to open app via:', deepLinkUrl);
+      window.location.href = deepLinkUrl;
+    }
+    
+    // Set up button click handler
+    document.getElementById('openAppBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      openApp();
+    });
+    
+    // Try to open automatically after a short delay
+    setTimeout(function() {
+      openApp();
+    }, 500);
+    
+    // Update status after a few seconds if still on this page
+    setTimeout(function() {
+      document.getElementById('status').innerHTML = 'Tap the button above if the app didn\'t open automatically.';
+    }, 3000);
+  </script>
+</body>
+</html>

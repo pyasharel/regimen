@@ -98,8 +98,14 @@ serve(async (req) => {
       ? "https://getregimen.app"
       : (originHeader || "https://getregimen.app");
 
-    const successUrl = `${origin}/checkout/success`;
-    const cancelUrl = `${origin}/checkout/cancel`;
+    // For native, use static HTML files that trigger deep links reliably
+    // SFSafariViewController has issues with Universal Links on redirects, so static HTML + custom scheme works better
+    const successUrl = platform === 'native'
+      ? `${origin}/checkout-success.html`
+      : `${origin}/checkout/success`;
+    const cancelUrl = platform === 'native'
+      ? `${origin}/checkout-cancel.html`
+      : `${origin}/checkout/cancel`;
     console.log('[CREATE-CHECKOUT] Using checkout return URLs:', { platform, origin, successUrl, cancelUrl });
 
     // Build session parameters
