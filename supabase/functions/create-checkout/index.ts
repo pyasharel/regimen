@@ -98,11 +98,10 @@ serve(async (req) => {
       ? "https://getregimen.app"
       : (originHeader || "https://getregimen.app");
 
-    // Use the React routes for both native and web
-    // The static HTML approach (checkout-success.html) doesn't work because hosting routes everything through SPA
-    // The React CheckoutSuccess component will handle the deep link and Browser.close()
-    const successUrl = `${origin}/checkout/success`;
-    const cancelUrl = `${origin}/checkout/cancel`;
+    // Use static return pages that can deep-link back into the native app.
+    // This avoids a blank SPA route inside SFSafariViewController after checkout.
+    const successUrl = `${origin}/checkout-success.html`;
+    const cancelUrl = `${origin}/checkout-cancel.html`;
     console.log('[CREATE-CHECKOUT] Using checkout return URLs:', { platform, origin, successUrl, cancelUrl });
 
     // Build session parameters

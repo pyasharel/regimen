@@ -6,11 +6,16 @@ export const TermsSettings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4 safe-top">
-        <button onClick={() => navigate("/settings")} className="rounded-lg p-2 hover:bg-muted transition-colors">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-xl font-bold">Terms of Service</h1>
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <button
+            onClick={() => navigate("/settings")}
+            className="rounded-lg p-2 hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-xl font-bold">Terms of Service</h1>
+        </div>
       </header>
 
       <div className="p-6 space-y-6 max-w-2xl mx-auto">

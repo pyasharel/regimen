@@ -8,15 +8,13 @@ export const PrivacySettings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4 py-4 safe-top">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/settings')}
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-xl font-bold">Privacy Policy</h1>
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
+        <div className="flex items-center gap-3 px-4 py-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold">Privacy Policy</h1>
+        </div>
       </header>
       <div className="p-6 space-y-6">
         <Card className="p-6 space-y-6 bg-card max-w-2xl mx-auto">
