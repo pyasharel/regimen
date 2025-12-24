@@ -182,21 +182,23 @@ export const SubscriptionPaywall = ({
         trackSubscriptionStarted(selectedPlan);
         
         if (Capacitor.isNativePlatform()) {
-          // Native app: Open in SYSTEM browser (Safari/Chrome), not in-app SFSafariViewController
-          // This fixes blank page issues and allows Universal Links to return to app
-          console.log('[PAYWALL] Native platform detected, opening in SYSTEM browser (Safari)');
+          // Native app: Open checkout in browser
+          console.log('[PAYWALL] Native platform detected, opening checkout');
 
           // Close the paywall first so user sees the app when they return
           onOpenChange(false);
 
-          // Open checkout in system Safari/Chrome (not in-app browser)
-          // windowName: '_system' forces the system browser instead of SFSafariViewController
+          // On iOS, use Browser.open which opens SFSafariViewController
+          // The return flow is handled by Universal Links configured in the app
+          // Note: windowName: '_system' was supposed to open system Safari but doesn't work reliably
+          // Instead, we rely on Universal Links to bring the user back to the app
           await Browser.open({ 
             url: data.url,
-            windowName: '_system'  // Forces system Safari instead of in-app browser
+            windowName: '_blank',  // Opens in SFSafariViewController on iOS
+            presentationStyle: 'popover'  // iOS 13+ presentation style
           });
           
-          toast.success('Complete checkout in Safari, then return to the app');
+          toast.success('Complete checkout, then tap "Return to Regimen" when done');
         } else {
           // Web: Open in new tab (preview iframe can't redirect to external URLs)
           console.log('[PAYWALL] Web platform detected, opening in new tab');

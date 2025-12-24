@@ -138,12 +138,16 @@ const AnalyticsWrapper = () => {
         let checkoutAction = null;
         let sessionId = null;
 
-        if (url.includes('/checkout/success')) {
+        if (url.includes('/checkout/success') || url.includes('checkout/success')) {
           checkoutAction = 'success';
           // Extract session_id if present
-          const urlObj = new URL(url);
-          sessionId = urlObj.searchParams.get('session_id');
-        } else if (url.includes('/checkout/cancel')) {
+          try {
+            const urlObj = new URL(url);
+            sessionId = urlObj.searchParams.get('session_id');
+          } catch (e) {
+            console.warn('[DEEP-LINK] Could not parse URL for session_id', e);
+          }
+        } else if (url.includes('/checkout/cancel') || url.includes('checkout/cancel')) {
           checkoutAction = 'cancel';
         }
 
@@ -162,11 +166,23 @@ const AnalyticsWrapper = () => {
             // Refresh subscription status after successful checkout
             toast.success('Payment successful! Activating subscription...');
             
-            // Give Stripe a moment to finalize the subscription
-            setTimeout(async () => {
+            // Poll for subscription activation - Stripe webhooks may take a few seconds
+            const pollSubscription = async (attempts = 0): Promise<void> => {
+              console.log(`[DEEP-LINK] Polling subscription status, attempt ${attempts + 1}`);
               await refreshSubscription();
-              navigate('/today');
-            }, 1500);
+              
+              // Check if subscription is now active
+              // Give it up to 10 attempts (10 seconds total)
+              if (attempts < 10) {
+                setTimeout(() => pollSubscription(attempts + 1), 1000);
+              } else {
+                console.log('[DEEP-LINK] Finished polling, navigating to /today');
+                navigate('/today');
+              }
+            };
+            
+            // Start polling after a brief delay for Stripe to process
+            setTimeout(() => pollSubscription(), 2000);
           } else if (checkoutAction === 'cancel') {
             try {
               await Browser.close();
