@@ -1,8 +1,13 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
+import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
+
+// RevenueCat configuration
+const REVENUECAT_API_KEY = 'test_MKazSVVRceSDxsVenUBKbLhJxPJ';
+const ENTITLEMENT_ID = 'Regimen Pro';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
@@ -17,6 +22,11 @@ interface SubscriptionContextType {
   getCompoundCount: () => Promise<number>;
   previewModeCompoundAdded: boolean;
   setMockState: (state: 'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled') => void;
+  // RevenueCat-specific
+  offerings: PurchasesOfferings | null;
+  purchasePackage: (pkg: PurchasesPackage) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
+  restorePurchases: () => Promise<{ success: boolean; isPro?: boolean; error?: string }>;
+  isNativePlatform: boolean;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -39,6 +49,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [mockState, setMockState] = useState<'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled'>('none');
+  
+  // RevenueCat state
+  const [revenueCatConfigured, setRevenueCatConfigured] = useState(false);
+  const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  
+  const isNativePlatform = Capacitor.isNativePlatform();
 
   // Apply mock state for development testing
   const applyMockState = (state: typeof mockState) => {
@@ -289,13 +306,144 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setPreviewModeCompoundAdded(true);
   };
 
+  // ==================== RevenueCat Functions ====================
+
+  // Initialize RevenueCat (native only)
+  const initRevenueCat = useCallback(async () => {
+    if (!isNativePlatform) {
+      console.log('[RevenueCat] Web platform, skipping initialization');
+      return;
+    }
+
+    try {
+      console.log('[RevenueCat] Initializing...');
+      await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      setRevenueCatConfigured(true);
+      console.log('[RevenueCat] Configuration complete');
+
+      // Get initial customer info and offerings
+      const { customerInfo } = await Purchases.getCustomerInfo();
+      setCustomerInfo(customerInfo);
+      
+      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      if (isPro) {
+        console.log('[RevenueCat] User has Pro entitlement');
+        setIsSubscribed(true);
+        setSubscriptionStatus('active');
+      }
+
+      const offeringsResult = await Purchases.getOfferings();
+      setOfferings(offeringsResult);
+      console.log('[RevenueCat] Offerings loaded:', offeringsResult);
+    } catch (error) {
+      console.error('[RevenueCat] Initialization error:', error);
+    }
+  }, [isNativePlatform]);
+
+  // Identify user with RevenueCat after login
+  const identifyRevenueCatUser = useCallback(async (userId: string) => {
+    if (!isNativePlatform || !revenueCatConfigured) return;
+
+    try {
+      console.log('[RevenueCat] Identifying user:', userId);
+      const { customerInfo } = await Purchases.logIn({ appUserID: userId });
+      setCustomerInfo(customerInfo);
+      
+      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      if (isPro) {
+        setIsSubscribed(true);
+        setSubscriptionStatus('active');
+      }
+    } catch (error) {
+      console.error('[RevenueCat] Identify error:', error);
+    }
+  }, [isNativePlatform, revenueCatConfigured]);
+
+  // Purchase a package
+  const purchasePackage = useCallback(async (packageToPurchase: PurchasesPackage): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
+    if (!isNativePlatform) {
+      return { success: false, error: 'Purchases only available on native platforms' };
+    }
+
+    try {
+      console.log('[RevenueCat] Purchasing package:', packageToPurchase);
+      const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageToPurchase });
+      setCustomerInfo(customerInfo);
+      
+      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      if (isPro) {
+        setIsSubscribed(true);
+        setSubscriptionStatus('active');
+      }
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('[RevenueCat] Purchase error:', error);
+      
+      if (error.code === 'PURCHASE_CANCELLED') {
+        return { success: false, cancelled: true };
+      }
+      
+      return { success: false, error: error.message || 'Purchase failed' };
+    }
+  }, [isNativePlatform]);
+
+  // Restore purchases
+  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro?: boolean; error?: string }> => {
+    if (!isNativePlatform) {
+      return { success: false, error: 'Restore only available on native platforms' };
+    }
+
+    try {
+      console.log('[RevenueCat] Restoring purchases');
+      const { customerInfo } = await Purchases.restorePurchases();
+      setCustomerInfo(customerInfo);
+      
+      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      if (isPro) {
+        setIsSubscribed(true);
+        setSubscriptionStatus('active');
+      }
+      
+      return { success: true, isPro };
+    } catch (error) {
+      console.error('[RevenueCat] Restore error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Restore failed' };
+    }
+  }, [isNativePlatform]);
+
+  // Logout from RevenueCat
+  const logoutRevenueCat = useCallback(async () => {
+    if (!isNativePlatform || !revenueCatConfigured) return;
+
+    try {
+      console.log('[RevenueCat] Logging out');
+      await Purchases.logOut();
+      setCustomerInfo(null);
+    } catch (error) {
+      console.error('[RevenueCat] Logout error:', error);
+    }
+  }, [isNativePlatform, revenueCatConfigured]);
+
+  // Main initialization effect
   useEffect(() => {
+    // Initialize RevenueCat first on native
+    if (isNativePlatform) {
+      initRevenueCat();
+    }
+    
     refreshSubscription();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[SubscriptionContext] Auth event:', event);
       if (session?.user) {
+        // Identify user with RevenueCat on sign in
+        if (event === 'SIGNED_IN' && isNativePlatform) {
+          identifyRevenueCatUser(session.user.id);
+        }
+        
         // Refresh immediately on sign in
         if (event === 'SIGNED_IN') {
           console.log('[SubscriptionContext] User signed in, refreshing subscription...');
@@ -311,15 +459,37 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         setIsSubscribed(false);
         setSubscriptionStatus('none');
         setIsLoading(false);
+        
+        // Logout from RevenueCat
+        if (isNativePlatform) {
+          logoutRevenueCat();
+        }
       }
     });
 
-    // Listen for app resume to refresh subscription (important for returning from Stripe checkout)
+    // Listen for app resume to refresh subscription (important for returning from purchases)
     let appStateListener: { remove: () => void } | undefined;
-    if (Capacitor.isNativePlatform()) {
-      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+    if (isNativePlatform) {
+      CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
         if (isActive) {
-          console.log('[SubscriptionContext] App resumed, refreshing subscription...');
+          console.log('[SubscriptionContext] App resumed, refreshing...');
+          
+          // Refresh RevenueCat customer info
+          if (revenueCatConfigured) {
+            try {
+              const { customerInfo } = await Purchases.getCustomerInfo();
+              setCustomerInfo(customerInfo);
+              
+              const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+              if (isPro) {
+                setIsSubscribed(true);
+                setSubscriptionStatus('active');
+              }
+            } catch (error) {
+              console.error('[RevenueCat] Refresh on resume error:', error);
+            }
+          }
+          
           refreshSubscription();
         }
       }).then(listener => {
@@ -332,7 +502,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       appStateListener?.remove();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isNativePlatform]);
 
   return (
     <SubscriptionContext.Provider
@@ -349,6 +519,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         markPreviewCompoundAdded,
         getCompoundCount,
         setMockState,
+        // RevenueCat
+        offerings,
+        purchasePackage,
+        restorePurchases,
+        isNativePlatform,
       }}
     >
       {children}
