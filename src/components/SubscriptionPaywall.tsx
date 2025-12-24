@@ -182,41 +182,21 @@ export const SubscriptionPaywall = ({
         trackSubscriptionStarted(selectedPlan);
         
         if (Capacitor.isNativePlatform()) {
-          // Native app: Open in system browser modal (inside the app)
-          // NOTE: Stripe may not automatically "return to app" unless the user taps the return button
-          // or your production domain is configured for universal links.
-          console.log('[PAYWALL] Native platform detected, opening in system browser');
+          // Native app: Open in SYSTEM browser (Safari/Chrome), not in-app SFSafariViewController
+          // This fixes blank page issues and allows Universal Links to return to app
+          console.log('[PAYWALL] Native platform detected, opening in SYSTEM browser (Safari)');
 
-          // When the user closes the browser (X/Done), refresh subscription so Settings updates immediately.
-          let browserFinishedListener: any;
-          try {
-             browserFinishedListener = await Browser.addListener('browserFinished', async () => {
-               try {
-                 console.log('[PAYWALL] Browser finished, refreshing subscription...');
-                 toast.info('Welcome back — checking your subscription...');
-
-                 // Stripe can take a moment to finalize + propagate.
-                 await new Promise((r) => setTimeout(r, 2500));
-                 await refreshSubscription();
-                 await new Promise((r) => setTimeout(r, 2500));
-                 await refreshSubscription();
-               } finally {
-                 try {
-                   browserFinishedListener?.remove?.();
-                 } catch {
-                   // ignore
-                 }
-               }
-             });
-          } catch (e) {
-            console.warn('[PAYWALL] Failed to attach browserFinished listener', e);
-          }
-
-          await Browser.open({ url: data.url });
-          toast.success('Complete checkout to activate your subscription');
-
-          // Close the paywall so user sees the browser
+          // Close the paywall first so user sees the app when they return
           onOpenChange(false);
+
+          // Open checkout in system Safari/Chrome (not in-app browser)
+          // windowName: '_system' forces the system browser instead of SFSafariViewController
+          await Browser.open({ 
+            url: data.url,
+            windowName: '_system'  // Forces system Safari instead of in-app browser
+          });
+          
+          toast.success('Complete checkout in Safari, then return to the app');
         } else {
           // Web: Open in new tab (preview iframe can't redirect to external URLs)
           console.log('[PAYWALL] Web platform detected, opening in new tab');

@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,17 +29,7 @@ const CheckoutSuccess = () => {
 
     const handleSuccess = async () => {
       console.log('[CHECKOUT-SUCCESS] Processing successful checkout, session:', sessionId);
-
-      // Close the in-app browser immediately if on native
-      if (Capacitor.isNativePlatform()) {
-        console.log('[CHECKOUT-SUCCESS] Native platform detected, attempting to close browser');
-        try {
-          await Browser.close();
-          console.log('[CHECKOUT-SUCCESS] Browser closed successfully');
-        } catch (e) {
-          console.log('[CHECKOUT-SUCCESS] Browser.close failed (may already be closed):', e);
-        }
-      }
+      console.log('[CHECKOUT-SUCCESS] Running in system Safari - Universal Links should return user to app');
 
       // Check if user is authenticated
       const { data: { user } } = await supabase.auth.getUser();
@@ -148,41 +136,26 @@ const CheckoutSuccess = () => {
           </h1>
           <p className="text-muted-foreground">
             {isProcessing 
-              ? 'Please wait while we activate your subscription...'
-              : isAuthenticated 
-                ? 'Your subscription is now active. Enjoy all premium features!'
-                : 'Your payment was successful! Return to the app to start using your subscription.'
+              ? 'Activating your subscription...'
+              : 'Your subscription is now active!'
             }
           </p>
         </div>
 
-        {/* Authenticated in-app: show return button */}
-        {isAuthenticated && !isProcessing && (
+        {/* Show "Return to Regimen" button for everyone */}
+        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
           <Button 
-            onClick={() => navigate('/today', { replace: true })}
+            onClick={handleOpenApp}
             className="w-full"
             size="lg"
           >
-            Return to App
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Return to Regimen
           </Button>
-        )}
-
-        {/* Not authenticated (Safari): show open app button */}
-        {showOpenAppButton && (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Button 
-              onClick={handleOpenApp}
-              className="w-full bg-primary hover:bg-primary/90"
-              size="lg"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open Regimen App
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              If the app doesn't open automatically, please open Regimen from your home screen.
-            </p>
-          </div>
-        )}
+          <p className="text-xs text-muted-foreground">
+            Tap above to return to the app
+          </p>
+        </div>
       </div>
     </div>
   );
