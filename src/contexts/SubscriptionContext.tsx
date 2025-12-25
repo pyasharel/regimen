@@ -6,7 +6,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 
 // RevenueCat configuration
-const REVENUECAT_API_KEY = 'test_MKazSVVRceSDxsVenUBKbLhJxPJ';
+const REVENUECAT_API_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
 const ENTITLEMENT_ID = 'Regimen Premium';
 
 interface SubscriptionContextType {
