@@ -8,6 +8,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
+import { PaywallProvider, usePaywall } from "@/contexts/PaywallContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { useState, useEffect } from "react";
@@ -44,11 +45,11 @@ import CheckoutCancel from "./pages/CheckoutCancel";
 
 const queryClient = new QueryClient();
 
-// AppContent component - must be rendered inside SubscriptionProvider
+// AppContent component - must be rendered inside SubscriptionProvider and PaywallProvider
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
-  const [showPaywall, setShowPaywall] = useState(false);
+  const { openPaywall, isPaywallOpen, setPaywallOpen } = usePaywall();
 
   return (
     <>
@@ -58,8 +59,7 @@ const AppContent = () => {
         <Sonner />
         <SubscriptionBanners 
           subscriptionStatus={subscriptionStatus}
-          onUpgrade={() => setShowPaywall(true)}
-          paywallOpen={showPaywall}
+          onUpgrade={openPaywall}
         />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
@@ -94,8 +94,8 @@ const AppContent = () => {
         </TooltipProvider>
         
         <SubscriptionPaywall 
-          open={showPaywall}
-          onOpenChange={setShowPaywall}
+          open={isPaywallOpen}
+          onOpenChange={setPaywallOpen}
         />
     </>
   );
@@ -110,9 +110,11 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <SubscriptionProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <PaywallProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </PaywallProvider>
       </SubscriptionProvider>
     </QueryClientProvider>
   );

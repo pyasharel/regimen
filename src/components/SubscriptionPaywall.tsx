@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { usePaywall } from '@/contexts/PaywallContext';
 
 interface SubscriptionPaywallProps {
   open: boolean;
@@ -30,8 +31,13 @@ export const SubscriptionPaywall = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
-  // Track when paywall opens
+  const { setPaywallOpen } = usePaywall();
+  
+  // Track when paywall opens and sync with PaywallContext
   useEffect(() => {
+    // Sync paywall open state to context so banner knows to hide
+    setPaywallOpen(open);
+    
     if (open) {
       console.log('[PAYWALL] Component opened/mounted');
       trackPaywallShown(message || 'add_compound');
@@ -41,7 +47,7 @@ export const SubscriptionPaywall = ({
         canInvoke: typeof supabase?.functions?.invoke === 'function'
       });
     }
-  }, [open, message]);
+  }, [open, message, setPaywallOpen]);
 
   const promoCodes: Record<string, {duration: number, type: 'free' | 'discount' | 'beta', value: number}> = {
     'BETA3': { duration: 3, type: 'free', value: 100 },
