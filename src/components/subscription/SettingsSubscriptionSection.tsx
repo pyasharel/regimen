@@ -16,6 +16,8 @@ export const SettingsSubscriptionSection = () => {
     subscriptionEndDate, 
     trialEndDate,
     refreshSubscription,
+    restorePurchases,
+    isNativePlatform,
     isLoading: subscriptionLoading
   } = useSubscription();
   const [betaAccessEndDate, setBetaAccessEndDate] = useState<string | null>(null);
@@ -98,8 +100,21 @@ export const SettingsSubscriptionSection = () => {
   const handleRestorePurchases = async () => {
     setIsRestoring(true);
     try {
-      await refreshSubscription();
-      toast.success('Subscription status refreshed');
+      if (isNativePlatform) {
+        // Use RevenueCat restore on native
+        const result = await restorePurchases();
+        if (result.isPro) {
+          toast.success('Subscription restored successfully!');
+        } else if (result.success) {
+          toast.info('No active subscription found');
+        } else {
+          toast.error(result.error || 'Failed to restore purchases');
+        }
+      } else {
+        // On web, just refresh from Stripe
+        await refreshSubscription();
+        toast.success('Subscription status refreshed');
+      }
     } catch (error) {
       console.error('Restore error:', error);
       toast.error('Failed to restore purchases');

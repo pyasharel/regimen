@@ -157,10 +157,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           console.log('[SubscriptionContext] RevenueCat isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
           
           if (isPro) {
-            console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription');
+            const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+            
+            // Check if this is a trial period
+            const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+            
+            console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription, isInTrial:', isInTrial);
             setIsSubscribed(true);
-            setSubscriptionStatus('active');
-            edgeStatus = 'active'; // Prevent downgrade from profile read
+            setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+            edgeStatus = isInTrial ? 'trialing' : 'active'; // Prevent downgrade from profile read
             
             // Try to determine subscription type from active subscriptions
             const activeSubscriptions = customerInfo.activeSubscriptions || [];
@@ -171,9 +176,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             }
             
             // Set end date if available
-            const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
             if (entitlement?.expirationDate) {
               setSubscriptionEndDate(entitlement.expirationDate);
+            }
+            
+            // Set trial end date if applicable
+            if (isInTrial && entitlement?.expirationDate) {
+              setTrialEndDate(entitlement.expirationDate);
             }
           }
         } catch (rcError) {
@@ -422,8 +431,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[RevenueCat] Purchase complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
       
       if (isPro) {
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        
+        // Check if this is a trial period
+        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+        
         setIsSubscribed(true);
-        setSubscriptionStatus('active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
         
         // Set subscription type based on package purchased
         if (packageToPurchase.identifier === '$rc_annual' || packageToPurchase.product.identifier.includes('annual')) {
@@ -433,9 +447,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
         
         // Set end date if available
-        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
         if (entitlement?.expirationDate) {
           setSubscriptionEndDate(entitlement.expirationDate);
+        }
+        
+        // Set trial end date if applicable
+        if (isInTrial && entitlement?.expirationDate) {
+          setTrialEndDate(entitlement.expirationDate);
         }
       }
       
@@ -462,14 +480,43 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      console.log('[RevenueCat] Restoring purchases');
+      console.log('[RevenueCat] Restoring purchases...');
       const { customerInfo } = await Purchases.restorePurchases();
       setCustomerInfo(customerInfo);
       
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      console.log('[RevenueCat] Restore complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
+      
       if (isPro) {
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        
+        // Check if this is a trial period
+        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+        
         setIsSubscribed(true);
-        setSubscriptionStatus('active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        
+        // Determine subscription type from active subscriptions
+        const activeSubscriptions = customerInfo.activeSubscriptions || [];
+        if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+          setSubscriptionType('annual');
+        } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+          setSubscriptionType('monthly');
+        }
+        
+        // Set end date
+        if (entitlement?.expirationDate) {
+          setSubscriptionEndDate(entitlement.expirationDate);
+        }
+        
+        // Set trial end date if applicable
+        if (isInTrial && entitlement?.expirationDate) {
+          setTrialEndDate(entitlement.expirationDate);
+        }
+      } else {
+        // No active subscription found
+        setIsSubscribed(false);
+        setSubscriptionStatus('none');
       }
       
       return { success: true, isPro };

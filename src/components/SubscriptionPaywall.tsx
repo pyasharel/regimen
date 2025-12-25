@@ -29,7 +29,7 @@ export const SubscriptionPaywall = ({
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { refreshSubscription, offerings, purchasePackage, isNativePlatform } = useSubscription();
+  const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
   // Track when paywall opens
   useEffect(() => {
     if (open) {
@@ -494,8 +494,35 @@ export const SubscriptionPaywall = ({
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Terms</a>
                 {' • '}
                 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline cursor-pointer hover:text-[#FF6F61]">Privacy</a>
-                {' • '}
-                <button onClick={() => toast.info('Restore purchases feature coming soon')} className="underline cursor-pointer hover:text-[#FF6F61]">Restore</button>
+                {isNativePlatform && (
+                  <>
+                    {' • '}
+                    <button 
+                      onClick={async () => {
+                        setIsLoading(true);
+                        try {
+                          const result = await restorePurchases();
+                          if (result.isPro) {
+                            toast.success('Subscription restored successfully!');
+                            onOpenChange(false);
+                          } else if (result.success) {
+                            toast.info('No active subscription found to restore');
+                          } else {
+                            toast.error(result.error || 'Failed to restore purchases');
+                          }
+                        } catch (error) {
+                          toast.error('Failed to restore purchases');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }} 
+                      disabled={isLoading}
+                      className="underline cursor-pointer hover:text-[#FF6F61]"
+                    >
+                      Restore
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
