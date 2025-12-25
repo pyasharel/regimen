@@ -29,7 +29,7 @@ export const SubscriptionPaywall = ({
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { refreshSubscription } = useSubscription();
+  const { refreshSubscription, offerings, purchasePackage, isNativePlatform } = useSubscription();
   // Track when paywall opens
   useEffect(() => {
     if (open) {
@@ -140,10 +140,10 @@ export const SubscriptionPaywall = ({
     console.log('[PAYWALL] Current state:', { 
       selectedPlan, 
       appliedPromo: appliedPromo?.code,
-      isLoading 
+      isLoading,
+      isNativePlatform,
+      hasOfferings: !!offerings
     });
-    console.log('[PAYWALL] Supabase client:', typeof supabase);
-    console.log('[PAYWALL] Supabase functions:', typeof supabase.functions);
     
     if (isLoading) {
       console.log('[PAYWALL] Already loading, ignoring click');
@@ -153,19 +153,71 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
+      // ==================== NATIVE IAP (RevenueCat) ====================
+      if (isNativePlatform) {
+        console.log('[PAYWALL] Native platform - using RevenueCat');
+        
+        if (!offerings?.current?.availablePackages) {
+          console.error('[PAYWALL] No offerings available');
+          toast.error('Unable to load subscription options. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Find the right package based on selected plan
+        const packages = offerings.current.availablePackages;
+        console.log('[PAYWALL] Available packages:', packages.map(p => ({ 
+          id: p.identifier, 
+          product: p.product.identifier 
+        })));
+
+        // RevenueCat package identifiers: $rc_monthly, $rc_annual
+        const packageId = selectedPlan === 'monthly' ? '$rc_monthly' : '$rc_annual';
+        const selectedPackage = packages.find(p => p.identifier === packageId);
+
+        if (!selectedPackage) {
+          console.error('[PAYWALL] Package not found:', packageId);
+          toast.error(`${selectedPlan} plan not available. Please try the other option.`);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('[PAYWALL] Purchasing package:', selectedPackage.identifier);
+        trackSubscriptionStarted(selectedPlan);
+
+        const result = await purchasePackage(selectedPackage);
+
+        if (result.success) {
+          console.log('[PAYWALL] Purchase successful!');
+          toast.success('Welcome to Regimen Premium! 🎉');
+          onOpenChange(false);
+          await refreshSubscription();
+        } else if (result.cancelled) {
+          console.log('[PAYWALL] Purchase cancelled by user');
+          // Don't show error for user cancellation
+        } else {
+          console.error('[PAYWALL] Purchase failed:', result.error);
+          toast.error(result.error || 'Purchase failed. Please try again.');
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+
+      // ==================== WEB (Stripe Checkout) ====================
+      console.log('[PAYWALL] Web platform - using Stripe checkout');
       console.log('[PAYWALL] About to invoke create-checkout...');
       console.log('[PAYWALL] Request body:', { 
         plan: selectedPlan,
         promoCode: appliedPromo?.code,
-        platform: Capacitor.isNativePlatform() ? 'native' : 'web',
+        platform: 'web',
       });
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { 
           plan: selectedPlan,
           promoCode: appliedPromo?.code,
-          // IMPORTANT: for native, force return URLs to the production domain that has Universal Links
-          platform: Capacitor.isNativePlatform() ? 'native' : 'web',
+          platform: 'web',
         }
       });
 
@@ -181,30 +233,10 @@ export const SubscriptionPaywall = ({
         console.log('[PAYWALL] SUCCESS! Opening URL:', data.url);
         trackSubscriptionStarted(selectedPlan);
         
-        if (Capacitor.isNativePlatform()) {
-          // Native app: Open checkout in browser
-          console.log('[PAYWALL] Native platform detected, opening checkout');
-
-          // Close the paywall first so user sees the app when they return
-          onOpenChange(false);
-
-          // On iOS, use Browser.open which opens SFSafariViewController
-          // The return flow is handled by Universal Links configured in the app
-          // Note: windowName: '_system' was supposed to open system Safari but doesn't work reliably
-          // Instead, we rely on Universal Links to bring the user back to the app
-          await Browser.open({ 
-            url: data.url,
-            windowName: '_blank',  // Opens in SFSafariViewController on iOS
-            presentationStyle: 'popover'  // iOS 13+ presentation style
-          });
-          
-          toast.success('Complete checkout, then tap "Return to Regimen" when done');
-        } else {
-          // Web: Open in new tab (preview iframe can't redirect to external URLs)
-          console.log('[PAYWALL] Web platform detected, opening in new tab');
-          window.open(data.url, '_blank');
-          toast.success('Complete checkout in the new tab, then return here');
-        }
+        // Web: Open in new tab
+        console.log('[PAYWALL] Web platform, opening in new tab');
+        window.open(data.url, '_blank');
+        toast.success('Complete checkout in the new tab, then return here');
       } else {
         console.error('[PAYWALL] No URL in response');
         toast.error('Checkout failed - no URL received');
