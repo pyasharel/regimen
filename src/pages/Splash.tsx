@@ -83,27 +83,27 @@ export default function Splash() {
           <>
             {/* Headline */}
             <div className="space-y-4 animate-fade-in">
-              <h1 className="text-[36px] font-bold text-white leading-tight mb-4">
+              <h1 className="text-[36px] font-bold text-foreground leading-tight mb-4">
                 Track your stack. See what's working.
               </h1>
-              <p className="text-[18px] text-[#9CA3AF] mb-10">
+              <p className="text-[18px] text-muted-foreground mb-10">
                 Smart tracking, precise calculations, and progress analytics in one app
               </p>
             </div>
 
             {/* Features */}
-            <div className="space-y-4 text-left rounded-lg p-6 border border-[#2A2A2A] animate-fade-in">
+            <div className="space-y-4 text-left rounded-lg p-6 border border-border animate-fade-in">
               <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#FF6F61] mt-2 flex-shrink-0" />
-                <p className="text-base text-white">Precise dosing calculator with unit conversions</p>
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <p className="text-base text-foreground">Precise dosing calculator with unit conversions</p>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#FF6F61] mt-2 flex-shrink-0" />
-                <p className="text-base text-white">Automated cycle management and reminders</p>
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <p className="text-base text-foreground">Automated cycle management and reminders</p>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#FF6F61] mt-2 flex-shrink-0" />
-                <p className="text-base text-white">Visualize progress with photos and analytics</p>
+                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                <p className="text-base text-foreground">Visualize progress with photos and analytics</p>
               </div>
             </div>
 

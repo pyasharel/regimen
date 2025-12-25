@@ -190,9 +190,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // ==================== Check Stripe (for web/fallback) ====================
-      // Skip Stripe check if RevenueCat already confirmed active subscription
-      if (edgeStatus !== 'active') {
+      // ==================== Check Stripe (for WEB ONLY) ====================
+      // On native platforms, RevenueCat is the source of truth - skip Stripe entirely
+      // This prevents Stripe from overwriting RevenueCat's active status with 'none'
+      if (!isNativePlatform && edgeStatus !== 'active' && edgeStatus !== 'trialing') {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           console.log('[SubscriptionContext] ⏱️ getSession took:', Date.now() - startTime, 'ms');
@@ -227,6 +228,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.error('Error checking subscription with Stripe:', error);
         }
+      } else if (isNativePlatform) {
+        console.log('[SubscriptionContext] Native platform - skipping Stripe check, using RevenueCat only');
       }
 
       // Fetch the updated profile with subscription info
