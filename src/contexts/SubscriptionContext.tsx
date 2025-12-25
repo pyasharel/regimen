@@ -648,8 +648,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     if (isNativePlatform) {
       CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
         if (isActive) {
-          console.log('[SubscriptionContext] App resumed, calling refreshSubscription...');
-          // Just call refreshSubscription - it now has proper RevenueCat identity checks
+          console.log('[SubscriptionContext] App resumed...');
+          
+          // Re-identify with RevenueCat if user is logged in but RevenueCat identity was lost
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && revenueCatConfigured) {
+            // Always ensure user is identified before refreshing
+            // This handles the case where app was backgrounded and identity state was lost
+            await identifyRevenueCatUser(user.id);
+          }
+          
+          console.log('[SubscriptionContext] App resumed, calling refreshSubscription after identity check...');
           refreshSubscription();
         }
       }).then(listener => {
