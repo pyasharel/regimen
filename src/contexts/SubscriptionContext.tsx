@@ -335,7 +335,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       const offeringsResult = await Purchases.getOfferings();
       setOfferings(offeringsResult);
-      console.log('[RevenueCat] Offerings loaded:', offeringsResult);
+      console.log('[RevenueCat] Offerings loaded:', JSON.stringify(offeringsResult, null, 2));
+      console.log('[RevenueCat] Current offering:', offeringsResult?.current);
+      console.log('[RevenueCat] Available packages:', offeringsResult?.current?.availablePackages);
+      
+      if (!offeringsResult?.current) {
+        console.warn('[RevenueCat] ⚠️ No current offering! Check RevenueCat dashboard configuration.');
+      }
+      if (!offeringsResult?.current?.availablePackages?.length) {
+        console.warn('[RevenueCat] ⚠️ No available packages! Make sure products are configured in RevenueCat and App Store Connect.');
+      }
     } catch (error) {
       console.error('[RevenueCat] Initialization error:', error);
     }
