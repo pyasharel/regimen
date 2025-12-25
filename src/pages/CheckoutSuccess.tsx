@@ -56,7 +56,7 @@ const CheckoutSuccess = () => {
             if (pollInterval) clearInterval(pollInterval);
             hasNavigated = true;
             
-            toast.success('Subscription activated! Welcome to Regimen Pro.');
+            toast.success('Subscription activated! Welcome to Regimen Premium.');
             setIsProcessing(false);
             
             setTimeout(() => {
@@ -71,7 +71,7 @@ const CheckoutSuccess = () => {
             clearInterval(pollInterval);
             hasNavigated = true;
             setIsProcessing(false);
-            toast.success('Subscription activated! Welcome to Regimen Pro.');
+            toast.success('Subscription activated! Welcome to Regimen Premium.');
             navigate('/today', { replace: true });
           }
         }, 25000);
@@ -93,7 +93,7 @@ const CheckoutSuccess = () => {
     if (isAuthenticated && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')) {
       console.log('[CHECKOUT-SUCCESS] Subscription confirmed active, navigating...');
       setIsProcessing(false);
-      toast.success('Subscription activated! Welcome to Regimen Pro.');
+      toast.success('Subscription activated! Welcome to Regimen Premium.');
       navigate('/today', { replace: true });
     }
   }, [subscriptionStatus, isAuthenticated, navigate]);
