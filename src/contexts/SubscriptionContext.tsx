@@ -7,7 +7,7 @@ import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackag
 
 // RevenueCat configuration
 const REVENUECAT_API_KEY = 'test_MKazSVVRceSDxsVenUBKbLhJxPJ';
-const ENTITLEMENT_ID = 'Regimen Pro';
+const ENTITLEMENT_ID = 'Regimen Premium';
 
 interface SubscriptionContextType {
   isSubscribed: boolean;
