@@ -188,10 +188,11 @@ export const SubscriptionPaywall = ({
         const result = await purchasePackage(selectedPackage);
 
         if (result.success) {
-          console.log('[PAYWALL] Purchase successful!');
+          console.log('[PAYWALL] Purchase successful! State already updated by purchasePackage');
           toast.success('Welcome to Regimen Premium! 🎉');
           onOpenChange(false);
-          await refreshSubscription();
+          // purchasePackage already updated the subscription state synchronously - no need to refresh
+          // This prevents race conditions where refresh could overwrite the correct state
         } else if (result.cancelled) {
           console.log('[PAYWALL] Purchase cancelled by user');
           // Don't show error for user cancellation

@@ -544,12 +544,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
   // Main initialization effect
   useEffect(() => {
-    // Initialize RevenueCat first on native
-    if (isNativePlatform) {
-      initRevenueCat();
-    }
+    const initialize = async () => {
+      // Initialize RevenueCat first on native and WAIT for it to complete
+      if (isNativePlatform) {
+        await initRevenueCat();
+      }
+      
+      // Only refresh after RevenueCat is ready (on native) so we don't skip the RC check
+      refreshSubscription();
+    };
     
-    refreshSubscription();
+    initialize();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -598,8 +603,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
               
               const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
               if (isPro) {
+                const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+                const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+                
                 setIsSubscribed(true);
-                setSubscriptionStatus('active');
+                setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+                
+                // Update subscription type
+                const activeSubscriptions = customerInfo.activeSubscriptions || [];
+                if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+                  setSubscriptionType('annual');
+                } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+                  setSubscriptionType('monthly');
+                }
+                
+                // Update end dates
+                if (entitlement?.expirationDate) {
+                  setSubscriptionEndDate(entitlement.expirationDate);
+                  if (isInTrial) {
+                    setTrialEndDate(entitlement.expirationDate);
+                  }
+                }
               }
             } catch (error) {
               console.error('[RevenueCat] Refresh on resume error:', error);
