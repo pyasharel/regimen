@@ -602,17 +602,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     initialize();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[SubscriptionContext] Auth event:', event);
       if (session?.user) {
-        // Identify user with RevenueCat on sign in
+        // Identify user with RevenueCat on sign in - MUST complete before refresh
         if (event === 'SIGNED_IN' && isNativePlatform) {
-          identifyRevenueCatUser(session.user.id);
+          console.log('[SubscriptionContext] Awaiting RevenueCat identification before refresh...');
+          await identifyRevenueCatUser(session.user.id);
         }
         
-        // Refresh immediately on sign in
+        // Clear any stale banner dismissal from previous user session
         if (event === 'SIGNED_IN') {
-          console.log('[SubscriptionContext] User signed in, refreshing subscription...');
+          sessionStorage.removeItem('dismissedBanner');
+        }
+        
+        // Refresh after identification completes
+        if (event === 'SIGNED_IN') {
+          console.log('[SubscriptionContext] User signed in and identified, refreshing subscription...');
           refreshSubscription();
         } else {
           // For other events, use a small delay
@@ -626,6 +632,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         setSubscriptionStatus('none');
         setSubscriptionProvider(null);
         setIsLoading(false);
+        
+        // Clear banner dismissal on logout so new users see the banner
+        sessionStorage.removeItem('dismissedBanner');
         
         // Logout from RevenueCat
         if (isNativePlatform) {

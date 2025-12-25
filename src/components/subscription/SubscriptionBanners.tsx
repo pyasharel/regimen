@@ -1,4 +1,5 @@
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { usePaywall } from "@/contexts/PaywallContext";
 import { X, AlertCircle, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +9,11 @@ import { useLocation } from "react-router-dom";
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
   onUpgrade: () => void;
-  paywallOpen?: boolean;
 }
 
-export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen = false }: SubscriptionBannersProps) => {
+export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: SubscriptionBannersProps) => {
+  // Use centralized paywall state so ANY paywall (not just global) hides the banner
+  const { isPaywallOpen } = usePaywall();
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
   const { subscriptionEndDate, isLoading } = useSubscription();
@@ -35,7 +37,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
   const shouldShowPreview = !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
-  const shouldReserveBannerSpace = !paywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
+  const shouldReserveBannerSpace = !isPaywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
   // Expose a single source of truth for screen top padding (fixed screens use .app-top-padding)
   useEffect(() => {
@@ -48,8 +50,8 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade, paywallOpen
     return null;
   }
 
-  // Don't show preview banner when paywall is open - it's redundant
-  if (paywallOpen) {
+  // Don't show any banner when paywall is open - it's redundant and would overlap
+  if (isPaywallOpen) {
     return null;
   }
 
