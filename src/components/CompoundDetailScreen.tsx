@@ -538,30 +538,20 @@ export const CompoundDetailScreen = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
-                    {/* Health gradient: purple (low) → magenta → coral (high) - Y-axis based */}
-                    <linearGradient id="levelGradientPast" x1="0" y1="1" x2="0" y2="0">
-                      <stop offset="0%" stopColor="hsl(270, 70%, 50%)" stopOpacity={0.15} />
-                      <stop offset="25%" stopColor="hsl(280, 65%, 55%)" stopOpacity={0.25} />
-                      <stop offset="50%" stopColor="hsl(320, 70%, 55%)" stopOpacity={0.35} />
-                      <stop offset="75%" stopColor="hsl(350, 75%, 58%)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                    <linearGradient id="levelGradientPast" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                     </linearGradient>
-                    {/* Stroke gradient for the line itself */}
-                    <linearGradient id="levelStrokeGradient" x1="0" y1="1" x2="0" y2="0">
-                      <stop offset="0%" stopColor="hsl(270, 70%, 55%)" />
-                      <stop offset="35%" stopColor="hsl(310, 70%, 55%)" />
-                      <stop offset="70%" stopColor="hsl(350, 75%, 58%)" />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" />
-                    </linearGradient>
-                    {/* Future gradient with health colors and horizontal fade */}
-                    <linearGradient id="levelGradientFuture" x1="0" y1="1" x2="1" y2="0">
-                      <stop offset="0%" stopColor="hsl(270, 60%, 50%)" stopOpacity={0.08} />
-                      <stop offset="50%" stopColor="hsl(320, 60%, 55%)" stopOpacity={0.12} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.03} />
+                    {/* Future gradient with both vertical and horizontal fade for half-life decay effect */}
+                    <linearGradient id="levelGradientFuture" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                      <stop offset="40%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
                     </linearGradient>
                     <linearGradient id="futureStrokeGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="hsl(320, 65%, 55%)" stopOpacity={0.6} />
-                      <stop offset="50%" stopColor="hsl(350, 70%, 58%)" stopOpacity={0.35} />
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
+                      <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
                     </linearGradient>
                     {/* Glow filter for current point with animated glow */}
@@ -610,12 +600,12 @@ export const CompoundDetailScreen = () => {
                       return null;
                     }}
                   />
-                  {/* Past levels - solid with health gradient coloring */}
+                  {/* Past levels - solid with smooth monotone curves */}
                   <Area
                     type="monotone"
                     dataKey="pastLevel"
-                    stroke="url(#levelStrokeGradient)"
-                    strokeWidth={2.5}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
                     fill="url(#levelGradientPast)"
                     isAnimationActive={false}
                     connectNulls={false}
