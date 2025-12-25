@@ -146,40 +146,78 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(user);
 
-      // Verify subscription with Stripe
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('[SubscriptionContext] ⏱️ getSession took:', Date.now() - startTime, 'ms');
-
-        if (session) {
-          console.log('[SubscriptionContext] Calling check-subscription...');
-          const edgeFnStart = Date.now();
-          const { data, error } = await supabase.functions.invoke('check-subscription', {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`
+      // ==================== Check RevenueCat on Native Platforms ====================
+      if (isNativePlatform && revenueCatConfigured) {
+        try {
+          console.log('[SubscriptionContext] Checking RevenueCat entitlements...');
+          const { customerInfo } = await Purchases.getCustomerInfo();
+          setCustomerInfo(customerInfo);
+          
+          const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          console.log('[SubscriptionContext] RevenueCat isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
+          
+          if (isPro) {
+            console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription');
+            setIsSubscribed(true);
+            setSubscriptionStatus('active');
+            edgeStatus = 'active'; // Prevent downgrade from profile read
+            
+            // Try to determine subscription type from active subscriptions
+            const activeSubscriptions = customerInfo.activeSubscriptions || [];
+            if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+              setSubscriptionType('annual');
+            } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+              setSubscriptionType('monthly');
             }
-          });
-          console.log('[SubscriptionContext] ⏱️ check-subscription took:', Date.now() - edgeFnStart, 'ms');
-
-          if (error) {
-            console.error('[SubscriptionContext] check-subscription error:', error);
-          } else {
-            console.log('[SubscriptionContext] check-subscription response:', data);
-
-            // Apply server response immediately so the UI updates even if the profile read is slow.
-            if (data?.status) {
-              const status = (data.status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
-              edgeStatus = status;
-              setSubscriptionStatus(status);
-              setSubscriptionType((data.subscription_type as 'monthly' | 'annual' | null) ?? null);
-              setSubscriptionEndDate(data.subscription_end ?? null);
-              setTrialEndDate(data.trial_end ?? null);
-              setIsSubscribed(!!data.subscribed);
+            
+            // Set end date if available
+            const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+            if (entitlement?.expirationDate) {
+              setSubscriptionEndDate(entitlement.expirationDate);
             }
           }
+        } catch (rcError) {
+          console.error('[SubscriptionContext] RevenueCat check error:', rcError);
         }
-      } catch (error) {
-        console.error('Error checking subscription with Stripe:', error);
+      }
+
+      // ==================== Check Stripe (for web/fallback) ====================
+      // Skip Stripe check if RevenueCat already confirmed active subscription
+      if (edgeStatus !== 'active') {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          console.log('[SubscriptionContext] ⏱️ getSession took:', Date.now() - startTime, 'ms');
+
+          if (session) {
+            console.log('[SubscriptionContext] Calling check-subscription...');
+            const edgeFnStart = Date.now();
+            const { data, error } = await supabase.functions.invoke('check-subscription', {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`
+              }
+            });
+            console.log('[SubscriptionContext] ⏱️ check-subscription took:', Date.now() - edgeFnStart, 'ms');
+
+            if (error) {
+              console.error('[SubscriptionContext] check-subscription error:', error);
+            } else {
+              console.log('[SubscriptionContext] check-subscription response:', data);
+
+              // Apply server response immediately so the UI updates even if the profile read is slow.
+              if (data?.status) {
+                const status = (data.status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+                edgeStatus = status;
+                setSubscriptionStatus(status);
+                setSubscriptionType((data.subscription_type as 'monthly' | 'annual' | null) ?? null);
+                setSubscriptionEndDate(data.subscription_end ?? null);
+                setTrialEndDate(data.trial_end ?? null);
+                setIsSubscribed(!!data.subscribed);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error checking subscription with Stripe:', error);
+        }
       }
 
       // Fetch the updated profile with subscription info
@@ -381,16 +419,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setCustomerInfo(customerInfo);
       
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      console.log('[RevenueCat] Purchase complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
+      
       if (isPro) {
         setIsSubscribed(true);
         setSubscriptionStatus('active');
+        
+        // Set subscription type based on package purchased
+        if (packageToPurchase.identifier === '$rc_annual' || packageToPurchase.product.identifier.includes('annual')) {
+          setSubscriptionType('annual');
+        } else {
+          setSubscriptionType('monthly');
+        }
+        
+        // Set end date if available
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        if (entitlement?.expirationDate) {
+          setSubscriptionEndDate(entitlement.expirationDate);
+        }
       }
       
       return { success: true };
     } catch (error: any) {
       console.error('[RevenueCat] Purchase error:', error);
       
-      if (error.code === 'PURCHASE_CANCELLED') {
+      // Check for user cancellation - RevenueCat uses different error codes
+      if (error.code === 'PURCHASE_CANCELLED' || 
+          error.code === 1 || 
+          error.message?.includes('cancel') ||
+          error.userCancelled) {
         return { success: false, cancelled: true };
       }
       
