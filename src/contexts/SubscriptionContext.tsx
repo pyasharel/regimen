@@ -152,7 +152,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setUser(user);
 
       // ==================== Check RevenueCat on Native Platforms ====================
-      if (isNativePlatform && revenueCatConfigured) {
+      if (isNativePlatform) {
         try {
           console.log('[SubscriptionContext] Checking RevenueCat entitlements...');
           const { customerInfo } = await Purchases.getCustomerInfo();
@@ -396,9 +396,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
       if (isPro) {
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
         console.log('[RevenueCat] User has Pro entitlement');
         setIsSubscribed(true);
-        setSubscriptionStatus('active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionProvider('revenuecat');
+        if (entitlement?.expirationDate) {
+          setSubscriptionEndDate(entitlement.expirationDate);
+          setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
+        }
       }
 
       const offeringsResult = await Purchases.getOfferings();
@@ -429,8 +436,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
       if (isPro) {
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
         setIsSubscribed(true);
-        setSubscriptionStatus('active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionProvider('revenuecat');
+        if (entitlement?.expirationDate) {
+          setSubscriptionEndDate(entitlement.expirationDate);
+          setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
+        }
       }
     } catch (error) {
       console.error('[RevenueCat] Identify error:', error);
@@ -599,6 +613,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         console.log('[SubscriptionContext] No session, resetting state');
         setIsSubscribed(false);
         setSubscriptionStatus('none');
+        setSubscriptionProvider(null);
         setIsLoading(false);
         
         // Logout from RevenueCat
@@ -615,41 +630,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (isActive) {
           console.log('[SubscriptionContext] App resumed, refreshing...');
           
-          // Refresh RevenueCat customer info
-          if (revenueCatConfigured) {
-            try {
-              const { customerInfo } = await Purchases.getCustomerInfo();
-              setCustomerInfo(customerInfo);
-              
-              const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
-              if (isPro) {
-                const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-                const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-                
-                setIsSubscribed(true);
-                setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
-                setSubscriptionProvider('revenuecat');
-                
-                // Update subscription type
-                const activeSubscriptions = customerInfo.activeSubscriptions || [];
-                if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
-                  setSubscriptionType('annual');
-                } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
-                  setSubscriptionType('monthly');
-                }
-                
-                // Update end dates
-                if (entitlement?.expirationDate) {
-                  setSubscriptionEndDate(entitlement.expirationDate);
-                  if (isInTrial) {
-                    setTrialEndDate(entitlement.expirationDate);
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('[RevenueCat] Refresh on resume error:', error);
-            }
-          }
+           // Refresh RevenueCat customer info (always attempt; safe if not yet configured)
+           try {
+             const { customerInfo } = await Purchases.getCustomerInfo();
+             setCustomerInfo(customerInfo);
+
+             const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+             if (isPro) {
+               const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+               const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+
+               setIsSubscribed(true);
+               setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+               setSubscriptionProvider('revenuecat');
+
+               const activeSubscriptions = customerInfo.activeSubscriptions || [];
+               if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+                 setSubscriptionType('annual');
+               } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+                 setSubscriptionType('monthly');
+               }
+
+               if (entitlement?.expirationDate) {
+                 setSubscriptionEndDate(entitlement.expirationDate);
+                 setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
+               }
+             }
+           } catch (error) {
+             console.error('[RevenueCat] Refresh on resume error:', error);
+           }
           
           refreshSubscription();
         }
