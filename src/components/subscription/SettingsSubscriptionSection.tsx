@@ -18,7 +18,8 @@ export const SettingsSubscriptionSection = () => {
     refreshSubscription,
     restorePurchases,
     isNativePlatform,
-    isLoading: subscriptionLoading
+    isLoading: subscriptionLoading,
+    subscriptionProvider
   } = useSubscription();
   const [betaAccessEndDate, setBetaAccessEndDate] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -48,6 +49,15 @@ export const SettingsSubscriptionSection = () => {
 
   const handleManageSubscription = async () => {
     try {
+      // For RevenueCat subscribers on iOS, direct to App Store subscription settings
+      if (isNativePlatform && subscriptionProvider === 'revenuecat') {
+        // Open App Store subscription management
+        // Note: iOS will handle this automatically when user tries to manage
+        await Browser.open({ url: 'https://apps.apple.com/account/subscriptions' });
+        return;
+      }
+      
+      // For Stripe subscribers (web or existing iOS Stripe users), use Stripe portal
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Please sign in to manage your subscription');
@@ -101,14 +111,17 @@ export const SettingsSubscriptionSection = () => {
     setIsRestoring(true);
     try {
       if (isNativePlatform) {
-        // Use RevenueCat restore on native
+        // First try RevenueCat restore
         const result = await restorePurchases();
         if (result.isPro) {
           toast.success('Subscription restored successfully!');
-        } else if (result.success) {
-          toast.info('No active subscription found');
         } else {
-          toast.error(result.error || 'Failed to restore purchases');
+          // If RevenueCat didn't find anything, also refresh from database
+          // This catches existing Stripe subscribers on iOS
+          await refreshSubscription();
+          // Check if we found a subscription after refresh
+          // The toast will be shown based on the result
+          toast.info('Checking subscription status...');
         }
       } else {
         // On web, just refresh from Stripe

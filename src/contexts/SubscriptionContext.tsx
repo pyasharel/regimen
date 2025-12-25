@@ -27,6 +27,8 @@ interface SubscriptionContextType {
   purchasePackage: (pkg: PurchasesPackage) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   restorePurchases: () => Promise<{ success: boolean; isPro?: boolean; error?: string }>;
   isNativePlatform: boolean;
+  // Tracks which payment provider the subscription came from
+  subscriptionProvider: 'stripe' | 'revenuecat' | null;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -54,6 +56,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [revenueCatConfigured, setRevenueCatConfigured] = useState(false);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  
+  // Track which payment provider the subscription came from
+  const [subscriptionProvider, setSubscriptionProvider] = useState<'stripe' | 'revenuecat' | null>(null);
   
   const isNativePlatform = Capacitor.isNativePlatform();
 
@@ -165,6 +170,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription, isInTrial:', isInTrial);
             setIsSubscribed(true);
             setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+            setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
             edgeStatus = isInTrial ? 'trialing' : 'active'; // Prevent downgrade from profile read
             
             // Try to determine subscription type from active subscriptions
@@ -222,6 +228,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 setSubscriptionEndDate(data.subscription_end ?? null);
                 setTrialEndDate(data.trial_end ?? null);
                 setIsSubscribed(!!data.subscribed);
+                if (data.subscribed) {
+                  setSubscriptionProvider('stripe'); // Web users use Stripe
+                }
               }
             }
           }
@@ -275,6 +284,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             setSubscriptionEndDate(profile.subscription_end_date);
             setTrialEndDate(profile.trial_end_date);
             setIsSubscribed(statusFromProfile === 'active' || statusFromProfile === 'trialing');
+            
+            // If subscription is active and we're on native but RevenueCat didn't find it,
+            // this is a Stripe subscriber on iOS (existing customer from before RevenueCat)
+            if ((statusFromProfile === 'active' || statusFromProfile === 'trialing') && 
+                isNativePlatform && 
+                !edgeStatus) {
+              console.log('[SubscriptionContext] Detected existing Stripe subscriber on iOS');
+              setSubscriptionProvider('stripe');
+            }
           }
         }
         
@@ -441,6 +459,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
         
         // Set subscription type based on package purchased
         if (packageToPurchase.identifier === '$rc_annual' || packageToPurchase.product.identifier.includes('annual')) {
@@ -498,6 +517,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
         
         // Determine subscription type from active subscriptions
         const activeSubscriptions = customerInfo.activeSubscriptions || [];
@@ -608,6 +628,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 
                 setIsSubscribed(true);
                 setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+                setSubscriptionProvider('revenuecat');
                 
                 // Update subscription type
                 const activeSubscriptions = customerInfo.activeSubscriptions || [];
@@ -664,6 +685,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         purchasePackage,
         restorePurchases,
         isNativePlatform,
+        subscriptionProvider,
       }}
     >
       {children}
