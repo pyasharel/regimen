@@ -54,6 +54,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   
   // RevenueCat state
   const [revenueCatConfigured, setRevenueCatConfigured] = useState(false);
+  const [revenueCatIdentified, setRevenueCatIdentified] = useState(false); // Track if user is identified
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   
@@ -152,9 +153,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setUser(user);
 
       // ==================== Check RevenueCat on Native Platforms ====================
-      if (isNativePlatform) {
+      // IMPORTANT: Only trust RevenueCat entitlements if the user has been identified
+      // Otherwise, sandbox entitlements from a previous user on the same device could leak
+      if (isNativePlatform && revenueCatIdentified) {
         try {
-          console.log('[SubscriptionContext] Checking RevenueCat entitlements...');
+          console.log('[SubscriptionContext] Checking RevenueCat entitlements (user identified)...');
           const { customerInfo } = await Purchases.getCustomerInfo();
           setCustomerInfo(customerInfo);
           
@@ -194,6 +197,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         } catch (rcError) {
           console.error('[SubscriptionContext] RevenueCat check error:', rcError);
         }
+      } else if (isNativePlatform && !revenueCatIdentified) {
+        console.log('[SubscriptionContext] Native platform but user not identified with RevenueCat yet - skipping RC check');
       }
 
       // ==================== Check Stripe (for WEB ONLY) ====================
@@ -390,23 +395,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setRevenueCatConfigured(true);
       console.log('[RevenueCat] Configuration complete');
 
-      // Get initial customer info and offerings
+      // Get initial customer info (for anonymous user - DON'T check entitlements yet)
+      // We'll only trust entitlements after identifying the user with their Supabase ID
       const { customerInfo } = await Purchases.getCustomerInfo();
       setCustomerInfo(customerInfo);
-      
-      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
-      if (isPro) {
-        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-        console.log('[RevenueCat] User has Pro entitlement');
-        setIsSubscribed(true);
-        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
-        setSubscriptionProvider('revenuecat');
-        if (entitlement?.expirationDate) {
-          setSubscriptionEndDate(entitlement.expirationDate);
-          setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
-        }
-      }
+      console.log('[RevenueCat] Anonymous customer info loaded - NOT trusting entitlements yet');
 
       const offeringsResult = await Purchases.getOfferings();
       setOfferings(offeringsResult);
@@ -433,18 +426,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[RevenueCat] Identifying user:', userId);
       const { customerInfo } = await Purchases.logIn({ appUserID: userId });
       setCustomerInfo(customerInfo);
+      setRevenueCatIdentified(true); // Mark user as identified - now we can trust entitlements
       
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      console.log('[RevenueCat] User identified. isPro:', isPro);
+      
       if (isPro) {
         const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
         const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
         setSubscriptionProvider('revenuecat');
+        
+        // Determine subscription type
+        const activeSubscriptions = customerInfo.activeSubscriptions || [];
+        if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+          setSubscriptionType('annual');
+        } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+          setSubscriptionType('monthly');
+        }
+        
         if (entitlement?.expirationDate) {
           setSubscriptionEndDate(entitlement.expirationDate);
           setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
         }
+      } else {
+        // User is identified but has no subscription - reset state
+        setIsSubscribed(false);
+        setSubscriptionStatus('none');
+        setSubscriptionProvider(null);
       }
     } catch (error) {
       console.error('[RevenueCat] Identify error:', error);
@@ -571,6 +581,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[RevenueCat] Logging out');
       await Purchases.logOut();
       setCustomerInfo(null);
+      setRevenueCatIdentified(false); // Reset identified state on logout
     } catch (error) {
       console.error('[RevenueCat] Logout error:', error);
     }
@@ -628,38 +639,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     if (isNativePlatform) {
       CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
         if (isActive) {
-          console.log('[SubscriptionContext] App resumed, refreshing...');
-          
-           // Refresh RevenueCat customer info (always attempt; safe if not yet configured)
-           try {
-             const { customerInfo } = await Purchases.getCustomerInfo();
-             setCustomerInfo(customerInfo);
-
-             const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
-             if (isPro) {
-               const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-               const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-
-               setIsSubscribed(true);
-               setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
-               setSubscriptionProvider('revenuecat');
-
-               const activeSubscriptions = customerInfo.activeSubscriptions || [];
-               if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
-                 setSubscriptionType('annual');
-               } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
-                 setSubscriptionType('monthly');
-               }
-
-               if (entitlement?.expirationDate) {
-                 setSubscriptionEndDate(entitlement.expirationDate);
-                 setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
-               }
-             }
-           } catch (error) {
-             console.error('[RevenueCat] Refresh on resume error:', error);
-           }
-          
+          console.log('[SubscriptionContext] App resumed, calling refreshSubscription...');
+          // Just call refreshSubscription - it now has proper RevenueCat identity checks
           refreshSubscription();
         }
       }).then(listener => {
