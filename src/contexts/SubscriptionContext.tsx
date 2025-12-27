@@ -57,11 +57,28 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [revenueCatIdentified, setRevenueCatIdentified] = useState(false); // Track if user is identified
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  
+
+  /**
+   * IMPORTANT: app resume + auth listeners run inside effect closures.
+   * Use refs as the source of truth there to avoid stale state causing subscription "downgrades" to preview mode.
+   */
+  const revenueCatConfiguredRef = useRef(false);
+  const revenueCatIdentifiedRef = useRef(false);
+  const revenueCatEntitlementRef = useRef<{ isPro: boolean; isTrialing: boolean } | null>(null);
+
   // Track which payment provider the subscription came from
   const [subscriptionProvider, setSubscriptionProvider] = useState<'stripe' | 'revenuecat' | null>(null);
-  
+
   const isNativePlatform = Capacitor.isNativePlatform();
+
+  useEffect(() => {
+    revenueCatConfiguredRef.current = revenueCatConfigured;
+  }, [revenueCatConfigured]);
+
+  useEffect(() => {
+    revenueCatIdentifiedRef.current = revenueCatIdentified;
+  }, [revenueCatIdentified]);
+
 
   // Apply mock state for development testing
   const applyMockState = (state: typeof mockState) => {
@@ -155,27 +172,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // ==================== Check RevenueCat on Native Platforms ====================
       // IMPORTANT: Only trust RevenueCat entitlements if the user has been identified
       // Otherwise, sandbox entitlements from a previous user on the same device could leak
-      if (isNativePlatform && revenueCatIdentified) {
+      if (isNativePlatform && revenueCatIdentifiedRef.current) {
         try {
           console.log('[SubscriptionContext] Checking RevenueCat entitlements (user identified)...');
           const { customerInfo } = await Purchases.getCustomerInfo();
           setCustomerInfo(customerInfo);
-          
+
           const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+          const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+
+          revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
+
           console.log('[SubscriptionContext] RevenueCat isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
-          
+
           if (isPro) {
-            const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-            
-            // Check if this is a trial period
-            const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-            
             console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription, isInTrial:', isInTrial);
             setIsSubscribed(true);
             setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
             setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
             edgeStatus = isInTrial ? 'trialing' : 'active'; // Prevent downgrade from profile read
-            
+
             // Try to determine subscription type from active subscriptions
             const activeSubscriptions = customerInfo.activeSubscriptions || [];
             if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
@@ -183,12 +200,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
               setSubscriptionType('monthly');
             }
-            
+
             // Set end date if available
             if (entitlement?.expirationDate) {
               setSubscriptionEndDate(entitlement.expirationDate);
             }
-            
+
             // Set trial end date if applicable
             if (isInTrial && entitlement?.expirationDate) {
               setTrialEndDate(entitlement.expirationDate);
@@ -197,7 +214,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         } catch (rcError) {
           console.error('[SubscriptionContext] RevenueCat check error:', rcError);
         }
-      } else if (isNativePlatform && !revenueCatIdentified) {
+      } else if (isNativePlatform && !revenueCatIdentifiedRef.current) {
         console.log('[SubscriptionContext] Native platform but user not identified with RevenueCat yet - skipping RC check');
       }
 
@@ -275,31 +292,39 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           setSubscriptionType(null); // Beta users don't have a subscription type
           setSubscriptionEndDate(profile.beta_access_end_date);
           setTrialEndDate(null);
-        } else {
-          const statusFromProfile = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+          } else {
+            const statusFromProfile = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
 
-          // If Stripe just told us the user is active/trialing, don't downgrade to "none" due to a stale profile read.
-          const shouldPreventDowngrade =
-            (edgeStatus === 'active' || edgeStatus === 'trialing') &&
-            statusFromProfile === 'none';
+            // Prevent stale backend reads from downgrading a real active subscription.
+            // - Web: edgeStatus (Stripe) is authoritative
+            // - Native: RevenueCat entitlement ref is authoritative (once identified)
+            const shouldPreventDowngrade =
+              statusFromProfile === 'none' &&
+              (
+                edgeStatus === 'active' ||
+                edgeStatus === 'trialing' ||
+                (isNativePlatform && revenueCatEntitlementRef.current?.isPro)
+              );
 
-          if (!shouldPreventDowngrade) {
-            setSubscriptionStatus(statusFromProfile);
-            setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
-            setSubscriptionEndDate(profile.subscription_end_date);
-            setTrialEndDate(profile.trial_end_date);
-            setIsSubscribed(statusFromProfile === 'active' || statusFromProfile === 'trialing');
-            
-            // If subscription is active and we're on native but RevenueCat didn't find it,
-            // this is a Stripe subscriber on iOS (existing customer from before RevenueCat)
-            if ((statusFromProfile === 'active' || statusFromProfile === 'trialing') && 
-                isNativePlatform && 
-                !edgeStatus) {
-              console.log('[SubscriptionContext] Detected existing Stripe subscriber on iOS');
-              setSubscriptionProvider('stripe');
+            if (shouldPreventDowngrade) {
+              console.log('[SubscriptionContext] Preventing downgrade to none (stale profile read)');
+            } else {
+              setSubscriptionStatus(statusFromProfile);
+              setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
+              setSubscriptionEndDate(profile.subscription_end_date);
+              setTrialEndDate(profile.trial_end_date);
+              setIsSubscribed(statusFromProfile === 'active' || statusFromProfile === 'trialing');
+
+              // If subscription is active and we're on native but RevenueCat didn't find it,
+              // this is a Stripe subscriber on iOS (existing customer from before RevenueCat)
+              if ((statusFromProfile === 'active' || statusFromProfile === 'trialing') &&
+                  isNativePlatform &&
+                  !edgeStatus) {
+                console.log('[SubscriptionContext] Detected existing Stripe subscriber on iOS');
+                setSubscriptionProvider('stripe');
+              }
             }
           }
-        }
         
         setPreviewModeCompoundAdded(profile.preview_mode_compound_added || false);
         console.log('[SubscriptionContext] Updated state:', { 
@@ -393,6 +418,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
       await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
       setRevenueCatConfigured(true);
+      revenueCatConfiguredRef.current = true;
       console.log('[RevenueCat] Configuration complete');
 
       // Get initial customer info (for anonymous user - DON'T check entitlements yet)
@@ -419,54 +445,61 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, [isNativePlatform]);
 
   // Identify user with RevenueCat after login
-  // IMPORTANT: Returns subscription status synchronously to prevent race conditions
-  const identifyRevenueCatUser = useCallback(async (userId: string): Promise<{ isPro: boolean; isTrialing: boolean }> => {
-    if (!isNativePlatform || !revenueCatConfigured) {
-      return { isPro: false, isTrialing: false };
-    }
-
-    try {
-      console.log('[RevenueCat] Identifying user:', userId);
-      const { customerInfo } = await Purchases.logIn({ appUserID: userId });
-      setCustomerInfo(customerInfo);
-      setRevenueCatIdentified(true); // Mark user as identified - now we can trust entitlements
-      
-      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
-      console.log('[RevenueCat] User identified. isPro:', isPro);
-      
-      if (isPro) {
-        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-        setIsSubscribed(true);
-        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
-        setSubscriptionProvider('revenuecat');
-        
-        // Determine subscription type
-        const activeSubscriptions = customerInfo.activeSubscriptions || [];
-        if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
-          setSubscriptionType('annual');
-        } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
-          setSubscriptionType('monthly');
-        }
-        
-        if (entitlement?.expirationDate) {
-          setSubscriptionEndDate(entitlement.expirationDate);
-          setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
-        }
-        
-        return { isPro: true, isTrialing: isInTrial };
-      } else {
-        // User is identified but has no subscription - reset state
-        setIsSubscribed(false);
-        setSubscriptionStatus('none');
-        setSubscriptionProvider(null);
+  // IMPORTANT: Returns subscription status to avoid race conditions
+  const identifyRevenueCatUser = useCallback(
+    async (userId: string): Promise<{ isPro: boolean; isTrialing: boolean }> => {
+      if (!isNativePlatform || !revenueCatConfiguredRef.current) {
         return { isPro: false, isTrialing: false };
       }
-    } catch (error) {
-      console.error('[RevenueCat] Identify error:', error);
-      return { isPro: false, isTrialing: false };
-    }
-  }, [isNativePlatform, revenueCatConfigured]);
+
+      try {
+        console.log('[RevenueCat] Identifying user:', userId);
+        const { customerInfo } = await Purchases.logIn({ appUserID: userId });
+        setCustomerInfo(customerInfo);
+
+        // Mark identified synchronously FIRST (state updates are async)
+        revenueCatIdentifiedRef.current = true;
+        setRevenueCatIdentified(true);
+
+        const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+
+        revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
+
+        console.log('[RevenueCat] User identified. isPro:', isPro, 'isInTrial:', isInTrial);
+
+        if (isPro) {
+          setIsSubscribed(true);
+          setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+          setSubscriptionProvider('revenuecat');
+
+          // Determine subscription type
+          const activeSubscriptions = customerInfo.activeSubscriptions || [];
+          if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+            setSubscriptionType('annual');
+          } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+            setSubscriptionType('monthly');
+          }
+
+          if (entitlement?.expirationDate) {
+            setSubscriptionEndDate(entitlement.expirationDate);
+            setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
+          }
+
+          return { isPro: true, isTrialing: !!isInTrial };
+        }
+
+        // Identified but no entitlement: don't force "none" here (could be a legacy Stripe subscriber on iOS)
+        return { isPro: false, isTrialing: false };
+      } catch (error) {
+        console.error('[RevenueCat] Identify error:', error);
+        revenueCatEntitlementRef.current = { isPro: false, isTrialing: false };
+        return { isPro: false, isTrialing: false };
+      }
+    },
+    [isNativePlatform]
+  );
 
   // Purchase a package
   const purchasePackage = useCallback(async (packageToPurchase: PurchasesPackage): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
@@ -478,50 +511,53 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[RevenueCat] Purchasing package:', packageToPurchase);
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageToPurchase });
       setCustomerInfo(customerInfo);
-      
+
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+      const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+
+      // After a purchase, we can trust entitlements for this user.
+      revenueCatIdentifiedRef.current = true;
+      setRevenueCatIdentified(true);
+      revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
+
       console.log('[RevenueCat] Purchase complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
-      
+
       if (isPro) {
-        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        
-        // Check if this is a trial period
-        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-        
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
         setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
-        
+
         // Set subscription type based on package purchased
         if (packageToPurchase.identifier === '$rc_annual' || packageToPurchase.product.identifier.includes('annual')) {
           setSubscriptionType('annual');
         } else {
           setSubscriptionType('monthly');
         }
-        
-        // Set end date if available
+
         if (entitlement?.expirationDate) {
           setSubscriptionEndDate(entitlement.expirationDate);
         }
-        
-        // Set trial end date if applicable
+
         if (isInTrial && entitlement?.expirationDate) {
           setTrialEndDate(entitlement.expirationDate);
         }
       }
-      
+
       return { success: true };
     } catch (error: any) {
       console.error('[RevenueCat] Purchase error:', error);
-      
+
       // Check for user cancellation - RevenueCat uses different error codes
-      if (error.code === 'PURCHASE_CANCELLED' || 
-          error.code === 1 || 
-          error.message?.includes('cancel') ||
-          error.userCancelled) {
+      if (
+        error.code === 'PURCHASE_CANCELLED' ||
+        error.code === 1 ||
+        error.message?.includes('cancel') ||
+        error.userCancelled
+      ) {
         return { success: false, cancelled: true };
       }
-      
+
       return { success: false, error: error.message || 'Purchase failed' };
     }
   }, [isNativePlatform]);
@@ -533,23 +569,33 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // Ensure RevenueCat is initialized and the user is identified (prevents sandbox entitlement leakage).
+      if (!revenueCatConfiguredRef.current) {
+        await initRevenueCat();
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && revenueCatConfiguredRef.current && !revenueCatIdentifiedRef.current) {
+        await identifyRevenueCatUser(user.id);
+      }
+
       console.log('[RevenueCat] Restoring purchases...');
       const { customerInfo } = await Purchases.restorePurchases();
       setCustomerInfo(customerInfo);
-      
+
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+      const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+
+      revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
+
       console.log('[RevenueCat] Restore complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
-      
+
       if (isPro) {
-        const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        
-        // Check if this is a trial period
-        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
-        
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
         setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
-        
+
         // Determine subscription type from active subscriptions
         const activeSubscriptions = customerInfo.activeSubscriptions || [];
         if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
@@ -557,12 +603,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
           setSubscriptionType('monthly');
         }
-        
+
         // Set end date
         if (entitlement?.expirationDate) {
           setSubscriptionEndDate(entitlement.expirationDate);
         }
-        
+
         // Set trial end date if applicable
         if (isInTrial && entitlement?.expirationDate) {
           setTrialEndDate(entitlement.expirationDate);
@@ -572,27 +618,29 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         setIsSubscribed(false);
         setSubscriptionStatus('none');
       }
-      
+
       return { success: true, isPro };
     } catch (error) {
       console.error('[RevenueCat] Restore error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Restore failed' };
     }
-  }, [isNativePlatform]);
+  }, [isNativePlatform, identifyRevenueCatUser, initRevenueCat]);
 
   // Logout from RevenueCat
   const logoutRevenueCat = useCallback(async () => {
-    if (!isNativePlatform || !revenueCatConfigured) return;
+    if (!isNativePlatform || !revenueCatConfiguredRef.current) return;
 
     try {
       console.log('[RevenueCat] Logging out');
       await Purchases.logOut();
       setCustomerInfo(null);
       setRevenueCatIdentified(false); // Reset identified state on logout
+      revenueCatIdentifiedRef.current = false;
+      revenueCatEntitlementRef.current = null;
     } catch (error) {
       console.error('[RevenueCat] Logout error:', error);
     }
-  }, [isNativePlatform, revenueCatConfigured]);
+  }, [isNativePlatform]);
 
   // Main initialization effect
   useEffect(() => {
@@ -600,32 +648,43 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // Initialize RevenueCat first on native and WAIT for it to complete
       if (isNativePlatform) {
         await initRevenueCat();
+
+        // If the user is already signed in (cold start), identify immediately before refreshing.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && revenueCatConfiguredRef.current) {
+          await identifyRevenueCatUser(user.id);
+        }
       }
-      
+
       // Only refresh after RevenueCat is ready (on native) so we don't skip the RC check
       refreshSubscription();
     };
-    
+
     initialize();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[SubscriptionContext] Auth event:', event);
+
       if (session?.user) {
-        // Identify user with RevenueCat on sign in - MUST complete before refresh
-        if (event === 'SIGNED_IN' && isNativePlatform) {
-          console.log('[SubscriptionContext] Awaiting RevenueCat identification before refresh...');
-          await identifyRevenueCatUser(session.user.id);
-        }
-        
         // Clear any stale banner dismissal from previous user session
         if (event === 'SIGNED_IN') {
           sessionStorage.removeItem('dismissedBanner');
         }
-        
+
+        // Native: ensure RevenueCat is initialized + user identified before refresh
+        if (isNativePlatform && event === 'SIGNED_IN') {
+          if (!revenueCatConfiguredRef.current) {
+            await initRevenueCat();
+          }
+          if (revenueCatConfiguredRef.current) {
+            await identifyRevenueCatUser(session.user.id);
+          }
+        }
+
         // Refresh after identification completes
         if (event === 'SIGNED_IN') {
-          console.log('[SubscriptionContext] User signed in and identified, refreshing subscription...');
+          console.log('[SubscriptionContext] User signed in, refreshing subscription...');
           refreshSubscription();
         } else {
           // For other events, use a small delay
@@ -639,10 +698,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         setSubscriptionStatus('none');
         setSubscriptionProvider(null);
         setIsLoading(false);
-        
+
         // Clear banner dismissal on logout so new users see the banner
         sessionStorage.removeItem('dismissedBanner');
-        
+
         // Logout from RevenueCat
         if (isNativePlatform) {
           logoutRevenueCat();
@@ -654,28 +713,31 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     let appStateListener: { remove: () => void } | undefined;
     if (isNativePlatform) {
       CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
-        if (isActive) {
-          console.log('[SubscriptionContext] App resumed...');
-          
-          // Re-identify with RevenueCat if user is logged in
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && revenueCatConfigured) {
-            // Identify and get the subscription status SYNCHRONOUSLY from the return value
+        if (!isActive) return;
+
+        console.log('[SubscriptionContext] App resumed...');
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Ensure RC init + identity even if resume happens very early
+          if (!revenueCatConfiguredRef.current) {
+            await initRevenueCat();
+          }
+
+          if (revenueCatConfiguredRef.current) {
             const result = await identifyRevenueCatUser(user.id);
-            
+
             // If RevenueCat confirms user is subscribed, SKIP refreshSubscription entirely
-            // This prevents the race condition where refresh could overwrite the correct state
-            if (result.isPro) {
+            // (refreshing can still be useful, but this avoids the known downgrade/race path)
+            if (result.isPro || revenueCatEntitlementRef.current?.isPro) {
               console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, skipping refresh');
               return;
             }
           }
-          
-          // Only call refresh if user is NOT subscribed via RevenueCat
-          // This handles Stripe subscribers on iOS or users without subscriptions
-          console.log('[SubscriptionContext] App resumed, user not subscribed via RevenueCat, calling refreshSubscription...');
-          refreshSubscription();
         }
+
+        console.log('[SubscriptionContext] App resumed, calling refreshSubscription...');
+        refreshSubscription();
       }).then(listener => {
         appStateListener = listener;
       });
