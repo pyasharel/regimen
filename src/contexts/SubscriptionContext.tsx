@@ -14,6 +14,11 @@ const isTrialPeriodType = (periodType?: string | null) => {
   const t = (periodType ?? '').toUpperCase();
   return t === 'TRIAL' || t === 'INTRO';
 };
+interface RevenueCatEntitlementSnapshot {
+  isPro: boolean;
+  isTrialing: boolean;
+}
+
 interface SubscriptionContextType {
   isSubscribed: boolean;
   subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
@@ -21,7 +26,7 @@ interface SubscriptionContextType {
   subscriptionEndDate: string | null;
   trialEndDate: string | null;
   isLoading: boolean;
-  refreshSubscription: () => Promise<void>;
+  refreshSubscription: (trigger?: string) => Promise<void>;
   canAddCompound: () => Promise<boolean>;
   markPreviewCompoundAdded: () => Promise<void>;
   getCompoundCount: () => Promise<number>;
@@ -34,6 +39,12 @@ interface SubscriptionContextType {
   isNativePlatform: boolean;
   // Tracks which payment provider the subscription came from
   subscriptionProvider: 'stripe' | 'revenuecat' | null;
+
+  // Diagnostics
+  revenueCatAppUserId: string | null;
+  revenueCatEntitlement: RevenueCatEntitlementSnapshot | null;
+  lastStatusSource: string;
+  lastRefreshTrigger: string;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
