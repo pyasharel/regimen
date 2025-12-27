@@ -136,58 +136,74 @@ export const TodayScreen = () => {
     checkPreviewMode();
   }, [isSubscribed, previewModeCompoundAdded]);
 
-  // Check for post-checkout verification
+  // Check for post-checkout verification (web only)
   useEffect(() => {
     const verifyCheckout = async () => {
       const sessionId = searchParams.get('session_id');
-      
-      if (sessionId) {
-        console.log('[POST-CHECKOUT] Detected session_id:', sessionId);
-        setVerifyingSubscription(true);
-        
+
+      if (!sessionId) return;
+
+      // Native uses RevenueCat; calling the Stripe check-subscription function can overwrite the
+      // backend profile to "none" and later flip the UI back into preview mode.
+      if (Capacitor.isNativePlatform()) {
+        console.log('[POST-CHECKOUT] Native platform detected - skipping Stripe verification');
+
         try {
-          // Call check-subscription to verify and update subscription status
-          const { data, error } = await supabase.functions.invoke('check-subscription');
-          
-          if (error) {
-            console.error('[POST-CHECKOUT] Error verifying subscription:', error);
-            toast({
-              title: "Verification Error",
-              description: "We're having trouble verifying your subscription. Please refresh the page.",
-              variant: "destructive"
-            });
-          } else {
-            console.log('[POST-CHECKOUT] Subscription verified:', data);
-            
-            // Refresh the subscription context multiple times
-            await refreshSubscription();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await refreshSubscription();
-            
-            // Show success message
-            if (data?.subscribed) {
-              toast({
-                title: "Welcome to Premium! 🎉",
-                description: data.status === 'trialing' 
-                  ? "Your 14-day free trial has started. Enjoy unlimited access!"
-                  : "Your subscription is now active. Enjoy unlimited access!",
-              });
-              
-              // Force close paywall after successful subscription
-              setShowPaywall(false);
-            }
-          }
-        } catch (error) {
-          console.error('[POST-CHECKOUT] Exception during verification:', error);
+          setVerifyingSubscription(true);
+          await refreshSubscription();
         } finally {
-          // Remove session_id from URL
           searchParams.delete('session_id');
           setSearchParams(searchParams, { replace: true });
           setVerifyingSubscription(false);
         }
+        return;
+      }
+
+      console.log('[POST-CHECKOUT] Detected session_id:', sessionId);
+      setVerifyingSubscription(true);
+
+      try {
+        // Call check-subscription to verify and update subscription status
+        const { data, error } = await supabase.functions.invoke('check-subscription');
+
+        if (error) {
+          console.error('[POST-CHECKOUT] Error verifying subscription:', error);
+          toast({
+            title: "Verification Error",
+            description: "We're having trouble verifying your subscription. Please refresh the page.",
+            variant: "destructive"
+          });
+        } else {
+          console.log('[POST-CHECKOUT] Subscription verified:', data);
+
+          // Refresh the subscription context multiple times
+          await refreshSubscription();
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await refreshSubscription();
+
+          // Show success message
+          if (data?.subscribed) {
+            toast({
+              title: "Welcome to Premium! 🎉",
+              description: data.status === 'trialing'
+                ? "Your 14-day free trial has started. Enjoy unlimited access!"
+                : "Your subscription is now active. Enjoy unlimited access!",
+            });
+
+            // Force close paywall after successful subscription
+            setShowPaywall(false);
+          }
+        }
+      } catch (error) {
+        console.error('[POST-CHECKOUT] Exception during verification:', error);
+      } finally {
+        // Remove session_id from URL
+        searchParams.delete('session_id');
+        setSearchParams(searchParams, { replace: true });
+        setVerifyingSubscription(false);
       }
     };
-    
+
     verifyCheckout();
   }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
