@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
+import { addDiagnosticsLog } from '@/components/subscription/SubscriptionDiagnostics';
 
 // RevenueCat configuration
 const REVENUECAT_API_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
@@ -47,7 +48,7 @@ export const useSubscription = () => {
 
 export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'>('none');
+  const [subscriptionStatus, setSubscriptionStatusInternal] = useState<'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'>('none');
   const [subscriptionType, setSubscriptionType] = useState<'monthly' | 'annual' | null>(null);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null);
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null);
@@ -56,6 +57,19 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [mockState, setMockState] = useState<'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled'>('none');
   
+  // Track source of last status change for diagnostics
+  const lastStatusSourceRef = useRef<string>('init');
+  
+  // Wrapped setter that logs state transitions for diagnostics
+  const setSubscriptionStatus = useCallback((newStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused', source?: string) => {
+    setSubscriptionStatusInternal(prevStatus => {
+      if (prevStatus !== newStatus) {
+        const logSource = source || lastStatusSourceRef.current || 'unknown';
+        addDiagnosticsLog(logSource, prevStatus, newStatus);
+      }
+      return newStatus;
+    });
+  }, []);
   // RevenueCat state
   const [revenueCatConfigured, setRevenueCatConfigured] = useState(false);
   const [revenueCatIdentified, setRevenueCatIdentified] = useState(false); // Track if user is identified
@@ -95,35 +109,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     switch (state) {
       case 'preview':
         setIsSubscribed(false);
-        setSubscriptionStatus('none');
+        setSubscriptionStatus('none', 'mock_preview');
         setSubscriptionType(null);
         setSubscriptionEndDate(null);
         setTrialEndDate(null);
         break;
       case 'trialing':
         setIsSubscribed(true);
-        setSubscriptionStatus('trialing');
+        setSubscriptionStatus('trialing', 'mock_trialing');
         setSubscriptionType('monthly');
         setTrialEndDate(sevenDaysFromNow.toISOString());
         setSubscriptionEndDate(null);
         break;
       case 'active':
         setIsSubscribed(true);
-        setSubscriptionStatus('active');
+        setSubscriptionStatus('active', 'mock_active');
         setSubscriptionType('monthly');
         setSubscriptionEndDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString());
         setTrialEndDate(null);
         break;
       case 'past_due':
         setIsSubscribed(false);
-        setSubscriptionStatus('past_due');
+        setSubscriptionStatus('past_due', 'mock_past_due');
         setSubscriptionType('monthly');
         setSubscriptionEndDate(null);
         setTrialEndDate(null);
         break;
       case 'canceled':
         setIsSubscribed(true);
-        setSubscriptionStatus('canceled');
+        setSubscriptionStatus('canceled', 'mock_canceled');
         setSubscriptionType('annual');
         setSubscriptionEndDate(fifteenDaysFromNow.toISOString());
         setTrialEndDate(null);
@@ -166,7 +180,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       
       if (!user) {
         setIsSubscribed(false);
-        setSubscriptionStatus('none');
+        setSubscriptionStatus('none', 'refresh_no_user');
         setIsLoading(false);
         return;
       }
@@ -200,7 +214,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           if (isPro) {
             console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription, isInTrial:', isInTrial);
             setIsSubscribed(true);
-            setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+            setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_entitlement_check');
             setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
             edgeStatus = isInTrial ? 'trialing' : 'active'; // Prevent downgrade from profile read
 
@@ -256,7 +270,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
               if (data?.status) {
                 const status = (data.status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
                 edgeStatus = status;
-                setSubscriptionStatus(status);
+                setSubscriptionStatus(status, 'stripe_edge_fn');
                 setSubscriptionType((data.subscription_type as 'monthly' | 'annual' | null) ?? null);
                 setSubscriptionEndDate(data.subscription_end ?? null);
                 setTrialEndDate(data.trial_end ?? null);
@@ -299,7 +313,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (hasBetaAccess) {
           console.log('[SubscriptionContext] Active beta access detected until:', betaAccessEndDate);
           setIsSubscribed(true);
-          setSubscriptionStatus('active');
+          setSubscriptionStatus('active', 'beta_access');
           setSubscriptionType(null); // Beta users don't have a subscription type
           setSubscriptionEndDate(profile.beta_access_end_date);
           setTrialEndDate(null);
@@ -320,7 +334,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             if (shouldPreventDowngrade) {
               console.log('[SubscriptionContext] Preventing downgrade to none (stale profile read)');
             } else {
-              setSubscriptionStatus(statusFromProfile);
+              setSubscriptionStatus(statusFromProfile, 'profile_read');
               setSubscriptionType(profile.subscription_type as 'monthly' | 'annual' | null);
               setSubscriptionEndDate(profile.subscription_end_date);
               setTrialEndDate(profile.trial_end_date);
@@ -483,7 +497,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         if (isPro) {
           setIsSubscribed(true);
-          setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+          setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_identify');
           setSubscriptionProvider('revenuecat');
 
           // Determine subscription type
@@ -537,7 +551,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       if (isPro) {
         setIsSubscribed(true);
-        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_purchase');
         setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
 
         // Set subscription type based on package purchased
@@ -605,7 +619,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       if (isPro) {
         setIsSubscribed(true);
-        setSubscriptionStatus(isInTrial ? 'trialing' : 'active');
+        setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_restore');
         setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
 
         // Determine subscription type from active subscriptions
@@ -628,7 +642,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       } else {
         // No active subscription found
         setIsSubscribed(false);
-        setSubscriptionStatus('none');
+        setSubscriptionStatus('none', 'rc_restore_no_sub');
       }
 
       return { success: true, isPro };
@@ -710,7 +724,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         // ... keep existing code (handled below)
         console.log('[SubscriptionContext] No session, resetting state');
         setIsSubscribed(false);
-        setSubscriptionStatus('none');
+        setSubscriptionStatus('none', 'auth_logout');
         setSubscriptionProvider(null);
         setIsLoading(false);
 
