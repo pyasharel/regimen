@@ -419,8 +419,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   }, [isNativePlatform]);
 
   // Identify user with RevenueCat after login
-  const identifyRevenueCatUser = useCallback(async (userId: string) => {
-    if (!isNativePlatform || !revenueCatConfigured) return;
+  // IMPORTANT: Returns subscription status synchronously to prevent race conditions
+  const identifyRevenueCatUser = useCallback(async (userId: string): Promise<{ isPro: boolean; isTrialing: boolean }> => {
+    if (!isNativePlatform || !revenueCatConfigured) {
+      return { isPro: false, isTrialing: false };
+    }
 
     try {
       console.log('[RevenueCat] Identifying user:', userId);
@@ -450,14 +453,18 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           setSubscriptionEndDate(entitlement.expirationDate);
           setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
         }
+        
+        return { isPro: true, isTrialing: isInTrial };
       } else {
         // User is identified but has no subscription - reset state
         setIsSubscribed(false);
         setSubscriptionStatus('none');
         setSubscriptionProvider(null);
+        return { isPro: false, isTrialing: false };
       }
     } catch (error) {
       console.error('[RevenueCat] Identify error:', error);
+      return { isPro: false, isTrialing: false };
     }
   }, [isNativePlatform, revenueCatConfigured]);
 
@@ -650,15 +657,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (isActive) {
           console.log('[SubscriptionContext] App resumed...');
           
-          // Re-identify with RevenueCat if user is logged in but RevenueCat identity was lost
+          // Re-identify with RevenueCat if user is logged in
           const { data: { user } } = await supabase.auth.getUser();
           if (user && revenueCatConfigured) {
-            // Always ensure user is identified before refreshing
-            // This handles the case where app was backgrounded and identity state was lost
-            await identifyRevenueCatUser(user.id);
+            // Identify and get the subscription status SYNCHRONOUSLY from the return value
+            const result = await identifyRevenueCatUser(user.id);
+            
+            // If RevenueCat confirms user is subscribed, SKIP refreshSubscription entirely
+            // This prevents the race condition where refresh could overwrite the correct state
+            if (result.isPro) {
+              console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, skipping refresh');
+              return;
+            }
           }
           
-          console.log('[SubscriptionContext] App resumed, calling refreshSubscription after identity check...');
+          // Only call refresh if user is NOT subscribed via RevenueCat
+          // This handles Stripe subscribers on iOS or users without subscriptions
+          console.log('[SubscriptionContext] App resumed, user not subscribed via RevenueCat, calling refreshSubscription...');
           refreshSubscription();
         }
       }).then(listener => {
