@@ -171,7 +171,7 @@ const AnalyticsWrapper = () => {
             // Poll for subscription activation - Stripe webhooks may take a few seconds
             const pollSubscription = async (attempts = 0): Promise<void> => {
               console.log(`[DEEP-LINK] Polling subscription status, attempt ${attempts + 1}`);
-              await refreshSubscription();
+              await refreshSubscription('deep_link_poll');
               
               // Check if subscription is now active
               // Give it up to 10 attempts (10 seconds total)

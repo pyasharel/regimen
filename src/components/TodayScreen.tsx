@@ -150,7 +150,7 @@ export const TodayScreen = () => {
 
         try {
           setVerifyingSubscription(true);
-          await refreshSubscription();
+          await refreshSubscription('post_checkout_native');
         } finally {
           searchParams.delete('session_id');
           setSearchParams(searchParams, { replace: true });
@@ -177,9 +177,9 @@ export const TodayScreen = () => {
           console.log('[POST-CHECKOUT] Subscription verified:', data);
 
           // Refresh the subscription context multiple times
-          await refreshSubscription();
+          await refreshSubscription('post_checkout_web_1');
           await new Promise(resolve => setTimeout(resolve, 1000));
-          await refreshSubscription();
+          await refreshSubscription('post_checkout_web_2');
 
           // Show success message
           if (data?.subscribed) {

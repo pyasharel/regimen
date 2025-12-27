@@ -70,12 +70,18 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   
   // Track source of last status change for diagnostics
   const lastStatusSourceRef = useRef<string>('init');
+  const [lastStatusSource, setLastStatusSource] = useState<string>('init');
+  const [lastRefreshTrigger, setLastRefreshTrigger] = useState<string>('init');
   
   // Wrapped setter that logs state transitions for diagnostics
   const setSubscriptionStatus = useCallback((newStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused', source?: string) => {
+    const logSource = source || lastStatusSourceRef.current || 'unknown';
+    lastStatusSourceRef.current = logSource;
+    setLastStatusSource(logSource);
+    subscriptionStatusRef.current = newStatus; // Keep ref in sync for closures
+    
     setSubscriptionStatusInternal(prevStatus => {
       if (prevStatus !== newStatus) {
-        const logSource = source || lastStatusSourceRef.current || 'unknown';
         addDiagnosticsLog(logSource, prevStatus, newStatus);
       }
       return newStatus;
@@ -91,6 +97,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
    * IMPORTANT: app resume + auth listeners run inside effect closures.
    * Use refs as the source of truth there to avoid stale state causing subscription "downgrades" to preview mode.
    */
+  const subscriptionStatusRef = useRef<'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused'>('none');
   const revenueCatConfiguredRef = useRef(false);
   const revenueCatIdentifiedRef = useRef(false);
   const revenueCatEntitlementRef = useRef<{ isPro: boolean; isTrialing: boolean } | null>(null);
@@ -165,10 +172,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   // Prevent concurrent refreshes
   const refreshingRef = useRef(false);
 
-  const refreshSubscription = async () => {
+  const refreshSubscription = async (trigger: string = 'unknown') => {
     // Prevent concurrent calls
     if (refreshingRef.current) {
-      console.log('[SubscriptionContext] Already refreshing, skipping...');
+      console.log('[SubscriptionContext] Already refreshing, skipping... trigger was:', trigger);
       return;
     }
 
@@ -179,8 +186,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     refreshingRef.current = true;
+    setLastRefreshTrigger(trigger);
     const startTime = Date.now();
-    console.log('[SubscriptionContext] 🚀 Starting refresh...');
+    console.log('[SubscriptionContext] 🚀 Starting refresh... trigger:', trigger);
 
     // Track edge-function status so we don't overwrite it with a stale profile read.
     let edgeStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' | null = null;
@@ -695,7 +703,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Only refresh after RevenueCat is ready (on native) so we don't skip the RC check
-      refreshSubscription();
+      refreshSubscription('context_init');
     };
 
     initialize();
@@ -730,7 +738,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
 
         console.log('[SubscriptionContext] Session available, refreshing subscription...');
-        refreshSubscription();
+        refreshSubscription(`auth_${event.toLowerCase()}`);
       } else {
         // ... keep existing code (handled below)
         console.log('[SubscriptionContext] No session, resetting state');
@@ -756,6 +764,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (!isActive) return;
 
         console.log('[SubscriptionContext] App resumed...');
+        addDiagnosticsLog('app_resume', subscriptionStatusRef.current, '...', 'App resumed from background');
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -767,17 +776,23 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           if (revenueCatConfiguredRef.current) {
             const result = await identifyRevenueCatUser(user.id);
 
-            // If RevenueCat confirms user is subscribed, SKIP refreshSubscription entirely
-            // (refreshing can still be useful, but this avoids the known downgrade/race path)
+            // If RevenueCat confirms user is subscribed, update state from RC and SKIP the full refresh
+            // (full refresh can trigger stale profile reads that incorrectly downgrade to preview)
             if (result.isPro || revenueCatEntitlementRef.current?.isPro) {
-              console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, skipping refresh');
+              console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, updating state from RC');
+              
+              const isTrialing = result.isTrialing || revenueCatEntitlementRef.current?.isTrialing;
+              setIsSubscribed(true);
+              setSubscriptionStatus(isTrialing ? 'trialing' : 'active', 'app_resume_rc_confirm');
+              setSubscriptionProvider('revenuecat');
+              setLastRefreshTrigger('app_resume_rc_confirm');
               return;
             }
           }
         }
 
         console.log('[SubscriptionContext] App resumed, calling refreshSubscription...');
-        refreshSubscription();
+        refreshSubscription('app_resume');
       }).then(listener => {
         appStateListener = listener;
       });
@@ -811,6 +826,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         restorePurchases,
         isNativePlatform,
         subscriptionProvider,
+        // Diagnostics
+        revenueCatAppUserId: revenueCatAppUserIdRef.current,
+        revenueCatEntitlement: revenueCatEntitlementRef.current,
+        lastStatusSource,
+        lastRefreshTrigger,
       }}
     >
       {children}

@@ -118,14 +118,14 @@ export const SettingsSubscriptionSection = () => {
         } else {
           // If RevenueCat didn't find anything, also refresh from database
           // This catches existing Stripe subscribers on iOS
-          await refreshSubscription();
+          await refreshSubscription('restore_fallback');
           // Check if we found a subscription after refresh
           // The toast will be shown based on the result
           toast.info('Checking subscription status...');
         }
       } else {
         // On web, just refresh from Stripe
-        await refreshSubscription();
+        await refreshSubscription('restore_web');
         toast.success('Subscription status refreshed');
       }
     } catch (error) {

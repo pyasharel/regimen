@@ -136,7 +136,7 @@ export const SubscriptionTest = () => {
       .update({ preview_mode_compound_added: false })
       .eq('user_id', user.id);
 
-    await refreshSubscription();
+    await refreshSubscription('preview_reset');
     toast.success('Preview mode reset!');
   };
 
@@ -251,7 +251,7 @@ export const SubscriptionTest = () => {
         <div className="flex gap-2 mt-4 flex-wrap">
           <Button size="sm" variant="outline" onClick={checkAddPermission}>Check Can Add</Button>
           <Button size="sm" variant="outline" onClick={getCompoundCount}>Count Compounds</Button>
-          <Button size="sm" variant="outline" onClick={refreshSubscription}>Refresh Context</Button>
+          <Button size="sm" variant="outline" onClick={() => refreshSubscription('subscription_test')}>Refresh Context</Button>
         </div>
       </Card>
 
