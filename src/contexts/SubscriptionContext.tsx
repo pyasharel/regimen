@@ -620,8 +620,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && revenueCatConfiguredRef.current && !revenueCatIdentifiedRef.current) {
-        await identifyRevenueCatUser(user.id);
+      if (user && revenueCatConfiguredRef.current) {
+        const needsIdentify =
+          !revenueCatIdentifiedRef.current ||
+          revenueCatAppUserIdRef.current !== user.id;
+
+        if (needsIdentify) {
+          await identifyRevenueCatUser(user.id);
+        }
       }
 
       console.log('[RevenueCat] Restoring purchases...');
@@ -768,24 +774,51 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Ensure RC init + identity even if resume happens very early
+          // Ensure RC init even if resume happens very early
           if (!revenueCatConfiguredRef.current) {
             await initRevenueCat();
           }
 
           if (revenueCatConfiguredRef.current) {
-            const result = await identifyRevenueCatUser(user.id);
+            // Screenshot on iOS can cause a very quick background/foreground toggle.
+            // If we already had an active entitlement in-memory, keep it stable and don't re-log-in.
+            const cached = revenueCatEntitlementRef.current;
+            if (cached?.isPro) {
+              setIsSubscribed(true);
+              setSubscriptionStatus(cached.isTrialing ? 'trialing' : 'active', 'app_resume_rc_cached');
+              setSubscriptionProvider('revenuecat');
+              setLastRefreshTrigger('app_resume_rc_cached');
+              return;
+            }
+
+            const needsIdentify =
+              !revenueCatIdentifiedRef.current ||
+              revenueCatAppUserIdRef.current !== user.id;
+
+            let isPro = false;
+            let isTrialing = false;
+
+            if (needsIdentify) {
+              const result = await identifyRevenueCatUser(user.id);
+              isPro = result.isPro;
+              isTrialing = result.isTrialing;
+            } else {
+              const { customerInfo } = await Purchases.getCustomerInfo();
+              setCustomerInfo(customerInfo);
+              const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
+              isPro = !!entitlement;
+              isTrialing = isTrialPeriodType(entitlement?.periodType);
+              revenueCatEntitlementRef.current = { isPro, isTrialing };
+            }
 
             // If RevenueCat confirms user is subscribed, update state from RC and SKIP the full refresh
             // (full refresh can trigger stale profile reads that incorrectly downgrade to preview)
-            if (result.isPro || revenueCatEntitlementRef.current?.isPro) {
+            if (isPro) {
               console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, updating state from RC');
-              
-              const isTrialing = result.isTrialing || revenueCatEntitlementRef.current?.isTrialing;
               setIsSubscribed(true);
-              setSubscriptionStatus(isTrialing ? 'trialing' : 'active', 'app_resume_rc_confirm');
+              setSubscriptionStatus(isTrialing ? 'trialing' : 'active', needsIdentify ? 'app_resume_rc_confirm' : 'app_resume_rc_info');
               setSubscriptionProvider('revenuecat');
-              setLastRefreshTrigger('app_resume_rc_confirm');
+              setLastRefreshTrigger(needsIdentify ? 'app_resume_rc_confirm' : 'app_resume_rc_info');
               return;
             }
           }
