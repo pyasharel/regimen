@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
+import { SubscriptionDiagnostics } from "@/components/subscription/SubscriptionDiagnostics";
 
 // Version info - Update these when making changes to verify sync
 const APP_VERSION = '0.2.0';
-const APP_BUILD = '16';
+const APP_BUILD = '17';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -25,6 +26,8 @@ export const SettingsScreen = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const savedSound = localStorage.getItem('soundEnabled');
@@ -254,12 +257,48 @@ export const SettingsScreen = () => {
           Sign Out
         </Button>
 
-        {/* Version Number */}
-        <div className="text-center text-xs text-muted-foreground/60 mt-4">
+        {/* Version Number - Long press to open diagnostics */}
+        <div 
+          className="text-center text-xs text-muted-foreground/60 mt-4 select-none cursor-pointer"
+          onTouchStart={() => {
+            longPressTimerRef.current = setTimeout(() => {
+              setShowDiagnostics(true);
+            }, 1500);
+          }}
+          onTouchEnd={() => {
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
+          }}
+          onMouseDown={() => {
+            longPressTimerRef.current = setTimeout(() => {
+              setShowDiagnostics(true);
+            }, 1500);
+          }}
+          onMouseUp={() => {
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            if (longPressTimerRef.current) {
+              clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = null;
+            }
+          }}
+        >
           Version {APP_VERSION} {Capacitor.isNativePlatform() && `(Build ${APP_BUILD})`}
         </div>
         </div>
       </div>
+      
+      {/* Hidden Diagnostics Modal */}
+      <SubscriptionDiagnostics 
+        open={showDiagnostics} 
+        onOpenChange={setShowDiagnostics} 
+      />
       {/* End of scroll-container */}
 
       <BottomNavigation />
