@@ -9,6 +9,10 @@ import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackag
 const REVENUECAT_API_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
 const ENTITLEMENT_ID = 'Regimen Premium';
 
+const isTrialPeriodType = (periodType?: string | null) => {
+  const t = (periodType ?? '').toUpperCase();
+  return t === 'TRIAL' || t === 'INTRO';
+};
 interface SubscriptionContextType {
   isSubscribed: boolean;
   subscriptionStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
@@ -187,7 +191,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
           const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
           const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-          const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+          const isInTrial = isTrialPeriodType(entitlement?.periodType);
 
           revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
 
@@ -471,7 +475,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
         const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+        const isInTrial = isTrialPeriodType(entitlement?.periodType);
 
         revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
 
@@ -522,7 +526,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
       const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-      const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+      const isInTrial = isTrialPeriodType(entitlement?.periodType);
 
       // After a purchase, we can trust entitlements for this user.
       revenueCatIdentifiedRef.current = true;
@@ -593,7 +597,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
       const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-      const isInTrial = entitlement?.periodType === 'TRIAL' || entitlement?.periodType === 'trial';
+      const isInTrial = isTrialPeriodType(entitlement?.periodType);
 
       revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
 
