@@ -208,7 +208,7 @@ export const BodySettingsModal = ({
                   id="goal"
                   type="number"
                   inputMode="decimal"
-                  placeholder={weightUnit === "lbs" ? "180" : "82"}
+                  placeholder={weightUnit === "lbs" ? "e.g. 180" : "e.g. 82"}
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   min="20"
