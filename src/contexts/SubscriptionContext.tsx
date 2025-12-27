@@ -65,7 +65,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const revenueCatConfiguredRef = useRef(false);
   const revenueCatIdentifiedRef = useRef(false);
   const revenueCatEntitlementRef = useRef<{ isPro: boolean; isTrialing: boolean } | null>(null);
-
+  const revenueCatAppUserIdRef = useRef<string | null>(null);
   // Track which payment provider the subscription came from
   const [subscriptionProvider, setSubscriptionProvider] = useState<'stripe' | 'revenuecat' | null>(null);
 
@@ -168,6 +168,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setUser(user);
+
+      // Native: make sure the current Supabase user is identified in RevenueCat BEFORE checking entitlements.
+      // If we skip this, a profile read of subscription_status='none' will incorrectly downgrade the UI to preview.
+      if (isNativePlatform && revenueCatConfiguredRef.current && !revenueCatIdentifiedRef.current) {
+        console.log('[SubscriptionContext] Native platform - attempting RevenueCat identify before entitlement check...');
+        await identifyRevenueCatUser(user.id);
+      }
 
       // ==================== Check RevenueCat on Native Platforms ====================
       // IMPORTANT: Only trust RevenueCat entitlements if the user has been identified
@@ -459,6 +466,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         // Mark identified synchronously FIRST (state updates are async)
         revenueCatIdentifiedRef.current = true;
+        revenueCatAppUserIdRef.current = userId;
         setRevenueCatIdentified(true);
 
         const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
@@ -636,6 +644,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setCustomerInfo(null);
       setRevenueCatIdentified(false); // Reset identified state on logout
       revenueCatIdentifiedRef.current = false;
+      revenueCatAppUserIdRef.current = null;
       revenueCatEntitlementRef.current = null;
     } catch (error) {
       console.error('[RevenueCat] Logout error:', error);
@@ -672,27 +681,29 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           sessionStorage.removeItem('dismissedBanner');
         }
 
-        // Native: ensure RevenueCat is initialized + user identified before refresh
-        if (isNativePlatform && event === 'SIGNED_IN') {
+        // Native: ensure RevenueCat is initialized + user identified before refresh.
+        // IMPORTANT: this must also run on INITIAL_SESSION (app cold start) and TOKEN_REFRESHED,
+        // otherwise we can incorrectly fall back to profile.subscription_status='none' and show preview.
+        if (isNativePlatform) {
           if (!revenueCatConfiguredRef.current) {
             await initRevenueCat();
           }
+
           if (revenueCatConfiguredRef.current) {
-            await identifyRevenueCatUser(session.user.id);
+            const needsIdentify =
+              !revenueCatIdentifiedRef.current ||
+              revenueCatAppUserIdRef.current !== session.user.id;
+
+            if (needsIdentify) {
+              await identifyRevenueCatUser(session.user.id);
+            }
           }
         }
 
-        // Refresh after identification completes
-        if (event === 'SIGNED_IN') {
-          console.log('[SubscriptionContext] User signed in, refreshing subscription...');
-          refreshSubscription();
-        } else {
-          // For other events, use a small delay
-          setTimeout(() => {
-            refreshSubscription();
-          }, 100);
-        }
+        console.log('[SubscriptionContext] Session available, refreshing subscription...');
+        refreshSubscription();
       } else {
+        // ... keep existing code (handled below)
         console.log('[SubscriptionContext] No session, resetting state');
         setIsSubscribed(false);
         setSubscriptionStatus('none');
