@@ -57,6 +57,10 @@ export const SubscriptionDiagnostics = ({ open, onOpenChange }: SubscriptionDiag
     subscriptionProvider,
     refreshSubscription,
     isLoading,
+    revenueCatAppUserId,
+    revenueCatEntitlement,
+    lastStatusSource,
+    lastRefreshTrigger,
   } = useSubscription();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -82,7 +86,7 @@ export const SubscriptionDiagnostics = ({ open, onOpenChange }: SubscriptionDiag
   const handleRefresh = async () => {
     setRefreshing(true);
     addDiagnosticsLog('manual_refresh', subscriptionStatus, '...', 'User triggered manual refresh');
-    await refreshSubscription();
+    await refreshSubscription('manual_diagnostics');
     setLogs([...getDiagnosticsLogs()]);
     setRefreshing(false);
   };
@@ -106,6 +110,12 @@ export const SubscriptionDiagnostics = ({ open, onOpenChange }: SubscriptionDiag
       subscriptionEndDate,
       trialEndDate,
       isLoading,
+      // RevenueCat specific
+      revenueCatAppUserId,
+      revenueCatEntitlement,
+      // Trigger tracking
+      lastStatusSource,
+      lastRefreshTrigger,
       logs: logs.slice(0, 20),
       timestamp: new Date().toISOString(),
     };
@@ -190,6 +200,44 @@ export const SubscriptionDiagnostics = ({ open, onOpenChange }: SubscriptionDiag
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">isLoading:</span>
                   <span>{String(isLoading)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* RevenueCat State (Native Only) */}
+            {isNativePlatform && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground">RevenueCat State</h3>
+                <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-xs font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">RC App User ID:</span>
+                    <span className="truncate max-w-[150px]">{revenueCatAppUserId || 'null'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">RC isPro:</span>
+                    <span className={revenueCatEntitlement?.isPro ? 'text-green-400' : 'text-red-400'}>
+                      {revenueCatEntitlement ? String(revenueCatEntitlement.isPro) : 'null'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">RC isTrialing:</span>
+                    <span>{revenueCatEntitlement ? String(revenueCatEntitlement.isTrialing) : 'null'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Last Triggers */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Last Triggers</h3>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Last Refresh Trigger:</span>
+                  <Badge variant="outline" className="text-[10px]">{lastRefreshTrigger}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Last Status Source:</span>
+                  <Badge variant="outline" className="text-[10px]">{lastStatusSource}</Badge>
                 </div>
               </div>
             </div>

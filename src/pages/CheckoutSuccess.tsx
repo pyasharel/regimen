@@ -40,7 +40,7 @@ const CheckoutSuccess = () => {
       if (hasAuth) {
         // Give Stripe a moment to finalize
         await new Promise(resolve => setTimeout(resolve, 1500));
-        await refreshSubscription();
+        await refreshSubscription('checkout_success_init');
         
         // Start polling if subscription isn't active yet (Stripe webhook delay)
         pollInterval = setInterval(async () => {
@@ -49,7 +49,7 @@ const CheckoutSuccess = () => {
           pollAttempts++;
           console.log(`[CHECKOUT-SUCCESS] Polling subscription status (attempt ${pollAttempts}/${MAX_POLL_ATTEMPTS})`);
           
-          await refreshSubscription();
+          await refreshSubscription('checkout_success_poll');
           
           // Max attempts reached - navigate anyway
           if (pollAttempts >= MAX_POLL_ATTEMPTS) {
