@@ -50,7 +50,7 @@ export const SubscriptionPaywall = ({
   }, [open, message, setPaywallOpen]);
 
   // Backend promo codes - these are validated by activate-beta-access function
-  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30', 'FREEMONTH', 'PEPTIDE30', 'REGIMEN30'];
+  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30'];
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();

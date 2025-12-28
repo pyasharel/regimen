@@ -10,9 +10,6 @@ const corsHeaders = {
 const PROMO_CODES: Record<string, { days: number; description: string }> = {
   "BETATESTER": { days: 90, description: "3 months beta access" },
   "REDDIT30": { days: 30, description: "1 month free" },
-  "FREEMONTH": { days: 30, description: "1 month free" },
-  "PEPTIDE30": { days: 30, description: "1 month free" },
-  "REGIMEN30": { days: 30, description: "1 month free" },
 };
 
 serve(async (req) => {
