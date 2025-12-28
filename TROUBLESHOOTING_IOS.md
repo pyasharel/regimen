@@ -237,15 +237,59 @@ The files should show recent timestamps matching your last `npm run build`.
 
 ---
 
+## App Not Updating Despite Multiple Rebuilds
+
+**Symptoms:**
+- Version number in Settings doesn't change after rebuilding
+- Old features/bugs persist despite code changes
+- `npx cap sync` or `npx cap update` shows "ios platform has not been added yet"
+
+**Root Cause:** Usually one of:
+1. **Running commands from wrong directory** (inside `ios/App/` instead of project root)
+2. Cached builds in Xcode not being cleared
+3. Old app still installed on device
+
+**Fix - Verify Directory First:**
+
+```bash
+# You MUST be in the project root (where package.json lives)
+ls package.json capacitor.config.ts
+```
+
+If you see "No such file", you're in the wrong folder. Run `cd ../..` until you're in the right place.
+
+**Fix - The Nuclear Rebuild Chain:**
+
+```bash
+npm run build
+npx cap update ios
+npx cap sync ios
+npx cap open ios
+```
+
+Then in Xcode:
+1. Hold **Option** key → **Product → Clean Build Folder**
+2. **Delete the app from your phone** (long-press → Remove App)
+3. Click **Run** (▶)
+
+**Verify the fix:** Check Settings → version number should match `appBuild` in `capacitor.config.ts`
+
+**Pro tip:** Bump `appBuild` in `capacitor.config.ts` before rebuilding to force-confirm you're running the newest bundle.
+
+---
+
 ## Quick Reference Commands
 
 ```bash
-# Sync changes to iOS
-npx cap sync ios
+# Sync changes (from project root!)
+npm run build && npx cap sync ios
 
 # Open in Xcode
 npx cap open ios
 
-# Reinstall pods (if needed)
+# Reinstall pods
 cd ios/App && pod install && cd ../..
+
+# Full nuclear rebuild
+npm run build && npx cap update ios && npx cap sync ios && npx cap open ios
 ```
