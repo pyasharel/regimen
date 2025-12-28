@@ -342,26 +342,20 @@ export const MyStackScreen = () => {
       <div className="flex-1 min-h-0 scroll-container pb-24">
         {/* Header */}
         <MainHeader title="My Stack" />
-        {/* Dashboard Stats - Single Row */}
-        <div className="p-4">
-          <div className="grid grid-cols-2 gap-3">
+        {/* Dashboard Stats - Compact Row */}
+        <div className="px-4 py-3">
+          <div className="grid grid-cols-2 gap-2">
             {/* Active Compounds - Clickable */}
             <button
               onClick={() => {
                 triggerHaptic();
                 document.getElementById('active-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white">{activeCompounds.length}</div>
-                <div className="text-xs text-white/80 mt-1">
-                  {activeCompounds.length === 1 ? 'Medication' : 'Medications'}
-                </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                <span className="text-xs font-medium text-white/90">{activeCompounds.length} Active</span>
               </div>
             </button>
 
@@ -371,17 +365,11 @@ export const MyStackScreen = () => {
                 triggerHaptic();
                 document.getElementById('inactive-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-xl bg-muted border border-border p-4 shadow-sm text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-muted border border-border px-3 py-2 shadow-sm text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-muted-foreground">{inactiveCompounds.length}</div>
-                <div className="text-xs text-muted-foreground/80 mt-1">
-                  {inactiveCompounds.length === 1 ? 'Medication' : 'Medications'}
-                </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">{inactiveCompounds.length} Inactive</span>
               </div>
             </button>
           </div>
