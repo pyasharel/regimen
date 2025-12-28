@@ -15,9 +15,8 @@ import { SettingsSubscriptionSection } from "@/components/subscription/SettingsS
 import { MainHeader } from "@/components/MainHeader";
 import { SubscriptionDiagnostics } from "@/components/subscription/SubscriptionDiagnostics";
 
-// Version info - Update these when making changes to verify sync
-const APP_VERSION = '0.2.0';
-const APP_BUILD = '17';
+// Version info - pulled from central config
+import { appVersion, appBuild } from '../../capacitor.config';
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
@@ -289,7 +288,7 @@ export const SettingsScreen = () => {
             }
           }}
         >
-          Version {APP_VERSION} {Capacitor.isNativePlatform() && `(Build ${APP_BUILD})`}
+          Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
         </div>
         </div>
       </div>
