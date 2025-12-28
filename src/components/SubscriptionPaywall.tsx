@@ -49,10 +49,8 @@ export const SubscriptionPaywall = ({
     }
   }, [open, message, setPaywallOpen]);
 
-  const promoCodes: Record<string, {duration: number, type: 'free' | 'discount' | 'beta', value: number}> = {
-    'BETA3': { duration: 3, type: 'free', value: 100 },
-    'BETATESTER': { duration: 90, type: 'beta', value: 100 },
-  };
+  // Backend promo codes - these are validated by activate-beta-access function
+  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30', 'FREEMONTH', 'PEPTIDE30', 'REGIMEN30'];
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
@@ -63,31 +61,38 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      // Check if it's a beta code first (BETATESTER)
-      if (code === 'BETATESTER') {
-        console.log('[PROMO] Beta code detected, activating beta access...');
+      // Check if it's one of our backend promo codes
+      if (BACKEND_PROMO_CODES.includes(code)) {
+        console.log('[PROMO] Backend promo code detected, activating access...');
         
         const { data, error } = await supabase.functions.invoke('activate-beta-access', {
           body: { code }
         });
 
-        console.log('[PROMO] Beta activation response:', JSON.stringify({ data, error }, null, 2));
+        console.log('[PROMO] Activation response:', JSON.stringify({ data, error }, null, 2));
 
         if (error) {
-          console.error('[PROMO] Beta activation ERROR:', error);
-          toast.error(`Failed to activate beta access: ${error.message || 'Unknown error'}`);
+          console.error('[PROMO] Activation ERROR:', error);
+          toast.error(`Failed to activate promo code: ${error.message || 'Unknown error'}`);
           return;
         }
 
         if (data?.valid) {
           if (data.alreadyActive) {
-            toast.success('Beta access already active!');
+            toast.success('Promo access already active!');
           } else if (data.activated) {
-            toast.success('Beta access activated! Enjoy 90 days free - no credit card required.');
+            // Calculate days for message
+            const endDate = new Date(data.endDate);
+            const now = new Date();
+            const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
           }
           // Close the modal and refresh subscription
           onOpenChange(false);
           window.location.reload(); // Refresh to update subscription status
+          return;
+        } else if (!data?.valid) {
+          toast.error(data?.message || 'Invalid promo code. Please check and try again.');
           return;
         }
       }
@@ -270,26 +275,15 @@ export const SubscriptionPaywall = ({
 
   const getButtonText = () => {
     if (appliedPromo) {
-      const promo = promoCodes[appliedPromo.code];
-      if (promo.type === 'free') {
-        return `Start Free Trial (${promo.duration} Months Free)`;
-      }
-      return `Start Trial (${promo.value}% Off)`;
+      return `Start Free Access`;
     }
     return "Start My 14-Day Free Trial";
   };
 
   const getPriceText = () => {
     if (appliedPromo) {
-      // For free trial promos (BETA3), always show monthly pricing after free period
-      const promo = promoCodes[appliedPromo.code];
-      if (promo?.type === 'free') {
-        return `FREE for ${promo.duration} months, then $4.99/month`;
-      }
-      // For discount promos
-      return selectedPlan === 'annual'
-        ? `$20 for first year, then $39.99/year`
-        : `$2.50/month for 12 months, then $4.99/month`;
+      // For applied promo codes, show the discount
+      return appliedPromo.discount;
     }
     return selectedPlan === 'annual'
       ? "14 days free, then $39.99/year ($3.33/month)"
