@@ -345,8 +345,14 @@ export const MyStackScreen = () => {
         {/* Dashboard Stats - Single Row */}
         <div className="p-4">
           <div className="grid grid-cols-2 gap-3">
-            {/* Active Compounds */}
-            <div className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20">
+            {/* Active Compounds - Clickable */}
+            <button
+              onClick={() => {
+                triggerHaptic();
+                document.getElementById('active-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="rounded-xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4 shadow-lg shadow-primary/20 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
               <div className="flex items-center justify-center gap-2 mb-2">
                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                 <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Active</span>
@@ -357,10 +363,16 @@ export const MyStackScreen = () => {
                   {activeCompounds.length === 1 ? 'Medication' : 'Medications'}
                 </div>
               </div>
-            </div>
+            </button>
 
-            {/* Inactive Compounds */}
-            <div className="rounded-xl bg-muted border border-border p-4 shadow-sm">
+            {/* Inactive Compounds - Clickable */}
+            <button
+              onClick={() => {
+                triggerHaptic();
+                document.getElementById('inactive-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="rounded-xl bg-muted border border-border p-4 shadow-sm text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
               <div className="flex items-center justify-center gap-2 mb-2">
                 <div className="h-2 w-2 rounded-full bg-muted-foreground" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inactive</span>
@@ -371,14 +383,14 @@ export const MyStackScreen = () => {
                   {inactiveCompounds.length === 1 ? 'Medication' : 'Medications'}
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
         {/* Active Compounds */}
         <div className="space-y-4 px-4 pb-4">
           <div className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2 id="active-section" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Active
             </h2>
           
@@ -549,7 +561,7 @@ export const MyStackScreen = () => {
 
         {/* Inactive Compounds */}
         <div className="space-y-3 pt-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 id="inactive-section" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Inactive ({inactiveCompounds.length})
           </h2>
           

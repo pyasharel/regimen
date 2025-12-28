@@ -309,9 +309,15 @@ export const TodayScreen = () => {
         compounds: { name: compound.name, schedule_type: 'As Needed' }
       })) || [];
 
-      // Filter out doses from inactive compounds
+      // Filter out untaken doses from inactive compounds, but keep taken doses for history
       const formattedDoses = [
-        ...(dosesData?.filter(d => d.compounds?.is_active !== false).map(d => ({
+        ...(dosesData?.filter(d => {
+          // If compound is inactive, only show if dose was taken or skipped
+          if (d.compounds?.is_active === false) {
+            return d.taken || d.skipped;
+          }
+          return true;
+        }).map(d => ({
           ...d,
           compound_name: d.compounds?.name,
           schedule_type: d.compounds?.schedule_type
