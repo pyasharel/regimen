@@ -129,4 +129,20 @@ export const PERSISTENT_STORAGE_KEYS = [
   
   // Dismissed banners
   'dismissedBanners',
+  
+  // Subscription entitlement cache (survives webview reloads)
+  'cachedEntitlement',
 ];
+
+// Cached entitlement interface for subscription persistence
+export interface CachedEntitlement {
+  userId: string;
+  isPro: boolean;
+  isTrialing: boolean;
+  subscriptionType: 'monthly' | 'annual' | null;
+  expirationDate: string | null;
+  timestamp: number; // When this cache was written
+}
+
+// Max age for cached entitlement (24 hours in milliseconds)
+export const CACHED_ENTITLEMENT_MAX_AGE_MS = 24 * 60 * 60 * 1000;

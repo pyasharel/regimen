@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 import { addDiagnosticsLog } from '@/components/subscription/SubscriptionDiagnostics';
+import { persistentStorage, CachedEntitlement, CACHED_ENTITLEMENT_MAX_AGE_MS } from '@/utils/persistentStorage';
 
 // RevenueCat configuration
 const REVENUECAT_API_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
@@ -236,14 +237,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             console.log('[SubscriptionContext] ✅ RevenueCat: User has active subscription, isInTrial:', isInTrial);
             setIsSubscribed(true);
             setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_entitlement_check');
-            setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
+            setSubscriptionProvider('revenuecat');
             edgeStatus = isInTrial ? 'trialing' : 'active'; // Prevent downgrade from profile read
 
             // Try to determine subscription type from active subscriptions
             const activeSubscriptions = customerInfo.activeSubscriptions || [];
+            let subType: 'monthly' | 'annual' | null = null;
             if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+              subType = 'annual';
               setSubscriptionType('annual');
             } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+              subType = 'monthly';
               setSubscriptionType('monthly');
             }
 
@@ -256,6 +260,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             if (isInTrial && entitlement?.expirationDate) {
               setTrialEndDate(entitlement.expirationDate);
             }
+
+            // 💾 Save to persistent cache
+            await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
           }
         } catch (rcError) {
           console.error('[SubscriptionContext] RevenueCat check error:', rcError);
@@ -452,6 +459,81 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
   // ==================== RevenueCat Functions ====================
 
+  // Helper to save entitlement to persistent storage
+  const saveEntitlementToCache = useCallback(async (
+    userId: string,
+    isPro: boolean,
+    isTrialing: boolean,
+    subType: 'monthly' | 'annual' | null,
+    expirationDate: string | null
+  ) => {
+    if (!isNativePlatform) return;
+    
+    const cache: CachedEntitlement = {
+      userId,
+      isPro,
+      isTrialing,
+      subscriptionType: subType,
+      expirationDate,
+      timestamp: Date.now(),
+    };
+    
+    await persistentStorage.setJSON('cachedEntitlement', cache);
+    console.log('[SubscriptionContext] 💾 Saved entitlement to cache:', cache);
+  }, [isNativePlatform]);
+
+  // Helper to load entitlement from persistent storage
+  const loadEntitlementFromCache = useCallback(async (currentUserId: string): Promise<CachedEntitlement | null> => {
+    if (!isNativePlatform) return null;
+    
+    const cache = await persistentStorage.getJSON<CachedEntitlement>('cachedEntitlement');
+    
+    if (!cache) {
+      console.log('[SubscriptionContext] 📭 No cached entitlement found');
+      return null;
+    }
+    
+    // Validate cache: must be for same user and not expired
+    if (cache.userId !== currentUserId) {
+      console.log('[SubscriptionContext] 🚫 Cached entitlement for different user, ignoring');
+      await persistentStorage.remove('cachedEntitlement');
+      return null;
+    }
+    
+    const age = Date.now() - cache.timestamp;
+    if (age > CACHED_ENTITLEMENT_MAX_AGE_MS) {
+      console.log('[SubscriptionContext] ⏰ Cached entitlement expired (age:', Math.round(age / 1000 / 60), 'minutes)');
+      // Don't delete - we might still use it if RevenueCat fails
+      return null;
+    }
+    
+    console.log('[SubscriptionContext] ✅ Loaded valid cached entitlement:', cache);
+    return cache;
+  }, [isNativePlatform]);
+
+  // Helper to clear entitlement cache (only when definitively not pro)
+  const clearEntitlementCache = useCallback(async () => {
+    if (!isNativePlatform) return;
+    await persistentStorage.remove('cachedEntitlement');
+    console.log('[SubscriptionContext] 🗑️ Cleared entitlement cache');
+  }, [isNativePlatform]);
+
+  // Apply cached entitlement to state
+  const applyCachedEntitlement = useCallback((cache: CachedEntitlement, source: string) => {
+    console.log('[SubscriptionContext] 📦 Applying cached entitlement from:', source);
+    setIsSubscribed(true);
+    setSubscriptionStatus(cache.isTrialing ? 'trialing' : 'active', source);
+    setSubscriptionProvider('revenuecat');
+    setSubscriptionType(cache.subscriptionType);
+    if (cache.expirationDate) {
+      setSubscriptionEndDate(cache.expirationDate);
+      if (cache.isTrialing) {
+        setTrialEndDate(cache.expirationDate);
+      }
+    }
+    revenueCatEntitlementRef.current = { isPro: cache.isPro, isTrialing: cache.isTrialing };
+  }, [setSubscriptionStatus]);
+
   // Initialize RevenueCat (native only)
   const initRevenueCat = useCallback(async () => {
     if (!isNativePlatform) {
@@ -523,9 +605,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
           // Determine subscription type
           const activeSubscriptions = customerInfo.activeSubscriptions || [];
+          let subType: 'monthly' | 'annual' | null = null;
           if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+            subType = 'annual';
             setSubscriptionType('annual');
           } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+            subType = 'monthly';
             setSubscriptionType('monthly');
           }
 
@@ -533,6 +618,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             setSubscriptionEndDate(entitlement.expirationDate);
             setTrialEndDate(isInTrial ? entitlement.expirationDate : null);
           }
+
+          // 💾 Save to persistent cache
+          await saveEntitlementToCache(userId, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
 
           return { isPro: true, isTrialing: !!isInTrial };
         }
@@ -545,7 +633,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         return { isPro: false, isTrialing: false };
       }
     },
-    [isNativePlatform]
+    [isNativePlatform, saveEntitlementToCache]
   );
 
   // Purchase a package
@@ -573,12 +661,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       if (isPro) {
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_purchase');
-        setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
+        setSubscriptionProvider('revenuecat');
 
         // Set subscription type based on package purchased
+        let subType: 'monthly' | 'annual' | null = null;
         if (packageToPurchase.identifier === '$rc_annual' || packageToPurchase.product.identifier.includes('annual')) {
+          subType = 'annual';
           setSubscriptionType('annual');
         } else {
+          subType = 'monthly';
           setSubscriptionType('monthly');
         }
 
@@ -588,6 +679,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         if (isInTrial && entitlement?.expirationDate) {
           setTrialEndDate(entitlement.expirationDate);
+        }
+
+        // 💾 Save to persistent cache
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
         }
       }
 
@@ -607,7 +704,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: false, error: error.message || 'Purchase failed' };
     }
-  }, [isNativePlatform]);
+  }, [isNativePlatform, saveEntitlementToCache]);
 
   // Restore purchases
   const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro?: boolean; error?: string }> => {
@@ -644,16 +741,19 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('[RevenueCat] Restore complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
 
-      if (isPro) {
+      if (isPro && user) {
         setIsSubscribed(true);
         setSubscriptionStatus(isInTrial ? 'trialing' : 'active', 'rc_restore');
-        setSubscriptionProvider('revenuecat'); // Track that this subscription is from RevenueCat
+        setSubscriptionProvider('revenuecat');
 
         // Determine subscription type from active subscriptions
         const activeSubscriptions = customerInfo.activeSubscriptions || [];
+        let subType: 'monthly' | 'annual' | null = null;
         if (activeSubscriptions.some((s: string) => s.includes('annual'))) {
+          subType = 'annual';
           setSubscriptionType('annual');
         } else if (activeSubscriptions.some((s: string) => s.includes('monthly'))) {
+          subType = 'monthly';
           setSubscriptionType('monthly');
         }
 
@@ -666,10 +766,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (isInTrial && entitlement?.expirationDate) {
           setTrialEndDate(entitlement.expirationDate);
         }
+
+        // 💾 Save to persistent cache
+        await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
       } else {
-        // No active subscription found
+        // No active subscription found - clear cache after explicit restore attempt
         setIsSubscribed(false);
         setSubscriptionStatus('none', 'rc_restore_no_sub');
+        await clearEntitlementCache();
       }
 
       return { success: true, isPro };
@@ -677,7 +781,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error('[RevenueCat] Restore error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Restore failed' };
     }
-  }, [isNativePlatform, identifyRevenueCatUser, initRevenueCat]);
+  }, [isNativePlatform, identifyRevenueCatUser, initRevenueCat, saveEntitlementToCache, clearEntitlementCache]);
 
   // Logout from RevenueCat
   const logoutRevenueCat = useCallback(async () => {
@@ -687,24 +791,47 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.log('[RevenueCat] Logging out');
       await Purchases.logOut();
       setCustomerInfo(null);
-      setRevenueCatIdentified(false); // Reset identified state on logout
+      setRevenueCatIdentified(false);
       revenueCatIdentifiedRef.current = false;
       revenueCatAppUserIdRef.current = null;
       revenueCatEntitlementRef.current = null;
+      // 🗑️ Clear persistent cache on logout
+      await clearEntitlementCache();
     } catch (error) {
       console.error('[RevenueCat] Logout error:', error);
     }
-  }, [isNativePlatform]);
+  }, [isNativePlatform, clearEntitlementCache]);
 
   // Main initialization effect
   useEffect(() => {
     const initialize = async () => {
-      // Initialize RevenueCat first on native and WAIT for it to complete
+      // On native: check persistent cache FIRST (survives webview reloads/screenshots)
       if (isNativePlatform) {
-        await initRevenueCat();
-
-        // If the user is already signed in (cold start), identify immediately before refreshing.
         const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // 📦 Try to restore from persistent cache immediately
+          const cachedEntitlement = await loadEntitlementFromCache(user.id);
+          if (cachedEntitlement?.isPro) {
+            console.log('[SubscriptionContext] 🚀 Restoring subscription from persistent cache on init');
+            applyCachedEntitlement(cachedEntitlement, 'persistent_cache_init');
+            setIsLoading(false);
+            addDiagnosticsLog('persistent_cache_init', 'none', cachedEntitlement.isTrialing ? 'trialing' : 'active', 'Restored from persistent cache');
+            
+            // Continue to verify with RevenueCat in background (don't block UI)
+            (async () => {
+              await initRevenueCat();
+              if (revenueCatConfiguredRef.current) {
+                await identifyRevenueCatUser(user.id);
+              }
+            })();
+            return; // Skip full refresh, cache is trusted
+          }
+        }
+        
+        // No valid cache, do normal init
+        await initRevenueCat();
+        
         if (user && revenueCatConfiguredRef.current) {
           await identifyRevenueCatUser(user.id);
         }
@@ -776,6 +903,26 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // 📦 FIRST: Check persistent cache (survives webview reloads like screenshots)
+          const persistedCache = await loadEntitlementFromCache(user.id);
+          if (persistedCache?.isPro) {
+            console.log('[SubscriptionContext] 🛡️ App resumed - restoring from persistent cache');
+            applyCachedEntitlement(persistedCache, 'app_resume_persistent_cache');
+            setLastRefreshTrigger('app_resume_persistent_cache');
+            addDiagnosticsLog('app_resume_persistent_cache', subscriptionStatusRef.current, persistedCache.isTrialing ? 'trialing' : 'active', 'Restored from persistent cache on resume');
+            
+            // Verify with RevenueCat in background (don't block)
+            (async () => {
+              if (!revenueCatConfiguredRef.current) {
+                await initRevenueCat();
+              }
+              if (revenueCatConfiguredRef.current) {
+                await identifyRevenueCatUser(user.id);
+              }
+            })();
+            return;
+          }
+
           // Ensure RC init even if resume happens very early
           if (!revenueCatConfiguredRef.current) {
             await initRevenueCat();
