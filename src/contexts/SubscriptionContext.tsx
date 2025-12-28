@@ -781,7 +781,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             await initRevenueCat();
           }
 
-           if (revenueCatConfiguredRef.current) {
+          if (revenueCatConfiguredRef.current) {
             // Screenshot on iOS can cause a very quick background/foreground toggle.
             // If we already had an active entitlement in-memory, keep it stable and don't re-log-in.
             const cached = revenueCatEntitlementRef.current;
