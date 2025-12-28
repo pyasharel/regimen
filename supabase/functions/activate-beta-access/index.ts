@@ -6,8 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const VALID_BETA_CODES = ["BETATESTER"];
-const BETA_DURATION_DAYS = 90;
+// Promo codes with their durations in days
+const PROMO_CODES: Record<string, { days: number; description: string }> = {
+  "BETATESTER": { days: 90, description: "3 months beta access" },
+  "REDDIT30": { days: 30, description: "1 month free" },
+  "FREEMONTH": { days: 30, description: "1 month free" },
+  "PEPTIDE30": { days: 30, description: "1 month free" },
+  "REGIMEN30": { days: 30, description: "1 month free" },
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -44,15 +50,20 @@ serve(async (req) => {
     const { code } = await req.json();
     console.log('[ACTIVATE-BETA] Checking code:', code);
     
-    if (!VALID_BETA_CODES.includes(code.toUpperCase())) {
+    const upperCode = code.toUpperCase();
+    const promoConfig = PROMO_CODES[upperCode];
+    
+    if (!promoConfig) {
       return new Response(JSON.stringify({ 
         valid: false,
-        message: "Invalid beta code"
+        message: "Invalid promo code"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
+    
+    console.log('[ACTIVATE-BETA] Valid code found:', upperCode, promoConfig);
 
     // Check if user already has beta access
     const { data: profile } = await supabaseClient
@@ -79,7 +90,7 @@ serve(async (req) => {
 
     // Activate beta access
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + BETA_DURATION_DAYS);
+    endDate.setDate(endDate.getDate() + promoConfig.days);
 
     console.log('[ACTIVATE-BETA] Attempting to update user:', user.id);
     console.log('[ACTIVATE-BETA] Setting beta_access_end_date to:', endDate.toISOString());
