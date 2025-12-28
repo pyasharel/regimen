@@ -1098,8 +1098,8 @@ export const AddCompoundScreen = () => {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border px-4 py-4 safe-top flex-shrink-0">
-        <div className="flex items-center justify-between">
+      <header className="border-b border-border px-4 flex-shrink-0" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+        <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/stack")}

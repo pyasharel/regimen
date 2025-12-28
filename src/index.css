@@ -125,9 +125,9 @@ All colors MUST be HSL.
     -moz-osx-font-smoothing: grayscale;
   }
   
-  /* iOS Safe Area Support */
+  /* iOS Safe Area Support - use max to ensure minimum padding */
   .safe-top {
-    padding-top: env(safe-area-inset-top);
+    padding-top: max(1rem, env(safe-area-inset-top));
   }
 
   .app-top-padding {
