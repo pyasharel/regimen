@@ -209,11 +209,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(user);
 
-      // Native: make sure the current Supabase user is identified in RevenueCat BEFORE checking entitlements.
-      // If we skip this, a profile read of subscription_status='none' will incorrectly downgrade the UI to preview.
-      if (isNativePlatform && revenueCatConfiguredRef.current && !revenueCatIdentifiedRef.current) {
-        console.log('[SubscriptionContext] Native platform - attempting RevenueCat identify before entitlement check...');
-        await identifyRevenueCatUser(user.id);
+      // Native: always ensure RevenueCat is initialized + logged in as the current backend user
+      // BEFORE doing any entitlement checks or profile reads.
+      if (isNativePlatform) {
+        if (!revenueCatConfiguredRef.current) {
+          console.log('[SubscriptionContext] Native platform - initializing RevenueCat before entitlement check...');
+          await initRevenueCat();
+        }
+
+        if (revenueCatConfiguredRef.current) {
+          const needsIdentify =
+            !revenueCatIdentifiedRef.current ||
+            revenueCatAppUserIdRef.current !== user.id;
+
+          if (needsIdentify) {
+            console.log('[SubscriptionContext] Native platform - identifying RevenueCat user before entitlement check...', {
+              currentAppUserId: revenueCatAppUserIdRef.current,
+              targetUserId: user.id,
+            });
+            await identifyRevenueCatUser(user.id);
+          }
+        }
       }
 
       // ==================== Check RevenueCat on Native Platforms ====================
@@ -643,6 +659,39 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Please sign in again to subscribe.' };
+      }
+
+      // 🔑 CRITICAL: Ensure RevenueCat is logged in as the current backend user BEFORE purchasing.
+      // Otherwise purchases are attributed to $RCAnonymousID and entitlement checks will look empty after reload.
+      if (!revenueCatConfiguredRef.current) {
+        await initRevenueCat();
+      }
+
+      if (revenueCatConfiguredRef.current) {
+        const needsIdentify =
+          !revenueCatIdentifiedRef.current ||
+          revenueCatAppUserIdRef.current !== user.id;
+
+        if (needsIdentify) {
+          console.log('[RevenueCat] purchasePackage: identifying user before purchase...', {
+            currentAppUserId: revenueCatAppUserIdRef.current,
+            targetUserId: user.id,
+          });
+          const current = await identifyRevenueCatUser(user.id);
+
+          // If they're already pro, don't start another purchase flow.
+          if (current.isPro) {
+            console.log('[RevenueCat] purchasePackage: user already has entitlement, skipping purchase');
+            return { success: true };
+          }
+        }
+      } else {
+        console.warn('[RevenueCat] purchasePackage: RevenueCat not configured; purchase may proceed as anonymous');
+      }
+
       console.log('[RevenueCat] Purchasing package:', packageToPurchase);
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageToPurchase });
       setCustomerInfo(customerInfo);
@@ -653,10 +702,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       // After a purchase, we can trust entitlements for this user.
       revenueCatIdentifiedRef.current = true;
+      revenueCatAppUserIdRef.current = user.id;
       setRevenueCatIdentified(true);
       revenueCatEntitlementRef.current = { isPro, isTrialing: !!(isPro && isInTrial) };
 
-      console.log('[RevenueCat] Purchase complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active));
+      console.log('[RevenueCat] Purchase complete. isPro:', isPro, 'entitlements:', Object.keys(customerInfo.entitlements.active), 'appUserId:', revenueCatAppUserIdRef.current);
 
       if (isPro) {
         setIsSubscribed(true);
@@ -682,10 +732,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // 💾 Save to persistent cache
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
-        }
+        await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
       }
 
       return { success: true };
@@ -704,7 +751,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: false, error: error.message || 'Purchase failed' };
     }
-  }, [isNativePlatform, saveEntitlementToCache]);
+  }, [isNativePlatform, initRevenueCat, identifyRevenueCatUser, saveEntitlementToCache]);
 
   // Restore purchases
   const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro?: boolean; error?: string }> => {
