@@ -748,14 +748,45 @@ export const AddCompoundScreen = () => {
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       
-      // Mark all past doses for this compound as taken
-      const { error } = await supabase
+      // First, fetch all past doses for this compound
+      const { data: pastDoses, error: fetchError } = await supabase
         .from('doses')
-        .update({ taken: true, taken_at: new Date().toISOString() })
+        .select('id, scheduled_date, scheduled_time')
         .eq('compound_id', pendingCompoundId)
         .lt('scheduled_date', todayStr);
       
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+      
+      // Update each dose with taken_at set to its scheduled date/time
+      if (pastDoses && pastDoses.length > 0) {
+        for (const dose of pastDoses) {
+          // Convert scheduled time to hours/minutes
+          let hours = 8, minutes = 0;
+          const scheduledTime = dose.scheduled_time;
+          if (scheduledTime === 'Morning') { hours = 8; minutes = 0; }
+          else if (scheduledTime === 'Afternoon') { hours = 14; minutes = 0; }
+          else if (scheduledTime === 'Evening') { hours = 18; minutes = 0; }
+          else {
+            const timeMatch = scheduledTime.match(/^(\d{1,2}):(\d{2})$/);
+            if (timeMatch) {
+              hours = parseInt(timeMatch[1]);
+              minutes = parseInt(timeMatch[2]);
+            }
+          }
+          
+          // Create taken_at timestamp from scheduled date and time
+          const takenDate = new Date(dose.scheduled_date + 'T00:00:00');
+          takenDate.setHours(hours, minutes, 0, 0);
+          const takenAtTimestamp = takenDate.toISOString();
+          
+          const { error: updateError } = await supabase
+            .from('doses')
+            .update({ taken: true, taken_at: takenAtTimestamp })
+            .eq('id', dose.id);
+          
+          if (updateError) throw updateError;
+        }
+      }
       
       toast({
         title: "Past doses marked",
@@ -1666,6 +1697,74 @@ export const AddCompoundScreen = () => {
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* End Date - Optional */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-col">
+              <Label className="sm:mb-0">End Date</Label>
+              <span className="text-xs text-muted-foreground">Optional - leave empty for ongoing</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full sm:w-52 justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? safeFormatDate(endDate, "PPP") : <span>Ongoing</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const newEndDate = `${year}-${month}-${day}`;
+                        // Validate end date is after start date
+                        if (startDate && newEndDate < startDate) {
+                          toast({
+                            title: "Invalid date",
+                            description: "End date must be after start date",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        setEndDate(newEndDate);
+                      }
+                    }}
+                    disabled={(date) => {
+                      // Disable dates before start date
+                      if (startDate) {
+                        const start = new Date(startDate + 'T00:00:00');
+                        return date < start;
+                      }
+                      return false;
+                    }}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              {endDate && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEndDate("")}
+                  className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
