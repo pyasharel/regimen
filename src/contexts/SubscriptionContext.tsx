@@ -102,6 +102,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const revenueCatIdentifiedRef = useRef(false);
   const revenueCatEntitlementRef = useRef<{ isPro: boolean; isTrialing: boolean } | null>(null);
   const revenueCatAppUserIdRef = useRef<string | null>(null);
+  // Used to ignore one-off transient “not subscribed” results on iOS resume (e.g., screenshot background/foreground)
+  const revenueCatNegativeStreakRef = useRef(0);
   // Track which payment provider the subscription came from
   const [subscriptionProvider, setSubscriptionProvider] = useState<'stripe' | 'revenuecat' | null>(null);
 
@@ -779,11 +781,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             await initRevenueCat();
           }
 
-          if (revenueCatConfiguredRef.current) {
+           if (revenueCatConfiguredRef.current) {
             // Screenshot on iOS can cause a very quick background/foreground toggle.
             // If we already had an active entitlement in-memory, keep it stable and don't re-log-in.
             const cached = revenueCatEntitlementRef.current;
             if (cached?.isPro) {
+              revenueCatNegativeStreakRef.current = 0;
               setIsSubscribed(true);
               setSubscriptionStatus(cached.isTrialing ? 'trialing' : 'active', 'app_resume_rc_cached');
               setSubscriptionProvider('revenuecat');
@@ -814,12 +817,26 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             // If RevenueCat confirms user is subscribed, update state from RC and SKIP the full refresh
             // (full refresh can trigger stale profile reads that incorrectly downgrade to preview)
             if (isPro) {
+              revenueCatNegativeStreakRef.current = 0;
               console.log('[SubscriptionContext] App resumed - RevenueCat confirms subscription, updating state from RC');
               setIsSubscribed(true);
               setSubscriptionStatus(isTrialing ? 'trialing' : 'active', needsIdentify ? 'app_resume_rc_confirm' : 'app_resume_rc_info');
               setSubscriptionProvider('revenuecat');
               setLastRefreshTrigger(needsIdentify ? 'app_resume_rc_confirm' : 'app_resume_rc_info');
               return;
+            }
+
+            // If we were already showing active/trialing, treat a single “not pro” on resume as transient
+            // (this is the screenshot bug pattern). Only allow falling through after 2 consecutive negatives.
+            const prevStatus = subscriptionStatusRef.current;
+            if (prevStatus === 'active' || prevStatus === 'trialing') {
+              revenueCatNegativeStreakRef.current = Math.min(revenueCatNegativeStreakRef.current + 1, 3);
+              if (revenueCatNegativeStreakRef.current < 2) {
+                console.log('[SubscriptionContext] App resumed - transient RevenueCat miss, keeping existing status and skipping refresh');
+                addDiagnosticsLog('app_resume_keep_active', prevStatus, prevStatus, `rcNegativeStreak=${revenueCatNegativeStreakRef.current}`);
+                setLastRefreshTrigger('app_resume_keep_active');
+                return;
+              }
             }
           }
         }
