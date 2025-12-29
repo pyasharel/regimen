@@ -921,6 +921,9 @@ export const AddCompoundScreen = () => {
         const includePast = startDateMovedEarlier && newStartDate && newStartDate < today;
         const doses = generateDoses(editingCompound.id, user.id, includePast);
         
+        // Check if we have new past doses that were just created
+        const hasPastDoses = includePast && doses.some(d => d.scheduled_date < todayStr);
+        
         if (doses.length > 0) {
           const { error: dosesUpdateError } = await supabase
             .from('doses')
@@ -929,9 +932,17 @@ export const AddCompoundScreen = () => {
           if (dosesUpdateError) throw dosesUpdateError;
         }
 
-        // Success haptic and navigate immediately
+        // Success haptic
         triggerHaptic('medium');
         trackCompoundEdited(name);
+        
+        // If we created new past doses, show the bulk-mark dialog
+        if (hasPastDoses) {
+          setPendingCompoundId(editingCompound.id);
+          setShowPastDosesDialog(true);
+          return; // Don't navigate yet - dialog will handle it
+        }
+        
         navigate("/stack");
 
         // Reschedule notifications in background (non-blocking) - only for active compounds
