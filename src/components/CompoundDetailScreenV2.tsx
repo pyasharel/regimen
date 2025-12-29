@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, LineChart, Line } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import { format, subDays, differenceInDays, addDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -863,15 +863,11 @@ export const CompoundDetailScreenV2 = () => {
           </div>
         )}
 
-        {/* Dosage Timeline Chart - Shows dose changes over time */}
+        {/* Dosage Timeline - Slicker bar chart design */}
         {doseChanges.length > 0 && (
           <div className="rounded-2xl bg-card border border-border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-amber-500" style={{ transform: 'scaleY(-1)' }} />
-                <span className="font-semibold text-sm">Dosage Timeline</span>
-              </div>
-              <span className="text-xs text-muted-foreground">{doseChanges.length} change{doseChanges.length !== 1 ? 's' : ''}</span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-semibold text-sm">Dosage Timeline</span>
             </div>
 
             {(() => {
@@ -882,16 +878,16 @@ export const CompoundDetailScreenV2 = () => {
               
               if (sortedTakenDoses.length === 0) return null;
               
-              // Create step data points for line chart
-              const timelineData: { date: string; dose: number; label: string; isChange: boolean }[] = [];
+              // Create data points
+              const timelineData: { date: string; dose: number; label: string; isStart: boolean }[] = [];
               
-              // Add first dose
+              // Add first dose (starting point)
               const firstDose = sortedTakenDoses[0];
               timelineData.push({
                 date: format(new Date(firstDose.scheduled_date + 'T00:00:00'), 'MMM d'),
                 dose: firstDose.dose_amount,
                 label: `${firstDose.dose_amount} ${firstDose.dose_unit}`,
-                isChange: false
+                isStart: true
               });
               
               // Add each dose change
@@ -900,78 +896,72 @@ export const CompoundDetailScreenV2 = () => {
                   date: format(dc.date, 'MMM d'),
                   dose: dc.toDose,
                   label: `${dc.toDose} ${dc.unit}`,
-                  isChange: true
+                  isStart: false
                 });
               });
               
-              // Add current dose if different from last change
-              const lastEntry = timelineData[timelineData.length - 1];
-              if (compound && lastEntry.dose !== compound.intended_dose) {
-                timelineData.push({
-                  date: 'Now',
-                  dose: compound.intended_dose,
-                  label: `${compound.intended_dose} ${compound.dose_unit}`,
-                  isChange: true
-                });
-              }
-              
               const maxDose = Math.max(...timelineData.map(d => d.dose));
-              const minDose = Math.min(...timelineData.map(d => d.dose));
-              const padding = (maxDose - minDose) * 0.2 || maxDose * 0.1;
               
               return (
-                <div className="h-32">
+                <div className="h-28">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={timelineData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+                    <BarChart 
+                      data={timelineData} 
+                      margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+                      barCategoryGap="25%"
+                    >
+                      <defs>
+                        <linearGradient id="barGradientStart" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.6} />
+                          <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="barGradientChange" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        </linearGradient>
+                      </defs>
                       <XAxis 
                         dataKey="date" 
-                        tick={{ fontSize: 10 }}
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
                       />
                       <YAxis 
-                        tick={{ fontSize: 9 }}
+                        tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
-                        domain={[Math.max(0, minDose - padding), maxDose + padding]}
-                        width={32}
-                        tickCount={4}
-                        tickFormatter={(val) => `${val}${compound?.dose_unit === 'mg' ? '' : ''}`}
+                        domain={[0, maxDose * 1.15]}
+                        width={28}
+                        tickCount={3}
                       />
                       <Tooltip
+                        cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
                               <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                                <p className="text-xs text-muted-foreground mb-0.5">{data.date}</p>
-                                <p className="text-sm font-semibold text-amber-500">{data.label}</p>
-                                {data.isChange && <p className="text-[10px] text-muted-foreground">Dose adjusted</p>}
+                                <p className="text-xs text-muted-foreground">{data.date}</p>
+                                <p className="text-sm font-semibold">{data.label}</p>
                               </div>
                             );
                           }
                           return null;
                         }}
                       />
-                      <Line 
-                        type="stepAfter"
+                      <Bar 
                         dataKey="dose" 
-                        stroke="hsl(var(--amber-500, 38 92% 50%))"
-                        strokeWidth={2}
-                        dot={{ 
-                          r: 4, 
-                          fill: 'hsl(var(--amber-500, 38 92% 50%))',
-                          strokeWidth: 2,
-                          stroke: 'hsl(var(--background))'
-                        }}
-                        activeDot={{ 
-                          r: 6, 
-                          fill: 'hsl(var(--amber-500, 38 92% 50%))',
-                          stroke: 'hsl(var(--background))',
-                          strokeWidth: 2
-                        }}
-                      />
-                    </LineChart>
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={40}
+                      >
+                        {timelineData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.isStart ? 'url(#barGradientStart)' : 'url(#barGradientChange)'}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               );
