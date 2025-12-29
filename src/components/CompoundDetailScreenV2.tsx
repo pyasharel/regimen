@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, LineChart, Line } from 'recharts';
 import { format, subDays, differenceInDays, addDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -882,7 +882,7 @@ export const CompoundDetailScreenV2 = () => {
               
               if (sortedTakenDoses.length === 0) return null;
               
-              // Create step data points
+              // Create step data points for line chart
               const timelineData: { date: string; dose: number; label: string; isChange: boolean }[] = [];
               
               // Add first dose
@@ -916,11 +916,13 @@ export const CompoundDetailScreenV2 = () => {
               }
               
               const maxDose = Math.max(...timelineData.map(d => d.dose));
+              const minDose = Math.min(...timelineData.map(d => d.dose));
+              const padding = (maxDose - minDose) * 0.2 || maxDose * 0.1;
               
               return (
                 <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={timelineData} margin={{ top: 10, right: 5, bottom: 5, left: 0 }}>
+                    <LineChart data={timelineData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
                       <XAxis 
                         dataKey="date" 
                         tick={{ fontSize: 10 }}
@@ -931,9 +933,10 @@ export const CompoundDetailScreenV2 = () => {
                         tick={{ fontSize: 9 }}
                         tickLine={false}
                         axisLine={false}
-                        domain={[0, maxDose * 1.2]}
-                        width={28}
-                        tickCount={3}
+                        domain={[Math.max(0, minDose - padding), maxDose + padding]}
+                        width={32}
+                        tickCount={4}
+                        tickFormatter={(val) => `${val}${compound?.dose_unit === 'mg' ? '' : ''}`}
                       />
                       <Tooltip
                         content={({ active, payload }) => {
@@ -950,34 +953,29 @@ export const CompoundDetailScreenV2 = () => {
                           return null;
                         }}
                       />
-                      <Bar dataKey="dose" radius={[4, 4, 0, 0]}>
-                        {timelineData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.isChange ? 'hsl(var(--amber-500, 38 92% 50%))' : 'hsl(var(--primary))'} 
-                            fillOpacity={entry.isChange ? 0.8 : 0.6}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
+                      <Line 
+                        type="stepAfter"
+                        dataKey="dose" 
+                        stroke="hsl(var(--amber-500, 38 92% 50%))"
+                        strokeWidth={2}
+                        dot={{ 
+                          r: 4, 
+                          fill: 'hsl(var(--amber-500, 38 92% 50%))',
+                          strokeWidth: 2,
+                          stroke: 'hsl(var(--background))'
+                        }}
+                        activeDot={{ 
+                          r: 6, 
+                          fill: 'hsl(var(--amber-500, 38 92% 50%))',
+                          stroke: 'hsl(var(--background))',
+                          strokeWidth: 2
+                        }}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               );
             })()}
-            
-            {/* Change list */}
-            <div className="mt-3 space-y-1.5">
-              {doseChanges.slice(-3).reverse().map((dc, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{format(dc.date, 'MMM d, yyyy')}</span>
-                  <span className="font-medium">
-                    <span className="text-muted-foreground">{dc.fromDose}</span>
-                    <span className="text-amber-500 mx-1">→</span>
-                    <span className="text-foreground">{dc.toDose} {dc.unit}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
