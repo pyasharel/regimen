@@ -590,7 +590,7 @@ export const CompoundDetailScreenV2 = () => {
           <div className="rounded-xl bg-card border border-border p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <Syringe className="h-3 w-3 text-primary" />
-              <span className="text-xs text-muted-foreground">Progress</span>
+              <span className="text-xs text-muted-foreground">Total Doses</span>
             </div>
             <div className="text-lg font-bold">{totalDosesTaken} doses</div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
