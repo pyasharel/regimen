@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, LineChart, Line } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, LineChart, Line, BarChart, Bar } from 'recharts';
 import { format, subDays, differenceInDays, addDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -863,18 +863,18 @@ export const CompoundDetailScreenV2 = () => {
           </div>
         )}
 
-        {/* Dosage Timeline - Full journey view */}
+        {/* Dosage Timeline - Thin bar chart like Usage Trends */}
         {uniqueTakenDoses.length >= 2 && (
           <div className="rounded-2xl bg-card border border-border p-4">
             <div className="flex items-center justify-between mb-4">
               <span className="font-semibold text-sm">Dosage Timeline</span>
               <span className="text-[10px] text-muted-foreground">
-                Full history
+                Weekly doses
               </span>
             </div>
 
             {(() => {
-              // Build full timeline with weekly aggregation for longer periods
+              // Group doses by week for thin bar visualization
               const sortedTakenDoses = [...uniqueTakenDoses]
                 .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
               
@@ -884,101 +884,113 @@ export const CompoundDetailScreenV2 = () => {
               const lastDate = new Date(sortedTakenDoses[sortedTakenDoses.length - 1].scheduled_date + 'T00:00:00');
               const totalDays = differenceInDays(lastDate, firstDate) + 1;
               
-              // Create timeline data points - one per dose taken
-              const timelineData: { 
-                date: string; 
-                dose: number; 
-                fullDate: string;
-                timestamp: number;
-              }[] = sortedTakenDoses.map(d => ({
-                date: format(new Date(d.scheduled_date + 'T00:00:00'), totalDays > 60 ? 'MMM d' : 'MMM d'),
-                dose: d.dose_amount,
-                fullDate: format(new Date(d.scheduled_date + 'T00:00:00'), 'MMM d, yyyy'),
-                timestamp: new Date(d.scheduled_date + 'T00:00:00').getTime()
-              }));
+              // Calculate weekly totals for bar chart
+              const weeklyData: { 
+                week: string; 
+                total: number; 
+                avgDose: number;
+                count: number;
+                weekStart: Date;
+              }[] = [];
               
-              // Add a zero point at the start (before first dose)
-              const startPoint = {
-                date: format(new Date(firstDate.getTime() - 86400000), 'MMM d'), // Day before first dose
-                dose: 0,
-                fullDate: format(new Date(firstDate.getTime() - 86400000), 'MMM d, yyyy'),
-                timestamp: firstDate.getTime() - 86400000
-              };
+              // Group by week
+              const weekMap = new Map<string, { total: number; count: number; avgDose: number; weekStart: Date }>();
               
-              // Deduplicate by date (keep last dose of each day for display)
-              const deduped = timelineData.reduce((acc, curr) => {
-                const existing = acc.find(d => d.date === curr.date);
-                if (existing) {
-                  existing.dose = curr.dose; // Keep latest dose for that date
-                } else {
-                  acc.push(curr);
+              sortedTakenDoses.forEach(dose => {
+                const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+                // Get start of week (Sunday)
+                const weekStart = new Date(doseDate);
+                weekStart.setDate(doseDate.getDate() - doseDate.getDay());
+                const weekKey = format(weekStart, 'MM/dd');
+                
+                if (!weekMap.has(weekKey)) {
+                  weekMap.set(weekKey, { total: 0, count: 0, avgDose: 0, weekStart });
                 }
-                return acc;
-              }, [] as typeof timelineData);
+                const week = weekMap.get(weekKey)!;
+                week.total += dose.dose_amount;
+                week.count += 1;
+                week.avgDose = week.total / week.count;
+              });
               
-              // Add start point at beginning
-              const withStart = [startPoint, ...deduped];
+              // Convert to array and sort
+              weekMap.forEach((value, key) => {
+                weeklyData.push({
+                  week: key,
+                  total: Math.round(value.total * 10) / 10,
+                  avgDose: Math.round(value.avgDose * 10) / 10,
+                  count: value.count,
+                  weekStart: value.weekStart
+                });
+              });
               
-              // If too many points, sample them (but always keep start and end)
-              const maxPoints = 20;
-              const displayData = withStart.length > maxPoints 
-                ? withStart.filter((_, i) => i === 0 || i === withStart.length - 1 || i % Math.ceil(withStart.length / maxPoints) === 0)
-                : withStart;
+              weeklyData.sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime());
+              
+              // If only a few weeks, show daily instead
+              const useDailyView = weeklyData.length < 4 && totalDays <= 21;
+              
+              let displayData: { label: string; value: number; fullLabel: string }[] = [];
+              
+              if (useDailyView) {
+                // Daily view with thin bars
+                displayData = sortedTakenDoses.map(dose => ({
+                  label: format(new Date(dose.scheduled_date + 'T00:00:00'), 'M/d'),
+                  value: dose.dose_amount,
+                  fullLabel: format(new Date(dose.scheduled_date + 'T00:00:00'), 'MMM d, yyyy')
+                }));
+              } else {
+                // Weekly view
+                displayData = weeklyData.map(w => ({
+                  label: w.week,
+                  value: w.total,
+                  fullLabel: `Week of ${format(w.weekStart, 'MMM d')} (${w.count} doses)`
+                }));
+              }
               
               // Calculate clean integer Y-axis ticks
-              const doses = displayData.map(d => d.dose);
-              const maxDose = Math.max(...doses);
-              
-              // Create integer ticks from 0 to max (rounded up to nearest integer)
-              const yMax = Math.ceil(maxDose);
-              const tickStep = yMax <= 5 ? 1 : yMax <= 10 ? 2 : Math.ceil(yMax / 5);
+              const values = displayData.map(d => d.value);
+              const maxValue = Math.max(...values);
+              const yMax = Math.ceil(maxValue / 10) * 10 || 10; // Round to nearest 10
+              const tickCount = 5;
+              const tickStep = Math.ceil(yMax / tickCount);
               const yTicks: number[] = [];
               for (let i = 0; i <= yMax; i += tickStep) {
                 yTicks.push(i);
               }
-              // Ensure max is included
-              if (yTicks[yTicks.length - 1] < yMax) {
-                yTicks.push(Math.ceil(yMax / tickStep) * tickStep);
-              }
               
               return (
-                <div className="h-32">
+                <div className="h-36">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart 
+                    <BarChart 
                       data={displayData} 
-                      margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
+                      margin={{ top: 16, right: 4, bottom: 0, left: -8 }}
+                      barCategoryGap="20%"
                     >
-                      <defs>
-                        <linearGradient id="dosageTimelineFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                        </linearGradient>
-                      </defs>
                       <XAxis 
-                        dataKey="date" 
+                        dataKey="label" 
                         tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
-                        interval="preserveStartEnd"
+                        interval={displayData.length > 12 ? Math.floor(displayData.length / 8) : 0}
                       />
                       <YAxis 
                         tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
-                        domain={[0, yTicks[yTicks.length - 1]]}
+                        domain={[0, yMax]}
                         ticks={yTicks}
-                        width={24}
+                        width={28}
                         tickFormatter={(v) => `${v}`}
                       />
                       <Tooltip
+                        cursor={{ fill: 'hsl(var(--muted)/0.1)' }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
                               <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                                <p className="text-xs text-muted-foreground">{data.fullDate}</p>
-                                <p className="text-sm font-semibold text-primary">
-                                  {data.dose === 0 ? 'Not started' : `${data.dose} ${compound.dose_unit}`}
+                                <p className="text-xs text-muted-foreground">{data.fullLabel}</p>
+                                <p className="text-sm font-semibold" style={{ color: 'hsl(var(--chart-2))' }}>
+                                  {data.value} {compound.dose_unit}{useDailyView ? '' : ' total'}
                                 </p>
                               </div>
                             );
@@ -986,26 +998,19 @@ export const CompoundDetailScreenV2 = () => {
                           return null;
                         }}
                       />
-                      <Area 
-                        type="stepAfter"
-                        dataKey="dose" 
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        fill="url(#dosageTimelineFill)"
-                        dot={{ 
-                          fill: 'hsl(var(--primary))', 
-                          strokeWidth: 0, 
-                          r: 3 
-                        }}
-                        activeDot={{ 
-                          fill: 'hsl(var(--primary))', 
-                          stroke: 'hsl(var(--background))',
-                          strokeWidth: 2,
-                          r: 5 
-                        }}
-                        isAnimationActive={false}
+                      <Bar 
+                        dataKey="value" 
+                        fill="hsl(var(--chart-2))"
+                        radius={[2, 2, 0, 0]}
+                        maxBarSize={displayData.length > 20 ? 8 : displayData.length > 10 ? 12 : 20}
+                        label={displayData.length <= 15 ? {
+                          position: 'top',
+                          fontSize: 8,
+                          fill: 'hsl(var(--muted-foreground))',
+                          formatter: (v: number) => v
+                        } : undefined}
                       />
-                    </AreaChart>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               );
