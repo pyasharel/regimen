@@ -897,6 +897,14 @@ export const CompoundDetailScreenV2 = () => {
                 timestamp: new Date(d.scheduled_date + 'T00:00:00').getTime()
               }));
               
+              // Add a zero point at the start (before first dose)
+              const startPoint = {
+                date: format(new Date(firstDate.getTime() - 86400000), 'MMM d'), // Day before first dose
+                dose: 0,
+                fullDate: format(new Date(firstDate.getTime() - 86400000), 'MMM d, yyyy'),
+                timestamp: firstDate.getTime() - 86400000
+              };
+              
               // Deduplicate by date (keep last dose of each day for display)
               const deduped = timelineData.reduce((acc, curr) => {
                 const existing = acc.find(d => d.date === curr.date);
@@ -908,31 +916,42 @@ export const CompoundDetailScreenV2 = () => {
                 return acc;
               }, [] as typeof timelineData);
               
-              // If too many points, sample them
-              const maxPoints = 20;
-              const displayData = deduped.length > maxPoints 
-                ? deduped.filter((_, i) => i === 0 || i === deduped.length - 1 || i % Math.ceil(deduped.length / maxPoints) === 0)
-                : deduped;
+              // Add start point at beginning
+              const withStart = [startPoint, ...deduped];
               
+              // If too many points, sample them (but always keep start and end)
+              const maxPoints = 20;
+              const displayData = withStart.length > maxPoints 
+                ? withStart.filter((_, i) => i === 0 || i === withStart.length - 1 || i % Math.ceil(withStart.length / maxPoints) === 0)
+                : withStart;
+              
+              // Calculate clean integer Y-axis ticks
               const doses = displayData.map(d => d.dose);
-              const minDose = Math.min(...doses);
               const maxDose = Math.max(...doses);
-              const doseRange = maxDose - minDose;
-              const yMin = doseRange > 0 ? Math.max(0, minDose - doseRange * 0.2) : minDose * 0.8;
-              const yMax = doseRange > 0 ? maxDose + doseRange * 0.2 : maxDose * 1.2;
+              
+              // Create integer ticks from 0 to max (rounded up to nearest integer)
+              const yMax = Math.ceil(maxDose);
+              const tickStep = yMax <= 5 ? 1 : yMax <= 10 ? 2 : Math.ceil(yMax / 5);
+              const yTicks: number[] = [];
+              for (let i = 0; i <= yMax; i += tickStep) {
+                yTicks.push(i);
+              }
+              // Ensure max is included
+              if (yTicks[yTicks.length - 1] < yMax) {
+                yTicks.push(Math.ceil(yMax / tickStep) * tickStep);
+              }
               
               return (
                 <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart 
+                    <AreaChart 
                       data={displayData} 
                       margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
                     >
                       <defs>
-                        <linearGradient id="timelineGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.4} />
-                          <stop offset="30%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+                        <linearGradient id="dosageTimelineFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                         </linearGradient>
                       </defs>
                       <XAxis 
@@ -946,9 +965,9 @@ export const CompoundDetailScreenV2 = () => {
                         tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
-                        domain={[yMin, yMax]}
-                        width={32}
-                        tickCount={3}
+                        domain={[0, yTicks[yTicks.length - 1]]}
+                        ticks={yTicks}
+                        width={24}
                         tickFormatter={(v) => `${v}`}
                       />
                       <Tooltip
@@ -958,18 +977,21 @@ export const CompoundDetailScreenV2 = () => {
                             return (
                               <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                                 <p className="text-xs text-muted-foreground">{data.fullDate}</p>
-                                <p className="text-sm font-semibold text-primary">{data.dose} {compound.dose_unit}</p>
+                                <p className="text-sm font-semibold text-primary">
+                                  {data.dose === 0 ? 'Not started' : `${data.dose} ${compound.dose_unit}`}
+                                </p>
                               </div>
                             );
                           }
                           return null;
                         }}
                       />
-                      <Line 
+                      <Area 
                         type="stepAfter"
                         dataKey="dose" 
-                        stroke="url(#timelineGradient)"
-                        strokeWidth={2.5}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fill="url(#dosageTimelineFill)"
                         dot={{ 
                           fill: 'hsl(var(--primary))', 
                           strokeWidth: 0, 
@@ -983,7 +1005,7 @@ export const CompoundDetailScreenV2 = () => {
                         }}
                         isAnimationActive={false}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               );
