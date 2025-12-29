@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, LineChart, Line } from 'recharts';
 import { format, subDays, differenceInDays, addDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -863,105 +863,127 @@ export const CompoundDetailScreenV2 = () => {
           </div>
         )}
 
-        {/* Dosage Timeline - Slicker bar chart design */}
-        {doseChanges.length > 0 && (
+        {/* Dosage Timeline - Full journey view */}
+        {uniqueTakenDoses.length >= 2 && (
           <div className="rounded-2xl bg-card border border-border p-4">
             <div className="flex items-center justify-between mb-4">
               <span className="font-semibold text-sm">Dosage Timeline</span>
+              <span className="text-[10px] text-muted-foreground">
+                Full history
+              </span>
             </div>
 
             {(() => {
-              // Build timeline data: start dose + all changes
-              const sortedTakenDoses = [...doses]
-                .filter(d => d.taken)
+              // Build full timeline with weekly aggregation for longer periods
+              const sortedTakenDoses = [...uniqueTakenDoses]
                 .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
               
               if (sortedTakenDoses.length === 0) return null;
               
-              // Create data points
-              const timelineData: { date: string; dose: number; label: string; isStart: boolean }[] = [];
+              const firstDate = new Date(sortedTakenDoses[0].scheduled_date + 'T00:00:00');
+              const lastDate = new Date(sortedTakenDoses[sortedTakenDoses.length - 1].scheduled_date + 'T00:00:00');
+              const totalDays = differenceInDays(lastDate, firstDate) + 1;
               
-              // Add first dose (starting point)
-              const firstDose = sortedTakenDoses[0];
-              timelineData.push({
-                date: format(new Date(firstDose.scheduled_date + 'T00:00:00'), 'MMM d'),
-                dose: firstDose.dose_amount,
-                label: `${firstDose.dose_amount} ${firstDose.dose_unit}`,
-                isStart: true
-              });
+              // Create timeline data points - one per dose taken
+              const timelineData: { 
+                date: string; 
+                dose: number; 
+                fullDate: string;
+                timestamp: number;
+              }[] = sortedTakenDoses.map(d => ({
+                date: format(new Date(d.scheduled_date + 'T00:00:00'), totalDays > 60 ? 'MMM d' : 'MMM d'),
+                dose: d.dose_amount,
+                fullDate: format(new Date(d.scheduled_date + 'T00:00:00'), 'MMM d, yyyy'),
+                timestamp: new Date(d.scheduled_date + 'T00:00:00').getTime()
+              }));
               
-              // Add each dose change
-              doseChanges.forEach(dc => {
-                timelineData.push({
-                  date: format(dc.date, 'MMM d'),
-                  dose: dc.toDose,
-                  label: `${dc.toDose} ${dc.unit}`,
-                  isStart: false
-                });
-              });
+              // Deduplicate by date (keep last dose of each day for display)
+              const deduped = timelineData.reduce((acc, curr) => {
+                const existing = acc.find(d => d.date === curr.date);
+                if (existing) {
+                  existing.dose = curr.dose; // Keep latest dose for that date
+                } else {
+                  acc.push(curr);
+                }
+                return acc;
+              }, [] as typeof timelineData);
               
-              const maxDose = Math.max(...timelineData.map(d => d.dose));
+              // If too many points, sample them
+              const maxPoints = 20;
+              const displayData = deduped.length > maxPoints 
+                ? deduped.filter((_, i) => i === 0 || i === deduped.length - 1 || i % Math.ceil(deduped.length / maxPoints) === 0)
+                : deduped;
+              
+              const doses = displayData.map(d => d.dose);
+              const minDose = Math.min(...doses);
+              const maxDose = Math.max(...doses);
+              const doseRange = maxDose - minDose;
+              const yMin = doseRange > 0 ? Math.max(0, minDose - doseRange * 0.2) : minDose * 0.8;
+              const yMax = doseRange > 0 ? maxDose + doseRange * 0.2 : maxDose * 1.2;
               
               return (
-                <div className="h-28">
+                <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={timelineData} 
-                      margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
-                      barCategoryGap="25%"
+                    <LineChart 
+                      data={displayData} 
+                      margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
                     >
                       <defs>
-                        <linearGradient id="barGradientStart" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.6} />
-                          <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
-                        </linearGradient>
-                        <linearGradient id="barGradientChange" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <linearGradient id="timelineGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.4} />
+                          <stop offset="30%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={1} />
                         </linearGradient>
                       </defs>
                       <XAxis 
                         dataKey="date" 
-                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                        tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
+                        interval="preserveStartEnd"
                       />
                       <YAxis 
                         tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                         tickLine={false}
                         axisLine={false}
-                        domain={[0, maxDose * 1.15]}
-                        width={28}
+                        domain={[yMin, yMax]}
+                        width={32}
                         tickCount={3}
+                        tickFormatter={(v) => `${v}`}
                       />
                       <Tooltip
-                        cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
                               <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                                <p className="text-xs text-muted-foreground">{data.date}</p>
-                                <p className="text-sm font-semibold">{data.label}</p>
+                                <p className="text-xs text-muted-foreground">{data.fullDate}</p>
+                                <p className="text-sm font-semibold text-primary">{data.dose} {compound.dose_unit}</p>
                               </div>
                             );
                           }
                           return null;
                         }}
                       />
-                      <Bar 
+                      <Line 
+                        type="stepAfter"
                         dataKey="dose" 
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={40}
-                      >
-                        {timelineData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.isStart ? 'url(#barGradientStart)' : 'url(#barGradientChange)'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
+                        stroke="url(#timelineGradient)"
+                        strokeWidth={2.5}
+                        dot={{ 
+                          fill: 'hsl(var(--primary))', 
+                          strokeWidth: 0, 
+                          r: 3 
+                        }}
+                        activeDot={{ 
+                          fill: 'hsl(var(--primary))', 
+                          stroke: 'hsl(var(--background))',
+                          strokeWidth: 2,
+                          r: 5 
+                        }}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               );
@@ -1016,36 +1038,25 @@ export const CompoundDetailScreenV2 = () => {
             </p>
           ) : (
             <div className={`space-y-2 ${allHandledDoses.length > 5 ? 'max-h-[280px] overflow-y-auto pr-1' : ''}`}>
-              {allHandledDoses.map((dose, idx) => {
-                // Check if this dose represents a dose change
-                const prevDose = allHandledDoses[idx + 1];
-                const isDoseChange = prevDose && dose.dose_amount !== prevDose.dose_amount && dose.type === 'taken' && prevDose.type === 'taken';
-                
+              {allHandledDoses.map((dose) => {
                 return (
                   <div 
                     key={dose.id}
                     className={`flex items-center justify-between p-3 rounded-xl border ${
                       dose.type === 'skipped' 
                         ? 'bg-muted/30 border-border/50' 
-                        : isDoseChange 
-                          ? 'bg-amber-500/5 border-amber-500/20' 
-                          : 'bg-card border-border'
+                        : 'bg-card border-border'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`h-2 w-2 rounded-full ${
-                        dose.type === 'skipped' ? 'bg-muted-foreground/40' : isDoseChange ? 'bg-amber-500' : 'bg-primary'
+                        dose.type === 'skipped' ? 'bg-muted-foreground/40' : 'bg-primary'
                       }`} />
                       <div>
-                        <div className={`font-medium text-sm flex items-center gap-2 ${
+                        <div className={`font-medium text-sm ${
                           dose.type === 'skipped' ? 'text-muted-foreground/70' : ''
                         }`}>
                           {formatDose(dose.dose_amount, dose.dose_unit)}
-                          {isDoseChange && (
-                            <span className="text-[10px] text-amber-600 font-semibold">
-                              {dose.dose_amount > prevDose.dose_amount ? '↑' : '↓'} from {formatDose(prevDose.dose_amount, prevDose.dose_unit)}
-                            </span>
-                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {dose.type === 'taken' && dose.taken_at 
