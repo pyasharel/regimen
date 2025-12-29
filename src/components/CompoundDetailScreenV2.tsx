@@ -989,7 +989,7 @@ export const CompoundDetailScreenV2 = () => {
                             return (
                               <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
                                 <p className="text-xs text-muted-foreground">{data.fullLabel}</p>
-                                <p className="text-sm font-semibold" style={{ color: 'hsl(var(--chart-2))' }}>
+                              <p className="text-sm font-semibold" style={{ color: 'hsl(var(--secondary))' }}>
                                   {data.value} {compound.dose_unit}{useDailyView ? '' : ' total'}
                                 </p>
                               </div>
@@ -1000,7 +1000,7 @@ export const CompoundDetailScreenV2 = () => {
                       />
                       <Bar 
                         dataKey="value" 
-                        fill="hsl(var(--chart-2))"
+                        fill="hsl(var(--secondary))"
                         radius={[2, 2, 0, 0]}
                         maxBarSize={displayData.length > 20 ? 8 : displayData.length > 10 ? 12 : 20}
                         label={displayData.length <= 15 ? {
