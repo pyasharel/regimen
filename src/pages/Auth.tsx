@@ -273,15 +273,20 @@ export default function Auth() {
       } else {
         // Web: Use OAuth flow with forced account selection
         console.log('Starting web Google Sign-In with account picker');
+        const redirectTo = `${window.location.origin}/auth`;
+        console.log('[Auth] Starting web Google Sign-In, redirectTo:', redirectTo);
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: `${window.location.origin}/today`,
+            // Redirect back to /auth (unprotected) so the OAuth code exchange can complete
+            // without getting interrupted by ProtectedRoute.
+            redirectTo,
             queryParams: {
               access_type: 'offline',
               prompt: 'select_account', // Force account picker every time
-            }
-          }
+            },
+          },
         });
 
         if (error) throw error;
