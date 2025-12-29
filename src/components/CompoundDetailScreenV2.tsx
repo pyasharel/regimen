@@ -8,7 +8,7 @@ import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceDot, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 import { format, subDays, differenceInDays, addDays } from 'date-fns';
 import { Share } from '@capacitor/share';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -859,6 +859,124 @@ export const CompoundDetailScreenV2 = () => {
                   <span>Dose change</span>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Dosage Timeline Chart - Shows dose changes over time */}
+        {doseChanges.length > 0 && (
+          <div className="rounded-2xl bg-card border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-amber-500" style={{ transform: 'scaleY(-1)' }} />
+                <span className="font-semibold text-sm">Dosage Timeline</span>
+              </div>
+              <span className="text-xs text-muted-foreground">{doseChanges.length} change{doseChanges.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {(() => {
+              // Build timeline data: start dose + all changes
+              const sortedTakenDoses = [...doses]
+                .filter(d => d.taken)
+                .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
+              
+              if (sortedTakenDoses.length === 0) return null;
+              
+              // Create step data points
+              const timelineData: { date: string; dose: number; label: string; isChange: boolean }[] = [];
+              
+              // Add first dose
+              const firstDose = sortedTakenDoses[0];
+              timelineData.push({
+                date: format(new Date(firstDose.scheduled_date + 'T00:00:00'), 'MMM d'),
+                dose: firstDose.dose_amount,
+                label: `${firstDose.dose_amount} ${firstDose.dose_unit}`,
+                isChange: false
+              });
+              
+              // Add each dose change
+              doseChanges.forEach(dc => {
+                timelineData.push({
+                  date: format(dc.date, 'MMM d'),
+                  dose: dc.toDose,
+                  label: `${dc.toDose} ${dc.unit}`,
+                  isChange: true
+                });
+              });
+              
+              // Add current dose if different from last change
+              const lastEntry = timelineData[timelineData.length - 1];
+              if (compound && lastEntry.dose !== compound.intended_dose) {
+                timelineData.push({
+                  date: 'Now',
+                  dose: compound.intended_dose,
+                  label: `${compound.intended_dose} ${compound.dose_unit}`,
+                  isChange: true
+                });
+              }
+              
+              const maxDose = Math.max(...timelineData.map(d => d.dose));
+              
+              return (
+                <div className="h-32">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={timelineData} margin={{ top: 10, right: 5, bottom: 5, left: 0 }}>
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 9 }}
+                        tickLine={false}
+                        axisLine={false}
+                        domain={[0, maxDose * 1.2]}
+                        width={28}
+                        tickCount={3}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs text-muted-foreground mb-0.5">{data.date}</p>
+                                <p className="text-sm font-semibold text-amber-500">{data.label}</p>
+                                {data.isChange && <p className="text-[10px] text-muted-foreground">Dose adjusted</p>}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="dose" radius={[4, 4, 0, 0]}>
+                        {timelineData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.isChange ? 'hsl(var(--amber-500, 38 92% 50%))' : 'hsl(var(--primary))'} 
+                            fillOpacity={entry.isChange ? 0.8 : 0.6}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
+            
+            {/* Change list */}
+            <div className="mt-3 space-y-1.5">
+              {doseChanges.slice(-3).reverse().map((dc, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{format(dc.date, 'MMM d, yyyy')}</span>
+                  <span className="font-medium">
+                    <span className="text-muted-foreground">{dc.fromDose}</span>
+                    <span className="text-amber-500 mx-1">→</span>
+                    <span className="text-foreground">{dc.toDose} {dc.unit}</span>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
