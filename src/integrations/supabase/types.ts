@@ -40,6 +40,7 @@ export type Database = {
           titration_config: Json | null
           user_id: string | null
           vial_size: number | null
+          vial_started_at: string | null
           vial_unit: string | null
         }
         Insert: {
@@ -67,6 +68,7 @@ export type Database = {
           titration_config?: Json | null
           user_id?: string | null
           vial_size?: number | null
+          vial_started_at?: string | null
           vial_unit?: string | null
         }
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           titration_config?: Json | null
           user_id?: string | null
           vial_size?: number | null
+          vial_started_at?: string | null
           vial_unit?: string | null
         }
         Relationships: []

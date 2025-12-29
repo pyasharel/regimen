@@ -33,6 +33,7 @@ import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SubscriptionTest } from "./pages/SubscriptionTest";
 import { CompoundDetailScreen } from "./components/CompoundDetailScreen";
+import { CompoundDetailScreenV2 } from "./components/CompoundDetailScreenV2";
 import Auth from "./pages/Auth";
 import Splash from "./pages/Splash";
 import NotFound from "./pages/NotFound";
@@ -75,6 +76,7 @@ const AppContent = () => {
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
             <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
             <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
+            <Route path="/stack-v2/:id" element={<ProtectedRoute><CompoundDetailScreenV2 /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
             <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
