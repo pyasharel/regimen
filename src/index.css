@@ -50,6 +50,11 @@ All colors MUST be HSL.
     --surface: 0 0% 96%; /* #F5F5F5 - Slightly darker */
     --surface-elevated: 0 0% 99%; /* #FCFCFC - For sections that need to stand out */
     
+    /* Dose card styling - Classic */
+    --dose-card-bg: 0 0% 100%;
+    --dose-card-border: 0 0% 90%;
+    --dose-card-accent-width: 0px;
+    
     /* Gradients */
     --gradient-premium: linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%));
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 98%));
@@ -62,6 +67,45 @@ All colors MUST be HSL.
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ============================================
+     SOFT PREMIUM DESIGN VARIANT - Light Mode
+     ============================================ */
+  .design-soft:root,
+  :root.design-soft {
+    /* Soft Premium - Dusty Rose Primary */
+    --primary: 8 35% 65%; /* Dusty rose - muted coral */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Soft Premium - Muted Purple Secondary */
+    --secondary: 270 25% 60%; /* Softer mauve/purple */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Softer accent */
+    --accent: 270 25% 60%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Warmer grays */
+    --muted: 20 10% 94%;
+    --muted-foreground: 20 5% 45%;
+    
+    /* Ring matches soft primary */
+    --ring: 8 35% 65%;
+    
+    /* Dose card styling - Soft with tinted background */
+    --dose-card-bg: 8 20% 97%; /* Very subtle rose tint */
+    --dose-card-border: 8 15% 88%;
+    --dose-card-accent-width: 3px;
+    
+    /* Softer gradients */
+    --gradient-premium: linear-gradient(135deg, hsl(8 35% 65%), hsl(270 25% 60%));
+    --gradient-section: linear-gradient(135deg, hsl(8 35% 97%), hsl(270 25% 97%));
+    
+    /* Reduced shadows */
+    --shadow-card: 0 1px 8px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 2px 12px rgba(0, 0, 0, 0.06);
+    --shadow-premium: 0 4px 20px rgba(180, 140, 135, 0.15);
   }
 
   /* Hide scrollbar for iOS time picker */
@@ -107,9 +151,51 @@ All colors MUST be HSL.
     /* Surface levels */
     --surface: 0 0% 14.9%; /* #262626 */
     
+    /* Dose card styling - Classic dark */
+    --dose-card-bg: 0 0% 10.2%;
+    --dose-card-border: 0 0% 20%;
+    --dose-card-accent-width: 0px;
+    
     /* Shadows */
     --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ============================================
+     SOFT PREMIUM DESIGN VARIANT - Dark Mode
+     ============================================ */
+  .dark.design-soft {
+    /* Soft Premium - Dusty Rose Primary in dark mode */
+    --primary: 8 40% 60%; /* Slightly brighter dusty rose for dark bg */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Soft Premium - Muted Purple Secondary */
+    --secondary: 270 30% 55%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Softer accent */
+    --accent: 270 30% 55%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Warmer dark grays */
+    --muted: 20 5% 16%;
+    --muted-foreground: 20 10% 60%;
+    
+    /* Ring matches soft primary */
+    --ring: 8 40% 60%;
+    
+    /* Dose card styling - Soft with subtle tint */
+    --dose-card-bg: 8 8% 12%; /* Very subtle rose tint on dark */
+    --dose-card-border: 8 10% 22%;
+    --dose-card-accent-width: 3px;
+    
+    /* Softer gradients for dark */
+    --gradient-premium: linear-gradient(135deg, hsl(8 40% 60%), hsl(270 30% 55%));
+    
+    /* Reduced shadows for dark */
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-premium: 0 4px 20px rgba(180, 120, 115, 0.1);
   }
 }
 

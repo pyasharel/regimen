@@ -23,6 +23,7 @@ import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
 import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
 import { trackDoseLogged, trackDoseSkipped, trackPaywallShown } from "@/utils/analytics";
+import { useTheme } from "@/components/ThemeProvider";
 import {
   Drawer,
   DrawerContent,
@@ -59,6 +60,8 @@ export const TodayScreen = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [doses, setDoses] = useState<Dose[]>([]);
+  const { designVariant } = useTheme();
+  const isSoftMode = designVariant === 'soft';
   
   // Track engagement for first dose notification
   useEngagementTracking();
@@ -86,6 +89,7 @@ export const TodayScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
+
 
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
@@ -1025,6 +1029,12 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
+                // Soft mode: tinted background + left accent border for taken cards
+                const softTakenStyle = isSoftMode && dose.taken && !isSkipped ? {
+                  borderLeftWidth: '3px',
+                  borderLeftColor: 'hsl(var(--primary))',
+                } : {};
+                
                 return (
                   <div
                     key={dose.id}
@@ -1036,7 +1046,9 @@ export const TodayScreen = () => {
                       isSkipped
                         ? 'bg-muted/50 border-border/50'
                         : dose.taken
-                        ? 'bg-card border-border'
+                        ? isSoftMode 
+                          ? 'bg-dose-card border-dose-card-border' 
+                          : 'bg-card border-border'
                         : 'bg-primary border-primary'
                     }`}
                     style={{
@@ -1045,7 +1057,8 @@ export const TodayScreen = () => {
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       ...(isHandled ? {} : {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
-                      })
+                      }),
+                      ...softTakenStyle
                     }}
                   >
                     {/* Golden shine for day complete only */}

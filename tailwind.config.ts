@@ -49,6 +49,10 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         surface: "hsl(var(--surface))",
+        "dose-card": {
+          DEFAULT: "hsl(var(--dose-card-bg))",
+          border: "hsl(var(--dose-card-border))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
