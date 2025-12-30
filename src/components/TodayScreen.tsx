@@ -1029,11 +1029,25 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
-                // Soft mode: tinted background + left accent border for taken cards
-                const softTakenStyle = isSoftMode && dose.taken && !isSkipped ? {
-                  borderLeftWidth: '3px',
-                  borderLeftColor: 'hsl(var(--primary))',
-                } : {};
+                // Soft mode: all cards get tinted background + left accent border
+                const getSoftModeClasses = () => {
+                  if (!isSoftMode) return '';
+                  if (isSkipped) return '';
+                  return 'border-l-[3px] border-l-primary';
+                };
+                
+                const getCardBackground = () => {
+                  if (isSkipped) return 'bg-muted/50 border-border/50';
+                  if (dose.taken) {
+                    return isSoftMode 
+                      ? 'bg-dose-card border-dose-card-border' 
+                      : 'bg-card border-border';
+                  }
+                  // Untaken cards
+                  return isSoftMode 
+                    ? 'bg-dose-card border-dose-card-border' 
+                    : 'bg-primary border-primary';
+                };
                 
                 return (
                   <div
@@ -1042,23 +1056,14 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all relative ${
-                      isSkipped
-                        ? 'bg-muted/50 border-border/50'
-                        : dose.taken
-                        ? isSoftMode 
-                          ? 'bg-dose-card border-dose-card-border' 
-                          : 'bg-card border-border'
-                        : 'bg-primary border-primary'
-                    }`}
+                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()} ${getSoftModeClasses()}`}
                     style={{
                       opacity: isHandled ? 0.85 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      ...(isHandled ? {} : {
+                      ...(isHandled || isSoftMode ? {} : {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
-                      }),
-                      ...softTakenStyle
+                      })
                     }}
                   >
                     {/* Golden shine for day complete only */}
@@ -1083,6 +1088,8 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/60' 
                                 : dose.taken 
                                 ? 'text-muted-foreground' 
+                                : isSoftMode
+                                ? 'text-foreground'
                                 : 'text-white'
                             }`}>
                               {dose.compound_name}
@@ -1101,6 +1108,8 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
                                 ? 'text-muted-foreground/70' 
+                                : isSoftMode
+                                ? 'text-muted-foreground'
                                 : 'text-white/70'
                             }`}>
                               {formatTime(dose.scheduled_time)}
@@ -1110,6 +1119,8 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
                                 ? 'text-muted-foreground/70' 
+                                : isSoftMode
+                                ? 'text-muted-foreground'
                                 : 'text-white/70'
                             }`} style={{ marginLeft: '1px', marginRight: '1px' }}>•</span>
                             <span className={`text-xs font-semibold transition-colors duration-300 ${
@@ -1117,6 +1128,8 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/50'
                                 : dose.taken 
                                 ? 'text-muted-foreground' 
+                                : isSoftMode
+                                ? 'text-foreground'
                                 : 'text-white/90'
                             }`}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
@@ -1136,6 +1149,8 @@ export const TodayScreen = () => {
                                   ? 'text-muted-foreground/30 hover:text-muted-foreground/50'
                                   : dose.taken 
                                   ? 'text-muted-foreground/40 hover:text-muted-foreground/60' 
+                                  : isSoftMode
+                                  ? 'text-muted-foreground/50 hover:text-muted-foreground/70'
                                   : 'text-white/40 hover:text-white/60'
                               }`}
                             >
@@ -1183,6 +1198,8 @@ export const TodayScreen = () => {
                             className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                               dose.taken
                                 ? 'bg-success border-success'
+                                : isSoftMode
+                                ? 'border-primary/50 hover:border-primary active:scale-95'
                                 : 'border-white/40 hover:border-white active:scale-95'
                             }`}
                             style={{
