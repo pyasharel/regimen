@@ -470,9 +470,9 @@ export const ProgressScreen = () => {
 
           {/* Streak Badge (optional, small) */}
           {currentStreak > 0 && (
-            <Card className="p-3 bg-muted/30 ring-2 ring-primary/20 shadow-[0_0_16px_rgba(255,111,97,0.12)]">
+            <Card className="p-3 bg-[hsl(var(--streak-fire)/0.1)] ring-2 ring-[hsl(var(--streak-fire)/0.2)] shadow-[0_0_16px_rgba(232,122,90,0.12)]">
               <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-500" fill="currentColor" />
+                <Flame className="w-4 h-4 text-[hsl(var(--streak-fire))]" fill="currentColor" />
                 <p className="text-sm text-muted-foreground">
                   <span className="font-bold text-foreground">{currentStreak}</span> day streak
                 </p>

@@ -67,6 +67,15 @@ All colors MUST be HSL.
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Streak fire - coral-orange for harmony */
+    --streak-fire: 8 80% 63%; /* #E87A5A - coral-orange */
+    --streak-fire-dark: 8 75% 55%; /* Darker for gradients */
+    
+    /* Tertiary Colors (for future use) */
+    --tertiary-amber: 38 70% 58%; /* #D4A056 - Energy/warmth */
+    --tertiary-slate: 210 12% 55%; /* #7A8A9A - Sleep/calm */
+    --tertiary-mauve: 330 15% 60%; /* #A08090 - Cravings/neutral */
   }
 
   /* ============================================
@@ -128,6 +137,15 @@ All colors MUST be HSL.
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
     --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
     --shadow-premium: 0 6px 24px rgba(216, 99, 92, 0.15);
+    
+    /* Streak fire - coral-orange for harmony */
+    --streak-fire: 8 80% 63%; /* #E87A5A */
+    --streak-fire-dark: 8 75% 55%;
+    
+    /* Tertiary Colors (for future use) */
+    --tertiary-amber: 38 70% 58%; /* #D4A056 */
+    --tertiary-slate: 210 12% 55%; /* #7A8A9A */
+    --tertiary-mauve: 330 15% 60%; /* #A08090 */
   }
 
   /* Hide scrollbar for iOS time picker */
@@ -243,6 +261,15 @@ All colors MUST be HSL.
     --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3);
     --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
     --shadow-premium: 0 4px 16px rgba(232, 113, 106, 0.08);
+    
+    /* Streak fire - coral-orange for harmony */
+    --streak-fire: 8 80% 63%; /* #E87A5A */
+    --streak-fire-dark: 8 75% 55%;
+    
+    /* Tertiary Colors (for future use) */
+    --tertiary-amber: 38 70% 58%; /* #D4A056 */
+    --tertiary-slate: 210 12% 55%; /* #7A8A9A */
+    --tertiary-mauve: 330 15% 60%; /* #A08090 */
   }
 }
 

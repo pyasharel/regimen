@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { DesignVariantToggle } from "@/components/DesignVariantToggle";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface MainHeaderProps {
   title: string;
@@ -8,6 +9,9 @@ interface MainHeaderProps {
 }
 
 export const MainHeader = ({ title, rightSlot, showDesignToggle = true }: MainHeaderProps) => {
+  const { designVariant } = useTheme();
+  const isRefinedMode = designVariant === 'refined';
+
   return (
     <header className="border-b border-border bg-background flex-shrink-0">
       {/* Header content - CSS Grid for perfect centering */}
@@ -20,8 +24,12 @@ export const MainHeader = ({ title, rightSlot, showDesignToggle = true }: MainHe
           {showDesignToggle && <DesignVariantToggle />}
         </div>
 
-        {/* Center: Logo - naturally centered via grid middle column */}
-        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent whitespace-nowrap">
+        {/* Center: Logo - solid coral in refined mode, gradient in classic */}
+        <h1 className={`text-xl font-bold whitespace-nowrap ${
+          isRefinedMode 
+            ? 'text-primary' 
+            : 'bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent'
+        }`}>
           REGIMEN
         </h1>
 

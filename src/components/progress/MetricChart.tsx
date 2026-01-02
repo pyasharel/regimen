@@ -257,12 +257,10 @@ export const MetricChart = ({
     );
   }
 
-  // Get color based on metric type - using purple/coral/emerald scheme
+  // Get color based on metric type - all coral for cohesive design
   const getMetricColor = () => {
-    if (metricType === "energy") return { stroke: "hsl(350, 70%, 60%)", fill: "hsl(350, 70%, 60%)" }; // Coral/rose
-    if (metricType === "sleep") return { stroke: "hsl(270, 60%, 55%)", fill: "hsl(270, 60%, 55%)" }; // Deeper purple
-    if (metricType === "cravings") return { stroke: "hsl(160, 60%, 45%)", fill: "hsl(160, 60%, 45%)" }; // Emerald
-    return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" }; // Primary for weight
+    // All metrics use primary (coral) for a cohesive single-color system
+    return { stroke: "hsl(var(--primary))", fill: "hsl(var(--primary))" };
   };
 
   const metricColor = getMetricColor();

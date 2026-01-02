@@ -253,7 +253,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Energy Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Zap className="w-4 h-4 text-amber-500" />
+          <Zap className="w-4 h-4 text-primary" />
           Energy
         </Label>
         <RatingSelector value={energy} onChange={setEnergy} />
@@ -262,7 +262,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Sleep Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Moon className="w-4 h-4 text-indigo-400" />
+          <Moon className="w-4 h-4 text-primary" />
           Last Night's Sleep
         </Label>
         <RatingSelector value={sleep} onChange={setSleep} />
@@ -271,7 +271,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
       {/* Cravings Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
-          <Utensils className="w-4 h-4 text-emerald-500" />
+          <Utensils className="w-4 h-4 text-primary" />
           Food Cravings
         </Label>
         <RatingSelector value={cravings} onChange={setCravings} />
