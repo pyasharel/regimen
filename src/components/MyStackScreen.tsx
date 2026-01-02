@@ -343,7 +343,7 @@ export const MyStackScreen = () => {
         {/* Header */}
         <MainHeader title="My Stack" />
         {/* Dashboard Stats - Compact Row */}
-        <div className="px-4 py-3">
+        <div className="px-4 pt-4 pb-3">
           <div className="grid grid-cols-2 gap-2">
             {/* Active Compounds - Clickable */}
             <button
@@ -464,12 +464,12 @@ export const MyStackScreen = () => {
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                       isOnCycle 
-                                        ? 'bg-[#FF6B6B] animate-pulse' 
+                                        ? 'bg-primary/80 animate-pulse' 
                                         : 'bg-muted-foreground'
                                     }`} />
                                     <span className={`text-xs font-semibold uppercase tracking-wider ${
                                       isOnCycle 
-                                        ? 'text-[#FF6B6B]' 
+                                        ? 'text-primary' 
                                         : 'text-muted-foreground'
                                     }`}>
                                       {isOnCycle ? 'ON CYCLE' : 'OFF CYCLE'}
@@ -481,7 +481,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-[#FF6B6B]' : '[&>div]:bg-[#666666] bg-[#333333]'}`}
+                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-primary/80' : '[&>div]:bg-muted-foreground/50 bg-muted'}`}
                                 />
                               </div>
                             );
@@ -498,15 +498,15 @@ export const MyStackScreen = () => {
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-[#FF6B6B] animate-pulse" />
-                                  <span className="text-xs font-semibold uppercase tracking-wider text-[#FF6B6B]">
+                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary/80 animate-pulse" />
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                                     ONGOING
                                   </span>
                                 </div>
                               </div>
                               <Progress 
                                 value={100} 
-                                className="h-1.5 [&>div]:bg-[#FF6B6B]"
+                                className="h-1.5 [&>div]:bg-primary/80"
                               />
                             </div>
                           );
