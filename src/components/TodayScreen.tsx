@@ -1211,7 +1211,7 @@ export const TodayScreen = () => {
                           >
                             {dose.taken && (
                               <svg
-                                className="h-full w-full text-white p-0.5"
+                                className="h-full w-full text-primary-foreground/90 p-0.5"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -1342,7 +1342,7 @@ export const TodayScreen = () => {
                         >
                           {dose.taken && (
                             <svg
-                              className="h-full w-full text-white"
+                              className="h-full w-full text-primary-foreground/90"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
