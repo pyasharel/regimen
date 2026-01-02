@@ -1029,13 +1029,7 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
-                // Refined mode: all cards get tinted background + left accent border
-                const getRefinedModeClasses = () => {
-                  if (!isRefinedMode) return '';
-                  if (isSkipped) return '';
-                  return 'border-l-[4px] border-l-primary';
-                };
-                
+                // Refined mode: cards get tinted background (no border-left - we use inner line instead)
                 const getCardBackground = () => {
                   if (isSkipped) return 'bg-muted/50 border-border/50';
                   if (dose.taken) {
@@ -1056,7 +1050,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()} ${getRefinedModeClasses()}`}
+                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()}`}
                     style={{
                       opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
@@ -1078,7 +1072,12 @@ export const TodayScreen = () => {
                       />
                     )}
                     
-                    <div className="p-3 min-h-[60px]">
+                    {/* Inner vertical accent line for refined mode */}
+                    <div className={`flex ${isRefinedMode && !isSkipped ? 'pl-0' : ''}`}>
+                      {isRefinedMode && !isSkipped && (
+                        <div className="w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0" />
+                      )}
+                      <div className="p-3 min-h-[60px] flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {/* Medication name with optional Skipped badge */}
@@ -1101,40 +1100,40 @@ export const TodayScreen = () => {
                             )}
                           </div>
                           
-                          {/* Time and dosage on same line */}
+                          {/* Time and dosage on same line - using secondary/muted colors per spec */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs font-semibold transition-colors duration-300 ${
+                            <span className={`text-[13px] transition-colors duration-300 ${
                               isSkipped
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
-                                ? 'text-muted-foreground/70' 
+                                ? 'text-muted-foreground/60' 
                                 : isRefinedMode
                                 ? 'text-muted-foreground'
                                 : 'text-white/70'
                             }`}>
                               {formatTime(dose.scheduled_time)}
                             </span>
-                            <span className={`text-xs font-semibold transition-colors duration-300 ${
+                            <span className={`text-[13px] transition-colors duration-300 ${
                               isSkipped
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
-                                ? 'text-muted-foreground/70' 
+                                ? 'text-muted-foreground/60' 
                                 : isRefinedMode
                                 ? 'text-muted-foreground'
                                 : 'text-white/70'
-                            }`} style={{ marginLeft: '1px', marginRight: '1px' }}>•</span>
-                            <span className={`text-xs font-semibold transition-colors duration-300 ${
+                            }`}>·</span>
+                            <span className={`text-[13px] transition-colors duration-300 ${
                               isSkipped
-                                ? 'text-muted-foreground/50'
+                                ? 'text-muted-foreground/40'
                                 : dose.taken 
-                                ? 'text-muted-foreground' 
+                                ? 'text-muted-foreground/60' 
                                 : isRefinedMode
-                                ? 'text-foreground'
-                                : 'text-white/90'
+                                ? 'text-muted-foreground'
+                                : 'text-white/70'
                             }`}>
                               {formatDose(dose.dose_amount, dose.dose_unit)}
-                              {dose.calculated_iu && ` • ${dose.calculated_iu} IU`}
-                              {dose.calculated_ml && ` • ${dose.calculated_ml} mL`}
+                              {dose.calculated_iu && ` · ${dose.calculated_iu} IU`}
+                              {dose.calculated_ml && ` · ${dose.calculated_ml} mL`}
                             </span>
                           </div>
                         </div>
@@ -1195,9 +1194,11 @@ export const TodayScreen = () => {
                           <button
                             onClick={() => toggleDose(dose.id, dose.taken)}
                             disabled={animatingDoses.has(dose.id)}
-                            className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
+                            className={`flex-shrink-0 h-6 w-6 rounded-full border-2 transition-all duration-200 ${
                               dose.taken
-                                ? 'bg-success border-success'
+                                ? isRefinedMode 
+                                  ? 'bg-primary border-primary'
+                                  : 'bg-success border-success'
                                 : isRefinedMode
                                 ? 'border-primary/50 hover:border-primary active:scale-95'
                                 : 'border-white/40 hover:border-white active:scale-95'
@@ -1228,6 +1229,7 @@ export const TodayScreen = () => {
                         )}
                       </div>
                     </div>
+                    </div>
                   </div>
                 );
               };
@@ -1237,9 +1239,12 @@ export const TodayScreen = () => {
                     {/* Morning Section */}
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                          Morning
-                        </h4>
+                        <div className="flex items-center gap-2 px-1">
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                            Morning
+                          </h4>
+                          {isRefinedMode && <div className="flex-1 h-px bg-border" />}
+                        </div>
                         {morningDoses.map(renderDoseCard)}
                       </div>
                     )}
@@ -1247,9 +1252,12 @@ export const TodayScreen = () => {
                     {/* Afternoon Section */}
                     {afternoonDoses.length > 0 && (
                       <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
-                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                          Afternoon
-                        </h4>
+                        <div className="flex items-center gap-2 px-1">
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                            Afternoon
+                          </h4>
+                          {isRefinedMode && <div className="flex-1 h-px bg-border" />}
+                        </div>
                         {afternoonDoses.map(renderDoseCard)}
                       </div>
                     )}
@@ -1257,9 +1265,12 @@ export const TodayScreen = () => {
                     {/* Evening Section */}
                     {eveningDoses.length > 0 && (
                       <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
-                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                          Evening
-                        </h4>
+                        <div className="flex items-center gap-2 px-1">
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                            Evening
+                          </h4>
+                          {isRefinedMode && <div className="flex-1 h-px bg-border" />}
+                        </div>
                         {eveningDoses.map(renderDoseCard)}
                       </div>
                     )}
@@ -1270,9 +1281,12 @@ export const TodayScreen = () => {
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
               <div className="mt-6 space-y-3">
-                <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                  As Needed
-                </h4>
+                <div className="flex items-center gap-2 px-1">
+                  <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                    As Needed
+                  </h4>
+                  {isRefinedMode && <div className="flex-1 h-px bg-border" />}
+                </div>
                 {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (
                   <div
                     key={dose.id}
