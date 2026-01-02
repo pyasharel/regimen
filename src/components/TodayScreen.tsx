@@ -61,7 +61,7 @@ export const TodayScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [doses, setDoses] = useState<Dose[]>([]);
   const { designVariant } = useTheme();
-  const isSoftMode = designVariant === 'soft';
+  const isRefinedMode = designVariant === 'refined';
   
   // Track engagement for first dose notification
   useEngagementTracking();
@@ -1029,22 +1029,22 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
-                // Soft mode: all cards get tinted background + left accent border
-                const getSoftModeClasses = () => {
-                  if (!isSoftMode) return '';
+                // Refined mode: all cards get tinted background + left accent border
+                const getRefinedModeClasses = () => {
+                  if (!isRefinedMode) return '';
                   if (isSkipped) return '';
-                  return 'border-l-[3px] border-l-primary';
+                  return 'border-l-[4px] border-l-primary';
                 };
                 
                 const getCardBackground = () => {
                   if (isSkipped) return 'bg-muted/50 border-border/50';
                   if (dose.taken) {
-                    return isSoftMode 
+                    return isRefinedMode 
                       ? 'bg-dose-card border-dose-card-border' 
                       : 'bg-card border-border';
                   }
                   // Untaken cards
-                  return isSoftMode 
+                  return isRefinedMode 
                     ? 'bg-dose-card border-dose-card-border' 
                     : 'bg-primary border-primary';
                 };
@@ -1056,12 +1056,12 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()} ${getSoftModeClasses()}`}
+                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()} ${getRefinedModeClasses()}`}
                     style={{
-                      opacity: isHandled ? 0.85 : 1,
+                      opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      ...(isHandled || isSoftMode ? {} : {
+                      ...(isHandled || isRefinedMode ? {} : {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
                       })
                     }}
@@ -1088,7 +1088,7 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/60' 
                                 : dose.taken 
                                 ? 'text-muted-foreground' 
-                                : isSoftMode
+                                : isRefinedMode
                                 ? 'text-foreground'
                                 : 'text-white'
                             }`}>
@@ -1108,7 +1108,7 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
                                 ? 'text-muted-foreground/70' 
-                                : isSoftMode
+                                : isRefinedMode
                                 ? 'text-muted-foreground'
                                 : 'text-white/70'
                             }`}>
@@ -1119,7 +1119,7 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/40'
                                 : dose.taken 
                                 ? 'text-muted-foreground/70' 
-                                : isSoftMode
+                                : isRefinedMode
                                 ? 'text-muted-foreground'
                                 : 'text-white/70'
                             }`} style={{ marginLeft: '1px', marginRight: '1px' }}>•</span>
@@ -1128,7 +1128,7 @@ export const TodayScreen = () => {
                                 ? 'text-muted-foreground/50'
                                 : dose.taken 
                                 ? 'text-muted-foreground' 
-                                : isSoftMode
+                                : isRefinedMode
                                 ? 'text-foreground'
                                 : 'text-white/90'
                             }`}>
@@ -1149,7 +1149,7 @@ export const TodayScreen = () => {
                                   ? 'text-muted-foreground/30 hover:text-muted-foreground/50'
                                   : dose.taken 
                                   ? 'text-muted-foreground/40 hover:text-muted-foreground/60' 
-                                  : isSoftMode
+                                  : isRefinedMode
                                   ? 'text-muted-foreground/50 hover:text-muted-foreground/70'
                                   : 'text-white/40 hover:text-white/60'
                               }`}
@@ -1198,7 +1198,7 @@ export const TodayScreen = () => {
                             className={`flex-shrink-0 h-7 w-7 rounded-full border-2 transition-all duration-200 ${
                               dose.taken
                                 ? 'bg-success border-success'
-                                : isSoftMode
+                                : isRefinedMode
                                 ? 'border-primary/50 hover:border-primary active:scale-95'
                                 : 'border-white/40 hover:border-white active:scale-95'
                             }`}
@@ -1237,7 +1237,7 @@ export const TodayScreen = () => {
                     {/* Morning Section */}
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           Morning
                         </h4>
                         {morningDoses.map(renderDoseCard)}
@@ -1247,7 +1247,7 @@ export const TodayScreen = () => {
                     {/* Afternoon Section */}
                     {afternoonDoses.length > 0 && (
                       <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           Afternoon
                         </h4>
                         {afternoonDoses.map(renderDoseCard)}
@@ -1257,7 +1257,7 @@ export const TodayScreen = () => {
                     {/* Evening Section */}
                     {eveningDoses.length > 0 && (
                       <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
-                        <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                        <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           Evening
                         </h4>
                         {eveningDoses.map(renderDoseCard)}
@@ -1270,7 +1270,7 @@ export const TodayScreen = () => {
             {/* As Needed Section */}
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
               <div className="mt-6 space-y-3">
-                <h4 className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider px-1">
+                <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] px-1 ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
                   As Needed
                 </h4>
                 {doses.filter(d => d.schedule_type === 'As Needed').map((dose) => (

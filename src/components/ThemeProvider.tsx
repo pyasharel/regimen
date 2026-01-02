@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 
 type Theme = "dark" | "light" | "system";
-type DesignVariant = "classic" | "soft";
+type DesignVariant = "classic" | "refined";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -91,8 +91,12 @@ export function ThemeProvider({
         // Load design variant
         const variantKey = `${storageKey}-variant`;
         const storedVariant = await getStoredVariant(variantKey);
-        if (storedVariant === 'soft' || storedVariant === 'classic') {
+        if (storedVariant === 'refined' || storedVariant === 'classic') {
           setDesignVariantState(storedVariant);
+        } else if (storedVariant === 'soft') {
+          // Migrate old 'soft' to 'refined'
+          setDesignVariantState('refined');
+          await setStoredVariant(variantKey, 'refined');
         }
       } catch (error) {
         console.error('Error loading theme from storage:', error);
@@ -126,7 +130,7 @@ export function ThemeProvider({
   // Apply design variant to document
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("design-classic", "design-soft");
+    root.classList.remove("design-classic", "design-refined");
     root.classList.add(`design-${designVariant}`);
   }, [designVariant]);
 
