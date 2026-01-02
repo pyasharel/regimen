@@ -38,7 +38,7 @@ export const BottomNavigation = () => {
       left: 0,
       right: 0,
       borderTop: '1px solid hsl(var(--border))',
-      backgroundColor: 'hsl(var(--card))',
+      backgroundColor: 'hsl(var(--background))',
       zIndex: 50
     }}>
       <div style={{
@@ -96,7 +96,7 @@ export const BottomNavigation = () => {
       
       <div style={{ 
         height: 'env(safe-area-inset-bottom, 0px)',
-        backgroundColor: 'hsl(var(--card))'
+        backgroundColor: 'hsl(var(--background))'
       }} />
     </nav>
   );

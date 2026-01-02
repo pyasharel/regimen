@@ -698,7 +698,7 @@ export const TodayScreen = () => {
   if (loading || subscriptionLoading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
-        <div className="flex-1 min-h-0 scroll-container pb-24">
+        <div className="flex-1 min-h-0 scroll-container pb-32">
           <MainHeader title="Today" />
           {/* Match the greeting block spacing exactly */}
           <div className="px-4 pt-4 pb-4 flex-shrink-0">
