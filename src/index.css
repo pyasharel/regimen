@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Light Theme - Enhanced */
+    /* Light Theme - Classic */
     --background: 0 0% 98%; /* #FAFAFA - Softer than pure white */
     --foreground: 0 0% 5.88%; /* #0F0F0F */
 
@@ -18,7 +18,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 5.88%;
 
-    /* Brand - Coral Primary */
+    /* Brand - Coral Primary (Classic) */
     --primary: 6 100% 69%; /* #FF6F61 */
     --primary-foreground: 0 0% 100%;
 
@@ -70,42 +70,64 @@ All colors MUST be HSL.
   }
 
   /* ============================================
-     SOFT PREMIUM DESIGN VARIANT - Light Mode
+     REFINED PREMIUM DESIGN VARIANT - Light Mode
+     Warm cream background, coral accent, warmer grays
      ============================================ */
-  .design-soft:root,
-  :root.design-soft {
-    /* Soft Premium - Dusty Rose Primary */
-    --primary: 8 35% 65%; /* Dusty rose - muted coral */
+  .design-refined:root,
+  :root.design-refined {
+    /* Warm cream background */
+    --background: 30 20% 96%; /* #F6F4F1 - Warm cream */
+    --foreground: 30 10% 16%; /* #2A2825 - Warm dark gray, not pure black */
+    
+    /* Cards remain white for contrast */
+    --card: 0 0% 100%;
+    --card-foreground: 30 10% 16%;
+    
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 10% 16%;
+    
+    /* Refined Coral Primary - slightly darker for light bg contrast */
+    --primary: 4 72% 60%; /* #D8635C - refined coral */
     --primary-foreground: 0 0% 100%;
     
-    /* Soft Premium - Muted Purple Secondary */
-    --secondary: 270 25% 60%; /* Softer mauve/purple */
+    /* Purple for gradients only */
+    --secondary: 270 20% 58%; /* #9080A8 - muted purple */
     --secondary-foreground: 0 0% 100%;
     
-    /* Softer accent */
-    --accent: 270 25% 60%;
+    /* Warmer muted tones */
+    --muted: 30 10% 92%;
+    --muted-foreground: 30 5% 38%; /* #5A5550 - warm gray */
+    
+    /* Accent uses coral */
+    --accent: 4 72% 60%;
     --accent-foreground: 0 0% 100%;
     
-    /* Warmer grays */
-    --muted: 20 10% 94%;
-    --muted-foreground: 20 5% 45%;
+    /* Ring matches coral */
+    --ring: 4 72% 60%;
     
-    /* Ring matches soft primary */
-    --ring: 8 35% 65%;
+    /* Warmer borders */
+    --border: 30 8% 88%;
+    --input: 30 15% 96%;
     
-    /* Dose card styling - Soft with tinted background */
-    --dose-card-bg: 8 20% 97%; /* Very subtle rose tint */
-    --dose-card-border: 8 15% 88%;
-    --dose-card-accent-width: 3px;
+    /* Surface levels */
+    --surface: 30 15% 94%;
+    --surface-elevated: 0 0% 100%;
     
-    /* Softer gradients */
-    --gradient-premium: linear-gradient(135deg, hsl(8 35% 65%), hsl(270 25% 60%));
-    --gradient-section: linear-gradient(135deg, hsl(8 35% 97%), hsl(270 25% 97%));
+    /* Dose card styling - Refined with coral tint */
+    --dose-card-bg: 4 25% 97%; /* Very subtle coral tint */
+    --dose-card-border: 4 20% 90%;
+    --dose-card-accent-width: 4px;
     
-    /* Reduced shadows */
-    --shadow-card: 0 1px 8px rgba(0, 0, 0, 0.04);
-    --shadow-elevated: 0 2px 12px rgba(0, 0, 0, 0.06);
-    --shadow-premium: 0 4px 20px rgba(180, 140, 135, 0.15);
+    /* Refined gradients */
+    --gradient-premium: linear-gradient(135deg, hsl(4 72% 60%), hsl(270 20% 58%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 20% 96%));
+    --gradient-section: linear-gradient(135deg, hsl(4 72% 97%), hsl(270 20% 97%));
+    
+    /* Lighter shadows for refined feel */
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --shadow-premium: 0 6px 24px rgba(216, 99, 92, 0.15);
   }
 
   /* Hide scrollbar for iOS time picker */
@@ -118,7 +140,7 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Dark Theme */
+    /* Dark Theme - Classic */
     --background: 0 0% 5.88%; /* #0F0F0F */
     --foreground: 0 0% 100%; /* #FFFFFF */
 
@@ -162,40 +184,65 @@ All colors MUST be HSL.
   }
 
   /* ============================================
-     SOFT PREMIUM DESIGN VARIANT - Dark Mode
+     REFINED PREMIUM DESIGN VARIANT - Dark Mode
+     Near-black background, coral accent, reduced shadows
      ============================================ */
-  .dark.design-soft {
-    /* Soft Premium - Dusty Rose Primary in dark mode */
-    --primary: 8 40% 60%; /* Slightly brighter dusty rose for dark bg */
+  .dark.design-refined {
+    /* Near-black background per spec */
+    --background: 0 0% 5%; /* #0C0C0C - near black */
+    --foreground: 40 5% 95%; /* #F2F2F0 - warm white */
+    
+    /* Elevated surfaces */
+    --card: 0 0% 8%; /* #141414 - bg-elevated */
+    --card-foreground: 40 5% 95%;
+    
+    /* Card surface level */
+    --popover: 0 0% 10%; /* #1A1A1A - bg-card */
+    --popover-foreground: 40 5% 95%;
+    
+    /* Refined Coral Primary */
+    --primary: 4 70% 66%; /* #E8716A - coral from spec */
     --primary-foreground: 0 0% 100%;
     
-    /* Soft Premium - Muted Purple Secondary */
-    --secondary: 270 30% 55%;
+    /* Purple for gradients only */
+    --secondary: 270 20% 58%; /* #9080A8 - muted purple */
     --secondary-foreground: 0 0% 100%;
     
-    /* Softer accent */
-    --accent: 270 30% 55%;
+    /* Muted tones */
+    --muted: 0 0% 12%; /* Slightly elevated surface */
+    --muted-foreground: 40 2% 60%; /* #9A9A98 - warm gray */
+    
+    /* Accent uses coral */
+    --accent: 4 70% 66%;
     --accent-foreground: 0 0% 100%;
     
-    /* Warmer dark grays */
-    --muted: 20 5% 16%;
-    --muted-foreground: 20 10% 60%;
+    /* Ring matches coral */
+    --ring: 4 70% 66%;
     
-    /* Ring matches soft primary */
-    --ring: 8 40% 60%;
+    /* Border colors from spec */
+    --border: 0 0% 17%; /* #2A2A2A */
+    --border-light: 0 0% 13%; /* #222222 */
+    --input: 0 0% 10%;
     
-    /* Dose card styling - Soft with subtle tint */
-    --dose-card-bg: 8 8% 12%; /* Very subtle rose tint on dark */
-    --dose-card-border: 8 10% 22%;
-    --dose-card-accent-width: 3px;
+    /* Surface levels */
+    --surface: 0 0% 8%; /* #141414 */
     
-    /* Softer gradients for dark */
-    --gradient-premium: linear-gradient(135deg, hsl(8 40% 60%), hsl(270 30% 55%));
+    /* Dose card styling - Refined with coral tint */
+    --dose-card-bg: 4 8% 9%; /* Very subtle coral tint on dark */
+    --dose-card-border: 4 12% 18%; /* coral-border */
+    --dose-card-accent-width: 4px;
     
-    /* Reduced shadows for dark */
-    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-premium: 0 4px 20px rgba(180, 120, 115, 0.1);
+    /* Coral tint for cards (used in components) */
+    --coral-tint: 4 70% 66% / 0.12; /* rgba(232, 113, 106, 0.12) */
+    --coral-border: 4 70% 66% / 0.22; /* rgba(232, 113, 106, 0.22) */
+    
+    /* Refined gradients */
+    --gradient-premium: linear-gradient(135deg, hsl(4 70% 66%), hsl(270 20% 58%));
+    
+    /* Reduced shadows for dark mode per spec */
+    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
+    --shadow-premium: 0 4px 16px rgba(232, 113, 106, 0.08);
   }
 }
 
@@ -262,13 +309,13 @@ All colors MUST be HSL.
     display: none;
   }
   
-  /* Typography scale */
+  /* Typography scale - matches spec */
   h1 {
-    @apply text-[28px] font-bold leading-tight;
+    @apply text-[32px] font-bold leading-tight;
   }
   
   h2 {
-    @apply text-[20px] font-semibold leading-tight;
+    @apply text-[24px] font-semibold leading-tight;
   }
   
   /* Animations */

@@ -18,7 +18,7 @@ export const DesignVariantToggle = () => {
 
   const toggleVariant = () => {
     triggerHaptic();
-    const newVariant = designVariant === 'classic' ? 'soft' : 'classic';
+    const newVariant = designVariant === 'classic' ? 'refined' : 'classic';
     setDesignVariant(newVariant);
   };
 
@@ -27,10 +27,10 @@ export const DesignVariantToggle = () => {
       onClick={toggleVariant}
       className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all
                  bg-muted/50 hover:bg-muted border border-border/50"
-      aria-label={`Switch to ${designVariant === 'classic' ? 'Soft' : 'Classic'} design`}
+      aria-label={`Switch to ${designVariant === 'classic' ? 'Refined' : 'Classic'} design`}
     >
       <Palette className="w-3.5 h-3.5" />
-      <span className="hidden sm:inline">{designVariant === 'classic' ? 'Classic' : 'Soft'}</span>
+      <span className="hidden sm:inline">{designVariant === 'classic' ? 'Classic' : 'Refined'}</span>
     </button>
   );
 };
