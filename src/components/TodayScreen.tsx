@@ -1211,11 +1211,13 @@ export const TodayScreen = () => {
                           >
                             {dose.taken && (
                               <svg
-                                className="h-full w-full text-white"
+                                className="h-full w-full text-white p-0.5"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="3"
+                                strokeWidth="3.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                                 strokeDasharray="24"
                                 strokeDashoffset="0"
                                 style={{
