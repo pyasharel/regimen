@@ -84,12 +84,12 @@ All colors MUST be HSL.
      ============================================ */
   .design-refined:root,
   :root.design-refined {
-    /* Warm cream background */
-    --background: 30 20% 96%; /* #F6F4F1 - Warm cream */
+    /* Warm cream background - increased warmth for more visible contrast */
+    --background: 30 25% 94%; /* #F2EDE8 - Warmer, slightly darker cream */
     --foreground: 30 10% 16%; /* #2A2825 - Warm dark gray, not pure black */
     
-    /* Cards remain white for contrast */
-    --card: 0 0% 100%;
+    /* Cards remain white for contrast against cream */
+    --card: 30 15% 99%; /* #FCFBFA - very subtle warm white */
     --card-foreground: 30 10% 16%;
     
     /* Popover */
