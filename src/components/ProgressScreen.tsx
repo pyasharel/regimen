@@ -495,9 +495,9 @@ export const ProgressScreen = () => {
               </Button>
             </div>
 
-            {/* Time Frame Selector */}
-            <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg w-fit">
-          {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
+            {/* Time Frame Selector - Transparent pills, coral active */}
+            <div className="flex gap-1 p-1 w-fit">
+              {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
                 <button
                   key={tf}
                   onClick={() => {
@@ -506,8 +506,8 @@ export const ProgressScreen = () => {
                   }}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     timeFrame === tf
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
                   {tf}

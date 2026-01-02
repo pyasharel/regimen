@@ -84,12 +84,12 @@ All colors MUST be HSL.
      ============================================ */
   .design-refined:root,
   :root.design-refined {
-    /* Warm cream background - increased warmth for more visible contrast */
-    --background: 30 25% 94%; /* #F2EDE8 - Warmer, slightly darker cream */
+    /* Warm cream background - exact #F6F4F1 */
+    --background: 36 20% 96%; /* #F6F4F1 - Warm cream, not gray */
     --foreground: 30 10% 16%; /* #2A2825 - Warm dark gray, not pure black */
     
-    /* Cards remain white for contrast against cream */
-    --card: 30 15% 99%; /* #FCFBFA - very subtle warm white */
+    /* Cards remain pure white for maximum contrast */
+    --card: 0 0% 100%; /* Pure white */
     --card-foreground: 30 10% 16%;
     
     /* Popover */
@@ -133,9 +133,9 @@ All colors MUST be HSL.
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 20% 96%));
     --gradient-section: linear-gradient(135deg, hsl(4 72% 97%), hsl(270 20% 97%));
     
-    /* Lighter shadows for refined feel */
-    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+    /* Card shadows - visible lift for light mode */
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.10);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.12);
     --shadow-premium: 0 6px 24px rgba(216, 99, 92, 0.15);
     
     /* Streak fire - coral-orange for harmony */
