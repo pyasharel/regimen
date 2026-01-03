@@ -1029,18 +1029,18 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
-                // Refined mode: cards get tinted background (no border-left - we use inner line instead)
+                // Refined mode: cards get tinted background (no border)
                 const getCardBackground = () => {
-                  if (isSkipped) return 'bg-muted/50 border-border/50';
+                  if (isSkipped) return 'bg-muted/50';
                   if (dose.taken) {
                     return isRefinedMode 
-                      ? 'bg-dose-card border-dose-card-border' 
-                      : 'bg-card border-border';
+                      ? 'bg-dose-card' 
+                      : 'bg-card';
                   }
                   // Untaken cards
                   return isRefinedMode 
-                    ? 'bg-dose-card border-dose-card-border' 
-                    : 'bg-primary border-primary';
+                    ? 'bg-dose-card' 
+                    : 'bg-primary';
                 };
                 
                 return (
@@ -1050,7 +1050,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl border transition-all relative ${getCardBackground()}`}
+                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] ${getCardBackground()}`}
                     style={{
                       opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',

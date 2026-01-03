@@ -411,7 +411,7 @@ export const MyStackScreen = () => {
               return (
               <div
                 key={compound.id}
-                className="overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/12 via-primary/8 to-primary/5 shadow-md hover:shadow-lg hover:border-primary/40 transition-all animate-slide-up cursor-pointer"
+                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all animate-slide-up cursor-pointer"
                 onClick={() => {
                   triggerHaptic();
                   navigate(`/stack/${compound.id}`);
@@ -424,12 +424,6 @@ export const MyStackScreen = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-bold text-foreground leading-tight">{compound.name}</h3>
-                          {hasHalfLife && (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/15 text-primary flex-shrink-0">
-                              <Activity className="h-3 w-3" />
-                              <span className="text-[10px] font-semibold">LEVELS</span>
-                            </div>
-                          )}
                         </div>
                         <p className="mt-1.5 text-sm text-muted-foreground">
                           {formatDose(compound.intended_dose, compound.dose_unit)}
@@ -459,7 +453,7 @@ export const MyStackScreen = () => {
                             const isOnCycle = cycleStatus.currentPhase === 'on';
                             
                             return (
-                              <div className="mt-3 pt-3 border-t border-border/50">
+                              <div className="mt-3">
                                 <div className="flex items-center justify-between gap-2 mb-2">
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
@@ -495,7 +489,7 @@ export const MyStackScreen = () => {
                           const daysActive = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
                           
                           return (
-                            <div className="mt-3 pt-3 border-t border-border/50">
+                            <div className="mt-3">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
                                   <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary animate-pulse" />

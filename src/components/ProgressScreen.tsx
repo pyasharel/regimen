@@ -574,7 +574,7 @@ export const ProgressScreen = () => {
         </div>
 
         {/* Visual Progress */}
-        <Card className="p-4 bg-card border border-border shadow-[var(--shadow-card)] space-y-4">
+        <Card className="p-4 bg-card shadow-[var(--shadow-card)] space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
             <Button 
