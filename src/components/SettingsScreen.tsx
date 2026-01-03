@@ -168,14 +168,12 @@ export const SettingsScreen = () => {
           }
         />
 
-        <div className="p-4 space-y-6 max-w-2xl mx-auto w-full">
-        {/* Subscription Section */}
-        <div className="rounded-xl border border-primary/30 bg-card p-1 shadow-[var(--shadow-card)]">
-          <SettingsSubscriptionSection />
-        </div>
+        <div className="p-4 space-y-3 max-w-2xl mx-auto w-full">
+        {/* Subscription Section - No outer wrapper, inner card has coral border */}
+        <SettingsSubscriptionSection />
 
-        {/* Main Settings List */}
-        <div className="space-y-3">
+        {/* Main Settings List - Consistent spacing */}
+        <div className="space-y-3 mt-3">
           {settingsSections.map((section) => (
             <div key={section.label}>
               {section.isInline && section.label === "Theme" ? (
@@ -250,21 +248,37 @@ export const SettingsScreen = () => {
           ))}
         </div>
 
-        {/* Legal & Support - Same flat list style */}
-        {[...legalSettings, ...supportSettings].map((item) => (
-          <button
-            key={item.label}
-            onClick={item.onClick}
-            className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <item.icon className="h-5 w-5 text-primary" />
-              </div>
-              <span className="font-semibold">{item.label}</span>
+        {/* Legal - Combined into one expandable card */}
+        <button
+          onClick={() => navigate("/settings/terms")}
+          className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
-          </button>
-        ))}
+            <div>
+              <span className="font-semibold">Legal</span>
+              <p className="text-sm text-muted-foreground">Terms of Service & Privacy Policy</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Support - Combined into one card */}
+        <button
+          onClick={() => navigate("/settings/help")}
+          className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <HelpCircle className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <span className="font-semibold">Support</span>
+              <p className="text-sm text-muted-foreground">Help & Feedback</p>
+            </div>
+          </div>
+        </button>
 
         {/* Sign Out Button */}
         <Button 
