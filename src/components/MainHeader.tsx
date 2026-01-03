@@ -8,7 +8,7 @@ interface MainHeaderProps {
   showDesignToggle?: boolean;
 }
 
-export const MainHeader = ({ title, rightSlot, showDesignToggle = true }: MainHeaderProps) => {
+export const MainHeader = ({ title, rightSlot, showDesignToggle = false }: MainHeaderProps) => {
   const { designVariant } = useTheme();
   const isRefinedMode = designVariant === 'refined';
 
