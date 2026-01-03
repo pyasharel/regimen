@@ -21,7 +21,7 @@ type ThemeProviderState = {
 const initialState: ThemeProviderState = {
   theme: "dark",
   setTheme: () => null,
-  designVariant: "classic",
+  designVariant: "refined",
   setDesignVariant: () => null,
 };
 
@@ -73,7 +73,7 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   // Start with default theme, then load from storage
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [designVariant, setDesignVariantState] = useState<DesignVariant>("classic");
+  const [designVariant, setDesignVariantState] = useState<DesignVariant>("refined");
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load theme and design variant from persistent storage on mount
