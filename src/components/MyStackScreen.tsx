@@ -481,7 +481,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1 ${isOnCycle ? '[&>div]:bg-primary' : '[&>div]:bg-muted-foreground/50 bg-muted-foreground/20'}`}
+                                  className={`h-1 bg-muted-foreground/20 ${isOnCycle ? '[&>div]:bg-primary' : '[&>div]:bg-muted-foreground/50'}`}
                                 />
                               </div>
                             );
@@ -506,7 +506,7 @@ export const MyStackScreen = () => {
                               </div>
                               <Progress 
                                 value={100} 
-                                className="h-1 [&>div]:bg-primary"
+                                className="h-1 bg-muted-foreground/20 [&>div]:bg-primary"
                               />
                             </div>
                           );
