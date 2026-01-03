@@ -133,10 +133,10 @@ All colors MUST be HSL.
     --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(30 20% 96%));
     --gradient-section: linear-gradient(135deg, hsl(4 72% 97%), hsl(270 20% 97%));
     
-    /* Card shadows - softer, flatter for premium feel */
-    --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.06);
-    --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-premium: 0 4px 16px rgba(216, 99, 92, 0.10);
+    /* Card shadows - visible enough to create depth and separation */
+    --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.10);
+    --shadow-premium: 0 6px 24px rgba(216, 99, 92, 0.12);
     
     /* Streak fire - coral-orange for harmony */
     --streak-fire: 8 80% 63%; /* #E87A5A */
