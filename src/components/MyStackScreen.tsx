@@ -464,7 +464,7 @@ export const MyStackScreen = () => {
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                       isOnCycle 
-                                        ? 'bg-primary/80 animate-pulse' 
+                                        ? 'bg-primary animate-pulse' 
                                         : 'bg-muted-foreground/50'
                                     }`} />
                                     <span className={`text-xs font-semibold uppercase tracking-wider ${
@@ -481,7 +481,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-primary/80' : '[&>div]:bg-muted-foreground/40 bg-muted'}`}
+                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-primary' : '[&>div]:bg-muted-foreground/50 bg-muted'}`}
                                 />
                               </div>
                             );
@@ -498,7 +498,7 @@ export const MyStackScreen = () => {
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary/80 animate-pulse" />
+                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary animate-pulse" />
                                   <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                                     ONGOING
                                   </span>
@@ -506,7 +506,7 @@ export const MyStackScreen = () => {
                               </div>
                               <Progress 
                                 value={100} 
-                                className="h-1.5 [&>div]:bg-primary/80"
+                                className="h-1.5 [&>div]:bg-primary"
                               />
                             </div>
                           );
