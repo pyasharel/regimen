@@ -18,7 +18,7 @@ export const MainHeader = ({ title, rightSlot, showDesignToggle = false }: MainH
       <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full h-14 px-4 gap-2">
         {/* Left: Page title + Design Toggle */}
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">
+          <h2 className="text-sm font-medium text-header-text">
             {title}
           </h2>
           {showDesignToggle && <DesignVariantToggle />}
