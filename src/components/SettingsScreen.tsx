@@ -169,8 +169,8 @@ export const SettingsScreen = () => {
         />
 
         <div className="p-4 space-y-6 max-w-2xl mx-auto w-full">
-        {/* Subscription Section - Elevated */}
-        <div className="rounded-xl border-l-4 border-l-primary border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-1 shadow-[var(--shadow-card)]">
+        {/* Subscription Section */}
+        <div className="rounded-xl border border-primary/30 bg-card p-1 shadow-[var(--shadow-card)]">
           <SettingsSubscriptionSection />
         </div>
 
@@ -250,47 +250,21 @@ export const SettingsScreen = () => {
           ))}
         </div>
 
-        {/* Legal Section - Consolidated */}
-        <div className="space-y-2">
-          <h3 className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider px-1">Legal</h3>
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
-            {legalSettings.map((item, index) => (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                className={`w-full flex items-center gap-4 p-4 text-left transition-all hover:bg-muted/50 ${
-                  index < legalSettings.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <item.icon className="h-5 w-5 text-primary" />
-                </div>
-                <span className="font-semibold">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Support Section - Consolidated */}
-        <div className="space-y-2">
-          <h3 className="text-[11px] uppercase font-semibold text-muted-foreground tracking-wider px-1">Support</h3>
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-card)]">
-            {supportSettings.map((item, index) => (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                className={`w-full flex items-center gap-4 p-4 text-left transition-all hover:bg-muted/50 ${
-                  index < supportSettings.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <item.icon className="h-5 w-5 text-primary" />
-                </div>
-                <span className="font-semibold">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Legal & Support - Same flat list style */}
+        {[...legalSettings, ...supportSettings].map((item) => (
+          <button
+            key={item.label}
+            onClick={item.onClick}
+            className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <item.icon className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold">{item.label}</span>
+            </div>
+          </button>
+        ))}
 
         {/* Sign Out Button */}
         <Button 
