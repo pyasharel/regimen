@@ -825,7 +825,7 @@ export const TodayScreen = () => {
         {/* Month/Year Display with View Toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-header-text">
               {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
             {selectedDate.toDateString() !== new Date().toDateString() && (
@@ -881,7 +881,7 @@ export const TodayScreen = () => {
                           : 'hover:bg-muted'
                       }`}
                     >
-                      <span className="text-xs font-medium">
+                      <span className={`text-xs font-medium ${isSelected ? '' : 'text-header-text'}`}>
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'][day.getDay()]}
                       </span>
                       <span className="text-xl font-bold">{day.getDate()}</span>
@@ -1242,7 +1242,7 @@ export const TodayScreen = () => {
                     {morningDoses.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
-                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-header-text' : 'text-muted-foreground/60'}`}>
                             Morning
                           </h4>
                           {isRefinedMode && <div className="flex-1 h-px bg-border" />}
@@ -1255,7 +1255,7 @@ export const TodayScreen = () => {
                     {afternoonDoses.length > 0 && (
                       <div className={`space-y-3 ${morningDoses.length > 0 ? 'mt-6' : ''}`}>
                         <div className="flex items-center gap-2 px-1">
-                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-header-text' : 'text-muted-foreground/60'}`}>
                             Afternoon
                           </h4>
                           {isRefinedMode && <div className="flex-1 h-px bg-border" />}
@@ -1268,7 +1268,7 @@ export const TodayScreen = () => {
                     {eveningDoses.length > 0 && (
                       <div className={`space-y-3 ${(morningDoses.length > 0 || afternoonDoses.length > 0) ? 'mt-6' : ''}`}>
                         <div className="flex items-center gap-2 px-1">
-                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                          <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-header-text' : 'text-muted-foreground/60'}`}>
                             Evening
                           </h4>
                           {isRefinedMode && <div className="flex-1 h-px bg-border" />}
@@ -1284,7 +1284,7 @@ export const TodayScreen = () => {
             {doses.filter(d => d.schedule_type === 'As Needed').length > 0 && (
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-2 px-1">
-                  <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                  <h4 className={`text-[10px] font-bold uppercase tracking-[1.5px] ${isRefinedMode ? 'text-header-text' : 'text-muted-foreground/60'}`}>
                     As Needed
                   </h4>
                   {isRefinedMode && <div className="flex-1 h-px bg-border" />}
