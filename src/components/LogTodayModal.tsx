@@ -241,7 +241,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           {/* Weight Section */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium">
-              <Scale className="w-4 h-4 text-coral" />
+              <Scale className="w-4 h-4 text-primary" />
               Current weight
             </Label>
             <div className="flex gap-2">

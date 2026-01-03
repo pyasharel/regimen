@@ -420,7 +420,7 @@ export const MyStackScreen = () => {
                 <div className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="mt-1.5 h-2 w-2 rounded-full bg-[#FF6B6B] shadow-sm shadow-[#FF6B6B]/50 animate-pulse flex-shrink-0" />
+                      <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shadow-sm shadow-primary/50 animate-pulse flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-lg font-bold text-foreground leading-tight">{compound.name}</h3>
@@ -464,12 +464,12 @@ export const MyStackScreen = () => {
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                       isOnCycle 
-                                        ? 'bg-primary/65 animate-pulse' 
-                                        : 'bg-muted-foreground/60'
+                                        ? 'bg-primary/80 animate-pulse' 
+                                        : 'bg-muted-foreground/50'
                                     }`} />
                                     <span className={`text-xs font-semibold uppercase tracking-wider ${
                                       isOnCycle 
-                                        ? 'text-primary/80' 
+                                        ? 'text-primary' 
                                         : 'text-muted-foreground'
                                     }`}>
                                       {isOnCycle ? 'ON CYCLE' : 'OFF CYCLE'}
@@ -481,7 +481,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-primary/65' : '[&>div]:bg-muted-foreground/40 bg-muted'}`}
+                                  className={`h-1.5 ${isOnCycle ? '[&>div]:bg-primary/80' : '[&>div]:bg-muted-foreground/40 bg-muted'}`}
                                 />
                               </div>
                             );
@@ -498,15 +498,15 @@ export const MyStackScreen = () => {
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary/65 animate-pulse" />
-                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary/80">
+                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary/80 animate-pulse" />
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                                     ONGOING
                                   </span>
                                 </div>
                               </div>
                               <Progress 
                                 value={100} 
-                                className="h-1.5 [&>div]:bg-primary/65"
+                                className="h-1.5 [&>div]:bg-primary/80"
                               />
                             </div>
                           );

@@ -515,7 +515,7 @@ export const ProgressScreen = () => {
               ))}
             </div>
 
-            <Card className="p-4 bg-muted/30" onClick={() => triggerHaptic('light')}>
+            <Card className="p-4 bg-card shadow-[var(--shadow-card)]" onClick={() => triggerHaptic('light')}>
               <MetricChart
                 metricType={metricType}
                 entries={entries}
@@ -574,7 +574,7 @@ export const ProgressScreen = () => {
         </div>
 
         {/* Visual Progress */}
-        <Card className="p-4 bg-card border border-border space-y-4">
+        <Card className="p-4 bg-card border border-border shadow-[var(--shadow-card)] space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
             <Button 
@@ -629,11 +629,11 @@ export const ProgressScreen = () => {
                 {['Week 1', 'Week 4', 'Week 8'].map((label, index) => (
                   <div key={index} className="flex-shrink-0 text-center">
                     <div 
-                      className="w-24 h-32 rounded-lg bg-gradient-to-br from-coral/20 to-coral/10 border border-coral/30 relative cursor-pointer group hover:from-coral/30 hover:to-coral/20 transition-all"
+                      className="w-24 h-32 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 relative cursor-pointer group hover:from-primary/30 hover:to-primary/20 transition-all"
                       onClick={() => setShowPhotoModal(true)}
                     >
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <CameraIcon className="w-7 h-7 text-coral/60 group-hover:text-coral group-hover:scale-110 transition-all" />
+                        <CameraIcon className="w-7 h-7 text-primary/60 group-hover:text-primary group-hover:scale-110 transition-all" />
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground/60 mt-2">
@@ -652,7 +652,7 @@ export const ProgressScreen = () => {
         {/* Collapsible Medication Timeline */}
         {compounds.length > 0 && (
           <Collapsible open={timelineExpanded} onOpenChange={setTimelineExpanded}>
-            <Card className="bg-card border border-border overflow-hidden">
+            <Card className="bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
               <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
                 <h2 className="text-lg font-semibold text-foreground">Medication Timeline</h2>
                 {timelineExpanded ? (
@@ -682,9 +682,9 @@ export const ProgressScreen = () => {
                       
                       const MEDICATION_COLORS = [
                         'hsl(var(--primary))',
-                        'hsl(var(--primary) / 0.8)',
-                        'hsl(var(--primary) / 0.6)',
-                        'hsl(var(--primary) / 0.5)',
+                        'hsl(var(--primary))',
+                        'hsl(var(--primary))',
+                        'hsl(var(--primary))',
                       ];
                       
                       return (

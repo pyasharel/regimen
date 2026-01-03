@@ -53,6 +53,11 @@ export default {
           DEFAULT: "hsl(var(--dose-card-bg))",
           border: "hsl(var(--dose-card-border))",
         },
+        // Alias coral to primary for consistent usage
+        coral: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

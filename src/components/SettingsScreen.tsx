@@ -175,13 +175,13 @@ export const SettingsScreen = () => {
           {settingsSections.map((section) => (
             <div key={section.label}>
               {section.isInline && section.label === "Theme" ? (
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                        <section.icon className="h-4 w-4 text-primary" />
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <section.icon className="h-5 w-5 text-primary" />
                       </div>
-                      <h3 className="font-semibold text-sm">{section.label}</h3>
+                      <h3 className="font-semibold">{section.label}</h3>
                     </div>
                     <div className="flex gap-1 bg-muted rounded-lg p-1">
                       <button
@@ -212,13 +212,13 @@ export const SettingsScreen = () => {
                   </div>
                 </div>
               ) : section.isInline && section.label === "Sound Effects" ? (
-                <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                        <section.icon className="h-4 w-4 text-primary" />
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <section.icon className="h-5 w-5 text-primary" />
                       </div>
-                      <h3 className="font-semibold text-sm">{section.label}</h3>
+                      <h3 className="font-semibold">{section.label}</h3>
                     </div>
                     <Switch
                       checked={soundEnabled}
