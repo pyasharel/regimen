@@ -203,64 +203,64 @@ All colors MUST be HSL.
 
   /* ============================================
      REFINED PREMIUM DESIGN VARIANT - Dark Mode
-     Near-black background, coral accent, reduced shadows
+     Near-black background, bright coral accent, more contrast
      ============================================ */
   .dark.design-refined {
     /* Near-black background per spec */
     --background: 0 0% 5%; /* #0C0C0C - near black */
     --foreground: 40 5% 95%; /* #F2F2F0 - warm white */
     
-    /* Elevated surfaces */
-    --card: 0 0% 8%; /* #141414 - bg-elevated */
+    /* Elevated surfaces - more contrast between card and background */
+    --card: 0 0% 10%; /* #1A1A1A - visible lift from bg */
     --card-foreground: 40 5% 95%;
     
     /* Card surface level */
-    --popover: 0 0% 10%; /* #1A1A1A - bg-card */
+    --popover: 0 0% 12%; /* Slightly lighter for popovers */
     --popover-foreground: 40 5% 95%;
     
-    /* Refined Coral Primary */
-    --primary: 4 70% 66%; /* #E8716A - coral from spec */
+    /* Bright Coral Primary - same as Classic for consistency */
+    --primary: 6 100% 69%; /* #FF6F61 - bright coral */
     --primary-foreground: 0 0% 100%;
     
     /* Purple for gradients only */
-    --secondary: 270 20% 58%; /* #9080A8 - muted purple */
+    --secondary: 258 90% 66%; /* #8B5CF6 - classic purple */
     --secondary-foreground: 0 0% 100%;
     
-    /* Muted tones */
-    --muted: 0 0% 12%; /* Slightly elevated surface */
-    --muted-foreground: 40 2% 60%; /* #9A9A98 - warm gray */
+    /* Muted tones - more visible */
+    --muted: 0 0% 14%; /* Slightly more contrast */
+    --muted-foreground: 40 2% 65%; /* Brighter muted text */
     
     /* Accent uses coral */
-    --accent: 4 70% 66%;
+    --accent: 6 100% 69%;
     --accent-foreground: 0 0% 100%;
     
     /* Ring matches coral */
-    --ring: 4 70% 66%;
+    --ring: 6 100% 69%;
     
-    /* Border colors from spec */
-    --border: 0 0% 17%; /* #2A2A2A */
-    --border-light: 0 0% 13%; /* #222222 */
-    --input: 0 0% 10%;
+    /* Border colors - slightly more visible */
+    --border: 0 0% 20%; /* #333333 */
+    --border-light: 0 0% 15%;
+    --input: 0 0% 12%;
     
     /* Surface levels */
-    --surface: 0 0% 8%; /* #141414 */
+    --surface: 0 0% 10%; /* #1A1A1A */
     
     /* Dose card styling - Refined with coral tint */
-    --dose-card-bg: 4 8% 9%; /* Very subtle coral tint on dark */
-    --dose-card-border: 4 12% 18%; /* coral-border */
+    --dose-card-bg: 6 8% 10%; /* Subtle coral tint on dark */
+    --dose-card-border: 6 15% 22%; /* coral-border */
     --dose-card-accent-width: 4px;
     
     /* Coral tint for cards (used in components) */
-    --coral-tint: 4 70% 66% / 0.12; /* rgba(232, 113, 106, 0.12) */
-    --coral-border: 4 70% 66% / 0.22; /* rgba(232, 113, 106, 0.22) */
+    --coral-tint: 6 100% 69% / 0.12; /* rgba(255, 111, 97, 0.12) */
+    --coral-border: 6 100% 69% / 0.25; /* rgba(255, 111, 97, 0.25) */
     
-    /* Refined gradients */
-    --gradient-premium: linear-gradient(135deg, hsl(4 70% 66%), hsl(270 20% 58%));
+    /* Refined gradients - brighter */
+    --gradient-premium: linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%));
     
-    /* Reduced shadows for dark mode per spec */
-    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3);
-    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
-    --shadow-premium: 0 4px 16px rgba(232, 113, 106, 0.08);
+    /* Shadows for dark mode */
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-premium: 0 4px 20px rgba(255, 111, 97, 0.12);
     
     /* Streak fire - coral-orange for harmony */
     --streak-fire: 8 80% 63%; /* #E87A5A */
