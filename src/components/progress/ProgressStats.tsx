@@ -97,7 +97,7 @@ export const ProgressStats = ({
       {stats.map((stat, idx) => (
         <Card 
           key={idx} 
-          className={`p-2 bg-card shadow-[var(--shadow-card)] ${stat.isClickable ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+          className={`p-2 bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${stat.isClickable ? 'cursor-pointer hover:bg-muted/50' : ''}`}
           onClick={stat.isClickable ? stat.onClick : undefined}
         >
           <div className="space-y-0.5 text-center">

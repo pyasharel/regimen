@@ -378,7 +378,7 @@ export const MyStackScreen = () => {
         {/* Active Compounds */}
         <div className="space-y-4 px-4 pb-4">
           <div className="space-y-3">
-            <h2 id="active-section" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h2 id="active-section" className="text-xs font-semibold uppercase tracking-wider text-header-text">
               Active
             </h2>
           
@@ -411,7 +411,7 @@ export const MyStackScreen = () => {
               return (
               <div
                 key={compound.id}
-                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-all animate-slide-up cursor-pointer"
+                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 hover:shadow-[var(--shadow-elevated)] transition-all animate-slide-up cursor-pointer"
                 onClick={() => {
                   triggerHaptic();
                   navigate(`/stack/${compound.id}`);
@@ -543,7 +543,7 @@ export const MyStackScreen = () => {
 
         {/* Inactive Compounds */}
         <div className="space-y-3 pt-4">
-          <h2 id="inactive-section" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 id="inactive-section" className="text-xs font-semibold uppercase tracking-wider text-header-text">
             Inactive ({inactiveCompounds.length})
           </h2>
           

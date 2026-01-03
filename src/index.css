@@ -106,7 +106,10 @@ All colors MUST be HSL.
     
     /* Warmer muted tones */
     --muted: 30 10% 92%;
-    --muted-foreground: 30 5% 38%; /* #5A5550 - warm gray */
+    --muted-foreground: 30 5% 45%; /* #6B6560 - warmer medium gray for secondary text */
+    
+    /* Header/label text - even lighter for structural elements */
+    --header-text: 30 5% 55%; /* #8A8580 - lighter gray for screen titles, dates */
     
     /* Accent uses coral */
     --accent: 4 72% 60%;
@@ -229,6 +232,9 @@ All colors MUST be HSL.
     /* Muted tones - more visible */
     --muted: 0 0% 14%; /* Slightly more contrast */
     --muted-foreground: 40 2% 65%; /* Brighter muted text */
+    
+    /* Header/label text - lighter for structural elements */
+    --header-text: 40 2% 50%; /* Lighter gray for screen titles, dates */
     
     /* Accent uses coral */
     --accent: 6 100% 69%;

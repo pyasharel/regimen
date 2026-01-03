@@ -177,7 +177,7 @@ export const SettingsScreen = () => {
           {settingsSections.map((section) => (
             <div key={section.label}>
               {section.isInline && section.label === "Theme" ? (
-                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                <div className="rounded-xl dark:border dark:border-border/50 bg-card p-4 shadow-[var(--shadow-card)]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -214,7 +214,7 @@ export const SettingsScreen = () => {
                   </div>
                 </div>
               ) : section.isInline && section.label === "Sound Effects" ? (
-                <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                <div className="rounded-xl dark:border dark:border-border/50 bg-card p-4 shadow-[var(--shadow-card)]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -231,7 +231,7 @@ export const SettingsScreen = () => {
               ) : (
                 <button
                   onClick={section.onClick}
-                  className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+                  className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -251,7 +251,7 @@ export const SettingsScreen = () => {
         {/* Legal - Combined into one expandable card */}
         <button
           onClick={() => navigate("/settings/terms")}
-          className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -267,7 +267,7 @@ export const SettingsScreen = () => {
         {/* Support - Combined into one card */}
         <button
           onClick={() => navigate("/settings/help")}
-          className="w-full rounded-xl border border-border bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
