@@ -163,7 +163,7 @@ export const SettingsSubscriptionSection = () => {
           SUBSCRIPTION
         </h3>
         
-         <Card className="border-primary/20 bg-primary/3">
+         <Card className="border border-primary/15 bg-primary/3">
           <CardContent className="p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -217,7 +217,7 @@ export const SettingsSubscriptionSection = () => {
           SUBSCRIPTION
         </h3>
         
-        <Card className="border-primary/20 bg-primary/3">
+        <Card className="border border-primary/15 bg-primary/3">
           <CardContent className="p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
