@@ -151,6 +151,79 @@ All colors MUST be HSL.
     --tertiary-mauve: 330 15% 60%; /* #A08090 */
   }
 
+  /* ============================================
+     REFINED V2 DESIGN VARIANT - Light Mode
+     Warmer beige, lower contrast, softer shadows
+     ============================================ */
+  .design-refined-v2:root,
+  :root.design-refined-v2 {
+    /* Warmer beige background - more tan than cream */
+    --background: 36 22% 95%; /* #F4F1EC - warmer beige */
+    --foreground: 30 10% 16%; /* #2A2825 - warm dark gray */
+    
+    /* Off-white cards with warm undertone - less contrast with bg */
+    --card: 40 20% 98%; /* #FAF9F6 - warm off-white */
+    --card-foreground: 30 10% 16%;
+    
+    /* Popover */
+    --popover: 40 20% 98%;
+    --popover-foreground: 30 10% 16%;
+    
+    /* Refined Coral Primary */
+    --primary: 4 72% 60%; /* #D8635C - refined coral */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Muted purple for gradients */
+    --secondary: 270 20% 58%; /* #9080A8 */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Warmer muted tones */
+    --muted: 30 12% 91%;
+    --muted-foreground: 30 5% 45%;
+    
+    /* Header/label text */
+    --header-text: 30 5% 55%;
+    
+    /* Accent uses coral */
+    --accent: 4 72% 60%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Ring matches coral */
+    --ring: 4 72% 60%;
+    
+    /* Warmer, lighter borders */
+    --border: 30 12% 90%;
+    --input: 30 18% 96%;
+    
+    /* Surface levels */
+    --surface: 30 18% 93%;
+    --surface-elevated: 40 20% 98%;
+    
+    /* Dose card styling */
+    --dose-card-bg: 40 20% 98%;
+    --dose-card-border: 30 12% 88%;
+    --dose-card-accent-width: 4px;
+    
+    /* Refined gradients */
+    --gradient-premium: linear-gradient(135deg, hsl(4 72% 60%), hsl(270 20% 58%));
+    --gradient-subtle: linear-gradient(180deg, hsl(40 20% 98%), hsl(36 22% 95%));
+    --gradient-section: linear-gradient(135deg, hsl(4 72% 97%), hsl(270 20% 97%));
+    
+    /* Softer shadows - lower opacity */
+    --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.06);
+    --shadow-premium: 0 6px 20px rgba(216, 99, 92, 0.12);
+    
+    /* Streak fire */
+    --streak-fire: 8 80% 63%;
+    --streak-fire-dark: 8 75% 55%;
+    
+    /* Tertiary Colors */
+    --tertiary-amber: 38 70% 58%;
+    --tertiary-slate: 210 12% 55%;
+    --tertiary-mauve: 330 15% 60%;
+  }
+
   /* Hide scrollbar for iOS time picker */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
@@ -276,6 +349,80 @@ All colors MUST be HSL.
     --tertiary-amber: 38 70% 58%; /* #D4A056 */
     --tertiary-slate: 210 12% 55%; /* #7A8A9A */
     --tertiary-mauve: 330 15% 60%; /* #A08090 */
+  }
+
+  /* ============================================
+     REFINED V2 DESIGN VARIANT - Dark Mode
+     Charcoal background (not OLED black), softer feel
+     ============================================ */
+  .dark.design-refined-v2 {
+    /* Dark charcoal - less saturated than OLED black */
+    --background: 0 0% 9%; /* #171717 - charcoal, not pure black */
+    --foreground: 40 5% 95%; /* #F2F2F0 - warm white */
+    
+    /* Slightly lighter cards for more lift */
+    --card: 0 0% 12%; /* #1F1F1F - more visible lift from bg */
+    --card-foreground: 40 5% 95%;
+    
+    /* Popover */
+    --popover: 0 0% 14%;
+    --popover-foreground: 40 5% 95%;
+    
+    /* Bright Coral Primary */
+    --primary: 6 100% 69%; /* #FF6F61 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Purple for gradients */
+    --secondary: 258 90% 66%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Muted tones - consistent with new card level */
+    --muted: 0 0% 16%;
+    --muted-foreground: 40 2% 65%;
+    
+    /* Header/label text */
+    --header-text: 40 2% 50%;
+    
+    /* Accent uses coral */
+    --accent: 6 100% 69%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Ring matches coral */
+    --ring: 6 100% 69%;
+    
+    /* Border colors */
+    --border: 0 0% 22%;
+    --border-light: 0 0% 16%;
+    --input: 0 0% 14%;
+    
+    /* Surface levels */
+    --surface: 0 0% 12%;
+    
+    /* Dose card styling */
+    --dose-card-bg: 6 8% 12%;
+    --dose-card-border: 6 15% 24%;
+    --dose-card-accent-width: 4px;
+    
+    /* Coral tint for cards */
+    --coral-tint: 6 100% 69% / 0.12;
+    --coral-border: 6 100% 69% / 0.25;
+    
+    /* Refined gradients */
+    --gradient-premium: linear-gradient(135deg, hsl(6 100% 69%), hsl(258 90% 66%));
+    
+    /* Softer shadows for dark mode */
+    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-premium: 0 4px 16px rgba(255, 111, 97, 0.10);
+    
+    /* Streak fire */
+    --streak-fire: 8 80% 63%;
+    --streak-fire-dark: 8 75% 55%;
+    
+    /* Tertiary Colors */
+    --tertiary-amber: 38 70% 58%;
+    --tertiary-slate: 210 12% 55%;
+    --tertiary-mauve: 330 15% 60%;
   }
 }
 

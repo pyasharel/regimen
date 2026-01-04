@@ -3,7 +3,7 @@ import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 
 type Theme = "dark" | "light" | "system";
-type DesignVariant = "classic" | "refined";
+type DesignVariant = "classic" | "refined" | "refined-v2";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -91,7 +91,7 @@ export function ThemeProvider({
         // Load design variant
         const variantKey = `${storageKey}-variant`;
         const storedVariant = await getStoredVariant(variantKey);
-        if (storedVariant === 'refined' || storedVariant === 'classic') {
+        if (storedVariant === 'refined' || storedVariant === 'classic' || storedVariant === 'refined-v2') {
           setDesignVariantState(storedVariant);
         } else if (storedVariant === 'soft') {
           // Migrate old 'soft' to 'refined'
