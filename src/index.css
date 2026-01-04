@@ -88,12 +88,12 @@ All colors MUST be HSL.
     --background: 40 20% 88%; /* #DED8CF - bold, editorial cream */
     --foreground: 30 10% 16%; /* #2A2825 - warm dark gray */
     
-    /* Warm cards - 2% darker for cohesion */
-    --card: 42 30% 89%; /* #E4DDD3 - warm off-white */
+    /* Warm cards - 1% darker for subtle cohesion */
+    --card: 42 30% 90%; /* #E6E0D7 - warm off-white */
     --card-foreground: 30 10% 16%;
     
     /* Popover */
-    --popover: 42 30% 89%;
+    --popover: 42 30% 90%;
     --popover-foreground: 30 10% 16%;
     
     /* Refined Coral Primary */
@@ -123,18 +123,18 @@ All colors MUST be HSL.
     --input: 30 18% 96%;
     
     /* Surface levels */
-    --surface: 40 18% 87%; /* #E0DAD2 */
-    --surface-elevated: 42 30% 89%;
+    --surface: 40 18% 88%; /* #E2DCD4 */
+    --surface-elevated: 42 30% 90%;
     
     /* Dose card styling - matches card */
-    --dose-card-bg: 42 30% 89%;
-    --dose-card-border: 30 15% 84%;
+    --dose-card-bg: 42 30% 90%;
+    --dose-card-border: 30 15% 85%;
     --dose-card-accent-width: 4px;
     
     /* Refined gradients */
     --gradient-premium: linear-gradient(135deg, hsl(4 72% 60%), hsl(270 20% 58%));
-    --gradient-subtle: linear-gradient(180deg, hsl(42 30% 89%), hsl(40 20% 86%));
-    --gradient-section: linear-gradient(135deg, hsl(4 72% 87%), hsl(270 20% 87%));
+    --gradient-subtle: linear-gradient(180deg, hsl(42 30% 90%), hsl(40 20% 87%));
+    --gradient-section: linear-gradient(135deg, hsl(4 72% 88%), hsl(270 20% 88%));
     
     /* Visible shadows for real depth */
     --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.05);
