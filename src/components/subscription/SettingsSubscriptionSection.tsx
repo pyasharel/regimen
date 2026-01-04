@@ -24,24 +24,33 @@ export const SettingsSubscriptionSection = () => {
   const [betaAccessEndDate, setBetaAccessEndDate] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [betaLoading, setBetaLoading] = useState(true);
 
   // Check for beta access
   useEffect(() => {
     const checkBetaAccess = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('beta_access_end_date')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile?.beta_access_end_date) {
-        const endDate = new Date(profile.beta_access_end_date);
-        if (endDate > new Date()) {
-          setBetaAccessEndDate(profile.beta_access_end_date);
+      setBetaLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setBetaLoading(false);
+          return;
         }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('beta_access_end_date')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile?.beta_access_end_date) {
+          const endDate = new Date(profile.beta_access_end_date);
+          if (endDate > new Date()) {
+            setBetaAccessEndDate(profile.beta_access_end_date);
+          }
+        }
+      } finally {
+        setBetaLoading(false);
       }
     };
     checkBetaAccess();
@@ -258,8 +267,8 @@ export const SettingsSubscriptionSection = () => {
     );
   }
 
-  // Show loading skeleton while subscription is loading
-  if (subscriptionLoading) {
+  // Show loading skeleton while subscription or beta access is loading
+  if (subscriptionLoading || betaLoading) {
     return (
       <div className="space-y-3">
         <h3 className="text-[12px] uppercase font-semibold text-muted-foreground tracking-wide">
