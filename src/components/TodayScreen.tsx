@@ -1203,7 +1203,7 @@ export const TodayScreen = () => {
                       {isRefinedMode && !isSkipped && (
                         <div className="w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0" />
                       )}
-                      <div className="p-3 min-h-[60px] flex-1">
+                      <div className="p-4 min-h-[72px] flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {/* Medication name with optional Skipped badge */}
