@@ -351,7 +351,7 @@ export const MyStackScreen = () => {
                 triggerHaptic();
                 document.getElementById('active-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 dark:from-card dark:via-card dark:to-card dark:border dark:border-primary/25 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 dark:from-card dark:via-card dark:to-card dark:border dark:border-primary/25 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.97] transition-transform"
             >
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-white dark:bg-primary animate-pulse" />
@@ -365,7 +365,7 @@ export const MyStackScreen = () => {
                 triggerHaptic();
                 document.getElementById('inactive-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-lg bg-muted border border-border px-3 py-2 shadow-sm text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-muted border border-border px-3 py-2 shadow-sm text-left hover:scale-[1.02] active:scale-[0.97] transition-transform"
             >
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
@@ -389,7 +389,7 @@ export const MyStackScreen = () => {
                   triggerHaptic();
                   navigate("/add-compound");
                 }}
-                className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all w-full max-w-md"
+                className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.97] transition-all w-full max-w-md"
               >
                 <div className="flex flex-col items-center text-center">
                   <h3 className="text-xl font-bold mb-6 text-foreground">
@@ -475,6 +475,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
+                                  animateOnMount={true}
                                   className={`h-1 bg-muted-foreground/20 ${isOnCycle ? '[&>div]:bg-primary dark:[&>div]:bg-primary/75' : '[&>div]:bg-muted-foreground/50'}`}
                                 />
                               </div>
@@ -500,6 +501,7 @@ export const MyStackScreen = () => {
                               </div>
                               <Progress 
                                 value={100} 
+                                animateOnMount={true}
                                 className="h-1 bg-muted-foreground/20 [&>div]:bg-primary dark:[&>div]:bg-primary/75"
                               />
                             </div>
@@ -626,7 +628,7 @@ export const MyStackScreen = () => {
             triggerHaptic();
             navigate("/add-compound");
           }}
-          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95"
+          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[3px] ring-white/80 dark:ring-black/80 transition-transform hover:scale-105 active:scale-[0.97] active:animate-fab-spring"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
         >
           <Plus className="h-6 w-6" />

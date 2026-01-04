@@ -16,6 +16,7 @@ import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 import { formatDose } from "@/utils/doseUtils";
 import { StreakBadge } from "@/components/StreakBadge";
+import { useStreaks } from "@/hooks/useStreaks";
 import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
@@ -65,6 +66,7 @@ export const TodayScreen = () => {
   
   // Track engagement for first dose notification
   useEngagementTracking();
+  const { data: streakData } = useStreaks();
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
@@ -73,6 +75,7 @@ export const TodayScreen = () => {
   const [animatingDoses, setAnimatingDoses] = useState<Set<string>>(new Set());
   const [showDayComplete, setShowDayComplete] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const lastHapticTime = useRef<number>(0); // For haptic rhythm timing
   
   // Dose edit modal state
   const [editingDose, setEditingDose] = useState<Dose | null>(null);
@@ -367,12 +370,19 @@ export const TodayScreen = () => {
       // Check if sound is enabled
       const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
       
-      // Trigger haptic feedback with heavy impact
-      triggerHaptic('heavy');
+      // Haptic rhythm: add 60ms minimum delay between haptics for rapid tapping
+      const now = Date.now();
+      const timeSinceLastHaptic = now - lastHapticTime.current;
+      const hapticDelay = timeSinceLastHaptic < 60 ? 60 - timeSinceLastHaptic : 0;
+      
+      setTimeout(() => {
+        triggerHaptic('heavy');
+        lastHapticTime.current = Date.now();
+      }, hapticDelay);
       
       // Play sound if enabled and checking off (not unchecking)
       if (!currentStatus && soundEnabled) {
-        playCheckSound();
+        setTimeout(() => playCheckSound(), hapticDelay);
       }
 
       // Mark as animating
@@ -564,12 +574,40 @@ export const TodayScreen = () => {
     "Crushed it!",
     "You're consistent!"
   ];
+  
+  // Milestone celebration messages
+  const milestoneMessages: Record<number, string> = {
+    7: "7 Day Streak! 🎯",
+    14: "2 Weeks Strong! 💪",
+    30: "30 Days! Champion! 🏆",
+    60: "60 Days! Legend! ⚡",
+    90: "90 Days! Ultimate! 👑",
+  };
+  
   const [celebrationMessage, setCelebrationMessage] = useState(celebrationMessages[0]);
+  const [isMilestone, setIsMilestone] = useState(false);
 
   const triggerLastDoseCelebration = () => {
-    // Strong haptic feedback pattern
-    triggerHaptic('heavy');
-    setTimeout(() => triggerHaptic('medium'), 100);
+    // Check if this completes a milestone streak
+    const currentStreak = streakData?.current_streak || 0;
+    const upcomingStreak = currentStreak + 1; // After completing today
+    const milestoneMessage = milestoneMessages[upcomingStreak];
+    const isStreakMilestone = !!milestoneMessage;
+    
+    setIsMilestone(isStreakMilestone);
+    
+    // Enhanced haptic pattern for milestones
+    if (isStreakMilestone) {
+      // Triple haptic burst for milestones
+      triggerHaptic('heavy');
+      setTimeout(() => triggerHaptic('heavy'), 100);
+      setTimeout(() => triggerHaptic('medium'), 200);
+      setTimeout(() => triggerHaptic('light'), 300);
+    } else {
+      // Standard double haptic
+      triggerHaptic('heavy');
+      setTimeout(() => triggerHaptic('medium'), 100);
+    }
 
     // Play two-tone chime
     const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
@@ -577,17 +615,22 @@ export const TodayScreen = () => {
       playChimeSound();
     }
 
-    // Pick a random celebration message
-    const randomMessage = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
-    setCelebrationMessage(randomMessage);
+    // Use milestone message if applicable, otherwise random celebration
+    if (isStreakMilestone && milestoneMessage) {
+      setCelebrationMessage(milestoneMessage);
+    } else {
+      const randomMessage = celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
+      setCelebrationMessage(randomMessage);
+    }
 
     // Show celebration message
     setShowDayComplete(true);
     
-    // Hide after animation
+    // Hide after animation (longer for milestones)
     setTimeout(() => {
       setShowDayComplete(false);
-    }, 2000);
+      setIsMilestone(false);
+    }, isStreakMilestone ? 3000 : 2000);
   };
 
   const playChimeSound = () => {
@@ -921,19 +964,19 @@ export const TodayScreen = () => {
         {/* Day Complete Celebration */}
         {showDayComplete && (
           <>
-            {/* Subtle confetti particles */}
+            {/* Confetti particles - more for milestones */}
             <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-              {[...Array(12)].map((_, i) => (
+              {[...Array(isMilestone ? 24 : 12)].map((_, i) => (
                 <div
                   key={i}
-                  className="absolute w-2 h-2 rounded-full"
+                  className={`absolute rounded-full ${isMilestone ? 'w-2.5 h-2.5' : 'w-2 h-2'}`}
                   style={{
-                    left: `${20 + Math.random() * 60}%`,
+                    left: `${10 + Math.random() * 80}%`,
                     top: '-10px',
                     backgroundColor: i % 3 === 0 ? '#FF6F61' : i % 3 === 1 ? '#8B5CF6' : '#FCD34D',
-                    animation: `confetti-fall ${2 + Math.random()}s ease-in forwards`,
-                    animationDelay: `${Math.random() * 0.3}s`,
-                    opacity: 0.8
+                    animation: `confetti-fall ${2 + Math.random() * (isMilestone ? 1.5 : 1)}s ease-in forwards`,
+                    animationDelay: `${Math.random() * (isMilestone ? 0.5 : 0.3)}s`,
+                    opacity: isMilestone ? 0.9 : 0.8
                   }}
                 />
               ))}
@@ -970,7 +1013,7 @@ export const TodayScreen = () => {
                   triggerHaptic('light');
                   navigate('/add-compound');
                 }}
-                className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98] transition-all w-full max-w-md"
+                className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-8 hover:bg-primary/10 hover:border-primary/60 active:scale-[0.97] transition-all w-full max-w-md"
               >
                 <div className="flex flex-col items-center text-center">
                   <h3 className="text-xl font-bold mb-6 text-foreground">
@@ -1029,6 +1072,42 @@ export const TodayScreen = () => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
                 
+                // Check if dose is within "take now" window (±30 minutes of scheduled time)
+                const isWithinTakeNowWindow = () => {
+                  if (isHandled) return false;
+                  
+                  const now = new Date();
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const selectedDay = new Date(selectedDate);
+                  selectedDay.setHours(0, 0, 0, 0);
+                  
+                  // Only show glow for today
+                  if (today.getTime() !== selectedDay.getTime()) return false;
+                  
+                  const scheduledTime = dose.scheduled_time;
+                  let hours = 8, minutes = 0;
+                  if (scheduledTime === 'Morning') { hours = 8; minutes = 0; }
+                  else if (scheduledTime === 'Afternoon') { hours = 14; minutes = 0; }
+                  else if (scheduledTime === 'Evening') { hours = 18; minutes = 0; }
+                  else {
+                    const timeMatch = scheduledTime.match(/^(\d{1,2}):(\d{2})$/);
+                    if (timeMatch) {
+                      hours = parseInt(timeMatch[1]);
+                      minutes = parseInt(timeMatch[2]);
+                    }
+                  }
+                  
+                  const scheduledDateTime = new Date(selectedDate);
+                  scheduledDateTime.setHours(hours, minutes, 0, 0);
+                  const diffMs = Math.abs(now.getTime() - scheduledDateTime.getTime());
+                  const diffMinutes = diffMs / (1000 * 60);
+                  
+                  return diffMinutes <= 30;
+                };
+                
+                const showTakeNowGlow = isWithinTakeNowWindow();
+                
                 // Refined mode: cards get tinted background (no border)
                 const getCardBackground = () => {
                   if (isSkipped) return 'bg-muted/50';
@@ -1050,7 +1129,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()}`}
+                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97]`}
                     style={{
                       opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
@@ -1075,7 +1154,7 @@ export const TodayScreen = () => {
                     {/* Inner vertical accent line for refined mode */}
                     <div className={`flex ${isRefinedMode && !isSkipped ? 'pl-0' : ''}`}>
                       {isRefinedMode && !isSkipped && (
-                        <div className="w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0" />
+                        <div className={`w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0 ${showTakeNowGlow ? 'animate-take-now-glow' : ''}`} />
                       )}
                       <div className="p-3 min-h-[60px] flex-1">
                       <div className="flex items-center justify-between gap-2">
@@ -1200,14 +1279,9 @@ export const TodayScreen = () => {
                                   ? 'bg-primary border-primary'
                                   : 'bg-success border-success'
                                 : isRefinedMode
-                                ? 'border-primary/50 hover:border-primary active:scale-95'
-                                : 'border-white/40 hover:border-white active:scale-95'
-                            }`}
-                            style={{
-                              ...(animatingDoses.has(dose.id) && dose.taken ? {
-                                animation: 'checkbox-check 0.2s ease-out'
-                              } : {})
-                            }}
+                                ? 'border-primary/50 hover:border-primary active:scale-[0.97]'
+                                : 'border-white/40 hover:border-white active:scale-[0.97]'
+                            } ${animatingDoses.has(dose.id) && dose.taken ? 'animate-checkbox-pop' : ''}`}
                           >
                             {dose.taken && (
                               <svg
@@ -1218,10 +1292,10 @@ export const TodayScreen = () => {
                                 strokeWidth="3.5"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                strokeDasharray="24"
-                                strokeDashoffset="0"
                                 style={{
-                                  animation: animatingDoses.has(dose.id) ? 'draw-check 0.2s ease-out' : 'none',
+                                  strokeDasharray: 24,
+                                  strokeDashoffset: 0,
+                                  animation: animatingDoses.has(dose.id) ? 'checkmark-draw 0.25s ease-out' : 'none',
                                 }}
                               >
                                 <polyline points="20 6 9 17 4 12" />
@@ -1374,7 +1448,7 @@ export const TodayScreen = () => {
         <DrawerTrigger asChild>
           <button
             onClick={() => triggerHaptic('light')}
-            className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-all hover:scale-105 active:scale-95 shadow-lg"
+            className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-transform hover:scale-105 active:scale-[0.97] active:animate-fab-spring shadow-lg"
             style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
           >
             <ClipboardList className="h-6 w-6 text-white" />
