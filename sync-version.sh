@@ -6,11 +6,10 @@
 VERSION=$(grep "export const appVersion" capacitor.config.ts | sed "s/.*= '\\(.*\\)';/\\1/")
 BUILD=$(grep "export const appBuild" capacitor.config.ts | sed "s/.*= '\\(.*\\)';/\\1/")
 
-# For iOS, use short version (1.0 instead of 1.0.0)
-SHORT_VERSION=$(echo $VERSION | sed 's/\.[0-9]*$//' | sed 's/\.0$//')
-# If version is like 1.0.0, make it 1.0
-if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
-  SHORT_VERSION=$(echo $VERSION | sed 's/\.0$//')
+# For iOS, keep the full version unless patch is .0 (e.g., 1.0.0 -> 1.0)
+SHORT_VERSION="$VERSION"
+if [[ $VERSION =~ ^([0-9]+)\.([0-9]+)\.0$ ]]; then
+  SHORT_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
 fi
 
 echo "📱 Syncing version to iOS..."
