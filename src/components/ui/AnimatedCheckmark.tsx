@@ -7,7 +7,7 @@ interface AnimatedCheckmarkProps {
 }
 
 /**
- * Animated SVG checkmark with draw-in animation.
+ * Animated SVG checkmark with draw-in animation and scale overshoot.
  * Respects reduced motion preferences.
  */
 export const AnimatedCheckmark = ({ 
@@ -21,26 +21,34 @@ export const AnimatedCheckmark = ({
   const shouldAnimate = isAnimating && !prefersReducedMotion;
   
   return (
-    <svg
-      className={`${className}`}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <div
+      style={{
+        display: 'inline-flex',
+        transform: shouldAnimate ? 'scale(1)' : undefined,
+        animation: shouldAnimate ? 'checkmark-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+      }}
     >
-      <polyline 
-        points="20 6 9 17 4 12"
-        style={{
-          strokeDasharray: 24,
-          strokeDashoffset: shouldAnimate ? 0 : 0,
-          animation: shouldAnimate ? 'checkmark-draw 0.25s ease-out forwards' : 'none',
-        }}
-      />
-    </svg>
+      <svg
+        className={`${className}`}
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline 
+          points="20 6 9 17 4 12"
+          style={{
+            strokeDasharray: 24,
+            strokeDashoffset: shouldAnimate ? 0 : 0,
+            animation: shouldAnimate ? 'checkmark-draw 0.3s ease-out forwards' : 'none',
+          }}
+        />
+      </svg>
+    </div>
   );
 };
 

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface UserStats {
@@ -43,6 +43,8 @@ export const useStreaks = () => {
 
       return data as UserStats;
     },
+    // Keep previous data during refetch to prevent flicker
+    placeholderData: keepPreviousData,
   });
 };
 

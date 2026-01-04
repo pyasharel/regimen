@@ -15,6 +15,7 @@ import { Capacitor } from '@capacitor/core';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 import { formatDose } from "@/utils/doseUtils";
+import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { StreakBadge } from "@/components/StreakBadge";
 import { useStreaks } from "@/hooks/useStreaks";
 import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
@@ -280,7 +281,7 @@ export const TodayScreen = () => {
         .from('doses')
         .select(`
           *,
-          compounds (name, schedule_type, is_active)
+          compounds (name, schedule_type, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)
         `)
         .eq('scheduled_date', dateStr);
       console.log('[TodayScreen] ⏱️ doses query took:', Date.now() - startTime, 'ms');
@@ -316,13 +317,40 @@ export const TodayScreen = () => {
         compounds: { name: compound.name, schedule_type: 'As Needed' }
       })) || [];
 
-      // Filter out untaken doses from inactive compounds, but keep taken doses for history
+      // Filter out untaken doses from inactive compounds and OFF cycle compounds
       const formattedDoses = [
         ...(dosesData?.filter(d => {
-          // If compound is inactive, only show if dose was taken or skipped
-          if (d.compounds?.is_active === false) {
-            return d.taken || d.skipped;
+          // If dose is already taken or skipped, always show it (historical accuracy)
+          if (d.taken || d.skipped) {
+            return true;
           }
+          
+          // If compound is inactive, don't show untaken doses
+          if (d.compounds?.is_active === false) {
+            return false;
+          }
+          
+          // If compound has cycles, check if currently in OFF phase
+          if (d.compounds?.has_cycles && d.compounds?.start_date) {
+            const cycleStatus = calculateCycleStatus(
+              d.compounds.start_date,
+              d.compounds.cycle_weeks_on,
+              d.compounds.cycle_weeks_off
+            );
+            
+            // If in OFF phase and dose is not taken/skipped, filter it out
+            if (cycleStatus && cycleStatus.currentPhase === 'off') {
+              console.log(`[TodayScreen] Filtering out ${d.compounds?.name} - in OFF cycle phase`);
+              return false;
+            }
+            
+            // For one-time cycles that have ended (isInCycle is false and no off period)
+            if (cycleStatus && !cycleStatus.isInCycle && !d.compounds.cycle_weeks_off) {
+              console.log(`[TodayScreen] Filtering out ${d.compounds?.name} - one-time cycle ended`);
+              return false;
+            }
+          }
+          
           return true;
         }).map(d => ({
           ...d,
@@ -587,26 +615,45 @@ export const TodayScreen = () => {
   const [celebrationMessage, setCelebrationMessage] = useState(celebrationMessages[0]);
   const [isMilestone, setIsMilestone] = useState(false);
 
-  const triggerLastDoseCelebration = () => {
-    // Check if this completes a milestone streak
+  const triggerLastDoseCelebration = async () => {
+    // Refetch streak data to get the actual new value after the dose was logged
+    await queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+    
+    // Wait a bit for the refetch to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Get fresh streak data - check against actual milestone values
     const currentStreak = streakData?.current_streak || 0;
-    const upcomingStreak = currentStreak + 1; // After completing today
-    const milestoneMessage = milestoneMessages[upcomingStreak];
-    const isStreakMilestone = !!milestoneMessage;
+    // Check if the current streak (after completing today) is a milestone
+    const lastCelebratedMilestone = sessionStorage.getItem('lastCelebratedMilestone');
+    const milestoneMessage = milestoneMessages[currentStreak];
+    const isStreakMilestone = !!milestoneMessage && lastCelebratedMilestone !== String(currentStreak);
+    
+    if (isStreakMilestone) {
+      sessionStorage.setItem('lastCelebratedMilestone', String(currentStreak));
+    }
     
     setIsMilestone(isStreakMilestone);
     
-    // Enhanced haptic pattern for milestones
+    // Confetti-like haptic burst for day completion
     if (isStreakMilestone) {
-      // Triple haptic burst for milestones
+      // Extended haptic burst for milestones (8 pulses, faster)
       triggerHaptic('heavy');
-      setTimeout(() => triggerHaptic('heavy'), 100);
-      setTimeout(() => triggerHaptic('medium'), 200);
-      setTimeout(() => triggerHaptic('light'), 300);
+      setTimeout(() => triggerHaptic('heavy'), 30);
+      setTimeout(() => triggerHaptic('medium'), 60);
+      setTimeout(() => triggerHaptic('medium'), 90);
+      setTimeout(() => triggerHaptic('medium'), 120);
+      setTimeout(() => triggerHaptic('light'), 150);
+      setTimeout(() => triggerHaptic('light'), 180);
+      setTimeout(() => triggerHaptic('light'), 210);
     } else {
-      // Standard double haptic
+      // Confetti-like burst for regular day complete (6 pulses)
       triggerHaptic('heavy');
-      setTimeout(() => triggerHaptic('medium'), 100);
+      setTimeout(() => triggerHaptic('medium'), 40);
+      setTimeout(() => triggerHaptic('medium'), 80);
+      setTimeout(() => triggerHaptic('light'), 120);
+      setTimeout(() => triggerHaptic('light'), 160);
+      setTimeout(() => triggerHaptic('light'), 200);
     }
 
     // Play two-tone chime
@@ -1129,7 +1176,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97]`}
+                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97] ${showTakeNowGlow && !isHandled ? 'animate-border-shimmer' : ''}`}
                     style={{
                       opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
@@ -1154,7 +1201,7 @@ export const TodayScreen = () => {
                     {/* Inner vertical accent line for refined mode */}
                     <div className={`flex ${isRefinedMode && !isSkipped ? 'pl-0' : ''}`}>
                       {isRefinedMode && !isSkipped && (
-                        <div className={`w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0 ${showTakeNowGlow ? 'animate-take-now-glow' : ''}`} />
+                        <div className="w-1 bg-primary rounded-full my-3 ml-3 flex-shrink-0" />
                       )}
                       <div className="p-3 min-h-[60px] flex-1">
                       <div className="flex items-center justify-between gap-2">
