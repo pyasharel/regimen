@@ -51,13 +51,19 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
   const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
   const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
 
-  // Reset state when opening
+  // Sync internal state when value prop changes from parent
+  // This fixes the bug where editing a compound wouldn't show the saved time
+  React.useEffect(() => {
+    const parsed = parseTime(value);
+    setSelectedHour(parsed.hours);
+    setSelectedMinute(parsed.minutes);
+    setSelectedPeriod(parsed.period);
+  }, [value]);
+
+  // Reset state when opening - scroll to the correct position
   React.useEffect(() => {
     if (open) {
       const parsed = parseTime(value);
-      setSelectedHour(parsed.hours);
-      setSelectedMinute(parsed.minutes);
-      setSelectedPeriod(parsed.period);
       setTimeout(() => {
         scrollToSelected(parsed.hours, parsed.minutes);
       }, 100);

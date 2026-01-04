@@ -434,6 +434,16 @@ All colors MUST be HSL.
     }
   }
   
+  /* "Take Now" border shimmer animation */
+  @keyframes border-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  
   /* Progress bar fill animation */
   @keyframes progress-fill {
     from {
@@ -448,6 +458,19 @@ All colors MUST be HSL.
     }
     50% {
       transform: scale(1.15);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  /* Checkmark scale overshoot */
+  @keyframes checkmark-pop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
     }
     100% {
       transform: scale(1);
@@ -489,6 +512,34 @@ All colors MUST be HSL.
     animation: take-now-glow 3s ease-in-out infinite;
   }
   
+  /* Border shimmer for "Take Now" cards */
+  .animate-border-shimmer {
+    position: relative;
+  }
+  
+  .animate-border-shimmer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.4) 25%,
+      hsl(var(--primary) / 0.6) 50%,
+      hsl(var(--primary) / 0.4) 75%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: border-shimmer 4s ease-in-out infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
   .animate-progress-fill {
     animation: progress-fill 0.6s ease-out forwards;
   }
@@ -496,14 +547,21 @@ All colors MUST be HSL.
   .animate-checkbox-pop {
     animation: checkbox-pop 0.2s ease-out;
   }
+  
+  .animate-checkmark-pop {
+    animation: checkmark-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .animate-shimmer,
     .animate-fab-spring,
     .animate-take-now-glow,
+    .animate-border-shimmer,
+    .animate-border-shimmer::before,
     .animate-progress-fill,
     .animate-checkbox-pop,
+    .animate-checkmark-pop,
     .animate-slide-up,
     .animate-fade-in {
       animation: none;

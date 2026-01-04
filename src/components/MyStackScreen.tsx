@@ -49,10 +49,25 @@ export const MyStackScreen = () => {
   const [weeklyDoses, setWeeklyDoses] = useState(0);
   const [adherenceRate, setAdherenceRate] = useState(0);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  
+  // Check if progress animation already played this session
+  const [hasAnimatedProgress, setHasAnimatedProgress] = useState(() => {
+    return sessionStorage.getItem('mystack-progress-animated') === 'true';
+  });
 
   useEffect(() => {
     loadCompounds();
     loadWeeklyStats();
+    
+    // Mark that animation has played after first render
+    if (!hasAnimatedProgress) {
+      // Small delay to ensure animation plays first
+      const timer = setTimeout(() => {
+        sessionStorage.setItem('mystack-progress-animated', 'true');
+        setHasAnimatedProgress(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const loadCompounds = async () => {
@@ -475,7 +490,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  animateOnMount={true}
+                                  animateOnMount={!hasAnimatedProgress}
                                   className={`h-1 bg-muted-foreground/20 ${isOnCycle ? '[&>div]:bg-primary dark:[&>div]:bg-primary/75' : '[&>div]:bg-muted-foreground/50'}`}
                                 />
                               </div>
@@ -501,7 +516,7 @@ export const MyStackScreen = () => {
                               </div>
                               <Progress 
                                 value={100} 
-                                animateOnMount={true}
+                                animateOnMount={!hasAnimatedProgress}
                                 className="h-1 bg-muted-foreground/20 [&>div]:bg-primary dark:[&>div]:bg-primary/75"
                               />
                             </div>
