@@ -495,8 +495,8 @@ export const ProgressScreen = () => {
               </Button>
             </div>
 
-            {/* Time Frame Selector - Transparent pills, coral active */}
-            <div className="flex gap-1 p-1 w-fit">
+            {/* Time Frame Selector - Full purple bar with lighter active */}
+            <div className="flex gap-0.5 p-1 w-fit bg-secondary/80 rounded-lg">
               {(["1M", "3M", "6M", "1Y", "All"] as TimeFrame[]).map((tf) => (
                 <button
                   key={tf}
@@ -506,8 +506,8 @@ export const ProgressScreen = () => {
                   }}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     timeFrame === tf
-                      ? 'bg-secondary text-secondary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      ? 'bg-white/25 text-white shadow-sm'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {tf}
@@ -601,11 +601,16 @@ export const ProgressScreen = () => {
                         className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setPreviewPhoto({ url: photoUrls[entry.photo_url!] || '', id: entry.id })}
                       >
-                        <img
-                          src={photoUrls[entry.photo_url!] || ''}
-                          alt={`Progress ${entry.entry_date}`}
-                          className="w-full h-full object-cover"
-                        />
+                        {photoUrls[entry.photo_url!] ? (
+                          <img
+                            src={photoUrls[entry.photo_url!]}
+                            alt={`Progress ${entry.entry_date}`}
+                            className="w-full h-full object-cover animate-fade-in"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full animate-pulse bg-muted" />
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-2">
                         {safeFormatDate(localDate, 'MMM d')}
