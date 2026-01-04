@@ -512,28 +512,6 @@ All colors MUST be HSL.
     animation: take-now-glow 3s ease-in-out infinite;
   }
   
-  /* Border shimmer for "Take Now" cards */
-  /* Subtle slow glow for "take now" cards */
-  .animate-border-glow {
-    animation: border-glow 6s ease-in-out infinite;
-  }
-  
-  /* Stagger animations for multiple cards to prevent synchronized pulsing */
-  .animate-border-glow:nth-child(2n) {
-    animation-delay: -2s;
-  }
-  .animate-border-glow:nth-child(3n) {
-    animation-delay: -4s;
-  }
-  
-  @keyframes border-glow {
-    0%, 100% { 
-      box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1);
-    }
-    50% { 
-      box-shadow: 0 0 10px 1px hsl(var(--primary) / 0.18);
-    }
-  }
   
   .animate-progress-fill {
     animation: progress-fill 0.6s ease-out forwards;
@@ -552,7 +530,6 @@ All colors MUST be HSL.
     .animate-shimmer,
     .animate-fab-spring,
     .animate-take-now-glow,
-    .animate-border-glow,
     .animate-progress-fill,
     .animate-checkbox-pop,
     .animate-checkmark-pop,

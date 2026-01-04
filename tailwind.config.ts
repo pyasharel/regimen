@@ -121,10 +121,6 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.6" },
         },
-        "border-glow": {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "1" },
-        },
         "progress-fill": {
           from: { width: "0%" },
         },
@@ -143,7 +139,6 @@ export default {
         "checkmark-pop": "checkmark-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "fab-spring": "fab-spring 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "take-now-glow": "take-now-glow 3s ease-in-out infinite",
-        "border-glow": "border-glow 6s ease-in-out infinite",
         "progress-fill": "progress-fill 0.6s ease-out forwards",
         "checkbox-pop": "checkbox-pop 0.2s ease-out",
       },
