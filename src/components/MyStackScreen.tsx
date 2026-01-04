@@ -351,7 +351,7 @@ export const MyStackScreen = () => {
                 triggerHaptic();
                 document.getElementById('active-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 dark:from-primary/8 dark:via-primary/6 dark:to-primary/4 dark:border dark:border-primary/20 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 dark:from-card dark:via-card dark:to-card dark:border dark:border-primary/25 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-white dark:bg-primary animate-pulse" />
