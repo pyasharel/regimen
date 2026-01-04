@@ -98,11 +98,43 @@ export default {
             opacity: "1"
           },
         },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "checkmark-draw": {
+          "0%": { strokeDashoffset: "24" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        "fab-spring": {
+          "0%": { transform: "scale(1)" },
+          "30%": { transform: "scale(0.9)" },
+          "60%": { transform: "scale(1.05)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "take-now-glow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.6" },
+        },
+        "progress-fill": {
+          from: { width: "0%" },
+        },
+        "checkbox-pop": {
+          "0%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.15)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "splash-logo": "splash-logo 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        "shimmer": "shimmer 1.5s ease-in-out infinite",
+        "checkmark-draw": "checkmark-draw 0.25s ease-out forwards",
+        "fab-spring": "fab-spring 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "take-now-glow": "take-now-glow 3s ease-in-out infinite",
+        "progress-fill": "progress-fill 0.6s ease-out forwards",
+        "checkbox-pop": "checkbox-pop 0.2s ease-out",
       },
     },
   },
