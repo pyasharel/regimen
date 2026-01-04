@@ -84,16 +84,16 @@ All colors MUST be HSL.
      ============================================ */
   .design-refined:root,
   :root.design-refined {
-    /* Rich cream background - substantial paper feel */
-    --background: 40 20% 90%; /* #E4DFD7 - rich, editorial cream */
+    /* Rich cream background - bold editorial feel */
+    --background: 40 20% 88%; /* #DED8CF - bold, editorial cream */
     --foreground: 30 10% 16%; /* #2A2825 - warm dark gray */
     
     /* Warm cards - harmonizes with cream bg */
-    --card: 42 30% 93%; /* #EEE9E1 - warm off-white */
+    --card: 42 30% 91%; /* #E9E3DA - warm off-white */
     --card-foreground: 30 10% 16%;
     
     /* Popover */
-    --popover: 42 30% 93%;
+    --popover: 42 30% 91%;
     --popover-foreground: 30 10% 16%;
     
     /* Refined Coral Primary */
@@ -123,18 +123,18 @@ All colors MUST be HSL.
     --input: 30 18% 96%;
     
     /* Surface levels */
-    --surface: 40 18% 91%; /* #EAE6E0 */
-    --surface-elevated: 42 30% 93%;
+    --surface: 40 18% 89%; /* #E5E0D9 */
+    --surface-elevated: 42 30% 91%;
     
     /* Dose card styling - matches card */
-    --dose-card-bg: 42 30% 93%;
-    --dose-card-border: 30 15% 88%;
+    --dose-card-bg: 42 30% 91%;
+    --dose-card-border: 30 15% 86%;
     --dose-card-accent-width: 4px;
     
     /* Refined gradients */
     --gradient-premium: linear-gradient(135deg, hsl(4 72% 60%), hsl(270 20% 58%));
-    --gradient-subtle: linear-gradient(180deg, hsl(42 30% 93%), hsl(40 20% 90%));
-    --gradient-section: linear-gradient(135deg, hsl(4 72% 91%), hsl(270 20% 91%));
+    --gradient-subtle: linear-gradient(180deg, hsl(42 30% 91%), hsl(40 20% 88%));
+    --gradient-section: linear-gradient(135deg, hsl(4 72% 89%), hsl(270 20% 89%));
     
     /* Visible shadows for real depth */
     --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.05);
