@@ -895,7 +895,7 @@ export const TodayScreen = () => {
       {/* Scrollable Content - Header inside scroll area */}
       <div className="flex-1 min-h-0 scroll-container pb-40">
         {/* Header */}
-        <MainHeader title="Today" showDesignToggle={true} />
+        <MainHeader title="Today" />
 
         {/* Greeting */}
         <div className="px-4 pt-4 pb-4">
