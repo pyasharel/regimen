@@ -471,11 +471,6 @@ export const MyStackScreen = () => {
                               <div className="mt-3">
                                 <div className="flex items-center justify-between gap-2 mb-2">
                                   <div className="flex items-center gap-2">
-                                    <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                                      isOnCycle 
-                                        ? 'bg-primary dark:bg-primary/85 animate-pulse' 
-                                        : 'bg-muted-foreground/50'
-                                    }`} />
                                     <span className={`text-xs font-semibold uppercase tracking-wider ${
                                       isOnCycle 
                                         ? 'text-primary dark:text-primary/85' 
@@ -506,9 +501,8 @@ export const MyStackScreen = () => {
                           
                           return (
                             <div className="mt-3">
-                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary dark:bg-primary/85 animate-pulse" />
                                   <span className="text-xs font-semibold uppercase tracking-wider text-primary dark:text-primary/85">
                                     ONGOING
                                   </span>
