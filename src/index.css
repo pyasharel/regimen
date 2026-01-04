@@ -84,16 +84,16 @@ All colors MUST be HSL.
      ============================================ */
   .design-refined:root,
   :root.design-refined {
-    /* Deeper cream background - like aged paper */
-    --background: 35 25% 90%; /* #EDE8E0 - deeper, warmer cream */
+    /* Lighter cream background - warm paper feel */
+    --background: 40 20% 96%; /* #F6F4F1 - lighter, balanced cream */
     --foreground: 30 10% 16%; /* #2A2825 - warm dark gray */
     
-    /* Pure white cards for crisp contrast against cream */
-    --card: 0 0% 100%; /* #FFFFFF - pure white */
+    /* Off-white cards with warmth - harmonizes with cream bg */
+    --card: 42 30% 99%; /* #FEFDFB - off-white with subtle warmth */
     --card-foreground: 30 10% 16%;
     
     /* Popover */
-    --popover: 0 0% 100%;
+    --popover: 42 30% 99%;
     --popover-foreground: 30 10% 16%;
     
     /* Refined Coral Primary */
@@ -123,17 +123,17 @@ All colors MUST be HSL.
     --input: 30 18% 96%;
     
     /* Surface levels */
-    --surface: 30 18% 93%;
-    --surface-elevated: 0 0% 100%;
+    --surface: 40 18% 97%; /* #F9F7F4 */
+    --surface-elevated: 42 30% 99%;
     
-    /* Dose card styling - pure white */
-    --dose-card-bg: 0 0% 100%;
+    /* Dose card styling - matches card */
+    --dose-card-bg: 42 30% 99%;
     --dose-card-border: 30 15% 88%;
     --dose-card-accent-width: 4px;
     
     /* Refined gradients */
     --gradient-premium: linear-gradient(135deg, hsl(4 72% 60%), hsl(270 20% 58%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(35 25% 90%));
+    --gradient-subtle: linear-gradient(180deg, hsl(42 30% 99%), hsl(40 20% 96%));
     --gradient-section: linear-gradient(135deg, hsl(4 72% 97%), hsl(270 20% 97%));
     
     /* Visible shadows for real depth */
@@ -209,16 +209,16 @@ All colors MUST be HSL.
      Charcoal background (not OLED black), softer feel
      ============================================ */
   .dark.design-refined {
-    /* Matte charcoal - slightly lighter than before */
-    --background: 0 0% 11%; /* #1C1C1C - matte charcoal */
+    /* Matte charcoal - slightly lighter for softer feel */
+    --background: 0 0% 12%; /* #1E1E1E - matte charcoal */
     --foreground: 40 5% 95%; /* #F2F2F0 - warm white */
     
     /* Neutral charcoal cards - more lift, no coral tint */
-    --card: 0 0% 15%; /* #262626 - neutral charcoal with good lift */
+    --card: 0 0% 16.5%; /* #2A2A2A - neutral charcoal with good lift */
     --card-foreground: 40 5% 95%;
     
     /* Popover */
-    --popover: 0 0% 17%;
+    --popover: 0 0% 18%;
     --popover-foreground: 40 5% 95%;
     
     /* Bright Coral Primary */
@@ -230,7 +230,7 @@ All colors MUST be HSL.
     --secondary-foreground: 0 0% 100%;
     
     /* Muted tones */
-    --muted: 0 0% 18%;
+    --muted: 0 0% 19%;
     --muted-foreground: 40 2% 65%;
     
     /* Header/label text */
@@ -246,13 +246,13 @@ All colors MUST be HSL.
     /* Border colors */
     --border: 0 0% 24%;
     --border-light: 0 0% 18%;
-    --input: 0 0% 16%;
+    --input: 0 0% 17%;
     
     /* Surface levels */
-    --surface: 0 0% 14%;
+    --surface: 0 0% 15%;
     
     /* Dose card styling - neutral charcoal, no coral tint */
-    --dose-card-bg: 0 0% 15%;
+    --dose-card-bg: 0 0% 16.5%;
     --dose-card-border: 0 0% 24%;
     --dose-card-accent-width: 4px;
     
