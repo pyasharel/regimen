@@ -351,11 +351,11 @@ export const MyStackScreen = () => {
                 triggerHaptic();
                 document.getElementById('active-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 dark:from-primary/12 dark:via-primary/10 dark:to-primary/8 dark:border dark:border-primary/25 px-3 py-2 shadow-md shadow-primary/15 text-left hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
               <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                <span className="text-xs font-medium text-white/90">{activeCompounds.length} Active</span>
+                <div className="h-1.5 w-1.5 rounded-full bg-white dark:bg-primary animate-pulse" />
+                <span className="text-xs font-medium text-white/90 dark:text-primary">{activeCompounds.length} Active</span>
               </div>
             </button>
 
@@ -458,12 +458,12 @@ export const MyStackScreen = () => {
                                   <div className="flex items-center gap-2">
                                     <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
                                       isOnCycle 
-                                        ? 'bg-primary animate-pulse' 
+                                        ? 'bg-primary dark:bg-primary/85 animate-pulse' 
                                         : 'bg-muted-foreground/50'
                                     }`} />
                                     <span className={`text-xs font-semibold uppercase tracking-wider ${
                                       isOnCycle 
-                                        ? 'text-primary' 
+                                        ? 'text-primary dark:text-primary/85' 
                                         : 'text-muted-foreground'
                                     }`}>
                                       {isOnCycle ? 'ON CYCLE' : 'OFF CYCLE'}
@@ -475,7 +475,7 @@ export const MyStackScreen = () => {
                                 </div>
                                 <Progress 
                                   value={cycleStatus.progressPercentage} 
-                                  className={`h-1 bg-muted-foreground/20 ${isOnCycle ? '[&>div]:bg-primary' : '[&>div]:bg-muted-foreground/50'}`}
+                                  className={`h-1 bg-muted-foreground/20 ${isOnCycle ? '[&>div]:bg-primary dark:[&>div]:bg-primary/75' : '[&>div]:bg-muted-foreground/50'}`}
                                 />
                               </div>
                             );
@@ -492,15 +492,15 @@ export const MyStackScreen = () => {
                             <div className="mt-3">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary animate-pulse" />
-                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                                  <div className="h-2 w-2 rounded-full flex-shrink-0 bg-primary dark:bg-primary/85 animate-pulse" />
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-primary dark:text-primary/85">
                                     ONGOING
                                   </span>
                                 </div>
                               </div>
                               <Progress 
                                 value={100} 
-                                className="h-1 bg-muted-foreground/20 [&>div]:bg-primary"
+                                className="h-1 bg-muted-foreground/20 [&>div]:bg-primary dark:[&>div]:bg-primary/75"
                               />
                             </div>
                           );
