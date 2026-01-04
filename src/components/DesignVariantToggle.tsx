@@ -18,17 +18,19 @@ export const DesignVariantToggle = () => {
 
   const toggleVariant = () => {
     triggerHaptic();
-    // Toggle between refined and refined-v2 only
-    const newVariant = designVariant === 'refined' ? 'refined-v2' : 'refined';
-    setDesignVariant(newVariant);
+    // Toggle between refined and refined-v2 only (if on classic, go to refined)
+    if (designVariant === 'refined') {
+      setDesignVariant('refined-v2');
+    } else {
+      setDesignVariant('refined');
+    }
   };
 
   const getDisplayName = () => {
     switch (designVariant) {
-      case 'classic': return 'Classic';
       case 'refined': return 'Refined';
       case 'refined-v2': return 'Refined V2';
-      default: return 'Refined';
+      default: return 'Refined'; // Show 'Refined' for classic too
     }
   };
 
