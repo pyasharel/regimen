@@ -513,31 +513,26 @@ All colors MUST be HSL.
   }
   
   /* Border shimmer for "Take Now" cards */
-  .animate-border-shimmer {
-    position: relative;
+  /* Subtle slow glow for "take now" cards */
+  .animate-border-glow {
+    animation: border-glow 6s ease-in-out infinite;
   }
   
-  .animate-border-shimmer::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 2px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(var(--primary) / 0.4) 25%,
-      hsl(var(--primary) / 0.6) 50%,
-      hsl(var(--primary) / 0.4) 75%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: border-shimmer 4s ease-in-out infinite;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+  /* Stagger animations for multiple cards to prevent synchronized pulsing */
+  .animate-border-glow:nth-child(2n) {
+    animation-delay: -2s;
+  }
+  .animate-border-glow:nth-child(3n) {
+    animation-delay: -4s;
+  }
+  
+  @keyframes border-glow {
+    0%, 100% { 
+      box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1);
+    }
+    50% { 
+      box-shadow: 0 0 10px 1px hsl(var(--primary) / 0.18);
+    }
   }
   
   .animate-progress-fill {
@@ -557,8 +552,7 @@ All colors MUST be HSL.
     .animate-shimmer,
     .animate-fab-spring,
     .animate-take-now-glow,
-    .animate-border-shimmer,
-    .animate-border-shimmer::before,
+    .animate-border-glow,
     .animate-progress-fill,
     .animate-checkbox-pop,
     .animate-checkmark-pop,

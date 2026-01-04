@@ -1176,7 +1176,7 @@ export const TodayScreen = () => {
                       if (el) cardRefs.current.set(dose.id, el);
                       else cardRefs.current.delete(dose.id);
                     }}
-                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97] ${showTakeNowGlow && !isHandled ? 'animate-border-shimmer' : ''}`}
+                    className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97] ${showTakeNowGlow && !isHandled ? 'animate-border-glow' : ''}`}
                     style={{
                       opacity: isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
