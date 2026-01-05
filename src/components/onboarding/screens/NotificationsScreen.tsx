@@ -34,20 +34,12 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
     <div className="flex-1 flex flex-col">
       {/* Content centered */}
       <div className="flex-1 flex flex-col items-center justify-center">
-        {/* Headline first */}
+        {/* Single simplified headline */}
         <h1 
-          className="text-2xl font-bold text-[#333333] mb-3 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-2xl font-bold text-[#333333] mb-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
-          Reminders keep you on track
+          Get a reminder when it's time for your next dose
         </h1>
-
-        {/* Body */}
-        <p 
-          className="text-lg text-[#666666] text-center max-w-[280px] mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
-        >
-          Get a nudge when it's time for your next dose
-        </p>
 
         {/* Mock notification - below headline */}
         <div 
