@@ -27,23 +27,23 @@ import { DisclaimerScreen } from './screens/DisclaimerScreen';
 import { OnboardingPaywallScreen } from './screens/OnboardingPaywallScreen';
 import { CompleteScreen } from './screens/CompleteScreen';
 
-// Screen IDs in order (optimized flow)
+// Screen IDs in order (optimized flow - name earlier, features before notifications)
 const SCREEN_ORDER = [
   'splash',
   'path-selection',
   'personalization',
   'goals',
+  'name', // Moved much earlier for personalization throughout
   'experience',
   'pain-points',
-  'name', // Moved earlier
   'height-weight',
   'goal-weight',
   'goal-validation',
   'potential',
-  'outcome', // Consolidated
+  'outcome', // 2x graph
   'rating', // After positive outcome
-  'notifications', // Earlier for commitment
-  'features',
+  'features', // Show what they get
+  'notifications', // Then ask for notifications
   'privacy',
   'medication-setup',
   'account-creation',

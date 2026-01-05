@@ -8,24 +8,22 @@ interface FeaturesScreenProps {
 }
 
 const PATH_A_FEATURES = [
-  { icon: Bell, label: 'Smart dose reminders' },
-  { icon: TrendingUp, label: 'Weight tracking with insights' },
-  { icon: Calendar, label: 'Dose escalation schedule' },
-  { icon: BarChart3, label: 'Progress visualization' },
+  { icon: Bell, label: 'Never miss a dose with smart reminders' },
+  { icon: TrendingUp, label: 'Track your weight and see insights' },
+  { icon: Calendar, label: 'Manage your dose escalation schedule' },
+  { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
 
 const PATH_B_FEATURES = [
-  { icon: Pill, label: 'Multi-compound tracking' },
-  { icon: Bell, label: 'Smart dose reminders' },
-  { icon: Calendar, label: 'Cycle and schedule management' },
-  { icon: BarChart3, label: 'Progress visualization' },
+  { icon: Pill, label: 'Track everything you take in one place' },
+  { icon: Bell, label: 'Never miss a dose with smart reminders' },
+  { icon: Calendar, label: 'Know when to start and end cycles' },
+  { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
 
 export function FeaturesScreen({ pathRouting, onContinue }: FeaturesScreenProps) {
   const features = pathRouting === 'A' ? PATH_A_FEATURES : PATH_B_FEATURES;
-  const headline = pathRouting === 'A' 
-    ? "Track smart and unlock unique insights"
-    : "Your full stack, organized";
+  const headline = "How Regimen helps you succeed";
 
   return (
     <div className="flex-1 flex flex-col">
