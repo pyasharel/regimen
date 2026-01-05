@@ -6,25 +6,29 @@ interface GoalWeightScreenProps {
   weightUnit: 'lb' | 'kg';
   initialGoalWeight: number | null;
   onContinue: (goalWeight: number) => void;
+  onSkip: () => void;
 }
 
 export function GoalWeightScreen({ 
   currentWeight, 
   weightUnit, 
   initialGoalWeight, 
-  onContinue 
+  onContinue,
+  onSkip 
 }: GoalWeightScreenProps) {
   // Default: start at current weight so user can adjust up or down
   const defaultWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
   const [goalWeight, setGoalWeight] = useState<number>(initialGoalWeight || defaultWeight);
 
-  // Calculate min/max for slider - reasonable range ±50% of current weight
+  // Calculate min/max for slider - wider range: ±50% for realistic bounds
   const baseWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
-  const minWeight = Math.max(weightUnit === 'lb' ? 80 : 36, Math.round(baseWeight * 0.5));
-  const maxWeight = Math.round(baseWeight * 1.3);
+  const minWeight = weightUnit === 'lb' ? 80 : 36; // Fixed minimums
+  const maxWeight = weightUnit === 'lb' ? 400 : 180; // Fixed maximums
   
-  // Calculate weight difference
-  const weightDiff = currentWeight ? currentWeight - goalWeight : 0;
+  // Calculate weight difference - positive means gaining, negative means losing
+  const weightDiff = goalWeight - (currentWeight || 0);
+  const isGaining = weightDiff > 0;
+  const isLosing = weightDiff < 0;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -48,14 +52,14 @@ export function GoalWeightScreen({
             {weightUnit}
           </div>
           
-          {weightDiff > 0 && (
+          {isLosing && currentWeight && (
             <div className="mt-4 text-primary font-medium animate-in fade-in duration-300">
-              −{weightDiff} {weightUnit} from current
+              −{Math.abs(weightDiff)} {weightUnit} from current
             </div>
           )}
-          {weightDiff < 0 && (
+          {isGaining && currentWeight && (
             <div className="mt-4 text-[#10B981] font-medium animate-in fade-in duration-300">
-              +{Math.abs(weightDiff)} {weightUnit} from current
+              +{weightDiff} {weightUnit} from current
             </div>
           )}
         </div>
@@ -103,10 +107,19 @@ export function GoalWeightScreen({
         You can adjust this anytime
       </p>
 
-      {/* CTA */}
-      <OnboardingButton onClick={() => onContinue(goalWeight)}>
-        Continue
-      </OnboardingButton>
+      {/* CTAs */}
+      <div className="space-y-3">
+        <OnboardingButton onClick={() => onContinue(goalWeight)}>
+          Continue
+        </OnboardingButton>
+        
+        <button
+          onClick={onSkip}
+          className="w-full text-center text-[#999999] text-sm py-2 hover:text-[#666666] transition-colors"
+        >
+          I'll set this later
+        </button>
+      </div>
     </div>
   );
 }

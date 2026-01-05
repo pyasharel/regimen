@@ -92,12 +92,12 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           ))}
         </div>
 
-        {/* Body - small team message */}
+        {/* Body */}
         <p 
           className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
-          We're a small team building the best tracking app for people like you. A rating goes a really long way.
+          We're building the best tracking app for people like you. A quick rating helps us keep improving.
         </p>
       </div>
 
