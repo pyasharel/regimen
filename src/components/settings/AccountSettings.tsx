@@ -254,6 +254,9 @@ export const AccountSettings = () => {
       
       toast.success("Account deleted successfully");
       
+      // Clear onboarding state so fresh users get clean experience
+      localStorage.removeItem('regimen_onboarding_state');
+      
       // Sign out and redirect
       await supabase.auth.signOut();
       navigate("/auth", { replace: true });

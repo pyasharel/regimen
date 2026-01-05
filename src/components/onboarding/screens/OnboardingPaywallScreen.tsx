@@ -35,16 +35,40 @@ export function OnboardingPaywallScreen({
     ? `Your ${medicationName} schedule is ready`
     : "You're ready to start tracking";
 
+  const openCheckoutUrl = async (url: string) => {
+    if (Capacitor.isNativePlatform()) {
+      await Browser.open({ url });
+      return;
+    }
+
+    // Stripe Checkout can't render inside an iframe (like the Lovable preview).
+    const isEmbedded = (() => {
+      try {
+        return window.self !== window.top;
+      } catch {
+        return true;
+      }
+    })();
+
+    if (isEmbedded) {
+      const w = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!w) window.location.href = url;
+      return;
+    }
+
+    window.location.href = url;
+  };
+
   const handleStartTrial = async () => {
     setLoading(true);
-    
+
     try {
       if (isNativePlatform && offerings) {
         // Use RevenueCat for native
-        const availablePackage = selectedPlan === 'annual' 
-          ? offerings.current?.annual 
+        const availablePackage = selectedPlan === 'annual'
+          ? offerings.current?.annual
           : offerings.current?.monthly;
-        
+
         if (availablePackage) {
           await purchasePackage(availablePackage);
           onSubscribe();
@@ -52,21 +76,19 @@ export function OnboardingPaywallScreen({
       } else {
         // Use Stripe for web
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { 
+          body: {
+            // Backend expects `plan`; keep `priceType` for backward compatibility
+            plan: selectedPlan,
             priceType: selectedPlan,
             promoCode: promoCode || undefined,
+            platform: Capacitor.isNativePlatform() ? 'native' : 'web',
           },
         });
-        
+
         if (error) throw error;
-        
-        if (data?.url) {
-          if (Capacitor.isNativePlatform()) {
-            await Browser.open({ url: data.url });
-          } else {
-            window.location.href = data.url;
-          }
-        }
+        if (!data?.url) throw new Error('Checkout unavailable');
+
+        await openCheckoutUrl(data.url);
       }
     } catch (error: any) {
       console.error('[Paywall] Error:', error);
@@ -87,7 +109,7 @@ export function OnboardingPaywallScreen({
       </button>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-8">
+      <div className="flex-1 overflow-y-auto px-6 pb-4">
         {/* Headline */}
         <div className="text-center pt-8 pb-6">
           <h1 className="text-2xl font-bold text-[#333333] mb-2">
@@ -178,15 +200,8 @@ export function OnboardingPaywallScreen({
             </div>
           </button>
         </div>
-
-        {/* Trust element */}
-        <div className="flex items-center justify-center gap-2 mb-6 text-[#666666]">
-          <Check className="h-4 w-4 text-primary" />
-          <span className="text-sm">No payment due now</span>
-        </div>
-
         {/* Promo code - cleaner design */}
-        <div className="mb-4">
+        <div className="mb-2">
           {!showPromo ? (
             <button
               onClick={() => setShowPromo(true)}
@@ -210,16 +225,21 @@ export function OnboardingPaywallScreen({
       </div>
 
       {/* Fixed bottom CTA */}
-      <div className="px-6 pb-8 pt-4 bg-gradient-to-t from-[#FAF8F5] via-[#FAF8F5] to-transparent">
+      <div className="px-6 pb-7 pt-3 bg-gradient-to-t from-[#FAF8F5] via-[#FAF8F5] to-transparent">
         <OnboardingButton onClick={handleStartTrial} loading={loading}>
           Start My 14-Day Free Trial
         </OnboardingButton>
+
+        <div className="flex items-center justify-center gap-2 mt-2 text-[#666666]">
+          <Check className="h-4 w-4 text-primary" />
+          <span className="text-sm">No payment due now</span>
+        </div>
         
-        <p className="text-xs text-center text-[#999999] mt-3">
+        <p className="text-xs text-center text-[#999999] mt-2">
           Cancel anytime. We'll remind you before your trial ends.
         </p>
         
-        <div className="flex justify-center gap-4 mt-4">
+        <div className="flex justify-center gap-4 mt-3">
           <a href="/terms" className="text-xs text-[#999999] hover:text-[#666666]">Terms</a>
           <a href="/privacy" className="text-xs text-[#999999] hover:text-[#666666]">Privacy</a>
         </div>
