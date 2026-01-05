@@ -24,9 +24,9 @@ interface HeightWeightScreenProps {
 export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWeightScreenProps) {
   const [heightUnit, setHeightUnit] = useState<'ft' | 'cm'>(initialData.heightUnit);
   const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>(initialData.weightUnit);
-  const [heightFeet, setHeightFeet] = useState<string>(initialData.heightFeet?.toString() || '');
-  const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '');
-  const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '');
+  const [heightFeet, setHeightFeet] = useState<string>(initialData.heightFeet?.toString() || '5');
+  const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '10');
+  const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '178');
   const [weight, setWeight] = useState<string>(initialData.currentWeight?.toString() || '');
 
   const handleContinue = () => {
@@ -45,11 +45,19 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
   return (
     <div className="flex-1 flex flex-col">
       {/* Headline */}
-      <div className="mb-6">
+      <div className="mb-2">
         <h1 className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500">
-          Let's set your baseline
+          Height & Weight
         </h1>
       </div>
+
+      {/* Subhead */}
+      <p 
+        className="text-[#666666] mb-6 animate-in fade-in duration-300"
+        style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
+      >
+        Used to personalize your insights
+      </p>
 
       {/* Form */}
       <div className="flex-1 space-y-6">
@@ -90,20 +98,22 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
               <div className="flex-1">
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={heightFeet}
                   onChange={(e) => setHeightFeet(e.target.value)}
                   placeholder="5"
-                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
                 />
                 <span className="block text-center text-sm text-[#999999] mt-1">feet</span>
               </div>
               <div className="flex-1">
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={heightInches}
                   onChange={(e) => setHeightInches(e.target.value)}
                   placeholder="10"
-                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
                 />
                 <span className="block text-center text-sm text-[#999999] mt-1">inches</span>
               </div>
@@ -111,10 +121,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
           ) : (
             <input
               type="number"
+              inputMode="decimal"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="178"
-              className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+              className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
             />
           )}
         </div>
@@ -153,10 +164,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
           <input
             type="number"
+            inputMode="decimal"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder={weightUnit === 'lb' ? '180' : '82'}
-            className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium focus:ring-2 focus:ring-primary focus:outline-none"
+            className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
           />
         </div>
       </div>

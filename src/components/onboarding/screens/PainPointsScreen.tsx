@@ -43,12 +43,12 @@ export function PainPointsScreen({ pathRouting, initialPainPoints, onContinue }:
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Headline */}
+      {/* Headline - rephrased for multi-select clarity */}
       <div className="mb-6">
         <h1 
           className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
-          What's been the hardest part?
+          What have been the biggest challenges?
         </h1>
       </div>
 

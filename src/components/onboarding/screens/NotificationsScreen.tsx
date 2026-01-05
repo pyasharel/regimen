@@ -5,11 +5,12 @@ import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 
 interface NotificationsScreenProps {
+  medicationName?: string;
   onEnable: () => void;
   onSkip: () => void;
 }
 
-export function NotificationsScreen({ onEnable, onSkip }: NotificationsScreenProps) {
+export function NotificationsScreen({ medicationName, onEnable, onSkip }: NotificationsScreenProps) {
   const handleEnable = async () => {
     try {
       if (Capacitor.isNativePlatform()) {
@@ -24,6 +25,10 @@ export function NotificationsScreen({ onEnable, onSkip }: NotificationsScreenPro
       onEnable();
     }
   };
+
+  const notificationText = medicationName 
+    ? `Time for your ${medicationName} dose 💊`
+    : 'Time for your morning dose 💊';
 
   return (
     <div className="flex-1 flex flex-col">
@@ -40,7 +45,7 @@ export function NotificationsScreen({ onEnable, onSkip }: NotificationsScreenPro
             <div className="flex-1 min-w-0">
               <p className="font-medium text-[#333333] text-sm">Regimen</p>
               <p className="text-[#666666] text-sm mt-0.5">
-                Time for your morning dose 💊
+                {notificationText}
               </p>
               <p className="text-xs text-[#999999] mt-1">now</p>
             </div>
@@ -52,7 +57,7 @@ export function NotificationsScreen({ onEnable, onSkip }: NotificationsScreenPro
           className="text-2xl font-bold text-[#333333] mb-3 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
-          Stay on track
+          Never miss a dose
         </h1>
 
         {/* Body */}

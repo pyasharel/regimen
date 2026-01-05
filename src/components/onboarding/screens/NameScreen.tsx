@@ -25,7 +25,7 @@ export function NameScreen({ initialName, onContinue, onSkip }: NameScreenProps)
         </h1>
       </div>
 
-      {/* Input */}
+      {/* Input - fixed text contrast */}
       <div 
         className="flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
@@ -36,7 +36,7 @@ export function NameScreen({ initialName, onContinue, onSkip }: NameScreenProps)
           onChange={(e) => setName(e.target.value)}
           placeholder="First name"
           autoFocus
-          className="w-full h-14 px-5 rounded-xl bg-white border-2 border-transparent text-lg font-medium focus:border-primary focus:outline-none shadow-sm transition-all"
+          className="w-full h-14 px-5 rounded-xl bg-white border-2 border-transparent text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:border-primary focus:outline-none shadow-sm transition-all"
         />
         <p className="text-sm text-[#999999] mt-3">
           We'll use this to personalize your experience
