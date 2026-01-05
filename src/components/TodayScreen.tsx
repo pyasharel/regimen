@@ -1495,10 +1495,10 @@ export const TodayScreen = () => {
         <DrawerTrigger asChild>
           <button
             onClick={() => triggerHaptic('light')}
-            className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm border border-border/50 text-muted-foreground transition-all hover:scale-105 hover:bg-card hover:text-foreground active:scale-[0.97] active:animate-fab-spring shadow-md"
+            className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary ring-[3px] ring-white/80 dark:ring-black/80 transition-transform hover:scale-105 active:scale-[0.97] active:animate-fab-spring shadow-lg"
             style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
           >
-            <ClipboardList className="h-6 w-6" />
+            <ClipboardList className="h-6 w-6 text-white" />
           </button>
         </DrawerTrigger>
         
