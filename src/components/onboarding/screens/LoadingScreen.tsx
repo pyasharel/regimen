@@ -30,18 +30,18 @@ export function LoadingScreen({ medicationName, firstName, onComplete }: Loading
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
 
-    // Slower timing - 1.2s per step for more premium feel
+    // Slower timing - 1.5s per step for more premium feel (5-6 seconds total)
     steps.forEach((_, index) => {
       const timer = setTimeout(() => {
         setCurrentStep(index + 1);
-      }, (index + 1) * 1200);
+      }, (index + 1) * 1500);
       timers.push(timer);
     });
 
     // Complete after all steps with a small delay
     const completeTimer = setTimeout(() => {
       onComplete();
-    }, steps.length * 1200 + 800);
+    }, steps.length * 1500 + 1000);
     timers.push(completeTimer);
 
     return () => {

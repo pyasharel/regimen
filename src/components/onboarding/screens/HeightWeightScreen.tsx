@@ -44,10 +44,10 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Headline */}
+      {/* Headline - reframed to emphasize personalization */}
       <div className="mb-2">
         <h1 className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500">
-          Height & Weight
+          Let's personalize your insights
         </h1>
       </div>
 
@@ -56,7 +56,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         className="text-[#666666] mb-6 animate-in fade-in duration-300"
         style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
       >
-        Used to personalize your insights
+        Height & Weight
       </p>
 
       {/* Form */}

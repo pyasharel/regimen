@@ -86,15 +86,13 @@ export function OutcomeScreen({ onContinue }: OutcomeScreenProps) {
         </div>
       </div>
 
-      {/* Bottom text - Cal AI style */}
-      <div 
-        className="bg-primary/5 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+      {/* Bottom text - cleaner without coral background */}
+      <p 
+        className="text-center text-[#666666] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{ animationDelay: '1200ms', animationFillMode: 'backwards' }}
       >
-        <p className="text-center text-[#333333]">
-          <span className="font-bold text-primary">Regimen</span> makes it easy and keeps you accountable.
-        </p>
-      </div>
+        <span className="font-semibold text-[#333333]">Regimen</span> makes it easy and keeps you accountable.
+      </p>
 
       {/* CTA */}
       <OnboardingButton onClick={onContinue}>

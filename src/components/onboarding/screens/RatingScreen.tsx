@@ -7,22 +7,22 @@ interface RatingScreenProps {
   onSkip: () => void;
 }
 
-// Testimonials with initials
+// Testimonials with initials - updated copy
 const TESTIMONIALS = [
   {
     initials: 'J.M.',
     color: 'bg-primary',
-    text: '"This app has been a game-changer for staying consistent."',
+    text: '"This app has been a game-changer for reaching my goals."',
   },
   {
     initials: 'R.K.',
     color: 'bg-secondary',
-    text: '"Finally an app that gets what I need to track."',
+    text: '"Finally an app that helps me stay on top of everything."',
   },
   {
     initials: 'S.T.',
     color: 'bg-[#10B981]',
-    text: '"Simple, clean, and actually helps me stay on schedule."',
+    text: '"I love seeing my progress. It keeps me motivated!"',
   },
 ];
 
@@ -62,7 +62,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-2xl font-bold text-[#333333] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
-          Loving what you see?
+          Help us grow
         </h1>
 
         {/* Testimonials with initials */}
@@ -92,12 +92,12 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           ))}
         </div>
 
-        {/* Body */}
+        {/* Body - small team message */}
         <p 
-          className="text-[#666666] mt-6 max-w-[280px] animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
-          A quick rating helps others discover us
+          We're a small team building the best tracking app for people like you. A rating goes a really long way.
         </p>
       </div>
 

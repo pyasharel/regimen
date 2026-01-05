@@ -34,9 +34,25 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
     <div className="flex-1 flex flex-col">
       {/* Content centered */}
       <div className="flex-1 flex flex-col items-center justify-center">
-        {/* Mock notification */}
+        {/* Headline first */}
+        <h1 
+          className="text-2xl font-bold text-[#333333] mb-3 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+        >
+          Never miss a dose
+        </h1>
+
+        {/* Body */}
+        <p 
+          className="text-lg text-[#666666] text-center max-w-[280px] mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
+        >
+          Get reminders when it's time for your doses
+        </p>
+
+        {/* Mock notification - below headline */}
         <div 
-          className="w-full max-w-[300px] bg-white rounded-2xl shadow-lg p-4 mb-8 animate-in slide-in-from-top-4 duration-500"
+          className="w-full max-w-[300px] bg-white rounded-2xl shadow-lg p-4 animate-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -51,22 +67,6 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
             </div>
           </div>
         </div>
-
-        {/* Headline */}
-        <h1 
-          className="text-2xl font-bold text-[#333333] mb-3 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
-        >
-          Never miss a dose
-        </h1>
-
-        {/* Body */}
-        <p 
-          className="text-lg text-[#666666] text-center max-w-[280px] animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}
-        >
-          Get reminders when it's time for your doses
-        </p>
       </div>
 
       {/* CTAs */}

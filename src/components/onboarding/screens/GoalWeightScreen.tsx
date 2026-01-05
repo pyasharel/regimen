@@ -14,8 +14,8 @@ export function GoalWeightScreen({
   initialGoalWeight, 
   onContinue 
 }: GoalWeightScreenProps) {
-  // Better default: start at 90% of current weight or reasonable default
-  const defaultWeight = currentWeight ? Math.round(currentWeight * 0.9) : (weightUnit === 'lb' ? 180 : 82);
+  // Default: start at current weight so user can adjust up or down
+  const defaultWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
   const [goalWeight, setGoalWeight] = useState<number>(initialGoalWeight || defaultWeight);
 
   // Calculate min/max for slider - reasonable range ±50% of current weight

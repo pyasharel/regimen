@@ -72,16 +72,6 @@ export function PotentialScreen({
           })}
         </div>
 
-        {/* Stats callout */}
-        <div 
-          className="bg-primary/5 rounded-xl p-4 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
-        >
-          <p className="text-center text-[#333333]">
-            <span className="font-bold text-primary">Regimen</span> helps you reach your goals{' '}
-            <span className="font-bold text-primary">2x faster</span>
-          </p>
-        </div>
       </div>
 
       {/* CTA */}

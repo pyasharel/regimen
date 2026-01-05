@@ -44,7 +44,7 @@ export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#666666] leading-relaxed">
-            We never sell your data. Your protocols and progress stay private—just between you and your goals.
+            We never sell your data. Your protocols and progress stay private, just between you and your goals.
           </p>
         </div>
       </div>

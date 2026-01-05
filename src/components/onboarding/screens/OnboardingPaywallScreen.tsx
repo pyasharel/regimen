@@ -16,21 +16,6 @@ interface OnboardingPaywallScreenProps {
   onDismiss: () => void;
 }
 
-const PATH_A_FEATURES = [
-  'Smart dose reminders',
-  'Weight tracking with insights',
-  'Dose escalation schedule',
-  'Progress visualization',
-  'Unlimited compounds',
-];
-
-const PATH_B_FEATURES = [
-  'Multi-compound tracking',
-  'Smart dose reminders',
-  'Cycle management',
-  'Progress visualization',
-  'Unlimited compounds',
-];
 
 export function OnboardingPaywallScreen({ 
   medicationName, 
@@ -46,7 +31,6 @@ export function OnboardingPaywallScreen({
   
   const { offerings, purchasePackage, isNativePlatform } = useSubscription();
   
-  const features = pathRouting === 'A' ? PATH_A_FEATURES : PATH_B_FEATURES;
   const headline = medicationName 
     ? `Your ${medicationName} schedule is ready`
     : "You're ready to start tracking";
@@ -109,7 +93,7 @@ export function OnboardingPaywallScreen({
           <h1 className="text-2xl font-bold text-[#333333] mb-2">
             {headline}
           </h1>
-          <p className="text-[#666666]">
+          <p className="text-xl font-semibold text-primary">
             Try Regimen free for 14 days
           </p>
         </div>
@@ -135,94 +119,94 @@ export function OnboardingPaywallScreen({
           </div>
         </div>
 
-        {/* Plan selection */}
-        <div className="space-y-3 mb-6">
+        {/* Side-by-side plan selection - Cal AI style */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Annual */}
           <button
             onClick={() => setSelectedPlan('annual')}
-            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+            className={`relative p-4 rounded-xl border-2 transition-all text-center ${
               selectedPlan === 'annual'
                 ? 'border-primary bg-primary/5'
                 : 'border-[#E5E5E5] bg-white'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-[#333333]">Annual</span>
-                  <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full font-medium">
-                    BEST VALUE
-                  </span>
-                </div>
-                <p className="text-sm text-[#666666] mt-1">$39.99/year ($3.33/mo)</p>
-              </div>
-              <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
-                selectedPlan === 'annual' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
-              }`}>
-                {selectedPlan === 'annual' && (
-                  <Check className="h-4 w-4 text-white" />
-                )}
-              </div>
+            {/* Best value badge */}
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+              <span className="text-xs bg-primary text-white px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                BEST VALUE
+              </span>
+            </div>
+            
+            <div className="mt-2">
+              <span className="font-semibold text-[#333333]">Annual</span>
+              <p className="text-lg font-bold text-[#333333] mt-1">$39.99</p>
+              <p className="text-xs text-[#666666]">$3.33/month</p>
+            </div>
+            
+            {/* Selection indicator */}
+            <div className={`mt-3 h-5 w-5 mx-auto rounded-full border-2 flex items-center justify-center ${
+              selectedPlan === 'annual' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
+            }`}>
+              {selectedPlan === 'annual' && (
+                <Check className="h-3 w-3 text-white" />
+              )}
             </div>
           </button>
 
           {/* Monthly */}
           <button
             onClick={() => setSelectedPlan('monthly')}
-            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+            className={`p-4 rounded-xl border-2 transition-all text-center ${
               selectedPlan === 'monthly'
                 ? 'border-primary bg-primary/5'
                 : 'border-[#E5E5E5] bg-white'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-[#333333]">Monthly</span>
-                <p className="text-sm text-[#666666] mt-1">$4.99/month</p>
-              </div>
-              <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
-                selectedPlan === 'monthly' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
-              }`}>
-                {selectedPlan === 'monthly' && (
-                  <Check className="h-4 w-4 text-white" />
-                )}
-              </div>
+            <div className="mt-2">
+              <span className="font-semibold text-[#333333]">Monthly</span>
+              <p className="text-lg font-bold text-[#333333] mt-1">$4.99</p>
+              <p className="text-xs text-[#666666]">per month</p>
+            </div>
+            
+            {/* Selection indicator */}
+            <div className={`mt-3 h-5 w-5 mx-auto rounded-full border-2 flex items-center justify-center ${
+              selectedPlan === 'monthly' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
+            }`}>
+              {selectedPlan === 'monthly' && (
+                <Check className="h-3 w-3 text-white" />
+              )}
             </div>
           </button>
         </div>
 
-        {/* Features */}
-        <div className="bg-white rounded-xl p-4 mb-6">
-          <p className="text-sm font-medium text-[#666666] mb-3">Includes:</p>
-          <div className="space-y-2">
-            {features.map((feature) => (
-              <div key={feature} className="flex items-center gap-3">
-                <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                <span className="text-sm text-[#333333]">{feature}</span>
-              </div>
-            ))}
-          </div>
+        {/* Trust element */}
+        <div className="flex items-center justify-center gap-2 mb-6 text-[#666666]">
+          <Check className="h-4 w-4 text-primary" />
+          <span className="text-sm">No payment due now</span>
         </div>
 
-        {/* Promo code */}
-        {!showPromo ? (
-          <button
-            onClick={() => setShowPromo(true)}
-            className="text-sm text-[#999999] hover:text-[#666666] transition-colors"
-          >
-            Have a promo code?
-          </button>
-        ) : (
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              placeholder="Enter code"
-              className="flex-1 h-10 px-4 rounded-lg bg-white border border-[#E5E5E5] text-sm focus:border-primary focus:outline-none"
-            />
-          </div>
-        )}
+        {/* Promo code - cleaner design */}
+        <div className="mb-4">
+          {!showPromo ? (
+            <button
+              onClick={() => setShowPromo(true)}
+              className="text-sm text-[#999999] hover:text-[#666666] transition-colors"
+            >
+              Have a promo code?
+            </button>
+          ) : (
+            <div className="bg-white rounded-xl p-4 border border-[#E5E5E5]">
+              <label className="text-sm font-medium text-[#666666] mb-2 block">Promo Code</label>
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                placeholder="Enter code"
+                className="w-full h-10 px-4 rounded-lg bg-[#F5F5F5] border-0 text-sm text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Fixed bottom CTA */}

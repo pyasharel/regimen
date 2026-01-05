@@ -96,6 +96,16 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
                          data.medication.timeOfDay === 'Evening' ? '19:00' :
                          data.medication.customTime || '09:00';
 
+        // Build schedule_days array for specific days or weekly
+        let scheduleDays: string[] | null = null;
+        if (scheduleType === 'specific_days' && data.medication.specificDays) {
+          scheduleDays = data.medication.specificDays;
+        } else if (scheduleType === 'weekly') {
+          // Default to same day of week as today
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          scheduleDays = [days[new Date().getDay()]];
+        }
+
         const { error: compoundError } = await supabase
           .from('compounds')
           .insert({
@@ -104,6 +114,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             intended_dose: data.medication.dose,
             dose_unit: data.medication.doseUnit,
             schedule_type: scheduleType,
+            schedule_days: scheduleDays,
             time_of_day: [timeOfDay],
             start_date: new Date().toISOString().split('T')[0],
           });
@@ -150,7 +161,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              className="w-full h-14 px-5 rounded-xl bg-white border-2 border-transparent text-base focus:border-primary focus:outline-none shadow-sm transition-all"
+              className="w-full h-14 px-5 rounded-xl bg-white border-2 border-transparent text-base text-[#333333] placeholder:text-[#999999] focus:border-primary focus:outline-none shadow-sm transition-all"
             />
           </div>
 
@@ -167,7 +178,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
                 autoComplete="new-password"
-                className="w-full h-14 px-5 pr-12 rounded-xl bg-white border-2 border-transparent text-base focus:border-primary focus:outline-none shadow-sm transition-all"
+                className="w-full h-14 px-5 pr-12 rounded-xl bg-white border-2 border-transparent text-base text-[#333333] placeholder:text-[#999999] focus:border-primary focus:outline-none shadow-sm transition-all"
               />
               <button
                 type="button"

@@ -45,7 +45,7 @@ export function GoalsScreen({ pathRouting, initialGoals, onContinue }: GoalsScre
   return (
     <div className="flex-1 flex flex-col">
       {/* Headline */}
-      <div className="mb-2">
+      <div className="mb-6">
         <h1 
           className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
@@ -53,13 +53,6 @@ export function GoalsScreen({ pathRouting, initialGoals, onContinue }: GoalsScre
         </h1>
       </div>
 
-      {/* Social proof - above options */}
-      <p 
-        className="text-sm text-[#999999] mb-6 animate-in fade-in duration-500"
-        style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
-      >
-        Join 1,000+ others tracking their protocols
-      </p>
 
       {/* Options - Checkbox style */}
       <div className="flex-1">
