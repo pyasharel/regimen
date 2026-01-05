@@ -24,7 +24,10 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
   // Parse the time value (HH:MM format)
   const parseTime = (timeStr: string) => {
     if (!timeStr) return { hours: 9, minutes: 0, period: 'AM' };
-    const [hours, minutes] = timeStr.split(':').map(Number);
+    const [hours, rawMinutes] = timeStr.split(':').map(Number);
+    // Round minutes to nearest 5-minute increment
+    let minutes = Math.round(rawMinutes / 5) * 5;
+    if (minutes === 60) minutes = 55; // Handle edge case
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
     return { hours: displayHours, minutes, period };
@@ -49,7 +52,7 @@ export const IOSTimePicker = ({ value, onChange, className }: IOSTimePickerProps
   const scrollTimeoutRef = React.useRef<{ hour?: NodeJS.Timeout; minute?: NodeJS.Timeout }>({});
 
   const hourOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
+  const minuteOptions = Array.from({ length: 12 }, (_, i) => i * 5); // 5-minute increments: 0, 5, 10, ... 55
 
   // Sync internal state when value prop changes from parent
   // This fixes the bug where editing a compound wouldn't show the saved time
