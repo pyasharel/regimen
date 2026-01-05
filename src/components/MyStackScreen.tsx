@@ -637,7 +637,7 @@ export const MyStackScreen = () => {
             triggerHaptic();
             navigate("/add-compound");
           }}
-          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[3px] ring-white/80 dark:ring-black/80 transition-transform hover:scale-105 active:scale-[0.97] active:animate-fab-spring"
+          className="fixed right-5 flex h-14 w-14 items-center justify-center rounded-full bg-card/90 backdrop-blur-sm border border-border/50 text-muted-foreground transition-all hover:scale-105 hover:bg-card hover:text-foreground active:scale-[0.97] active:animate-fab-spring shadow-md"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
         >
           <Plus className="h-6 w-6" />
