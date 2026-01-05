@@ -1,5 +1,7 @@
 import { OnboardingButton } from '../OnboardingButton';
-import logo from '@/assets/logo-regimen-vertical-new.png';
+import logo from '@/assets/regimen-wordmark-transparent.png';
+// TODO: Add app screenshot when available
+// import appPreview from '@/assets/today-screen-preview.png';
 
 interface SplashScreenProps {
   onContinue: () => void;
@@ -11,14 +13,26 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
     <div className="flex-1 flex flex-col">
       {/* Content centered vertically */}
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        {/* Logo with animation */}
+        {/* Logo with animation - coral wordmark only */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <img 
             src={logo} 
             alt="Regimen" 
-            className="h-24 w-auto mb-8"
+            className="h-10 w-auto mb-6"
           />
         </div>
+
+        {/* App screenshot placeholder - uncomment when image is added */}
+        {/* <div 
+          className="w-64 h-auto mb-8 rounded-2xl overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
+        >
+          <img 
+            src={appPreview} 
+            alt="Regimen App" 
+            className="w-full h-auto"
+          />
+        </div> */}
 
         {/* Headline */}
         <h1 

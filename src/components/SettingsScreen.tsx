@@ -58,6 +58,9 @@ export const SettingsScreen = () => {
     try {
       await queryClient.clear();
       
+      // Clear onboarding state so fresh users get clean experience
+      localStorage.removeItem('regimen_onboarding_state');
+      
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
