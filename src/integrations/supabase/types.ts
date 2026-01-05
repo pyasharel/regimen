@@ -166,11 +166,23 @@ export type Database = {
           beta_access_end_date: string | null
           challenges: string[] | null
           created_at: string | null
+          current_weight: number | null
+          current_weight_unit: string | null
+          experience_level: string | null
           full_name: string | null
+          goal_weight: number | null
           goals: string[] | null
+          height_cm: number | null
+          height_feet: number | null
+          height_inches: number | null
+          height_unit: string | null
           id: string
           last_payment_attempt: string | null
+          notification_permission_asked: boolean | null
           onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
+          pain_points: string[] | null
+          path_type: string | null
           preview_mode_compound_added: boolean | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -190,11 +202,23 @@ export type Database = {
           beta_access_end_date?: string | null
           challenges?: string[] | null
           created_at?: string | null
+          current_weight?: number | null
+          current_weight_unit?: string | null
+          experience_level?: string | null
           full_name?: string | null
+          goal_weight?: number | null
           goals?: string[] | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          height_unit?: string | null
           id?: string
           last_payment_attempt?: string | null
+          notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          pain_points?: string[] | null
+          path_type?: string | null
           preview_mode_compound_added?: boolean | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -214,11 +238,23 @@ export type Database = {
           beta_access_end_date?: string | null
           challenges?: string[] | null
           created_at?: string | null
+          current_weight?: number | null
+          current_weight_unit?: string | null
+          experience_level?: string | null
           full_name?: string | null
+          goal_weight?: number | null
           goals?: string[] | null
+          height_cm?: number | null
+          height_feet?: number | null
+          height_inches?: number | null
+          height_unit?: string | null
           id?: string
           last_payment_attempt?: string | null
+          notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          pain_points?: string[] | null
+          path_type?: string | null
           preview_mode_compound_added?: boolean | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null

@@ -17,6 +17,7 @@ import { Browser } from '@capacitor/browser';
 import { toast } from "sonner";
 import { persistentStorage, PERSISTENT_STORAGE_KEYS } from "@/utils/persistentStorage";
 import { Onboarding } from "./components/Onboarding";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
 import { MyStackScreen } from "./components/MyStackScreen";
@@ -68,6 +69,7 @@ const AppContent = () => {
         <Routes>
             <Route path="/" element={<Splash />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<OnboardingFlow />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/checkout/success" element={<CheckoutSuccess />} />
