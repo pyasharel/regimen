@@ -1,6 +1,6 @@
 import { OnboardingButton } from '../OnboardingButton';
 import { PathRouting } from '../hooks/useOnboardingState';
-import { Check, Bell, TrendingUp, Calendar, Pill, BarChart3 } from 'lucide-react';
+import { Bell, TrendingUp, Calendar, Pill, BarChart3 } from 'lucide-react';
 
 interface FeaturesScreenProps {
   pathRouting: PathRouting | null;
@@ -8,15 +8,15 @@ interface FeaturesScreenProps {
 }
 
 const PATH_A_FEATURES = [
-  { icon: Bell, label: 'Never miss a dose with smart reminders' },
+  { icon: Bell, label: 'Stay on track with dose reminders' },
   { icon: TrendingUp, label: 'Track your weight and see insights' },
-  { icon: Calendar, label: 'Manage your dose escalation schedule' },
+  { icon: Calendar, label: 'Track dose changes over time' },
   { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
 
 const PATH_B_FEATURES = [
   { icon: Pill, label: 'Track everything you take in one place' },
-  { icon: Bell, label: 'Never miss a dose with smart reminders' },
+  { icon: Bell, label: 'Stay on track with dose reminders' },
   { icon: Calendar, label: 'Know when to start and end cycles' },
   { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
@@ -54,11 +54,6 @@ export function FeaturesScreen({ pathRouting, onContinue }: FeaturesScreenProps)
                 
                 {/* Label */}
                 <span className="font-medium text-[#333333]">{feature.label}</span>
-                
-                {/* Checkmark */}
-                <div className="ml-auto">
-                  <Check className="h-5 w-5 text-primary" />
-                </div>
               </div>
             );
           })}

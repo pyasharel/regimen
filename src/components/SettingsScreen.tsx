@@ -57,19 +57,30 @@ export const SettingsScreen = () => {
   const handleSignOut = async () => {
     try {
       await queryClient.clear();
-      
+
       // Clear onboarding state so fresh users get clean experience
       localStorage.removeItem('regimen_onboarding_state');
-      
+
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       toast.success("Signed out successfully");
       navigate("/auth", { replace: true });
     } catch (error) {
       console.error('Sign out error:', error);
       toast.error("Failed to sign out");
+    }
+  };
+
+  const handleResetOnboarding = () => {
+    try {
+      localStorage.removeItem('regimen_onboarding_state');
+      toast.success('Onboarding reset');
+      navigate('/onboarding', { replace: true });
+    } catch (error) {
+      console.error('Reset onboarding error:', error);
+      toast.error('Failed to reset onboarding');
     }
   };
 
@@ -292,6 +303,16 @@ export const SettingsScreen = () => {
           <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
+
+        {import.meta.env.DEV && (
+          <Button
+            onClick={handleResetOnboarding}
+            variant="outline"
+            className="w-full"
+          >
+            Reset Onboarding (Testing)
+          </Button>
+        )}
 
         {/* Version Number - Long press to open diagnostics */}
         <div 
