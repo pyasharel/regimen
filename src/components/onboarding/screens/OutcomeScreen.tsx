@@ -91,7 +91,7 @@ export function OutcomeScreen({ onContinue }: OutcomeScreenProps) {
         className="text-center text-[#666666] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{ animationDelay: '1200ms', animationFillMode: 'backwards' }}
       >
-        <span className="font-semibold text-[#333333]">Regimen</span> makes it easy and keeps you accountable.
+        Regimen makes it easy and keeps you accountable.
       </p>
 
       {/* CTA */}

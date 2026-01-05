@@ -97,7 +97,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
-          We're building the best tracking app for people like you. A quick rating helps us keep improving.
+          We're building the best tracking app for people like you. A quick rating goes a long way!
         </p>
       </div>
 

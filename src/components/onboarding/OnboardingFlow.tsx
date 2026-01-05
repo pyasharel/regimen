@@ -28,7 +28,7 @@ import { DisclaimerScreen } from './screens/DisclaimerScreen';
 import { OnboardingPaywallScreen } from './screens/OnboardingPaywallScreen';
 import { CompleteScreen } from './screens/CompleteScreen';
 
-// Screen IDs in order (optimized flow - name earlier, features before notifications)
+// Screen IDs in order (optimized flow - moved disclaimer after paywall)
 const SCREEN_ORDER = [
   'splash',
   'path-selection',
@@ -49,8 +49,8 @@ const SCREEN_ORDER = [
   'medication-setup',
   'account-creation',
   'loading',
-  'disclaimer',
-  'paywall',
+  'paywall', // Moved before disclaimer
+  'disclaimer', // After paywall - less interruption
   'complete',
 ] as const;
 

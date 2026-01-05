@@ -74,9 +74,9 @@ const ALL_COMPOUNDS = [
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
 ];
 
-const DOSE_UNITS = ['mg', 'mcg', 'mL', 'IU', 'units'];
+const DOSE_UNITS = ['mg', 'mcg', 'mL', 'IU'];
 const FREQUENCIES = ['Daily', 'Weekly', 'Every X days', 'Specific days'];
-const DAY_OPTIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TIME_OPTIONS = ['Morning', 'Afternoon', 'Evening', 'Bedtime'];
 
 export function MedicationSetupScreen({ 
@@ -206,17 +206,17 @@ export function MedicationSetupScreen({
               placeholder="2"
               className="flex-1 h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
             />
-            <div className="relative w-20 flex-shrink-0">
+            <div className="relative w-[72px] flex-shrink-0">
               <select
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="w-full h-12 pl-3 pr-7 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
+                className="w-full h-12 pl-2 pr-6 rounded-lg bg-[#F5F5F5] border-0 text-sm text-[#333333] focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
               >
                 {DOSE_UNITS.map(unit => (
                   <option key={unit} value={unit}>{unit}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999999] pointer-events-none" />
+              <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999999] pointer-events-none" />
             </div>
           </div>
         </div>

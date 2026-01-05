@@ -140,29 +140,69 @@ export function OnboardingPaywallScreen({
           </p>
         </div>
 
-        {/* Timeline */}
-        <div className="flex justify-between items-center mb-8 px-4">
-          <div className="text-center">
-            <div className="h-3 w-3 rounded-full bg-primary mx-auto mb-2" />
-            <p className="text-xs font-medium text-[#333333]">TODAY</p>
-            <p className="text-xs text-[#999999]">Start trial</p>
+        {/* Vertical Timeline - Cal AI style */}
+        <div className="mb-6 pl-4">
+          {/* Today */}
+          <div className="flex items-start gap-3 relative">
+            <div className="flex flex-col items-center">
+              <div className="h-3 w-3 rounded-full bg-primary" />
+              <div className="w-0.5 h-12 bg-[#E5E5E5]" />
+            </div>
+            <div className="-mt-0.5">
+              <p className="text-sm font-semibold text-[#333333]">TODAY</p>
+              <p className="text-xs text-[#666666]">Unlock all features</p>
+            </div>
           </div>
-          <div className="flex-1 h-0.5 bg-[#E5E5E5] mx-3" />
-          <div className="text-center">
-            <div className="h-3 w-3 rounded-full bg-[#E5E5E5] mx-auto mb-2" />
-            <p className="text-xs font-medium text-[#333333]">IN 13 DAYS</p>
-            <p className="text-xs text-[#999999]">Reminder</p>
+          
+          {/* In 13 Days */}
+          <div className="flex items-start gap-3 relative">
+            <div className="flex flex-col items-center">
+              <div className="h-3 w-3 rounded-full bg-[#E5E5E5]" />
+              <div className="w-0.5 h-12 bg-[#E5E5E5]" />
+            </div>
+            <div className="-mt-0.5">
+              <p className="text-sm font-semibold text-[#333333]">IN 13 DAYS</p>
+              <p className="text-xs text-[#666666]">Trial ending reminder</p>
+            </div>
           </div>
-          <div className="flex-1 h-0.5 bg-[#E5E5E5] mx-3" />
-          <div className="text-center">
-            <div className="h-3 w-3 rounded-full bg-[#E5E5E5] mx-auto mb-2" />
-            <p className="text-xs font-medium text-[#333333]">IN 14 DAYS</p>
-            <p className="text-xs text-[#999999]">First charge</p>
+          
+          {/* In 14 Days */}
+          <div className="flex items-start gap-3">
+            <div className="h-3 w-3 rounded-full bg-[#E5E5E5]" />
+            <div className="-mt-0.5">
+              <p className="text-sm font-semibold text-[#333333]">IN 14 DAYS</p>
+              <p className="text-xs text-[#666666]">First charge. Cancel anytime.</p>
+            </div>
           </div>
         </div>
 
-        {/* Side-by-side plan selection - Cal AI style */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        {/* Side-by-side plan selection - Monthly first, Annual with best value */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Monthly */}
+          <button
+            onClick={() => setSelectedPlan('monthly')}
+            className={`p-4 rounded-xl border-2 transition-all text-center ${
+              selectedPlan === 'monthly'
+                ? 'border-primary bg-primary/5'
+                : 'border-[#E5E5E5] bg-white'
+            }`}
+          >
+            <div>
+              <span className="font-semibold text-[#333333]">Monthly</span>
+              <p className="text-lg font-bold text-[#333333] mt-1">$4.99</p>
+              <p className="text-xs text-[#666666]">per month</p>
+            </div>
+            
+            {/* Selection indicator */}
+            <div className={`mt-3 h-5 w-5 mx-auto rounded-full border-2 flex items-center justify-center ${
+              selectedPlan === 'monthly' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
+            }`}>
+              {selectedPlan === 'monthly' && (
+                <Check className="h-3 w-3 text-white" />
+              )}
+            </div>
+          </button>
+
           {/* Annual */}
           <button
             onClick={() => setSelectedPlan('annual')}
@@ -182,7 +222,7 @@ export function OnboardingPaywallScreen({
             <div className="mt-2">
               <span className="font-semibold text-[#333333]">Annual</span>
               <p className="text-lg font-bold text-[#333333] mt-1">$39.99</p>
-              <p className="text-xs text-[#666666]">$3.33/month</p>
+              <p className="text-xs text-[#666666]">$3.33/mo</p>
             </div>
             
             {/* Selection indicator */}
@@ -190,31 +230,6 @@ export function OnboardingPaywallScreen({
               selectedPlan === 'annual' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
             }`}>
               {selectedPlan === 'annual' && (
-                <Check className="h-3 w-3 text-white" />
-              )}
-            </div>
-          </button>
-
-          {/* Monthly */}
-          <button
-            onClick={() => setSelectedPlan('monthly')}
-            className={`p-4 rounded-xl border-2 transition-all text-center ${
-              selectedPlan === 'monthly'
-                ? 'border-primary bg-primary/5'
-                : 'border-[#E5E5E5] bg-white'
-            }`}
-          >
-            <div className="mt-2">
-              <span className="font-semibold text-[#333333]">Monthly</span>
-              <p className="text-lg font-bold text-[#333333] mt-1">$4.99</p>
-              <p className="text-xs text-[#666666]">per month</p>
-            </div>
-            
-            {/* Selection indicator */}
-            <div className={`mt-3 h-5 w-5 mx-auto rounded-full border-2 flex items-center justify-center ${
-              selectedPlan === 'monthly' ? 'border-primary bg-primary' : 'border-[#CCCCCC]'
-            }`}>
-              {selectedPlan === 'monthly' && (
                 <Check className="h-3 w-3 text-white" />
               )}
             </div>
@@ -250,18 +265,20 @@ export function OnboardingPaywallScreen({
           Start My 14-Day Free Trial
         </OnboardingButton>
 
-        <div className="flex items-center justify-center gap-2 mt-2 text-[#666666]">
-          <Check className="h-4 w-4 text-primary" />
-          <span className="text-sm">No payment due now</span>
-        </div>
-        
-        <p className="text-xs text-center text-[#999999] mt-2">
-          Cancel anytime. We'll remind you before your trial ends.
+        <p className="text-xs text-center text-[#666666] mt-3">
+          14 days free, then ${selectedPlan === 'annual' ? '39.99/year' : '4.99/month'}
+        </p>
+
+        <p className="text-[10px] text-center text-[#999999] mt-3 leading-relaxed">
+          By starting your trial, you agree to our <a href="/terms" className="underline">Terms of Service</a> and <a href="/privacy" className="underline">Privacy Policy</a>. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Manage or cancel anytime in Settings.
         </p>
         
         <div className="flex justify-center gap-4 mt-3">
           <a href="/terms" className="text-xs text-[#999999] hover:text-[#666666]">Terms</a>
+          <span className="text-[#999999]">•</span>
           <a href="/privacy" className="text-xs text-[#999999] hover:text-[#666666]">Privacy</a>
+          <span className="text-[#999999]">•</span>
+          <button className="text-xs text-[#999999] hover:text-[#666666]">Restore</button>
         </div>
       </div>
     </div>
