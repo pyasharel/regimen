@@ -6,6 +6,82 @@ import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import { trackSignup } from '@/utils/analytics';
 
+// Generate doses for onboarding compound
+function generateDosesForOnboarding(
+  compoundId: string,
+  userId: string,
+  scheduleType: string,
+  scheduleDays: string[] | null,
+  intervalDays: number | undefined,
+  timeOfDay: string,
+  doseAmount: number,
+  doseUnit: string
+): Array<{
+  compound_id: string;
+  user_id: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  dose_amount: number;
+  dose_unit: string;
+}> {
+  const doses: Array<{
+    compound_id: string;
+    user_id: string;
+    scheduled_date: string;
+    scheduled_time: string;
+    dose_amount: number;
+    dose_unit: string;
+  }> = [];
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const dayNameToIndex: Record<string, number> = {
+    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+  };
+  
+  // Generate doses for next 60 days
+  for (let i = 0; i < 60; i++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+    const dayOfWeek = date.getDay();
+    
+    let shouldAdd = false;
+    
+    if (scheduleType === 'daily') {
+      shouldAdd = true;
+    } else if (scheduleType === 'weekly' || scheduleType === 'specific_days') {
+      if (scheduleDays) {
+        const dayIndices = scheduleDays.map(d => dayNameToIndex[d] ?? -1);
+        shouldAdd = dayIndices.includes(dayOfWeek);
+      }
+    } else if (scheduleType === 'interval' && intervalDays) {
+      shouldAdd = i % intervalDays === 0;
+    }
+    
+    if (shouldAdd) {
+      doses.push({
+        compound_id: compoundId,
+        user_id: userId,
+        scheduled_date: formatDate(date),
+        scheduled_time: timeOfDay,
+        dose_amount: doseAmount,
+        dose_unit: doseUnit,
+      });
+    }
+  }
+  
+  return doses;
+}
+
 interface AccountCreationScreenProps {
   data: OnboardingData;
   onSuccess: () => void;
@@ -91,22 +167,42 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
                             data.medication.frequency === 'Weekly' ? 'weekly' : 
                             data.medication.frequency === 'Specific days' ? 'specific_days' : 'interval';
         
+        // Map time of day to actual time - Bedtime = 21:00 (9 PM)
         const timeOfDay = data.medication.timeOfDay === 'Morning' ? '09:00' :
                          data.medication.timeOfDay === 'Afternoon' ? '14:00' :
                          data.medication.timeOfDay === 'Evening' ? '19:00' :
+                         data.medication.timeOfDay === 'Bedtime' ? '21:00' :
                          data.medication.customTime || '09:00';
 
         // Build schedule_days array for specific days or weekly
         let scheduleDays: string[] | null = null;
         if (scheduleType === 'specific_days' && data.medication.specificDays) {
-          scheduleDays = data.medication.specificDays;
+          // Map short day names to full names
+          const dayMap: Record<string, string> = {
+            'Sun': 'Sunday', 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday',
+            'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday'
+          };
+          scheduleDays = data.medication.specificDays.map(d => dayMap[d] || d);
+        } else if (scheduleType === 'weekly' && data.medication.specificDays && data.medication.specificDays.length > 0) {
+          // Weekly uses specificDays from MedicationSetup
+          const dayMap: Record<string, string> = {
+            'Sun': 'Sunday', 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday',
+            'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday'
+          };
+          scheduleDays = data.medication.specificDays.map(d => dayMap[d] || d);
         } else if (scheduleType === 'weekly') {
-          // Default to same day of week as today
+          // Fallback to today
           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           scheduleDays = [days[new Date().getDay()]];
         }
 
-        const { error: compoundError } = await supabase
+        // For interval scheduling, store frequency in schedule_days as the interval number
+        let intervalValue: number | undefined;
+        if (scheduleType === 'interval' && data.medication.frequencyDays) {
+          intervalValue = data.medication.frequencyDays;
+        }
+
+        const { data: compoundData, error: compoundError } = await supabase
           .from('compounds')
           .insert({
             user_id: authData.user.id,
@@ -117,11 +213,35 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             schedule_days: scheduleDays,
             time_of_day: [timeOfDay],
             start_date: new Date().toISOString().split('T')[0],
-          });
+          })
+          .select()
+          .single();
 
         if (compoundError) {
           console.error('[Onboarding] Compound creation error:', compoundError);
           // Don't fail the flow
+        } else if (compoundData) {
+          // Generate doses for the next 60 days
+          const doses = generateDosesForOnboarding(
+            compoundData.id,
+            authData.user.id,
+            scheduleType,
+            scheduleDays,
+            intervalValue,
+            timeOfDay,
+            data.medication.dose,
+            data.medication.doseUnit
+          );
+          
+          if (doses.length > 0) {
+            const { error: dosesError } = await supabase
+              .from('doses')
+              .insert(doses);
+            
+            if (dosesError) {
+              console.error('[Onboarding] Doses creation error:', dosesError);
+            }
+          }
         }
       }
 

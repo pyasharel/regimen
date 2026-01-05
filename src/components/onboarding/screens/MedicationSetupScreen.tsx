@@ -76,7 +76,7 @@ const ALL_COMPOUNDS = [
 
 const DOSE_UNITS = ['mg', 'mcg', 'mL', 'IU', 'units'];
 const FREQUENCIES = ['Daily', 'Weekly', 'Every X days', 'Specific days'];
-const DAY_OPTIONS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_OPTIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_OPTIONS = ['Morning', 'Afternoon', 'Evening', 'Bedtime'];
 
 export function MedicationSetupScreen({ 
@@ -91,6 +91,9 @@ export function MedicationSetupScreen({
   const [doseUnit, setDoseUnit] = useState(initialMedication?.doseUnit || 'mg');
   const [frequency, setFrequency] = useState(initialMedication?.frequency || 'Weekly');
   const [frequencyDays, setFrequencyDays] = useState(initialMedication?.frequencyDays || 3);
+  // Default to today's day for weekly
+  const todayDayName = DAY_OPTIONS[new Date().getDay()];
+  const [weeklyDay, setWeeklyDay] = useState<string>(initialMedication?.specificDays?.[0] || todayDayName);
   const [specificDays, setSpecificDays] = useState<string[]>(initialMedication?.specificDays || []);
   const [timeOfDay, setTimeOfDay] = useState(initialMedication?.timeOfDay || 'Morning');
 
@@ -121,7 +124,7 @@ export function MedicationSetupScreen({
       doseUnit,
       frequency,
       frequencyDays: frequency === 'Every X days' ? frequencyDays : undefined,
-      specificDays: frequency === 'Specific days' ? specificDays : undefined,
+      specificDays: frequency === 'Specific days' ? specificDays : (frequency === 'Weekly' ? [weeklyDay] : undefined),
       timeOfDay,
     });
   };
@@ -158,10 +161,10 @@ export function MedicationSetupScreen({
             />
           </div>
           
-          {/* Compound suggestions */}
-          {showCompoundList && (
+          {/* Compound suggestions - only show when typing */}
+          {showCompoundList && name.length > 0 && filteredCompounds.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {(name ? filteredCompounds : suggestedCompounds).map((compound) => (
+              {filteredCompounds.map((compound) => (
                 <button
                   key={compound}
                   onClick={() => {
@@ -193,20 +196,20 @@ export function MedicationSetupScreen({
               inputMode="decimal"
               value={dose}
               onChange={(e) => setDose(e.target.value)}
-              placeholder="2.5"
+              placeholder="2"
               className="flex-1 h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
             />
-            <div className="relative">
+            <div className="relative w-20 flex-shrink-0">
               <select
                 value={doseUnit}
                 onChange={(e) => setDoseUnit(e.target.value)}
-                className="h-12 pl-4 pr-8 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
+                className="w-full h-12 pl-3 pr-7 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] focus:ring-2 focus:ring-primary focus:outline-none appearance-none cursor-pointer"
               >
                 {DOSE_UNITS.map(unit => (
                   <option key={unit} value={unit}>{unit}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999999] pointer-events-none" />
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999999] pointer-events-none" />
             </div>
           </div>
         </div>
@@ -232,6 +235,28 @@ export function MedicationSetupScreen({
               </button>
             ))}
           </div>
+
+          {/* Weekly day picker */}
+          {frequency === 'Weekly' && (
+            <div className="mt-4 animate-in fade-in duration-200">
+              <span className="text-sm text-[#666666] mb-2 block">Which day?</span>
+              <div className="flex flex-wrap gap-2">
+                {DAY_OPTIONS.map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => setWeeklyDay(day)}
+                    className={`h-10 w-12 rounded-lg text-sm font-medium transition-all ${
+                      weeklyDay === day
+                        ? 'bg-primary text-white'
+                        : 'bg-[#F0F0F0] text-[#666666] hover:bg-[#E5E5E5]'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Every X days sub-selection */}
           {frequency === 'Every X days' && (

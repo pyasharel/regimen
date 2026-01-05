@@ -1805,7 +1805,8 @@ export const AddCompoundScreen = () => {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Cycle</h2>
-              {!isSubscribed && (
+              {/* Show subscribe button only if not subscribed AND not in preview mode (first compound) */}
+              {!isSubscribed && !canProceed && (
                 <button
                   type="button"
                   onClick={() => setShowPaywall(true)}

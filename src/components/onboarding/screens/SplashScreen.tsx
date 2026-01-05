@@ -1,6 +1,5 @@
 import { OnboardingButton } from '../OnboardingButton';
 import logo from '@/assets/regimen-wordmark-transparent.png';
-import appPreview from '@/assets/today-screen-preview-light.png';
 
 interface SplashScreenProps {
   onContinue: () => void;
@@ -17,19 +16,7 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
           <img 
             src={logo} 
             alt="Regimen" 
-            className="h-10 w-auto mb-6"
-          />
-        </div>
-
-        {/* App screenshot */}
-        <div 
-          className="w-64 h-auto mb-8 rounded-2xl overflow-hidden shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
-        >
-          <img 
-            src={appPreview} 
-            alt="Regimen Today screen preview" 
-            className="w-full h-auto"
+            className="h-12 w-auto mb-8"
           />
         </div>
 

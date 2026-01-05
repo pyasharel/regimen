@@ -20,6 +20,7 @@ export function GoalValidationScreen({
   const [animatedDiff, setAnimatedDiff] = useState(0);
   
   const weightDiff = currentWeight && goalWeight ? Math.abs(currentWeight - goalWeight) : 0;
+  const isGaining = goalWeight && currentWeight ? goalWeight > currentWeight : false;
   const percentChange = currentWeight ? (weightDiff / currentWeight) * 100 : 0;
   const isAggressive = percentChange > 30;
 
@@ -48,6 +49,10 @@ export function GoalValidationScreen({
   const headlineText = firstName 
     ? (isAggressive ? `That's ambitious, ${firstName}.` : `That's achievable, ${firstName}!`)
     : (isAggressive ? "That's ambitious." : "That's achievable.");
+
+  // Dynamic action text based on direction
+  const actionWord = isGaining ? 'Gaining' : 'Losing';
+  const signPrefix = isGaining ? '+' : '−';
 
   return (
     <div className="flex-1 flex flex-col">
@@ -80,14 +85,14 @@ export function GoalValidationScreen({
           
           <div className="flex items-center gap-2">
             <div className="w-12 h-0.5 bg-[#E5E5E5]" />
-            <div className="text-primary font-bold text-lg">
-              -{animatedDiff}
+            <div className={`font-bold text-lg ${isGaining ? 'text-[#10B981]' : 'text-primary'}`}>
+              {signPrefix}{animatedDiff}
             </div>
-            <div className="w-12 h-0.5 bg-primary" />
+            <div className={`w-12 h-0.5 ${isGaining ? 'bg-[#10B981]' : 'bg-primary'}`} />
           </div>
           
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary">{goalWeight}</div>
+            <div className={`text-3xl font-bold ${isGaining ? 'text-[#10B981]' : 'text-primary'}`}>{goalWeight}</div>
             <div className="text-sm text-[#666666]">{weightUnit}</div>
           </div>
         </div>
@@ -98,7 +103,7 @@ export function GoalValidationScreen({
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#333333] font-medium mb-1">
-            Losing {weightDiff} {weightUnit} is a realistic target.
+            {actionWord} {weightDiff} {weightUnit} is a realistic target.
           </p>
           <p className="text-[#666666] text-sm">
             {isAggressive 

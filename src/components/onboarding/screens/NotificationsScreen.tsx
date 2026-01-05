@@ -38,7 +38,7 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
         <h1 
           className="text-2xl font-bold text-[#333333] mb-3 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
-          Reminders that keep you on track
+          Reminders keep you on track
         </h1>
 
         {/* Body */}
@@ -46,7 +46,7 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
           className="text-lg text-[#666666] text-center max-w-[280px] mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
         >
-          We'll nudge you at the right time, so your schedule stays consistent
+          Get a nudge when it's time for your next dose
         </p>
 
         {/* Mock notification - below headline */}

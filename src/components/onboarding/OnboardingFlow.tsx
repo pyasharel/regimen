@@ -236,6 +236,7 @@ export function OnboardingFlow() {
               updateData({ goalWeight });
               handleNext();
             }}
+            onSkip={handleNext}
           />
         );
 
