@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingLayout } from './OnboardingLayout';
 import { useOnboardingState, PathType, PathRouting, ExperienceLevel } from './hooks/useOnboardingState';
+import { supabase } from '@/integrations/supabase/client';
 
 // Screen imports
 import { SplashScreen } from './screens/SplashScreen';
@@ -66,6 +67,27 @@ export function OnboardingFlow() {
     setCurrentStep,
     clearState,
   } = useOnboardingState();
+
+  // Check if user is already authenticated and has completed onboarding
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // User is already logged in - check if they completed onboarding
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        if (profile?.onboarding_completed) {
+          // Already onboarded, redirect to app
+          navigate('/today', { replace: true });
+        }
+      }
+    };
+    checkExistingUser();
+  }, [navigate]);
 
   // Force light mode during onboarding
   useEffect(() => {

@@ -7,16 +7,28 @@ interface PotentialScreenProps {
   onContinue: () => void;
 }
 
-// Map goal IDs to display info
+// Map goal IDs to display info - comprehensive mapping
 const GOAL_DISPLAY: Record<string, { label: string; icon: typeof Target }> = {
   'lose-weight': { label: 'Lose weight', icon: Target },
+  'lose weight': { label: 'Lose weight', icon: Target },
+  'weight-loss': { label: 'Lose weight', icon: Target },
   'build-muscle': { label: 'Build muscle', icon: Dumbbell },
+  'build muscle': { label: 'Build muscle', icon: Dumbbell },
+  'gain-muscle': { label: 'Build muscle', icon: Dumbbell },
   'recovery': { label: 'Recover faster', icon: RefreshCw },
+  'faster-recovery': { label: 'Recover faster', icon: RefreshCw },
   'energy': { label: 'Boost energy', icon: Zap },
   'more-energy': { label: 'More energy', icon: Zap },
+  'more energy': { label: 'More energy', icon: Zap },
+  'boost-energy': { label: 'Boost energy', icon: Zap },
   'get-healthier': { label: 'Get healthier', icon: TrendingUp },
+  'get healthier': { label: 'Get healthier', icon: TrendingUp },
   'stay-consistent': { label: 'Build a routine', icon: Clock },
+  'stay consistent': { label: 'Build a routine', icon: Clock },
+  'consistency': { label: 'Build a routine', icon: Clock },
   'optimization': { label: 'Optimize performance', icon: TrendingUp },
+  'optimize': { label: 'Optimize performance', icon: TrendingUp },
+  'performance': { label: 'Optimize performance', icon: TrendingUp },
 };
 
 export function PotentialScreen({ 
@@ -54,7 +66,13 @@ export function PotentialScreen({
       >
         <div className="bg-white rounded-xl p-5 shadow-sm space-y-4">
           {goals.map((goalId, index) => {
-            const goalInfo = GOAL_DISPLAY[goalId] || { label: goalId, icon: Target };
+            // Normalize goal ID for lookup (lowercase, trim)
+            const normalizedId = goalId.toLowerCase().trim();
+            const goalInfo = GOAL_DISPLAY[normalizedId] || GOAL_DISPLAY[normalizedId.replace(/ /g, '-')] || { 
+              // Fallback: capitalize first letter of each word
+              label: goalId.split(/[-_\s]/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '), 
+              icon: Target 
+            };
             const Icon = goalInfo.icon;
             
             return (

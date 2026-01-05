@@ -94,12 +94,22 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Simple email validation regex
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     
     if (!email || !password) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -221,6 +231,8 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           console.error('[Onboarding] Compound creation error:', compoundError);
           // Don't fail the flow
         } else if (compoundData) {
+          console.log('[Onboarding] Compound created:', compoundData.id);
+          
           // Generate doses for the next 60 days
           const doses = generateDosesForOnboarding(
             compoundData.id,
@@ -233,13 +245,34 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             data.medication.doseUnit
           );
           
+          console.log(`[Onboarding] Generated ${doses.length} doses for compound`);
+          
           if (doses.length > 0) {
-            const { error: dosesError } = await supabase
-              .from('doses')
-              .insert(doses);
+            // Retry logic for dose insertion
+            let insertAttempt = 0;
+            const maxAttempts = 3;
+            let dosesInserted = false;
             
-            if (dosesError) {
-              console.error('[Onboarding] Doses creation error:', dosesError);
+            while (insertAttempt < maxAttempts && !dosesInserted) {
+              insertAttempt++;
+              const { error: dosesError, count } = await supabase
+                .from('doses')
+                .insert(doses);
+              
+              if (dosesError) {
+                console.error(`[Onboarding] Doses creation attempt ${insertAttempt} failed:`, dosesError);
+                if (insertAttempt < maxAttempts) {
+                  // Wait before retry
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+              } else {
+                dosesInserted = true;
+                console.log(`[Onboarding] Successfully inserted doses on attempt ${insertAttempt}`);
+              }
+            }
+            
+            if (!dosesInserted) {
+              console.error('[Onboarding] All dose insertion attempts failed');
             }
           }
         }

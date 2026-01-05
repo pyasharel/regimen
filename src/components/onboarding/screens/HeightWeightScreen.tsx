@@ -21,6 +21,12 @@ interface HeightWeightScreenProps {
   onSkip: () => void;
 }
 
+// Weight bounds for validation
+const WEIGHT_BOUNDS = {
+  lb: { min: 50, max: 600 },
+  kg: { min: 23, max: 270 },
+};
+
 export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWeightScreenProps) {
   const [heightUnit, setHeightUnit] = useState<'ft' | 'cm'>(initialData.heightUnit);
   const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>(initialData.weightUnit);
@@ -28,6 +34,52 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
   const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '10');
   const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '178');
   const [weight, setWeight] = useState<string>(initialData.currentWeight?.toString() || '');
+
+  // Auto-convert weight when switching units
+  const handleWeightUnitChange = (newUnit: 'lb' | 'kg') => {
+    if (newUnit !== weightUnit && weight) {
+      const currentValue = parseFloat(weight);
+      if (!isNaN(currentValue)) {
+        if (newUnit === 'kg') {
+          // lb to kg
+          setWeight(Math.round(currentValue * 0.453592).toString());
+        } else {
+          // kg to lb
+          setWeight(Math.round(currentValue / 0.453592).toString());
+        }
+      }
+    }
+    setWeightUnit(newUnit);
+  };
+
+  // Auto-convert height when switching units
+  const handleHeightUnitChange = (newUnit: 'ft' | 'cm') => {
+    if (newUnit !== heightUnit) {
+      if (newUnit === 'cm' && heightFeet) {
+        // ft/in to cm
+        const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
+        setHeightCm(Math.round(totalInches * 2.54).toString());
+      } else if (newUnit === 'ft' && heightCm) {
+        // cm to ft/in
+        const totalInches = Math.round(parseFloat(heightCm) / 2.54);
+        setHeightFeet(Math.floor(totalInches / 12).toString());
+        setHeightInches((totalInches % 12).toString());
+      }
+    }
+    setHeightUnit(newUnit);
+  };
+
+  // Validate weight is within bounds
+  const weightValue = parseFloat(weight);
+  const bounds = WEIGHT_BOUNDS[weightUnit];
+  const isWeightValid = !weight || (weightValue >= bounds.min && weightValue <= bounds.max);
+
+  // Block negative numbers
+  const handleNumericKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === '-' || e.key === 'e') {
+      e.preventDefault();
+    }
+  };
 
   const handleContinue = () => {
     onContinue({
@@ -40,7 +92,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     });
   };
 
-  const isValid = weight && (heightUnit === 'ft' ? heightFeet : heightCm);
+  const isValid = weight && isWeightValid && (heightUnit === 'ft' ? heightFeet : heightCm);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -71,7 +123,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
             {/* Unit Toggle */}
             <div className="flex rounded-lg bg-[#F0F0F0] p-1">
               <button
-                onClick={() => setHeightUnit('ft')}
+                onClick={() => handleHeightUnitChange('ft')}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
                   heightUnit === 'ft'
                     ? 'bg-white text-[#333333] shadow-sm'
@@ -81,7 +133,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
                 ft/in
               </button>
               <button
-                onClick={() => setHeightUnit('cm')}
+                onClick={() => handleHeightUnitChange('cm')}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
                   heightUnit === 'cm'
                     ? 'bg-white text-[#333333] shadow-sm'
@@ -99,8 +151,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
                 <input
                   type="number"
                   inputMode="numeric"
+                  min="1"
+                  max="8"
                   value={heightFeet}
                   onChange={(e) => setHeightFeet(e.target.value)}
+                  onKeyDown={handleNumericKeyDown}
                   placeholder="5"
                   className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
                 />
@@ -110,8 +165,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
                 <input
                   type="number"
                   inputMode="numeric"
+                  min="0"
+                  max="11"
                   value={heightInches}
                   onChange={(e) => setHeightInches(e.target.value)}
+                  onKeyDown={handleNumericKeyDown}
                   placeholder="10"
                   className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
                 />
@@ -122,8 +180,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
             <input
               type="number"
               inputMode="decimal"
+              min="50"
+              max="250"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
+              onKeyDown={handleNumericKeyDown}
               placeholder="178"
               className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
             />
@@ -140,7 +201,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
             {/* Unit Toggle */}
             <div className="flex rounded-lg bg-[#F0F0F0] p-1">
               <button
-                onClick={() => setWeightUnit('lb')}
+                onClick={() => handleWeightUnitChange('lb')}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
                   weightUnit === 'lb'
                     ? 'bg-white text-[#333333] shadow-sm'
@@ -150,7 +211,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
                 lb
               </button>
               <button
-                onClick={() => setWeightUnit('kg')}
+                onClick={() => handleWeightUnitChange('kg')}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
                   weightUnit === 'kg'
                     ? 'bg-white text-[#333333] shadow-sm'
@@ -165,11 +226,21 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
           <input
             type="number"
             inputMode="decimal"
+            min={bounds.min}
+            max={bounds.max}
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
+            onKeyDown={handleNumericKeyDown}
             placeholder={weightUnit === 'lb' ? '180' : '82'}
-            className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
+            className={`w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:outline-none ${
+              weight && !isWeightValid ? 'ring-2 ring-destructive focus:ring-destructive' : 'focus:ring-primary'
+            }`}
           />
+          {weight && !isWeightValid && (
+            <p className="text-sm text-destructive mt-2">
+              Weight should be between {bounds.min} and {bounds.max} {weightUnit}
+            </p>
+          )}
         </div>
       </div>
 

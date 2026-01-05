@@ -50,6 +50,8 @@ export interface OnboardingData {
 }
 
 const STORAGE_KEY = 'regimen_onboarding_state';
+const SCHEMA_VERSION = 2; // Increment this when schema changes
+const MAX_STATE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 const initialData: OnboardingData = {
   pathType: null,
@@ -109,6 +111,23 @@ export function useOnboardingState() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        
+        // Check schema version - if mismatch, start fresh
+        if (parsed.schemaVersion !== SCHEMA_VERSION) {
+          console.log('[Onboarding] Schema version mismatch, starting fresh');
+          localStorage.removeItem(STORAGE_KEY);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Check if state is too old (> 30 days)
+        if (parsed.data?.startedAt && Date.now() - parsed.data.startedAt > MAX_STATE_AGE_MS) {
+          console.log('[Onboarding] State too old, starting fresh');
+          localStorage.removeItem(STORAGE_KEY);
+          setIsLoading(false);
+          return;
+        }
+        
         setData(prev => ({
           ...prev,
           ...parsed.data,
@@ -128,11 +147,16 @@ export function useOnboardingState() {
     
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        schemaVersion: SCHEMA_VERSION,
         currentStep,
         data: { ...data, lastActiveAt: Date.now() },
       }));
     } catch (e) {
       console.error('[Onboarding] Failed to save state:', e);
+      // Check for private browsing / quota exceeded
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        console.warn('[Onboarding] localStorage quota exceeded - possible private browsing mode');
+      }
     }
   }, [currentStep, data, isLoading]);
 
