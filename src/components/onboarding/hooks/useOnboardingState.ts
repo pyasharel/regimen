@@ -14,6 +14,9 @@ export interface OnboardingData {
   experienceLevel: ExperienceLevel | null;
   painPoints: string[];
   
+  // User info (moved earlier for personalization)
+  firstName: string;
+  
   // Body metrics
   heightFeet: number | null;
   heightInches: number | null;
@@ -35,9 +38,6 @@ export interface OnboardingData {
     customTime?: string;
   } | null;
   
-  // User info
-  firstName: string;
-  
   // Promo code (if entered during onboarding)
   promoCode: string | null;
   
@@ -57,6 +57,7 @@ const initialData: OnboardingData = {
   goals: [],
   experienceLevel: null,
   painPoints: [],
+  firstName: '',
   heightFeet: null,
   heightInches: null,
   heightCm: null,
@@ -65,41 +66,37 @@ const initialData: OnboardingData = {
   goalWeight: null,
   weightUnit: 'lb',
   medication: null,
-  firstName: '',
   promoCode: null,
   termsAccepted: false,
   startedAt: Date.now(),
   lastActiveAt: Date.now(),
 };
 
-// Screen order for each path
-const PATH_A_SCREENS = [
+// Optimized screen order (removed long-term-results, moved name earlier, moved notifications/rating)
+const SCREEN_ORDER = [
   'splash',
   'path-selection',
   'personalization',
   'goals',
   'experience',
   'pain-points',
+  'name', // Moved earlier for personalization
   'height-weight', // conditional
   'goal-weight', // conditional
   'goal-validation', // conditional
-  'potential', // conditional
-  'long-term-results',
-  'outcome',
+  'potential', // conditional - now goal-adaptive
+  'outcome', // Consolidated (removed long-term-results)
+  'rating', // Moved after positive outcome screen
+  'notifications', // Moved earlier for psychological commitment
   'features',
-  'medication-setup',
   'privacy',
-  'name',
+  'medication-setup',
   'account-creation',
   'loading',
   'disclaimer',
-  'rating',
   'paywall',
-  'notifications', // conditional
   'complete',
 ];
-
-const PATH_B_SCREENS = PATH_A_SCREENS; // Same flow, different content
 
 export function useOnboardingState() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -139,10 +136,10 @@ export function useOnboardingState() {
     }
   }, [currentStep, data, isLoading]);
 
-  // Get the screen list based on path
+  // Get the screen list
   const getScreenList = useCallback(() => {
-    return data.pathRouting === 'A' ? PATH_A_SCREENS : PATH_B_SCREENS;
-  }, [data.pathRouting]);
+    return SCREEN_ORDER;
+  }, []);
 
   // Check if user has a weight goal
   const hasWeightGoal = data.goals.some(g => 
@@ -153,8 +150,7 @@ export function useOnboardingState() {
 
   // Calculate total steps (excluding conditional screens if not applicable)
   const getTotalSteps = useCallback(() => {
-    const screens = getScreenList();
-    let total = screens.length;
+    let total = SCREEN_ORDER.length;
     
     // Remove conditional weight screens if no weight goal
     if (!hasWeightGoal) {
@@ -162,7 +158,7 @@ export function useOnboardingState() {
     }
     
     return total;
-  }, [getScreenList, hasWeightGoal]);
+  }, [hasWeightGoal]);
 
   // Calculate progress percentage
   const getProgress = useCallback(() => {
@@ -172,9 +168,8 @@ export function useOnboardingState() {
 
   // Get current screen ID
   const getCurrentScreen = useCallback(() => {
-    const screens = getScreenList();
-    return screens[currentStep] || 'splash';
-  }, [currentStep, getScreenList]);
+    return SCREEN_ORDER[currentStep] || 'splash';
+  }, [currentStep]);
 
   // Update data
   const updateData = useCallback((updates: Partial<OnboardingData>) => {

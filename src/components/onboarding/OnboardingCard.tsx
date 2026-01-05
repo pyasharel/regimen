@@ -42,18 +42,18 @@ export function OnboardingCard({
         animationFillMode: 'backwards',
       }}
     >
-      {/* Left accent border */}
+      {/* Left accent border - now coral with proper inset */}
       {accentBorder && (
         <div
           className={cn(
-            "absolute left-0 top-3 bottom-3 w-1 rounded-full transition-colors",
+            "absolute left-3 top-3 bottom-3 w-1 rounded-full transition-colors",
             selected ? "bg-primary" : "bg-border"
           )}
         />
       )}
 
       {/* Content */}
-      <div className={cn(accentBorder && "pl-3")}>
+      <div className={cn(accentBorder && "pl-4")}>
         {children}
       </div>
 

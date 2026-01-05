@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { OnboardingCard } from '../OnboardingCard';
 import { PathRouting } from '../hooks/useOnboardingState';
 import { Check } from 'lucide-react';
 
@@ -12,18 +11,18 @@ interface GoalsScreenProps {
 
 const PATH_A_GOALS = [
   { id: 'lose-weight', label: 'Lose weight' },
-  { id: 'more-energy', label: 'More energy' },
+  { id: 'more-energy', label: 'Boost energy' },
   { id: 'get-healthier', label: 'Get healthier' },
-  { id: 'stay-consistent', label: 'Stay consistent' },
+  { id: 'stay-consistent', label: 'Build a routine' },
 ];
 
 const PATH_B_GOALS = [
   { id: 'lose-weight', label: 'Lose weight' },
   { id: 'build-muscle', label: 'Build muscle' },
-  { id: 'recovery', label: 'Recovery' },
-  { id: 'energy', label: 'Energy' },
-  { id: 'stay-consistent', label: 'Stay consistent' },
-  { id: 'optimization', label: 'Optimization' },
+  { id: 'recovery', label: 'Recover faster' },
+  { id: 'energy', label: 'Boost energy' },
+  { id: 'stay-consistent', label: 'Build a routine' },
+  { id: 'optimization', label: 'Optimize performance' },
 ];
 
 export function GoalsScreen({ pathRouting, initialGoals, onContinue }: GoalsScreenProps) {
@@ -46,13 +45,21 @@ export function GoalsScreen({ pathRouting, initialGoals, onContinue }: GoalsScre
   return (
     <div className="flex-1 flex flex-col">
       {/* Headline */}
-      <div className="mb-6">
+      <div className="mb-2">
         <h1 
           className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500"
         >
           What are you hoping to achieve?
         </h1>
       </div>
+
+      {/* Social proof - above options */}
+      <p 
+        className="text-sm text-[#999999] mb-6 animate-in fade-in duration-500"
+        style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
+      >
+        Join 1,000+ others tracking their protocols
+      </p>
 
       {/* Options - Checkbox style */}
       <div className="flex-1">
@@ -82,14 +89,6 @@ export function GoalsScreen({ pathRouting, initialGoals, onContinue }: GoalsScre
             </button>
           ))}
         </div>
-
-        {/* Social proof */}
-        <p 
-          className="text-center text-sm text-[#999999] mt-6 animate-in fade-in duration-500"
-          style={{ animationDelay: `${goals.length * 80 + 100}ms`, animationFillMode: 'backwards' }}
-        >
-          1,000+ doses tracked this week
-        </p>
       </div>
 
       {/* CTA */}

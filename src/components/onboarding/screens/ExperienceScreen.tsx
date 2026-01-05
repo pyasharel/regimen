@@ -35,13 +35,14 @@ export function ExperienceScreen({ initialLevel, onSelect }: ExperienceScreenPro
         </h1>
       </div>
 
-      {/* Options */}
+      {/* Options - with accent lines for consistency */}
       <div className="space-y-3">
         {EXPERIENCE_OPTIONS.map((option, index) => (
           <OnboardingCard
             key={option.id}
             selected={selected === option.id}
             onClick={() => handleSelect(option.id)}
+            accentBorder
             delay={index * 100}
           >
             <p className="font-medium text-[#333333] pr-8">{option.label}</p>

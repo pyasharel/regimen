@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
 
 interface GoalWeightScreenProps {
@@ -14,22 +14,24 @@ export function GoalWeightScreen({
   initialGoalWeight, 
   onContinue 
 }: GoalWeightScreenProps) {
-  const defaultGoal = currentWeight ? Math.round(currentWeight * 0.9) : (weightUnit === 'lb' ? 165 : 75);
-  const [goalWeight, setGoalWeight] = useState<number>(initialGoalWeight || defaultGoal);
+  // Better default: start at 90% of current weight or reasonable default
+  const defaultWeight = currentWeight ? Math.round(currentWeight * 0.9) : (weightUnit === 'lb' ? 180 : 82);
+  const [goalWeight, setGoalWeight] = useState<number>(initialGoalWeight || defaultWeight);
 
-  // Calculate min/max for slider
-  const minWeight = weightUnit === 'lb' ? 100 : 45;
-  const maxWeight = currentWeight || (weightUnit === 'lb' ? 300 : 136);
+  // Calculate min/max for slider - reasonable range ±50% of current weight
+  const baseWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
+  const minWeight = Math.max(weightUnit === 'lb' ? 80 : 36, Math.round(baseWeight * 0.5));
+  const maxWeight = Math.round(baseWeight * 1.3);
   
   // Calculate weight difference
   const weightDiff = currentWeight ? currentWeight - goalWeight : 0;
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Headline */}
+      {/* Headline - Cal AI phrasing */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500">
-          What's your goal weight?
+          What is your desired weight?
         </h1>
       </div>
 
@@ -48,7 +50,12 @@ export function GoalWeightScreen({
           
           {weightDiff > 0 && (
             <div className="mt-4 text-primary font-medium animate-in fade-in duration-300">
-              -{weightDiff} {weightUnit} from current
+              −{weightDiff} {weightUnit} from current
+            </div>
+          )}
+          {weightDiff < 0 && (
+            <div className="mt-4 text-[#10B981] font-medium animate-in fade-in duration-300">
+              +{Math.abs(weightDiff)} {weightUnit} from current
             </div>
           )}
         </div>
@@ -63,16 +70,17 @@ export function GoalWeightScreen({
             onChange={(e) => setGoalWeight(parseInt(e.target.value))}
             className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-primary
               [&::-webkit-slider-thumb]:appearance-none
-              [&::-webkit-slider-thumb]:w-6
-              [&::-webkit-slider-thumb]:h-6
+              [&::-webkit-slider-thumb]:w-7
+              [&::-webkit-slider-thumb]:h-7
               [&::-webkit-slider-thumb]:bg-primary
               [&::-webkit-slider-thumb]:rounded-full
               [&::-webkit-slider-thumb]:shadow-lg
               [&::-webkit-slider-thumb]:cursor-pointer
               [&::-webkit-slider-thumb]:transition-transform
               [&::-webkit-slider-thumb]:hover:scale-110
-              [&::-moz-range-thumb]:w-6
-              [&::-moz-range-thumb]:h-6
+              [&::-webkit-slider-thumb]:active:scale-95
+              [&::-moz-range-thumb]:w-7
+              [&::-moz-range-thumb]:h-7
               [&::-moz-range-thumb]:bg-primary
               [&::-moz-range-thumb]:border-0
               [&::-moz-range-thumb]:rounded-full

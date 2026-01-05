@@ -6,6 +6,7 @@ interface GoalValidationScreenProps {
   currentWeight: number | null;
   goalWeight: number | null;
   weightUnit: 'lb' | 'kg';
+  firstName?: string;
   onContinue: () => void;
 }
 
@@ -13,6 +14,7 @@ export function GoalValidationScreen({
   currentWeight, 
   goalWeight, 
   weightUnit,
+  firstName,
   onContinue 
 }: GoalValidationScreenProps) {
   const [animatedDiff, setAnimatedDiff] = useState(0);
@@ -43,6 +45,10 @@ export function GoalValidationScreen({
     return () => clearInterval(timer);
   }, [weightDiff]);
 
+  const headlineText = firstName 
+    ? (isAggressive ? `That's ambitious, ${firstName}.` : `That's achievable, ${firstName}!`)
+    : (isAggressive ? "That's ambitious." : "That's achievable.");
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Content centered */}
@@ -59,7 +65,7 @@ export function GoalValidationScreen({
           className="text-2xl font-bold text-[#333333] mb-3 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}
         >
-          {isAggressive ? "That's ambitious." : "That's achievable."}
+          {headlineText}
         </h1>
 
         {/* Weight journey visual */}
@@ -86,16 +92,21 @@ export function GoalValidationScreen({
           </div>
         </div>
 
-        {/* Motivational text */}
-        <p 
-          className="text-lg text-[#666666] max-w-[280px] animate-in fade-in slide-in-from-bottom-4 duration-500"
+        {/* Cal AI-style motivational text */}
+        <div 
+          className="bg-primary/5 rounded-xl p-4 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
-          {isAggressive 
-            ? "We'll help you track every step of the way."
-            : "People who track consistently get there faster."
-          }
-        </p>
+          <p className="text-[#333333] font-medium mb-1">
+            Losing {weightDiff} {weightUnit} is a realistic target.
+          </p>
+          <p className="text-[#666666] text-sm">
+            {isAggressive 
+              ? "We'll help you track every step of the way."
+              : "People who track consistently get there faster."
+            }
+          </p>
+        </div>
       </div>
 
       {/* CTA */}

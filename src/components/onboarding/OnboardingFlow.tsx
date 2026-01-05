@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingLayout } from './OnboardingLayout';
 import { useOnboardingState, PathType, PathRouting, ExperienceLevel } from './hooks/useOnboardingState';
@@ -10,25 +10,24 @@ import { PersonalizationScreen } from './screens/PersonalizationScreen';
 import { GoalsScreen } from './screens/GoalsScreen';
 import { ExperienceScreen } from './screens/ExperienceScreen';
 import { PainPointsScreen } from './screens/PainPointsScreen';
+import { NameScreen } from './screens/NameScreen';
 import { HeightWeightScreen } from './screens/HeightWeightScreen';
 import { GoalWeightScreen } from './screens/GoalWeightScreen';
 import { GoalValidationScreen } from './screens/GoalValidationScreen';
 import { PotentialScreen } from './screens/PotentialScreen';
-import { LongTermResultsScreen } from './screens/LongTermResultsScreen';
 import { OutcomeScreen } from './screens/OutcomeScreen';
+import { RatingScreen } from './screens/RatingScreen';
+import { NotificationsScreen } from './screens/NotificationsScreen';
 import { FeaturesScreen } from './screens/FeaturesScreen';
-import { MedicationSetupScreen } from './screens/MedicationSetupScreen';
 import { PrivacyScreen } from './screens/PrivacyScreen';
-import { NameScreen } from './screens/NameScreen';
+import { MedicationSetupScreen } from './screens/MedicationSetupScreen';
 import { AccountCreationScreen } from './screens/AccountCreationScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { DisclaimerScreen } from './screens/DisclaimerScreen';
-import { RatingScreen } from './screens/RatingScreen';
 import { OnboardingPaywallScreen } from './screens/OnboardingPaywallScreen';
-import { NotificationsScreen } from './screens/NotificationsScreen';
 import { CompleteScreen } from './screens/CompleteScreen';
 
-// Screen IDs in order
+// Screen IDs in order (optimized flow)
 const SCREEN_ORDER = [
   'splash',
   'path-selection',
@@ -36,22 +35,21 @@ const SCREEN_ORDER = [
   'goals',
   'experience',
   'pain-points',
+  'name', // Moved earlier
   'height-weight',
   'goal-weight',
   'goal-validation',
   'potential',
-  'long-term-results',
-  'outcome',
+  'outcome', // Consolidated
+  'rating', // After positive outcome
+  'notifications', // Earlier for commitment
   'features',
-  'medication-setup',
   'privacy',
-  'name',
+  'medication-setup',
   'account-creation',
   'loading',
   'disclaimer',
-  'rating',
   'paywall',
-  'notifications',
   'complete',
 ] as const;
 
@@ -65,8 +63,6 @@ export function OnboardingFlow() {
     progress,
     hasWeightGoal,
     updateData,
-    goToNext,
-    goToPrevious,
     setCurrentStep,
     clearState,
   } = useOnboardingState();
@@ -199,6 +195,18 @@ export function OnboardingFlow() {
           />
         );
 
+      case 'name':
+        return (
+          <NameScreen
+            initialName={data.firstName}
+            onContinue={(firstName) => {
+              updateData({ firstName });
+              handleNext();
+            }}
+            onSkip={handleNext}
+          />
+        );
+
       case 'height-weight':
         return (
           <HeightWeightScreen
@@ -237,6 +245,7 @@ export function OnboardingFlow() {
             currentWeight={data.currentWeight}
             goalWeight={data.goalWeight}
             weightUnit={data.weightUnit}
+            firstName={data.firstName}
             onContinue={handleNext}
           />
         );
@@ -244,16 +253,8 @@ export function OnboardingFlow() {
       case 'potential':
         return (
           <PotentialScreen
-            currentWeight={data.currentWeight}
-            goalWeight={data.goalWeight}
-            weightUnit={data.weightUnit}
-            onContinue={handleNext}
-          />
-        );
-
-      case 'long-term-results':
-        return (
-          <LongTermResultsScreen
+            goals={data.goals}
+            firstName={data.firstName}
             onContinue={handleNext}
           />
         );
@@ -265,10 +266,34 @@ export function OnboardingFlow() {
           />
         );
 
+      case 'rating':
+        return (
+          <RatingScreen
+            onComplete={handleNext}
+            onSkip={handleNext}
+          />
+        );
+
+      case 'notifications':
+        return (
+          <NotificationsScreen
+            medicationName={data.medication?.name}
+            onEnable={handleNext}
+            onSkip={handleNext}
+          />
+        );
+
       case 'features':
         return (
           <FeaturesScreen
             pathRouting={data.pathRouting}
+            onContinue={handleNext}
+          />
+        );
+
+      case 'privacy':
+        return (
+          <PrivacyScreen
             onContinue={handleNext}
           />
         );
@@ -280,25 +305,6 @@ export function OnboardingFlow() {
             initialMedication={data.medication}
             onContinue={(medication) => {
               updateData({ medication });
-              handleNext();
-            }}
-            onSkip={handleNext}
-          />
-        );
-
-      case 'privacy':
-        return (
-          <PrivacyScreen
-            onContinue={handleNext}
-          />
-        );
-
-      case 'name':
-        return (
-          <NameScreen
-            initialName={data.firstName}
-            onContinue={(firstName) => {
-              updateData({ firstName });
               handleNext();
             }}
             onSkip={handleNext}
@@ -317,6 +323,7 @@ export function OnboardingFlow() {
         return (
           <LoadingScreen
             medicationName={data.medication?.name}
+            firstName={data.firstName}
             onComplete={handleNext}
           />
         );
@@ -331,14 +338,6 @@ export function OnboardingFlow() {
           />
         );
 
-      case 'rating':
-        return (
-          <RatingScreen
-            onComplete={handleNext}
-            onSkip={handleNext}
-          />
-        );
-
       case 'paywall':
         return (
           <OnboardingPaywallScreen
@@ -347,14 +346,6 @@ export function OnboardingFlow() {
             promoCode={data.promoCode}
             onSubscribe={handleNext}
             onDismiss={handleNext}
-          />
-        );
-
-      case 'notifications':
-        return (
-          <NotificationsScreen
-            onEnable={handleComplete}
-            onSkip={handleComplete}
           />
         );
 
