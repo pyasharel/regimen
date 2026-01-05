@@ -10,8 +10,24 @@ interface NameScreenProps {
 export function NameScreen({ initialName, onContinue, onSkip }: NameScreenProps) {
   const [name, setName] = useState(initialName);
 
+  // Sanitize name: remove HTML chars, trim whitespace
+  const sanitizeName = (input: string): string => {
+    return input
+      .replace(/[<>&"']/g, '') // Remove HTML special chars
+      .trim()
+      .slice(0, 30); // Max 30 characters
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow up to 30 chars
+    if (value.length <= 30) {
+      setName(value);
+    }
+  };
+
   const handleContinue = () => {
-    onContinue(name.trim());
+    onContinue(sanitizeName(name));
   };
 
   return (
@@ -33,14 +49,20 @@ export function NameScreen({ initialName, onContinue, onSkip }: NameScreenProps)
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={handleNameChange}
           placeholder="First name"
           autoFocus
+          maxLength={30}
           className="w-full h-14 px-5 rounded-xl bg-white border-2 border-transparent text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:border-primary focus:outline-none shadow-sm transition-all"
         />
-        <p className="text-sm text-[#999999] mt-3">
-          We'll use this to personalize your experience
-        </p>
+        <div className="flex justify-between items-center mt-3">
+          <p className="text-sm text-[#999999]">
+            We'll use this to personalize your experience
+          </p>
+          {name.length > 20 && (
+            <span className="text-xs text-[#999999]">{name.length}/30</span>
+          )}
+        </div>
       </div>
 
       {/* CTAs */}

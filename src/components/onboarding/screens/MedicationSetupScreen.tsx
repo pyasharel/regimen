@@ -107,7 +107,11 @@ export function MedicationSetupScreen({
     ? ['Semaglutide', 'Tirzepatide', 'Ozempic', 'Mounjaro', 'Wegovy', 'Zepbound']
     : ['BPC-157', 'TB-500', 'Testosterone Cypionate', 'Ipamorelin', 'CJC-1295', 'MK-677'];
 
-  const isValid = name && dose && parseFloat(dose) > 0;
+  // Validate: name, dose > 0, and if specific days selected, at least 1 day
+  const isValid = name && 
+    dose && 
+    parseFloat(dose) > 0 && 
+    (frequency !== 'Specific days' || specificDays.length > 0);
 
   const toggleDay = (day: string) => {
     setSpecificDays(prev => 
@@ -194,8 +198,11 @@ export function MedicationSetupScreen({
             <input
               type="number"
               inputMode="decimal"
+              min="0.01"
+              step="any"
               value={dose}
               onChange={(e) => setDose(e.target.value)}
+              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
               placeholder="2"
               className="flex-1 h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-base text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
             />
@@ -283,20 +290,25 @@ export function MedicationSetupScreen({
 
           {/* Specific days sub-selection */}
           {frequency === 'Specific days' && (
-            <div className="mt-4 flex flex-wrap gap-2 animate-in fade-in duration-200">
-              {DAY_OPTIONS.map((day) => (
-                <button
-                  key={day}
-                  onClick={() => toggleDay(day)}
-                  className={`h-10 w-12 rounded-lg text-sm font-medium transition-all ${
-                    specificDays.includes(day)
-                      ? 'bg-primary text-white'
-                      : 'bg-[#F0F0F0] text-[#666666] hover:bg-[#E5E5E5]'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
+            <div className="mt-4 animate-in fade-in duration-200">
+              <div className="flex flex-wrap gap-2">
+                {DAY_OPTIONS.map((day) => (
+                  <button
+                    key={day}
+                    onClick={() => toggleDay(day)}
+                    className={`h-10 w-12 rounded-lg text-sm font-medium transition-all ${
+                      specificDays.includes(day)
+                        ? 'bg-primary text-white'
+                        : 'bg-[#F0F0F0] text-[#666666] hover:bg-[#E5E5E5]'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+              {specificDays.length === 0 && (
+                <p className="text-sm text-primary mt-2">Please select at least one day</p>
+              )}
             </div>
           )}
         </div>

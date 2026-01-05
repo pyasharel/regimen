@@ -62,6 +62,7 @@ export function GoalWeightScreen({
               +{weightDiff} {weightUnit} from current
             </div>
           )}
+          {/* Hide zero difference - no message when goal equals current */}
         </div>
 
         {/* Slider */}

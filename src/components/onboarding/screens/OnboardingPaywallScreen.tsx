@@ -29,7 +29,27 @@ export function OnboardingPaywallScreen({
   const [promoCode, setPromoCode] = useState(initialPromoCode || '');
   const [loading, setLoading] = useState(false);
   
-  const { offerings, purchasePackage, isNativePlatform } = useSubscription();
+  const { offerings, purchasePackage, isNativePlatform, subscriptionStatus } = useSubscription();
+  
+  // If already subscribed, skip paywall
+  const isAlreadySubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
+  
+  // Auto-advance if already subscribed
+  if (isAlreadySubscribed) {
+    // Schedule immediate advance to avoid render loop
+    setTimeout(() => onSubscribe(), 0);
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="text-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Check className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#333333] mb-2">You're all set!</h1>
+          <p className="text-[#666666]">Your subscription is already active</p>
+        </div>
+      </div>
+    );
+  }
   
   const headline = medicationName 
     ? `Your ${medicationName} schedule is ready`
