@@ -259,45 +259,43 @@ export const DisplaySettings = () => {
           <div className="space-y-2">
             <Label className="text-sm font-medium text-muted-foreground">Height</Label>
             {unitSystem === "imperial" ? (
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="5"
-                      value={heightFeet}
-                      onChange={(e) => handleHeightFeetChange(e.target.value)}
-                      className="text-lg font-semibold pr-10 h-12"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">ft</span>
-                  </div>
+              <div className="flex gap-3 justify-center">
+                <div className="relative w-24">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="5"
+                    value={heightFeet}
+                    onChange={(e) => handleHeightFeetChange(e.target.value)}
+                    className="text-lg font-semibold text-center pr-8 h-12"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">ft</span>
                 </div>
-                <div className="flex-1">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="10"
-                      value={heightInches}
-                      onChange={(e) => handleHeightInchesChange(e.target.value)}
-                      className="text-lg font-semibold pr-10 h-12"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">in</span>
-                  </div>
+                <div className="relative w-24">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="10"
+                    value={heightInches}
+                    onChange={(e) => handleHeightInchesChange(e.target.value)}
+                    className="text-lg font-semibold text-center pr-8 h-12"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">in</span>
                 </div>
               </div>
             ) : (
-              <div className="relative">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="178"
-                  value={heightCm}
-                  onChange={(e) => handleHeightCmChange(e.target.value)}
-                  className="text-lg font-semibold pr-12 h-12"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">cm</span>
+              <div className="flex justify-center">
+                <div className="relative w-28">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="178"
+                    value={heightCm}
+                    onChange={(e) => handleHeightCmChange(e.target.value)}
+                    className="text-lg font-semibold text-center pr-10 h-12"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">cm</span>
+                </div>
               </div>
             )}
           </div>
@@ -305,16 +303,18 @@ export const DisplaySettings = () => {
           {/* Current Weight */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-muted-foreground">Current Weight</Label>
-            <div className="relative">
-              <Input
-                type="number"
-                inputMode="decimal"
-                placeholder={unitSystem === 'imperial' ? "180" : "82"}
-                value={currentWeight}
-                onChange={(e) => handleCurrentWeightChange(e.target.value)}
-                className="text-lg font-semibold pr-12 h-12"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
+            <div className="flex justify-center">
+              <div className="relative w-28">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder={unitSystem === 'imperial' ? "180" : "82"}
+                  value={currentWeight}
+                  onChange={(e) => handleCurrentWeightChange(e.target.value)}
+                  className="text-lg font-semibold text-center pr-10 h-12"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -331,16 +331,18 @@ export const DisplaySettings = () => {
             </div>
           </div>
 
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="decimal"
-              placeholder={unitSystem === 'imperial' ? "165" : "75"}
-              value={goalWeight}
-              onChange={(e) => handleGoalWeightChange(e.target.value)}
-              className="text-lg font-semibold pr-12 h-12"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
+          <div className="flex justify-center">
+            <div className="relative w-28">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder={unitSystem === 'imperial' ? "165" : "75"}
+                value={goalWeight}
+                onChange={(e) => handleGoalWeightChange(e.target.value)}
+                className="text-lg font-semibold text-center pr-10 h-12"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
+            </div>
           </div>
         </div>
       </div>

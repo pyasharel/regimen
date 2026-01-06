@@ -135,7 +135,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
           <label className="text-sm font-medium text-[#666666]">Height</label>
           {unitSystem === 'imperial' ? (
             <div className="flex gap-3 justify-center">
-              <div className="relative w-20">
+              <div className="relative w-24">
                 <Input
                   type="number"
                   inputMode="numeric"
@@ -154,7 +154,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
                 />
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">ft</span>
               </div>
-              <div className="relative w-20">
+              <div className="relative w-24">
                 <Input
                   type="number"
                   inputMode="numeric"
