@@ -19,6 +19,7 @@ export const DisplaySettings = () => {
   const [heightInches, setHeightInches] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [goalWeight, setGoalWeight] = useState("");
+  const [currentWeight, setCurrentWeight] = useState("");
 
   // Load saved preferences - first from persistent storage, then sync from profile if needed
   useEffect(() => {
@@ -30,6 +31,7 @@ export const DisplaySettings = () => {
       const savedHeightInches = await persistentStorage.get('heightInches');
       const savedHeightCm = await persistentStorage.get('heightCm');
       const savedGoalWeight = await persistentStorage.get('goalWeight');
+      const savedCurrentWeight = await persistentStorage.get('currentWeight');
       
       if (savedWeightUnit) setWeightUnit(savedWeightUnit as "lbs" | "kg");
       if (savedHeightUnit) setHeightUnit(savedHeightUnit as "imperial" | "metric");
@@ -37,16 +39,17 @@ export const DisplaySettings = () => {
       if (savedHeightInches) setHeightInches(savedHeightInches);
       if (savedHeightCm) setHeightCm(savedHeightCm);
       if (savedGoalWeight) setGoalWeight(savedGoalWeight);
+      if (savedCurrentWeight) setCurrentWeight(savedCurrentWeight);
       
       // If no local data, try to sync from profile (for onboarding data)
-      const hasLocalData = savedHeightFeet || savedHeightInches || savedHeightCm || savedGoalWeight;
+      const hasLocalData = savedHeightFeet || savedHeightInches || savedHeightCm || savedGoalWeight || savedCurrentWeight;
       if (!hasLocalData) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('height_feet, height_inches, height_cm, height_unit, goal_weight, current_weight_unit')
+              .select('height_feet, height_inches, height_cm, height_unit, goal_weight, current_weight, current_weight_unit')
               .eq('user_id', user.id)
               .maybeSingle();
             
@@ -81,6 +84,11 @@ export const DisplaySettings = () => {
                 const val = profile.goal_weight.toString();
                 setGoalWeight(val);
                 await persistentStorage.set('goalWeight', val);
+              }
+              if (profile.current_weight) {
+                const val = profile.current_weight.toString();
+                setCurrentWeight(val);
+                await persistentStorage.set('currentWeight', val);
               }
             }
           }
@@ -158,6 +166,11 @@ export const DisplaySettings = () => {
   const handleGoalWeightChange = async (value: string) => {
     setGoalWeight(value);
     await persistentStorage.set('goalWeight', value);
+  };
+
+  const handleCurrentWeightChange = async (value: string) => {
+    setCurrentWeight(value);
+    await persistentStorage.set('currentWeight', value);
   };
 
   return (
@@ -254,6 +267,23 @@ export const DisplaySettings = () => {
                 <p className="text-xs text-muted-foreground mt-1">centimeters</p>
               </div>
             )}
+          </div>
+
+          {/* Current Weight */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Ruler className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Current Weight</Label>
+            </div>
+            <Input
+              type="number"
+              placeholder={`Current weight in ${weightUnit}`}
+              value={currentWeight}
+              onChange={(e) => handleCurrentWeightChange(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Your starting weight in {weightUnit === "lbs" ? "pounds" : "kilograms"}
+            </p>
           </div>
 
           {/* Goal Weight */}

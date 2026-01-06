@@ -278,6 +278,32 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
         }
       }
 
+      // Create initial progress entry for starting weight if provided
+      if (data.currentWeight) {
+        const weightInLbs = data.weightUnit === 'kg' 
+          ? data.currentWeight * 2.20462 
+          : data.currentWeight;
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { error: progressError } = await supabase
+          .from('progress_entries')
+          .insert({
+            user_id: authData.user.id,
+            entry_date: today,
+            category: 'metrics',
+            metrics: { weight: weightInLbs },
+            notes: 'Starting weight from onboarding',
+          });
+        
+        if (progressError) {
+          console.error('[Onboarding] Initial weight entry error:', progressError);
+          // Don't fail the flow
+        } else {
+          console.log('[Onboarding] Created initial weight entry');
+        }
+      }
+
       trackSignup('email');
       onSuccess();
     } catch (err: any) {
