@@ -49,9 +49,6 @@ export const SubscriptionPaywall = ({
     }
   }, [open, message, setPaywallOpen]);
 
-  // Backend promo codes - these are validated by activate-beta-access function
-  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30'];
-
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
     
@@ -61,8 +58,29 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      // Check if it's one of our backend promo codes
-      if (BACKEND_PROMO_CODES.includes(code)) {
+      // First validate the code against the backend (checks both beta codes and Stripe codes)
+      console.log('[PROMO] Calling validate-promo-code function...');
+      
+      const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
+        body: { code }
+      });
+
+      console.log('[PROMO] Validation response:', JSON.stringify({ validateData, validateError }, null, 2));
+
+      if (validateError) {
+        console.error('[PROMO] Validation ERROR:', validateError);
+        toast.error(`Failed to validate promo code: ${validateError.message || 'Unknown error'}`);
+        return;
+      }
+
+      if (!validateData?.valid) {
+        console.log('[PROMO] Invalid code');
+        toast.error('Invalid promo code. Please check and try again.');
+        return;
+      }
+
+      // If it's a backend beta code, activate it directly
+      if (validateData.isBackendCode) {
         console.log('[PROMO] Backend promo code detected, activating access...');
         
         const { data, error } = await supabase.functions.invoke('activate-beta-access', {
@@ -81,7 +99,6 @@ export const SubscriptionPaywall = ({
           if (data.alreadyActive) {
             toast.success('Promo access already active!');
           } else if (data.activated) {
-            // Calculate days for message
             const endDate = new Date(data.endDate);
             const now = new Date();
             const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -89,7 +106,7 @@ export const SubscriptionPaywall = ({
           }
           // Close the modal and refresh subscription
           onOpenChange(false);
-          window.location.reload(); // Refresh to update subscription status
+          window.location.reload();
           return;
         } else if (!data?.valid) {
           toast.error(data?.message || 'Invalid promo code. Please check and try again.');

@@ -30,46 +30,57 @@ export function OnboardingPaywallScreen({
   const [loading, setLoading] = useState(false);
   const [applyingPromo, setApplyingPromo] = useState(false);
   
-  // Backend promo codes - these are validated by activate-beta-access function
-  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30'];
-  
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
     if (!code) return;
     
-    // Check if it's a beta promo code
-    if (!BACKEND_PROMO_CODES.includes(code)) {
-      // For Stripe promo codes, just proceed - they'll be applied at checkout
-      toast.success('Promo code will be applied at checkout');
-      setShowPromo(false);
-      return;
-    }
-    
     setApplyingPromo(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('activate-beta-access', {
+      // First validate the code against the backend (checks both beta codes and Stripe codes)
+      const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
         body: { code }
       });
       
-      if (error) {
-        toast.error(`Failed to activate promo code: ${error.message || 'Unknown error'}`);
+      if (validateError) {
+        toast.error(`Failed to validate promo code: ${validateError.message || 'Unknown error'}`);
         return;
       }
       
-      if (data?.valid) {
-        if (data.alreadyActive) {
-          toast.success('Promo access already active!');
-        } else if (data.activated) {
-          const endDate = new Date(data.endDate);
-          const now = new Date();
-          const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
+      if (!validateData?.valid) {
+        toast.error('Invalid promo code. Please check and try again.');
+        return;
+      }
+      
+      // If it's a backend beta code, activate it directly
+      if (validateData.isBackendCode) {
+        const { data, error } = await supabase.functions.invoke('activate-beta-access', {
+          body: { code }
+        });
+        
+        if (error) {
+          toast.error(`Failed to activate promo code: ${error.message || 'Unknown error'}`);
+          return;
         }
-        // Close paywall and proceed
-        onSubscribe();
+        
+        if (data?.valid) {
+          if (data.alreadyActive) {
+            toast.success('Promo access already active!');
+          } else if (data.activated) {
+            const endDate = new Date(data.endDate);
+            const now = new Date();
+            const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
+          }
+          // Close paywall and proceed
+          onSubscribe();
+        } else {
+          toast.error(data?.message || 'Invalid promo code. Please check and try again.');
+        }
       } else {
-        toast.error(data?.message || 'Invalid promo code. Please check and try again.');
+        // For Stripe promo codes, just proceed - they'll be applied at checkout
+        toast.success('Promo code will be applied at checkout');
+        setShowPromo(false);
       }
     } catch (error: any) {
       toast.error(`Error: ${error.message || 'Failed to validate promo code'}`);
