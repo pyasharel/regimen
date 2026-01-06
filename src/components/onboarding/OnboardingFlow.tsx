@@ -89,15 +89,20 @@ export function OnboardingFlow() {
     checkExistingUser();
   }, [navigate]);
 
-  // Force light mode during onboarding
+  // Force light mode during onboarding, default new users to light mode
   useEffect(() => {
     const savedTheme = localStorage.getItem('vite-ui-theme');
     document.documentElement.classList.remove('dark');
     
     return () => {
-      // Restore theme on unmount
+      // For new users (no saved theme), keep light mode as default
+      // Only restore dark if user explicitly chose it before
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
+      }
+      // If no saved theme, ensure light mode stays (new user default)
+      if (!savedTheme) {
+        localStorage.setItem('vite-ui-theme', 'light');
       }
     };
   }, []);
