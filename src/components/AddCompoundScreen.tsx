@@ -273,7 +273,9 @@ export const AddCompoundScreen = () => {
   useEffect(() => {
     if (editingCompound) {
       setName(editingCompound.name);
-      setIntendedDose(editingCompound.intended_dose.toString());
+      // Round to avoid floating point display issues (e.g., 199.99999 showing as 199)
+      const doseValue = Number(editingCompound.intended_dose);
+      setIntendedDose(Number.isInteger(doseValue) ? doseValue.toString() : doseValue.toFixed(2).replace(/\.?0+$/, ''));
       setDoseUnit(editingCompound.dose_unit);
       
       // Handle schedule type - extract number from "Every X Days" format

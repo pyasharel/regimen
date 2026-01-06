@@ -28,6 +28,55 @@ export function OnboardingPaywallScreen({
   const [showPromo, setShowPromo] = useState(false);
   const [promoCode, setPromoCode] = useState(initialPromoCode || '');
   const [loading, setLoading] = useState(false);
+  const [applyingPromo, setApplyingPromo] = useState(false);
+  
+  // Backend promo codes - these are validated by activate-beta-access function
+  const BACKEND_PROMO_CODES = ['BETATESTER', 'REDDIT30'];
+  
+  const handleApplyPromo = async () => {
+    const code = promoCode.toUpperCase();
+    if (!code) return;
+    
+    // Check if it's a beta promo code
+    if (!BACKEND_PROMO_CODES.includes(code)) {
+      // For Stripe promo codes, just proceed - they'll be applied at checkout
+      toast.success('Promo code will be applied at checkout');
+      setShowPromo(false);
+      return;
+    }
+    
+    setApplyingPromo(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('activate-beta-access', {
+        body: { code }
+      });
+      
+      if (error) {
+        toast.error(`Failed to activate promo code: ${error.message || 'Unknown error'}`);
+        return;
+      }
+      
+      if (data?.valid) {
+        if (data.alreadyActive) {
+          toast.success('Promo access already active!');
+        } else if (data.activated) {
+          const endDate = new Date(data.endDate);
+          const now = new Date();
+          const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
+        }
+        // Close paywall and proceed
+        onSubscribe();
+      } else {
+        toast.error(data?.message || 'Invalid promo code. Please check and try again.');
+      }
+    } catch (error: any) {
+      toast.error(`Error: ${error.message || 'Failed to validate promo code'}`);
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
   
   const { offerings, purchasePackage, isNativePlatform, subscriptionStatus } = useSubscription();
   
@@ -247,13 +296,22 @@ export function OnboardingPaywallScreen({
           ) : (
             <div className="bg-white rounded-xl p-4 border border-[#E5E5E5]">
               <label className="text-sm font-medium text-[#666666] mb-2 block">Promo Code</label>
-              <input
-                type="text"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                placeholder="Enter code"
-                className="w-full h-10 px-4 rounded-lg bg-[#F5F5F5] border-0 text-sm text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="Enter code"
+                  className="flex-1 h-10 px-4 rounded-lg bg-[#F5F5F5] border-0 text-sm text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={!promoCode || applyingPromo}
+                  className="px-4 h-10 rounded-lg bg-primary text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {applyingPromo ? '...' : 'Apply'}
+                </button>
+              </div>
             </div>
           )}
         </div>
