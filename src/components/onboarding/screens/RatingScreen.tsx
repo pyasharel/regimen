@@ -62,7 +62,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-2xl font-bold text-[#333333] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
-          Help us grow
+          Help others find us
         </h1>
 
         {/* Testimonials with initials */}
@@ -97,7 +97,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
-          We designed Regimen for people like you. Your rating goes a long way!
+          Your rating helps others discover Regimen.
         </p>
       </div>
 
