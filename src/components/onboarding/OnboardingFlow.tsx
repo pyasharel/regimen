@@ -42,8 +42,8 @@ const SCREEN_ORDER = [
   'goal-validation',
   'potential',
   'outcome', // 2x graph
-  'rating', // After positive outcome
-  'features', // Show what they get
+  'features', // Show what they get BEFORE rating
+  'rating', // After seeing features/value
   'notifications', // Then ask for notifications
   'privacy',
   'medication-setup',
@@ -219,6 +219,7 @@ export function OnboardingFlow() {
               updateData({ painPoints });
               handleNext();
             }}
+            onSkip={handleNext}
           />
         );
 

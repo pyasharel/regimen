@@ -72,6 +72,8 @@ export function OnboardingPaywallScreen({
             const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
           }
+          // CRITICAL: Refresh subscription status before proceeding
+          await refreshSubscription('promo_code_activation');
           // Close paywall and proceed
           onSubscribe();
         } else {
@@ -89,7 +91,7 @@ export function OnboardingPaywallScreen({
     }
   };
   
-  const { offerings, purchasePackage, isNativePlatform, subscriptionStatus } = useSubscription();
+  const { offerings, purchasePackage, isNativePlatform, subscriptionStatus, refreshSubscription } = useSubscription();
   
   // If already subscribed, skip paywall
   const isAlreadySubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
