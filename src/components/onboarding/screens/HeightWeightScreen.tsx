@@ -134,45 +134,67 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         <div className="space-y-2">
           <label className="text-sm font-medium text-[#666666]">Height</label>
           {unitSystem === 'imperial' ? (
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <div className="relative">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="5"
-                    value={heightFeet}
-                    onChange={(e) => setHeightFeet(e.target.value)}
-                    className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">ft</span>
-                </div>
+            <div className="flex gap-3 justify-center">
+              <div className="relative w-20">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="5"
+                  min={3}
+                  max={8}
+                  value={heightFeet}
+                  onChange={(e) => setHeightFeet(e.target.value)}
+                  onBlur={() => {
+                    const val = parseInt(heightFeet);
+                    if (!isNaN(val)) {
+                      setHeightFeet(Math.max(3, Math.min(8, val)).toString());
+                    }
+                  }}
+                  className="text-2xl font-bold text-center h-14 pr-8 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">ft</span>
               </div>
-              <div className="flex-1">
-                <div className="relative">
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="10"
-                    value={heightInches}
-                    onChange={(e) => setHeightInches(e.target.value)}
-                    className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">in</span>
-                </div>
+              <div className="relative w-20">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="10"
+                  min={0}
+                  max={11}
+                  value={heightInches}
+                  onChange={(e) => setHeightInches(e.target.value)}
+                  onBlur={() => {
+                    const val = parseInt(heightInches);
+                    if (!isNaN(val)) {
+                      setHeightInches(Math.max(0, Math.min(11, val)).toString());
+                    }
+                  }}
+                  className="text-2xl font-bold text-center h-14 pr-8 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">in</span>
               </div>
             </div>
           ) : (
-            <div className="relative">
-              <Input
-                type="number"
-                inputMode="numeric"
-                placeholder="178"
-                value={heightCm}
-                onChange={(e) => setHeightCm(e.target.value)}
-                className="text-2xl font-bold text-center h-14 pr-12 bg-white border-[#E5E5E5]"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">cm</span>
+            <div className="flex justify-center">
+              <div className="relative w-28">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="178"
+                  min={91}
+                  max={244}
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(e.target.value)}
+                  onBlur={() => {
+                    const val = parseInt(heightCm);
+                    if (!isNaN(val)) {
+                      setHeightCm(Math.max(91, Math.min(244, val)).toString());
+                    }
+                  }}
+                  className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">cm</span>
+              </div>
             </div>
           )}
         </div>
@@ -180,18 +202,30 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         {/* Weight */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-[#666666]">Weight</label>
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="decimal"
-              placeholder={unitSystem === 'imperial' ? '180' : '82'}
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              className="text-2xl font-bold text-center h-14 pr-12 bg-white border-[#E5E5E5]"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">
-              {unitSystem === 'imperial' ? 'lbs' : 'kg'}
-            </span>
+          <div className="flex justify-center">
+            <div className="relative w-28">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder={unitSystem === 'imperial' ? '180' : '82'}
+                min={unitSystem === 'imperial' ? 50 : 23}
+                max={unitSystem === 'imperial' ? 700 : 318}
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                onBlur={() => {
+                  const val = parseFloat(weight);
+                  if (!isNaN(val)) {
+                    const minVal = unitSystem === 'imperial' ? 50 : 23;
+                    const maxVal = unitSystem === 'imperial' ? 700 : 318;
+                    setWeight(Math.max(minVal, Math.min(maxVal, Math.round(val))).toString());
+                  }
+                }}
+                className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">
+                {unitSystem === 'imperial' ? 'lbs' : 'kg'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
