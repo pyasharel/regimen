@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { Check } from 'lucide-react';
+import { AnimatedCheckmark } from '@/components/ui/AnimatedCheckmark';
 
 interface GoalValidationScreenProps {
   currentWeight: number | null;
@@ -18,11 +18,18 @@ export function GoalValidationScreen({
   onContinue 
 }: GoalValidationScreenProps) {
   const [animatedDiff, setAnimatedDiff] = useState(0);
+  const [showCheckmark, setShowCheckmark] = useState(false);
   
   const weightDiff = currentWeight && goalWeight ? Math.abs(currentWeight - goalWeight) : 0;
   const isGaining = goalWeight && currentWeight ? goalWeight > currentWeight : false;
   const percentChange = currentWeight ? (weightDiff / currentWeight) * 100 : 0;
   const isAggressive = percentChange > 30;
+
+  // Trigger checkmark animation after mount
+  useEffect(() => {
+    const timer = setTimeout(() => setShowCheckmark(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Animate the weight difference counting up
   useEffect(() => {
@@ -58,11 +65,11 @@ export function GoalValidationScreen({
     <div className="flex-1 flex flex-col">
       {/* Content centered */}
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        {/* Checkmark */}
+        {/* Animated Checkmark */}
         <div 
           className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-in zoom-in-50 duration-500"
         >
-          <Check className="h-8 w-8 text-primary" />
+          <AnimatedCheckmark isAnimating={showCheckmark} size={32} className="text-primary" />
         </div>
 
         {/* Headline */}

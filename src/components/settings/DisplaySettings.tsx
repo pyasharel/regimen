@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Scale, Ruler } from "lucide-react";
+import { ArrowLeft, Scale, Ruler, Target } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
@@ -317,21 +317,30 @@ export const DisplaySettings = () => {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
             </div>
           </div>
+        </div>
 
-          {/* Goal Weight */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-muted-foreground">Goal Weight</Label>
-            <div className="relative">
-              <Input
-                type="number"
-                inputMode="decimal"
-                placeholder={unitSystem === 'imperial' ? "165" : "75"}
-                value={goalWeight}
-                onChange={(e) => handleGoalWeightChange(e.target.value)}
-                className="text-lg font-semibold pr-12 h-12"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
+        {/* Goal Weight - Separate Section */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)] space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Target className="h-5 w-5 text-primary" />
             </div>
+            <div>
+              <h2 className="font-semibold">Goal Weight</h2>
+              <p className="text-xs text-muted-foreground">What you're working towards</p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder={unitSystem === 'imperial' ? "165" : "75"}
+              value={goalWeight}
+              onChange={(e) => handleGoalWeightChange(e.target.value)}
+              className="text-lg font-semibold pr-12 h-12"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
           </div>
         </div>
       </div>
