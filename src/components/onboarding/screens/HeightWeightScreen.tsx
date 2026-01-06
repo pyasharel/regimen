@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { HeightWheelPicker, WeightWheelPicker } from '@/components/ui/ios-wheel-picker';
+import { CombinedHeightWeightPicker } from '@/components/ui/ios-wheel-picker';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -21,12 +21,6 @@ interface HeightWeightScreenProps {
   }) => void;
   onSkip: () => void;
 }
-
-// Weight bounds for validation
-const WEIGHT_BOUNDS = {
-  lb: { min: 80, max: 400 },
-  kg: { min: 36, max: 180 },
-};
 
 export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWeightScreenProps) {
   // Unified unit system: imperial or metric
@@ -84,7 +78,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Headline - reframed to emphasize personalization */}
+      {/* Headline */}
       <div className="mb-2">
         <h1 className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500">
           Let's personalize your insights
@@ -101,7 +95,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
       {/* Unit System Toggle - Cal AI style */}
       <div 
-        className="flex justify-center mb-6 animate-in fade-in duration-300"
+        className="flex justify-center mb-8 animate-in fade-in duration-300"
         style={{ animationDelay: '75ms', animationFillMode: 'backwards' }}
       >
         <div className="flex rounded-xl bg-[#F0F0F0] p-1 gap-1">
@@ -128,37 +122,22 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         </div>
       </div>
 
-      {/* Form with Wheel Pickers */}
-      <div className="flex-1 space-y-6">
-        {/* Height Section */}
-        <div 
-          className="bg-white rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
-          style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
-        >
-          <label className="block text-sm font-medium text-[#666666] mb-3 text-center">Height</label>
-          <HeightWheelPicker
-            unit={unitSystem}
-            feet={heightFeet}
-            inches={heightInches}
-            cm={heightCm}
-            onChangeFeet={setHeightFeet}
-            onChangeInches={setHeightInches}
-            onChangeCm={setHeightCm}
-          />
-        </div>
-
-        {/* Weight Section */}
-        <div 
-          className="bg-white rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
-          style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
-        >
-          <label className="block text-sm font-medium text-[#666666] mb-3 text-center">Current Weight</label>
-          <WeightWheelPicker
-            unit={unitSystem}
-            value={weight}
-            onChange={setWeight}
-          />
-        </div>
+      {/* Combined Height & Weight Picker - Cal AI style side-by-side */}
+      <div 
+        className="flex-1 flex items-center justify-center bg-white rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
+        style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
+      >
+        <CombinedHeightWeightPicker
+          unit={unitSystem}
+          feet={heightFeet}
+          inches={heightInches}
+          cm={heightCm}
+          weight={weight}
+          onChangeFeet={setHeightFeet}
+          onChangeInches={setHeightInches}
+          onChangeCm={setHeightCm}
+          onChangeWeight={setWeight}
+        />
       </div>
 
       {/* CTAs */}
