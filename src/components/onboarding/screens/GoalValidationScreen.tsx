@@ -110,7 +110,7 @@ export function GoalValidationScreen({
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#333333] font-medium">
-            {actionWord} {weightDiff} {weightUnit} is a great goal!
+            {actionWord} {weightDiff} {weightUnit} is a solid goal!
           </p>
         </div>
 
