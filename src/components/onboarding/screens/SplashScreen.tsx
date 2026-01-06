@@ -10,9 +10,9 @@ interface SplashScreenProps {
 export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
   const [showContent, setShowContent] = useState(false);
 
-  // Stagger the content reveal after logo animation
+  // Stagger the content reveal after logo animation completes
   useEffect(() => {
-    const timer = setTimeout(() => setShowContent(true), 600);
+    const timer = setTimeout(() => setShowContent(true), 1200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -20,10 +20,13 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
     <div className="flex-1 flex flex-col">
       {/* Content centered vertically */}
       <div className="flex-1 flex flex-col items-center justify-center text-center">
-        {/* Logo with scale + fade animation - appears first */}
+        {/* Logo with pronounced scale + fade animation - appears first */}
         <div 
-          className="animate-in fade-in zoom-in-95 duration-700 ease-out"
-          style={{ animationFillMode: 'backwards' }}
+          className="animate-in fade-in duration-1000 ease-out"
+          style={{ 
+            animationFillMode: 'backwards',
+            animation: 'logo-entrance 1s ease-out forwards'
+          }}
         >
           <img 
             src={logo} 
