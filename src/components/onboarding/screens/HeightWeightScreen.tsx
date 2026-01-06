@@ -154,7 +154,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         >
           <label className="block text-sm font-medium text-[#666666] mb-3 text-center">Current Weight</label>
           <WeightWheelPicker
-            unit={weightUnit}
+            unit={unitSystem}
             value={weight}
             onChange={setWeight}
           />

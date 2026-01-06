@@ -41,9 +41,9 @@ const SCREEN_ORDER = [
   'goal-weight',
   'goal-validation',
   'potential',
-  'outcome', // 2x graph
-  'features', // Show what they get BEFORE rating
-  'rating', // After seeing features/value
+  'features', // How Regimen helps - BEFORE 2x graph
+  'outcome', // 2x graph - builds to crescendo
+  'rating', // After seeing value
   'notifications', // Then ask for notifications
   'privacy',
   'medication-setup',
@@ -173,11 +173,9 @@ export function OnboardingFlow() {
   };
 
   const handleComplete = () => {
-    // Ensure light mode is set for new users before navigation
-    if (!localStorage.getItem('vite-ui-theme')) {
-      localStorage.setItem('vite-ui-theme', 'light');
-      document.documentElement.classList.remove('dark');
-    }
+    // Force light mode for all users completing onboarding
+    localStorage.setItem('vite-ui-theme', 'light');
+    document.documentElement.classList.remove('dark');
     clearState();
     navigate('/today', { replace: true });
   };

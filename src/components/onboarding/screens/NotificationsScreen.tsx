@@ -27,8 +27,8 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
   };
 
   const notificationText = medicationName 
-    ? `Time for your ${medicationName} dose 💊`
-    : 'Time for your morning dose 💊';
+    ? `Time for your ${medicationName} dose`
+    : 'Time for your morning dose';
 
   return (
     <div className="flex-1 flex flex-col">
