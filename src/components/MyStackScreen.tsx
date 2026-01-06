@@ -261,10 +261,46 @@ export const MyStackScreen = () => {
   };
 
   const getScheduleDisplay = (compound: Compound) => {
-    if ((compound.schedule_type === 'Specific day(s)' || compound.schedule_type === 'Specific day of the week') && compound.schedule_days) {
+    // Handle specific days - multiple formats exist
+    if ((compound.schedule_type === 'Specific day(s)' || 
+         compound.schedule_type === 'Specific day of the week' ||
+         compound.schedule_type === 'specific_days') && compound.schedule_days) {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const selectedDays = compound.schedule_days.map(d => dayNames[typeof d === 'string' ? parseInt(d) : d]);
+      const fullDayMap: Record<string, string> = {
+        'Sunday': 'Sun', 'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed',
+        'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat'
+      };
+      const selectedDays = compound.schedule_days.map(d => {
+        // Handle full day names (from onboarding)
+        if (fullDayMap[d]) return fullDayMap[d];
+        // Handle numeric indices
+        if (typeof d === 'string' && !isNaN(parseInt(d))) {
+          return dayNames[parseInt(d)];
+        }
+        // Already short name
+        return d;
+      });
       return selectedDays.join(', ');
+    }
+    
+    // Handle weekly with schedule_days (from onboarding)
+    if (compound.schedule_type === 'weekly' && compound.schedule_days) {
+      const fullDayMap: Record<string, string> = {
+        'Sunday': 'Sun', 'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed',
+        'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat'
+      };
+      const selectedDays = compound.schedule_days.map(d => fullDayMap[d] || d);
+      return selectedDays.join(', ');
+    }
+    
+    // Handle daily (lowercase from onboarding)
+    if (compound.schedule_type === 'daily') {
+      return 'Daily';
+    }
+    
+    // Handle interval (from onboarding)
+    if (compound.schedule_type === 'interval') {
+      return 'Custom Interval';
     }
     
     // Handle legacy "Every X Days" - if it's literally "Every X Days", show it friendlier

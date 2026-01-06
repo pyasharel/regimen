@@ -9,11 +9,18 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
   const [showContent, setShowContent] = useState(false);
+  const [showCTA, setShowCTA] = useState(false);
 
   // Stagger the content reveal after logo animation completes
   useEffect(() => {
-    const timer = setTimeout(() => setShowContent(true), 1200);
-    return () => clearTimeout(timer);
+    // Text appears after logo animation (1.2s)
+    const textTimer = setTimeout(() => setShowContent(true), 1200);
+    // CTA appears 1.5s after text (so 2.7s total) - gives time to read
+    const ctaTimer = setTimeout(() => setShowCTA(true), 2700);
+    return () => {
+      clearTimeout(textTimer);
+      clearTimeout(ctaTimer);
+    };
   }, []);
 
   return (
@@ -54,10 +61,10 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
         </p>
       </div>
 
-      {/* Bottom section - fades in last */}
+      {/* Bottom section - fades in after text has been read */}
       <div 
-        className={`space-y-4 transition-all duration-500 delay-200 ${
-          showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        className={`space-y-4 transition-all duration-500 ${
+          showCTA ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
         <OnboardingButton onClick={onContinue}>

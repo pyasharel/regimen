@@ -278,8 +278,21 @@ export const AddCompoundScreen = () => {
       setIntendedDose(Number.isInteger(doseValue) ? doseValue.toString() : doseValue.toFixed(2).replace(/\.?0+$/, ''));
       setDoseUnit(editingCompound.dose_unit);
       
-      // Handle schedule type - extract number from "Every X Days" format
-      const scheduleType = editingCompound.schedule_type;
+      // Handle schedule type - map lowercase (from onboarding) to display format
+      let scheduleType = editingCompound.schedule_type;
+      
+      // Map lowercase schedule types from onboarding to display format
+      const scheduleTypeMap: Record<string, string> = {
+        'daily': 'Daily',
+        'weekly': 'Weekly',
+        'specific_days': 'Specific day(s)',
+        'interval': 'Every X Days'
+      };
+      
+      if (scheduleTypeMap[scheduleType]) {
+        scheduleType = scheduleTypeMap[scheduleType];
+      }
+      
       const everyXDaysMatch = scheduleType.match(/Every (\d+) Days/);
       if (everyXDaysMatch) {
         setFrequency('Every X Days');
@@ -294,8 +307,22 @@ export const AddCompoundScreen = () => {
       setCustomTime(times[0] || '08:00');
       setCustomTime2(times[1] || '20:00');
       
-      if (editingCompound.schedule_type === 'Specific day(s)' || editingCompound.schedule_type === 'Specific day of the week') {
-        setCustomDays(editingCompound.schedule_days?.map(Number) || []);
+      // Handle specific days - map full day names (from onboarding) to indices
+      if (scheduleType === 'Specific day(s)' || scheduleType === 'Specific day of the week' ||
+          editingCompound.schedule_type === 'specific_days' || editingCompound.schedule_type === 'weekly') {
+        const dayNameToIndex: Record<string, number> = {
+          'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+          'Thursday': 4, 'Friday': 5, 'Saturday': 6
+        };
+        const days = editingCompound.schedule_days?.map((d: string | number) => {
+          // Handle full day names (from onboarding)
+          if (typeof d === 'string' && dayNameToIndex[d] !== undefined) {
+            return dayNameToIndex[d];
+          }
+          // Handle numeric strings or numbers
+          return typeof d === 'string' ? parseInt(d) : d;
+        }).filter((n: number) => !isNaN(n)) || [];
+        setCustomDays(days);
       }
       setStartDate(editingCompound.start_date);
       setEndDate(editingCompound.end_date || "");

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { supabase } from "@/integrations/supabase/client";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackPreferenceSet } from "@/utils/analytics";
@@ -19,9 +20,10 @@ export const DisplaySettings = () => {
   const [heightCm, setHeightCm] = useState("");
   const [goalWeight, setGoalWeight] = useState("");
 
-  // Load saved preferences from persistent storage
+  // Load saved preferences - first from persistent storage, then sync from profile if needed
   useEffect(() => {
     const loadSettings = async () => {
+      // First try persistent storage
       const savedWeightUnit = await persistentStorage.get('weightUnit');
       const savedHeightUnit = await persistentStorage.get('heightUnit');
       const savedHeightFeet = await persistentStorage.get('heightFeet');
@@ -35,6 +37,57 @@ export const DisplaySettings = () => {
       if (savedHeightInches) setHeightInches(savedHeightInches);
       if (savedHeightCm) setHeightCm(savedHeightCm);
       if (savedGoalWeight) setGoalWeight(savedGoalWeight);
+      
+      // If no local data, try to sync from profile (for onboarding data)
+      const hasLocalData = savedHeightFeet || savedHeightInches || savedHeightCm || savedGoalWeight;
+      if (!hasLocalData) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('height_feet, height_inches, height_cm, height_unit, goal_weight, current_weight_unit')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            if (profile) {
+              // Sync profile data to local state and persistent storage
+              if (profile.height_unit) {
+                const unit = profile.height_unit === 'cm' ? 'metric' : 'imperial';
+                setHeightUnit(unit);
+                await persistentStorage.set('heightUnit', unit);
+              }
+              if (profile.current_weight_unit) {
+                const unit = profile.current_weight_unit as "lbs" | "kg";
+                setWeightUnit(unit);
+                await persistentStorage.set('weightUnit', unit);
+              }
+              if (profile.height_feet) {
+                const val = profile.height_feet.toString();
+                setHeightFeet(val);
+                await persistentStorage.set('heightFeet', val);
+              }
+              if (profile.height_inches) {
+                const val = profile.height_inches.toString();
+                setHeightInches(val);
+                await persistentStorage.set('heightInches', val);
+              }
+              if (profile.height_cm) {
+                const val = profile.height_cm.toString();
+                setHeightCm(val);
+                await persistentStorage.set('heightCm', val);
+              }
+              if (profile.goal_weight) {
+                const val = profile.goal_weight.toString();
+                setGoalWeight(val);
+                await persistentStorage.set('goalWeight', val);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error syncing profile data:', err);
+        }
+      }
     };
     
     loadSettings();
