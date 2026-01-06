@@ -291,8 +291,12 @@ export const SubscriptionPaywall = ({
     setIsClosing(true);
     trackPaywallDismissed(message || 'add_compound');
     setPaywallOpen(false); // Immediately update context
-    onOpenChange(false);
-    onDismiss?.();
+    
+    // Add slight delay to prevent race conditions with context re-triggering
+    setTimeout(() => {
+      onOpenChange(false);
+      onDismiss?.();
+    }, 50);
   };
 
   const getButtonText = () => {

@@ -97,7 +97,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
-          Your rating helps others discover Regimen.
+          We designed Regimen for people like you. Your rating goes a long way!
         </p>
       </div>
 

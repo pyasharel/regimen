@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
+import { RulerSlider } from '@/components/ui/ruler-slider';
 
 interface GoalWeightScreenProps {
   currentWeight: number | null;
@@ -20,10 +21,9 @@ export function GoalWeightScreen({
   const defaultWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
   const [goalWeight, setGoalWeight] = useState<number>(initialGoalWeight || defaultWeight);
 
-  // Calculate min/max for slider - wider range: ±50% for realistic bounds
-  const baseWeight = currentWeight || (weightUnit === 'lb' ? 180 : 82);
-  const minWeight = weightUnit === 'lb' ? 80 : 36; // Fixed minimums
-  const maxWeight = weightUnit === 'lb' ? 400 : 180; // Fixed maximums
+  // Calculate min/max for slider - fixed realistic bounds
+  const minWeight = weightUnit === 'lb' ? 80 : 36;
+  const maxWeight = weightUnit === 'lb' ? 400 : 180;
   
   // Calculate weight difference - positive means gaining, negative means losing
   const weightDiff = goalWeight - (currentWeight || 0);
@@ -39,64 +39,33 @@ export function GoalWeightScreen({
         </h1>
       </div>
 
-      {/* Goal Weight Display */}
+      {/* Goal Weight Display with Ruler */}
       <div 
         className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
       >
-        <div className="text-center mb-8">
-          <div className="text-6xl font-bold text-[#333333] tabular-nums">
-            {goalWeight}
-          </div>
-          <div className="text-xl text-[#666666] mt-1">
-            {weightUnit}
-          </div>
-          
+        <div className="w-full max-w-sm">
+          <RulerSlider
+            min={minWeight}
+            max={maxWeight}
+            value={goalWeight}
+            onChange={setGoalWeight}
+            unit={weightUnit}
+          />
+        </div>
+        
+        {/* Weight difference indicator */}
+        <div className="mt-6 h-6">
           {isLosing && currentWeight && (
-            <div className="mt-4 text-primary font-medium animate-in fade-in duration-300">
+            <div className="text-primary font-medium animate-in fade-in duration-300">
               −{Math.abs(weightDiff)} {weightUnit} from current
             </div>
           )}
           {isGaining && currentWeight && (
-            <div className="mt-4 text-[#10B981] font-medium animate-in fade-in duration-300">
+            <div className="text-[#10B981] font-medium animate-in fade-in duration-300">
               +{weightDiff} {weightUnit} from current
             </div>
           )}
-          {/* Hide zero difference - no message when goal equals current */}
-        </div>
-
-        {/* Slider */}
-        <div className="w-full px-4">
-          <input
-            type="range"
-            min={minWeight}
-            max={maxWeight}
-            value={goalWeight}
-            onChange={(e) => setGoalWeight(parseInt(e.target.value))}
-            className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-primary
-              [&::-webkit-slider-thumb]:appearance-none
-              [&::-webkit-slider-thumb]:w-7
-              [&::-webkit-slider-thumb]:h-7
-              [&::-webkit-slider-thumb]:bg-primary
-              [&::-webkit-slider-thumb]:rounded-full
-              [&::-webkit-slider-thumb]:shadow-lg
-              [&::-webkit-slider-thumb]:cursor-pointer
-              [&::-webkit-slider-thumb]:transition-transform
-              [&::-webkit-slider-thumb]:hover:scale-110
-              [&::-webkit-slider-thumb]:active:scale-95
-              [&::-moz-range-thumb]:w-7
-              [&::-moz-range-thumb]:h-7
-              [&::-moz-range-thumb]:bg-primary
-              [&::-moz-range-thumb]:border-0
-              [&::-moz-range-thumb]:rounded-full
-              [&::-moz-range-thumb]:shadow-lg
-              [&::-moz-range-thumb]:cursor-pointer
-            "
-          />
-          <div className="flex justify-between text-sm text-[#999999] mt-2">
-            <span>{minWeight} {weightUnit}</span>
-            <span>{maxWeight} {weightUnit}</span>
-          </div>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, HelpCircle, Mail, ExternalLink } from "lucide-react";
+import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink } from "lucide-react";
 import { appVersion, appBuild } from "../../../capacitor.config";
 
 export const HelpSettings = () => {
@@ -35,6 +35,26 @@ export const HelpSettings = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
+        {/* Send Feedback */}
+        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <MessageSquare className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold">Send Feedback</h2>
+              <p className="text-sm text-muted-foreground">Share ideas or suggestions</p>
+            </div>
+          </div>
+          <a
+            href="mailto:support@helloregimen.com?subject=Feedback for Regimen"
+            className="flex items-center justify-between w-full p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <span className="text-sm">We'd love to hear from you</span>
+            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+          </a>
+        </div>
+
         {/* Contact Support */}
         <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3">
