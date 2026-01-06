@@ -14,6 +14,7 @@ interface WheelPickerColumnProps {
   label?: string;
   suffix?: string;
   className?: string;
+  minWidth?: number;
 }
 
 export function WheelPickerColumn({ 
@@ -22,6 +23,7 @@ export function WheelPickerColumn({
   onChange, 
   label,
   suffix,
+  minWidth = 60,
   className 
 }: WheelPickerColumnProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,26 +91,29 @@ export function WheelPickerColumn({
     }
   };
 
-  // Calculate which item is selected based on scroll position
+  // Create 3D curved wheel effect - items rotate away on a cylinder
   const getItemStyle = (index: number, currentValue: string | number): React.CSSProperties => {
-    const isSelected = values[index] === currentValue;
     const selectedIndex = values.indexOf(currentValue);
-    const distance = Math.abs(index - selectedIndex);
+    const distance = index - selectedIndex; // Signed distance for direction
+    const absDistance = Math.abs(distance);
     
-    // Create 3D perspective effect - items further from center are smaller and faded
-    const scale = isSelected ? 1 : Math.max(0.7, 1 - distance * 0.15);
-    const opacity = isSelected ? 1 : Math.max(0.3, 1 - distance * 0.25);
+    // Perspective rotation - items above rotate backward, below rotate forward
+    const rotateX = distance * 25; // Degrees per item
+    const translateZ = -absDistance * 15; // Push items back
+    const translateY = distance * 2; // Slight vertical offset for curve
+    const scale = Math.max(0.75, 1 - absDistance * 0.1);
+    const opacity = absDistance === 0 ? 1 : Math.max(0.35, 0.7 - absDistance * 0.15);
     
     return {
       height: ITEM_HEIGHT,
-      transform: `scale(${scale})`,
+      transform: `perspective(200px) rotateX(${rotateX}deg) translateZ(${translateZ}px) translateY(${translateY}px) scale(${scale})`,
       opacity,
-      transition: 'transform 0.15s, opacity 0.15s',
+      transition: 'transform 0.1s ease-out, opacity 0.1s ease-out',
     };
   };
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
+    <div className={cn("flex flex-col items-center", className)} style={{ minWidth }}>
       {label && (
         <span className="text-sm font-medium text-muted-foreground mb-2">{label}</span>
       )}
@@ -116,18 +121,18 @@ export function WheelPickerColumn({
         className="relative overflow-hidden"
         style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }}
       >
-        {/* Selection indicator - clean bordered box */}
+        {/* Selection indicator - simple line borders, no background */}
         <div 
-          className="absolute left-0 right-0 pointer-events-none z-10 border border-border rounded-lg bg-muted/30"
+          className="absolute left-0 right-0 pointer-events-none z-10 border-t border-b border-border/50"
           style={{ 
             top: ITEM_HEIGHT * 2, 
             height: ITEM_HEIGHT 
           }}
         />
         
-        {/* Gradient overlays for 3D fade effect */}
-        <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/80 to-transparent pointer-events-none z-20" />
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-20" />
+        {/* Gradient overlays for depth fade */}
+        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-background via-background/90 to-transparent pointer-events-none z-20" />
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background via-background/90 to-transparent pointer-events-none z-20" />
         
         <div
           ref={containerRef}
@@ -150,7 +155,7 @@ export function WheelPickerColumn({
                 "flex items-center justify-center snap-center tabular-nums",
                 v === value 
                   ? "text-foreground font-semibold text-xl" 
-                  : "text-muted-foreground text-lg"
+                  : "text-muted-foreground/70 text-lg"
               )}
               style={getItemStyle(i, value)}
               onClick={() => {
@@ -158,7 +163,7 @@ export function WheelPickerColumn({
                 scrollToValue(v);
               }}
             >
-              {v}{suffix && <span className="ml-1 text-muted-foreground font-normal text-base">{suffix}</span>}
+              {v}{suffix && <span className="ml-0.5 text-muted-foreground/70 font-normal text-sm">{suffix}</span>}
             </div>
           ))}
           
@@ -170,7 +175,7 @@ export function WheelPickerColumn({
   );
 }
 
-// Height picker for imperial (feet + inches side by side)
+// Height picker for imperial (feet + inches side by side) - equal width columns
 interface HeightWheelPickerProps {
   unit: 'imperial' | 'metric';
   feet?: number;
@@ -204,30 +209,33 @@ export function HeightWheelPicker({
           value={cm}
           onChange={(v) => onChangeCm?.(v as number)}
           suffix="cm"
+          minWidth={80}
         />
       </div>
     );
   }
 
   return (
-    <div className={cn("flex justify-center gap-6", className)}>
+    <div className={cn("flex justify-center gap-1", className)}>
       <WheelPickerColumn
         values={feetValues}
         value={feet}
         onChange={(v) => onChangeFeet?.(v as number)}
         suffix="ft"
+        minWidth={65}
       />
       <WheelPickerColumn
         values={inchValues}
         value={inches}
         onChange={(v) => onChangeInches?.(v as number)}
         suffix="in"
+        minWidth={65}
       />
     </div>
   );
 }
 
-// Weight picker - accepts value/onChange with unit for proper lb/kg handling
+// Weight picker
 interface WeightWheelPickerProps {
   unit: 'imperial' | 'metric';
   value?: number;
@@ -255,6 +263,7 @@ export function WeightWheelPicker({
           value={currentValue}
           onChange={(v) => onChange?.(v as number)}
           suffix="kg"
+          minWidth={80}
         />
       </div>
     );
@@ -267,6 +276,7 @@ export function WeightWheelPicker({
         value={currentValue}
         onChange={(v) => onChange?.(v as number)}
         suffix="lb"
+        minWidth={80}
       />
     </div>
   );
@@ -278,13 +288,11 @@ interface CombinedHeightWeightPickerProps {
   feet?: number;
   inches?: number;
   cm?: number;
-  lbs?: number;
-  kg?: number;
+  weight?: number;
   onChangeFeet?: (feet: number) => void;
   onChangeInches?: (inches: number) => void;
   onChangeCm?: (cm: number) => void;
-  onChangeLbs?: (lbs: number) => void;
-  onChangeKg?: (kg: number) => void;
+  onChangeWeight?: (weight: number) => void;
   className?: string;
 }
 
@@ -293,13 +301,11 @@ export function CombinedHeightWeightPicker({
   feet = 5,
   inches = 10,
   cm = 178,
-  lbs = 150,
-  kg = 68,
+  weight,
   onChangeFeet,
   onChangeInches,
   onChangeCm,
-  onChangeLbs,
-  onChangeKg,
+  onChangeWeight,
   className
 }: CombinedHeightWeightPickerProps) {
   const feetValues = Array.from({ length: 5 }, (_, i) => i + 4);
@@ -308,25 +314,30 @@ export function CombinedHeightWeightPicker({
   const lbsValues = Array.from({ length: 401 }, (_, i) => i + 50);
   const kgValues = Array.from({ length: 201 }, (_, i) => i + 25);
 
+  const defaultWeight = unit === 'metric' ? 68 : 150;
+  const currentWeight = weight ?? defaultWeight;
+
   if (unit === 'metric') {
     return (
-      <div className={cn("flex justify-center gap-12", className)}>
+      <div className={cn("flex justify-around items-start", className)}>
         <div className="flex flex-col items-center">
-          <span className="text-sm font-medium text-foreground mb-3">Height</span>
+          <span className="text-sm font-medium text-muted-foreground mb-3">Height</span>
           <WheelPickerColumn
             values={cmValues}
             value={cm}
             onChange={(v) => onChangeCm?.(v as number)}
             suffix="cm"
+            minWidth={80}
           />
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-sm font-medium text-foreground mb-3">Weight</span>
+          <span className="text-sm font-medium text-muted-foreground mb-3">Weight</span>
           <WheelPickerColumn
             values={kgValues}
-            value={kg}
-            onChange={(v) => onChangeKg?.(v as number)}
+            value={currentWeight}
+            onChange={(v) => onChangeWeight?.(v as number)}
             suffix="kg"
+            minWidth={80}
           />
         </div>
       </div>
@@ -334,31 +345,34 @@ export function CombinedHeightWeightPicker({
   }
 
   return (
-    <div className={cn("flex justify-center gap-8", className)}>
+    <div className={cn("flex justify-around items-start", className)}>
       <div className="flex flex-col items-center">
-        <span className="text-sm font-medium text-foreground mb-3">Height</span>
-        <div className="flex gap-2">
+        <span className="text-sm font-medium text-muted-foreground mb-3">Height</span>
+        <div className="flex gap-1">
           <WheelPickerColumn
             values={feetValues}
             value={feet}
             onChange={(v) => onChangeFeet?.(v as number)}
             suffix="ft"
+            minWidth={65}
           />
           <WheelPickerColumn
             values={inchValues}
             value={inches}
             onChange={(v) => onChangeInches?.(v as number)}
             suffix="in"
+            minWidth={65}
           />
         </div>
       </div>
       <div className="flex flex-col items-center">
-        <span className="text-sm font-medium text-foreground mb-3">Weight</span>
+        <span className="text-sm font-medium text-muted-foreground mb-3">Weight</span>
         <WheelPickerColumn
           values={lbsValues}
-          value={lbs}
-          onChange={(v) => onChangeLbs?.(v as number)}
+          value={currentWeight}
+          onChange={(v) => onChangeWeight?.(v as number)}
           suffix="lb"
+          minWidth={80}
         />
       </div>
     </div>
