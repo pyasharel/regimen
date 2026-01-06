@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
+import { HeightWheelPicker, WeightWheelPicker } from '@/components/ui/ios-wheel-picker';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -23,76 +24,63 @@ interface HeightWeightScreenProps {
 
 // Weight bounds for validation
 const WEIGHT_BOUNDS = {
-  lb: { min: 50, max: 600 },
-  kg: { min: 23, max: 270 },
+  lb: { min: 80, max: 400 },
+  kg: { min: 36, max: 180 },
 };
 
 export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWeightScreenProps) {
-  const [heightUnit, setHeightUnit] = useState<'ft' | 'cm'>(initialData.heightUnit);
-  const [weightUnit, setWeightUnit] = useState<'lb' | 'kg'>(initialData.weightUnit);
-  const [heightFeet, setHeightFeet] = useState<string>(initialData.heightFeet?.toString() || '5');
-  const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '10');
-  const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '178');
-  const [weight, setWeight] = useState<string>(initialData.currentWeight?.toString() || '');
+  // Unified unit system: imperial or metric
+  const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>(
+    initialData.heightUnit === 'cm' || initialData.weightUnit === 'kg' ? 'metric' : 'imperial'
+  );
+  
+  const [heightFeet, setHeightFeet] = useState<number>(initialData.heightFeet || 5);
+  const [heightInches, setHeightInches] = useState<number>(initialData.heightInches || 10);
+  const [heightCm, setHeightCm] = useState<number>(initialData.heightCm || 178);
+  const [weight, setWeight] = useState<number>(initialData.currentWeight || (unitSystem === 'imperial' ? 180 : 82));
 
-  // Auto-convert weight when switching units
-  const handleWeightUnitChange = (newUnit: 'lb' | 'kg') => {
-    if (newUnit !== weightUnit && weight) {
-      const currentValue = parseFloat(weight);
-      if (!isNaN(currentValue)) {
-        if (newUnit === 'kg') {
-          // lb to kg
-          setWeight(Math.round(currentValue * 0.453592).toString());
-        } else {
-          // kg to lb
-          setWeight(Math.round(currentValue / 0.453592).toString());
-        }
-      }
+  // Derived values based on unit system
+  const heightUnit: 'ft' | 'cm' = unitSystem === 'imperial' ? 'ft' : 'cm';
+  const weightUnit: 'lb' | 'kg' = unitSystem === 'imperial' ? 'lb' : 'kg';
+
+  // Auto-convert when switching units
+  const handleUnitSystemChange = (newSystem: 'imperial' | 'metric') => {
+    if (newSystem === unitSystem) return;
+    
+    // Convert height
+    if (newSystem === 'metric') {
+      // ft/in to cm
+      const totalInches = heightFeet * 12 + heightInches;
+      setHeightCm(Math.round(totalInches * 2.54));
+    } else {
+      // cm to ft/in
+      const totalInches = Math.round(heightCm / 2.54);
+      setHeightFeet(Math.floor(totalInches / 12));
+      setHeightInches(totalInches % 12);
     }
-    setWeightUnit(newUnit);
-  };
-
-  // Auto-convert height when switching units
-  const handleHeightUnitChange = (newUnit: 'ft' | 'cm') => {
-    if (newUnit !== heightUnit) {
-      if (newUnit === 'cm' && heightFeet) {
-        // ft/in to cm
-        const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
-        setHeightCm(Math.round(totalInches * 2.54).toString());
-      } else if (newUnit === 'ft' && heightCm) {
-        // cm to ft/in
-        const totalInches = Math.round(parseFloat(heightCm) / 2.54);
-        setHeightFeet(Math.floor(totalInches / 12).toString());
-        setHeightInches((totalInches % 12).toString());
-      }
+    
+    // Convert weight
+    if (newSystem === 'metric') {
+      // lb to kg
+      setWeight(Math.round(weight * 0.453592));
+    } else {
+      // kg to lb
+      setWeight(Math.round(weight / 0.453592));
     }
-    setHeightUnit(newUnit);
-  };
-
-  // Validate weight is within bounds
-  const weightValue = parseFloat(weight);
-  const bounds = WEIGHT_BOUNDS[weightUnit];
-  const isWeightValid = !weight || (weightValue >= bounds.min && weightValue <= bounds.max);
-
-  // Block negative numbers
-  const handleNumericKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === '-' || e.key === 'e') {
-      e.preventDefault();
-    }
+    
+    setUnitSystem(newSystem);
   };
 
   const handleContinue = () => {
     onContinue({
-      heightFeet: heightUnit === 'ft' ? (heightFeet ? parseInt(heightFeet) : null) : null,
-      heightInches: heightUnit === 'ft' ? (heightInches ? parseInt(heightInches) : null) : null,
-      heightCm: heightUnit === 'cm' ? (heightCm ? parseFloat(heightCm) : null) : null,
+      heightFeet: heightUnit === 'ft' ? heightFeet : null,
+      heightInches: heightUnit === 'ft' ? heightInches : null,
+      heightCm: heightUnit === 'cm' ? heightCm : null,
       heightUnit,
-      currentWeight: weight ? parseFloat(weight) : null,
+      currentWeight: weight,
       weightUnit,
     });
   };
-
-  const isValid = weight && isWeightValid && (heightUnit === 'ft' ? heightFeet : heightCm);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -111,84 +99,52 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         Height & Weight
       </p>
 
-      {/* Form */}
+      {/* Unit System Toggle - Cal AI style */}
+      <div 
+        className="flex justify-center mb-6 animate-in fade-in duration-300"
+        style={{ animationDelay: '75ms', animationFillMode: 'backwards' }}
+      >
+        <div className="flex rounded-xl bg-[#F0F0F0] p-1 gap-1">
+          <button
+            onClick={() => handleUnitSystemChange('imperial')}
+            className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              unitSystem === 'imperial'
+                ? 'bg-white text-[#333333] shadow-sm'
+                : 'text-[#666666]'
+            }`}
+          >
+            Imperial
+          </button>
+          <button
+            onClick={() => handleUnitSystemChange('metric')}
+            className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              unitSystem === 'metric'
+                ? 'bg-white text-[#333333] shadow-sm'
+                : 'text-[#666666]'
+            }`}
+          >
+            Metric
+          </button>
+        </div>
+      </div>
+
+      {/* Form with Wheel Pickers */}
       <div className="flex-1 space-y-6">
         {/* Height Section */}
         <div 
           className="bg-white rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
           style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <label className="text-sm font-medium text-[#666666]">Height</label>
-            {/* Unit Toggle */}
-            <div className="flex rounded-lg bg-[#F0F0F0] p-1">
-              <button
-                onClick={() => handleHeightUnitChange('ft')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  heightUnit === 'ft'
-                    ? 'bg-white text-[#333333] shadow-sm'
-                    : 'text-[#666666]'
-                }`}
-              >
-                ft/in
-              </button>
-              <button
-                onClick={() => handleHeightUnitChange('cm')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  heightUnit === 'cm'
-                    ? 'bg-white text-[#333333] shadow-sm'
-                    : 'text-[#666666]'
-                }`}
-              >
-                cm
-              </button>
-            </div>
-          </div>
-
-          {heightUnit === 'ft' ? (
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  max="8"
-                  value={heightFeet}
-                  onChange={(e) => setHeightFeet(e.target.value)}
-                  onKeyDown={handleNumericKeyDown}
-                  placeholder="5"
-                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
-                />
-                <span className="block text-center text-sm text-[#999999] mt-1">feet</span>
-              </div>
-              <div className="flex-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max="11"
-                  value={heightInches}
-                  onChange={(e) => setHeightInches(e.target.value)}
-                  onKeyDown={handleNumericKeyDown}
-                  placeholder="10"
-                  className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
-                />
-                <span className="block text-center text-sm text-[#999999] mt-1">inches</span>
-              </div>
-            </div>
-          ) : (
-            <input
-              type="number"
-              inputMode="decimal"
-              min="50"
-              max="250"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value)}
-              onKeyDown={handleNumericKeyDown}
-              placeholder="178"
-              className="w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:ring-primary focus:outline-none"
-            />
-          )}
+          <label className="block text-sm font-medium text-[#666666] mb-3 text-center">Height</label>
+          <HeightWheelPicker
+            unit={unitSystem}
+            feet={heightFeet}
+            inches={heightInches}
+            cm={heightCm}
+            onChangeFeet={setHeightFeet}
+            onChangeInches={setHeightInches}
+            onChangeCm={setHeightCm}
+          />
         </div>
 
         {/* Weight Section */}
@@ -196,60 +152,18 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
           className="bg-white rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <label className="text-sm font-medium text-[#666666]">Current Weight</label>
-            {/* Unit Toggle */}
-            <div className="flex rounded-lg bg-[#F0F0F0] p-1">
-              <button
-                onClick={() => handleWeightUnitChange('lb')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  weightUnit === 'lb'
-                    ? 'bg-white text-[#333333] shadow-sm'
-                    : 'text-[#666666]'
-                }`}
-              >
-                lb
-              </button>
-              <button
-                onClick={() => handleWeightUnitChange('kg')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  weightUnit === 'kg'
-                    ? 'bg-white text-[#333333] shadow-sm'
-                    : 'text-[#666666]'
-                }`}
-              >
-                kg
-              </button>
-            </div>
-          </div>
-
-          <input
-            type="number"
-            inputMode="decimal"
-            min={bounds.min}
-            max={bounds.max}
+          <label className="block text-sm font-medium text-[#666666] mb-3 text-center">Current Weight</label>
+          <WeightWheelPicker
+            unit={weightUnit}
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            onKeyDown={handleNumericKeyDown}
-            placeholder={weightUnit === 'lb' ? '180' : '82'}
-            className={`w-full h-12 px-4 rounded-lg bg-[#F5F5F5] border-0 text-center text-lg font-medium text-[#333333] placeholder:text-[#999999] focus:ring-2 focus:outline-none ${
-              weight && !isWeightValid ? 'ring-2 ring-destructive focus:ring-destructive' : 'focus:ring-primary'
-            }`}
+            onChange={setWeight}
           />
-          {weight && !isWeightValid && (
-            <p className="text-sm text-destructive mt-2">
-              Weight should be between {bounds.min} and {bounds.max} {weightUnit}
-            </p>
-          )}
         </div>
       </div>
 
       {/* CTAs */}
       <div className="mt-6 space-y-3">
-        <OnboardingButton 
-          onClick={handleContinue}
-          disabled={!isValid}
-        >
+        <OnboardingButton onClick={handleContinue}>
           Continue
         </OnboardingButton>
         

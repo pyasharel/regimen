@@ -94,8 +94,8 @@ const Terms = () => {
               <h2 className="text-xl font-semibold mb-3">Contact Information</h2>
               <p className="text-muted-foreground">
                 For questions about these Terms of Service, please contact us at:{" "}
-                <a href="mailto:support@getregimen.app" className="text-primary hover:underline">
-                  support@getregimen.app
+                <a href="mailto:support@helloregimen.com" className="text-primary hover:underline">
+                  support@helloregimen.com
                 </a>
               </p>
             </section>

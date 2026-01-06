@@ -245,7 +245,18 @@ export const TodayScreen = () => {
       }
 
       if (profile?.full_name) {
-        setUserName(profile.full_name.split(' ')[0]); // Use first name only
+        const fullName = profile.full_name.trim();
+        const parts = fullName.split(' ');
+        
+        // If single word or first word is a title (Mr., Mrs., Dr., etc.), use full name
+        const titles = ['mr.', 'mrs.', 'ms.', 'dr.', 'miss'];
+        const firstWord = parts[0].toLowerCase();
+        
+        if (parts.length === 1 || titles.includes(firstWord)) {
+          setUserName(fullName);
+        } else {
+          setUserName(parts[0]); // Use first name only
+        }
       }
     } catch (error) {
       console.error('Error loading user name:', error);

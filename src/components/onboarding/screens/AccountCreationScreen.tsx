@@ -294,7 +294,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             entry_date: today,
             category: 'metrics',
             metrics: { weight: weightInLbs },
-            notes: 'Starting weight from onboarding',
+            notes: null, // Don't set default text
           });
         
         if (progressError) {
