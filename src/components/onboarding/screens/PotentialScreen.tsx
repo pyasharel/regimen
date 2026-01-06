@@ -7,28 +7,28 @@ interface PotentialScreenProps {
   onContinue: () => void;
 }
 
-// Map goal IDs to display info - comprehensive mapping
+// Map goal IDs to display info - progressive tense for action-oriented feel
 const GOAL_DISPLAY: Record<string, { label: string; icon: typeof Target }> = {
-  'lose-weight': { label: 'Lose weight', icon: Target },
-  'lose weight': { label: 'Lose weight', icon: Target },
-  'weight-loss': { label: 'Lose weight', icon: Target },
-  'build-muscle': { label: 'Build muscle', icon: Dumbbell },
-  'build muscle': { label: 'Build muscle', icon: Dumbbell },
-  'gain-muscle': { label: 'Build muscle', icon: Dumbbell },
-  'recovery': { label: 'Recover faster', icon: RefreshCw },
-  'faster-recovery': { label: 'Recover faster', icon: RefreshCw },
-  'energy': { label: 'Boost energy', icon: Zap },
-  'more-energy': { label: 'More energy', icon: Zap },
-  'more energy': { label: 'More energy', icon: Zap },
-  'boost-energy': { label: 'Boost energy', icon: Zap },
-  'get-healthier': { label: 'Get healthier', icon: TrendingUp },
-  'get healthier': { label: 'Get healthier', icon: TrendingUp },
-  'stay-consistent': { label: 'Build a routine', icon: Clock },
-  'stay consistent': { label: 'Build a routine', icon: Clock },
-  'consistency': { label: 'Build a routine', icon: Clock },
-  'optimization': { label: 'Optimize performance', icon: TrendingUp },
-  'optimize': { label: 'Optimize performance', icon: TrendingUp },
-  'performance': { label: 'Optimize performance', icon: TrendingUp },
+  'lose-weight': { label: 'Losing weight', icon: Target },
+  'lose weight': { label: 'Losing weight', icon: Target },
+  'weight-loss': { label: 'Losing weight', icon: Target },
+  'build-muscle': { label: 'Building muscle', icon: Dumbbell },
+  'build muscle': { label: 'Building muscle', icon: Dumbbell },
+  'gain-muscle': { label: 'Building muscle', icon: Dumbbell },
+  'recovery': { label: 'Recovering faster', icon: RefreshCw },
+  'faster-recovery': { label: 'Recovering faster', icon: RefreshCw },
+  'energy': { label: 'Boosting energy', icon: Zap },
+  'more-energy': { label: 'Boosting energy', icon: Zap },
+  'more energy': { label: 'Boosting energy', icon: Zap },
+  'boost-energy': { label: 'Boosting energy', icon: Zap },
+  'get-healthier': { label: 'Getting healthier', icon: TrendingUp },
+  'get healthier': { label: 'Getting healthier', icon: TrendingUp },
+  'stay-consistent': { label: 'Building a routine', icon: Clock },
+  'stay consistent': { label: 'Building a routine', icon: Clock },
+  'consistency': { label: 'Building a routine', icon: Clock },
+  'optimization': { label: 'Optimizing performance', icon: TrendingUp },
+  'optimize': { label: 'Optimizing performance', icon: TrendingUp },
+  'performance': { label: 'Optimizing performance', icon: TrendingUp },
 };
 
 export function PotentialScreen({ 

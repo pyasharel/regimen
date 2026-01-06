@@ -9,7 +9,7 @@ interface FeaturesScreenProps {
 
 const PATH_A_FEATURES = [
   { icon: Bell, label: 'Stay on track with dose reminders' },
-  { icon: TrendingUp, label: 'Track your weight and see insights' },
+  { icon: TrendingUp, label: 'Connect the dots between what you take and your results' },
   { icon: Calendar, label: 'Track dose changes over time' },
   { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
@@ -17,7 +17,7 @@ const PATH_A_FEATURES = [
 const PATH_B_FEATURES = [
   { icon: Pill, label: 'Track everything you take in one place' },
   { icon: Bell, label: 'Stay on track with dose reminders' },
-  { icon: Calendar, label: 'Know when to start and end cycles' },
+  { icon: TrendingUp, label: 'Connect the dots between what you take and your results' },
   { icon: BarChart3, label: 'See your progress with photos and metrics' },
 ];
 

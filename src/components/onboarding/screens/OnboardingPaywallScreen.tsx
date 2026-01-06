@@ -120,12 +120,12 @@ export function OnboardingPaywallScreen({
 
   return (
     <div className="flex-1 flex flex-col -mx-6 -mb-8">
-      {/* Close button */}
+      {/* Close button - more subtle */}
       <button
         onClick={onDismiss}
-        className="absolute top-4 right-4 p-2 text-[#999999] hover:text-[#666666] transition-colors z-10"
+        className="absolute top-4 right-4 p-2 text-[#CCCCCC] hover:text-[#999999] transition-colors z-10"
       >
-        <X className="h-6 w-6" />
+        <X className="h-5 w-5" />
       </button>
 
       {/* Scrollable content */}
@@ -273,11 +273,11 @@ export function OnboardingPaywallScreen({
           By starting your trial, you agree to our <a href="/terms" className="underline">Terms of Service</a> and <a href="/privacy" className="underline">Privacy Policy</a>. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Manage or cancel anytime in Settings.
         </p>
         
-        <div className="flex justify-center gap-4 mt-3">
+        <div className="flex items-center justify-center gap-2 mt-3">
           <a href="/terms" className="text-xs text-[#999999] hover:text-[#666666]">Terms</a>
-          <span className="text-[#999999]">•</span>
+          <span className="text-[#CCCCCC]">·</span>
           <a href="/privacy" className="text-xs text-[#999999] hover:text-[#666666]">Privacy</a>
-          <span className="text-[#999999]">•</span>
+          <span className="text-[#CCCCCC]">·</span>
           <button className="text-xs text-[#999999] hover:text-[#666666]">Restore</button>
         </div>
       </div>
