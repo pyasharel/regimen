@@ -14,8 +14,10 @@ interface RulerSliderProps {
   className?: string;
 }
 
-const TICK_WIDTH = 12; // pixels per unit
+const TICK_WIDTH = 10; // pixels per unit
 const MAJOR_TICK_INTERVAL = 10; // Every 10 units is a major tick
+const MINOR_TICK_HEIGHT = 24; // Taller ticks
+const MAJOR_TICK_HEIGHT = 40; // Much taller major ticks
 
 export function RulerSlider({
   min,
@@ -137,7 +139,7 @@ export function RulerSlider({
         >
           <div 
             ref={rulerRef}
-            className="flex items-end h-20 relative"
+            className="flex items-end h-24 relative"
             style={{ 
               width: totalWidth + (containerRef.current?.offsetWidth || 300),
               paddingLeft: '50%',
@@ -157,9 +159,12 @@ export function RulerSlider({
                   className={cn(
                     "w-0.5 rounded-full transition-colors",
                     isMajor 
-                      ? "h-10 bg-foreground/40" 
-                      : "h-5 bg-muted-foreground/30"
+                      ? "bg-foreground/40" 
+                      : "bg-muted-foreground/30"
                   )}
+                  style={{
+                    height: isMajor ? MAJOR_TICK_HEIGHT : MINOR_TICK_HEIGHT
+                  }}
                 />
                 {isMajor && (
                   <span className="text-xs text-muted-foreground mt-1 tabular-nums">
