@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, Ruler, Target } from "lucide-react";
+import { ArrowLeft, Ruler, Target } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
-import { useTheme } from "@/components/ThemeProvider";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -12,7 +11,6 @@ import { trackPreferenceSet } from "@/utils/analytics";
 
 export const DisplaySettings = () => {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
 
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [heightUnit, setHeightUnit] = useState<"imperial" | "metric">("imperial");
@@ -124,48 +122,6 @@ export const DisplaySettings = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
-        {/* Theme Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Palette className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">Theme</h2>
-              <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={() => { triggerHaptic(); setTheme("light"); }}
-              className={`w-full rounded-lg border p-4 text-left transition-all ${
-                theme === "light" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-              }`}
-            >
-              <div className="font-semibold">Light</div>
-              <div className="text-xs text-muted-foreground">Bright and clean</div>
-            </button>
-            <button
-              onClick={() => { triggerHaptic(); setTheme("dark"); }}
-              className={`w-full rounded-lg border p-4 text-left transition-all ${
-                theme === "dark" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-              }`}
-            >
-              <div className="font-semibold">Dark</div>
-              <div className="text-xs text-muted-foreground">Easy on the eyes</div>
-            </button>
-            <button
-              onClick={() => { triggerHaptic(); setTheme("system"); }}
-              className={`w-full rounded-lg border p-4 text-left transition-all ${
-                theme === "system" ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-              }`}
-            >
-              <div className="font-semibold">System</div>
-              <div className="text-xs text-muted-foreground">Match device settings</div>
-            </button>
-          </div>
-        </div>
-
         {/* Body Measurements Section */}
         <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3">
