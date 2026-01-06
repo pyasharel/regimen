@@ -7,7 +7,6 @@ interface PainPointsScreenProps {
   pathRouting: PathRouting | null;
   initialPainPoints: string[];
   onContinue: (painPoints: string[]) => void;
-  onSkip: () => void;
 }
 
 const PATH_A_PAIN_POINTS = [
@@ -25,7 +24,7 @@ const PATH_B_PAIN_POINTS = [
   { id: 'staying-organized', label: 'Staying organized' },
 ];
 
-export function PainPointsScreen({ pathRouting, initialPainPoints, onContinue, onSkip }: PainPointsScreenProps) {
+export function PainPointsScreen({ pathRouting, initialPainPoints, onContinue }: PainPointsScreenProps) {
   const [selected, setSelected] = useState<string[]>(initialPainPoints);
   
   const painPoints = pathRouting === 'A' ? PATH_A_PAIN_POINTS : PATH_B_PAIN_POINTS;
@@ -84,20 +83,13 @@ export function PainPointsScreen({ pathRouting, initialPainPoints, onContinue, o
       </div>
 
       {/* CTA */}
-      <div className="mt-6 space-y-3">
+      <div className="mt-6">
         <OnboardingButton 
           onClick={handleContinue}
           disabled={selected.length === 0}
         >
           Continue
         </OnboardingButton>
-        
-        <button
-          onClick={onSkip}
-          className="w-full text-sm text-[#999999] hover:text-[#666666] transition-colors py-2"
-        >
-          Skip for now
-        </button>
       </div>
     </div>
   );
