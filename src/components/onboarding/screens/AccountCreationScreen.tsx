@@ -223,6 +223,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             schedule_days: scheduleDays,
             time_of_day: [timeOfDay],
             start_date: new Date().toISOString().split('T')[0],
+            interval_days: intervalValue, // Store the actual interval for "Every X days"
           })
           .select()
           .single();

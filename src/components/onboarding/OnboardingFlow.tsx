@@ -173,6 +173,11 @@ export function OnboardingFlow() {
   };
 
   const handleComplete = () => {
+    // Ensure light mode is set for new users before navigation
+    if (!localStorage.getItem('vite-ui-theme')) {
+      localStorage.setItem('vite-ui-theme', 'light');
+      document.documentElement.classList.remove('dark');
+    }
     clearState();
     navigate('/today', { replace: true });
   };

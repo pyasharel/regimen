@@ -30,6 +30,7 @@ export type Database = {
           has_titration: boolean | null
           id: string
           intended_dose: number
+          interval_days: number | null
           is_active: boolean | null
           name: string
           notes: string | null
@@ -58,6 +59,7 @@ export type Database = {
           has_titration?: boolean | null
           id?: string
           intended_dose: number
+          interval_days?: number | null
           is_active?: boolean | null
           name: string
           notes?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           has_titration?: boolean | null
           id?: string
           intended_dose?: number
+          interval_days?: number | null
           is_active?: boolean | null
           name?: string
           notes?: string | null
