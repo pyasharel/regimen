@@ -22,14 +22,11 @@ export const AnimatedCheckmark = ({
   
   return (
     <div
-      style={{
-        display: 'inline-flex',
-        transform: shouldAnimate ? 'scale(1)' : undefined,
-        animation: shouldAnimate ? 'checkmark-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
-      }}
+      className={shouldAnimate ? 'animate-checkmark-pop' : ''}
+      style={{ display: 'inline-flex' }}
     >
       <svg
-        className={`${className}`}
+        className={className}
         width={size}
         height={size}
         viewBox="0 0 24 24"
@@ -41,10 +38,10 @@ export const AnimatedCheckmark = ({
       >
         <polyline 
           points="20 6 9 17 4 12"
+          className={shouldAnimate ? 'animate-checkmark-draw' : ''}
           style={{
             strokeDasharray: 24,
-            strokeDashoffset: shouldAnimate ? 0 : 0,
-            animation: shouldAnimate ? 'checkmark-draw 0.3s ease-out forwards' : 'none',
+            strokeDashoffset: shouldAnimate ? undefined : 0,
           }}
         />
       </svg>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { CombinedHeightWeightPicker } from '@/components/ui/ios-wheel-picker';
+import { Input } from '@/components/ui/input';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -28,10 +28,12 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     initialData.heightUnit === 'cm' || initialData.weightUnit === 'kg' ? 'metric' : 'imperial'
   );
   
-  const [heightFeet, setHeightFeet] = useState<number>(initialData.heightFeet || 5);
-  const [heightInches, setHeightInches] = useState<number>(initialData.heightInches || 10);
-  const [heightCm, setHeightCm] = useState<number>(initialData.heightCm || 178);
-  const [weight, setWeight] = useState<number>(initialData.currentWeight || (unitSystem === 'imperial' ? 180 : 82));
+  const [heightFeet, setHeightFeet] = useState<string>(initialData.heightFeet?.toString() || '5');
+  const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '10');
+  const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '178');
+  const [weight, setWeight] = useState<string>(
+    initialData.currentWeight?.toString() || (unitSystem === 'imperial' ? '180' : '82')
+  );
 
   // Derived values based on unit system
   const heightUnit: 'ft' | 'cm' = unitSystem === 'imperial' ? 'ft' : 'cm';
@@ -44,22 +46,23 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     // Convert height
     if (newSystem === 'metric') {
       // ft/in to cm
-      const totalInches = heightFeet * 12 + heightInches;
-      setHeightCm(Math.round(totalInches * 2.54));
+      const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
+      setHeightCm(Math.round(totalInches * 2.54).toString());
     } else {
       // cm to ft/in
-      const totalInches = Math.round(heightCm / 2.54);
-      setHeightFeet(Math.floor(totalInches / 12));
-      setHeightInches(totalInches % 12);
+      const totalInches = Math.round((parseInt(heightCm) || 0) / 2.54);
+      setHeightFeet(Math.floor(totalInches / 12).toString());
+      setHeightInches((totalInches % 12).toString());
     }
     
     // Convert weight
+    const currentWeight = parseFloat(weight) || 0;
     if (newSystem === 'metric') {
       // lb to kg
-      setWeight(Math.round(weight * 0.453592));
+      setWeight(Math.round(currentWeight * 0.453592).toString());
     } else {
       // kg to lb
-      setWeight(Math.round(weight / 0.453592));
+      setWeight(Math.round(currentWeight / 0.453592).toString());
     }
     
     setUnitSystem(newSystem);
@@ -67,11 +70,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
   const handleContinue = () => {
     onContinue({
-      heightFeet: heightUnit === 'ft' ? heightFeet : null,
-      heightInches: heightUnit === 'ft' ? heightInches : null,
-      heightCm: heightUnit === 'cm' ? heightCm : null,
+      heightFeet: heightUnit === 'ft' ? parseInt(heightFeet) || null : null,
+      heightInches: heightUnit === 'ft' ? parseInt(heightInches) || null : null,
+      heightCm: heightUnit === 'cm' ? parseInt(heightCm) || null : null,
       heightUnit,
-      currentWeight: weight,
+      currentWeight: parseFloat(weight) || null,
       weightUnit,
     });
   };
@@ -122,22 +125,75 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         </div>
       </div>
 
-      {/* Combined Height & Weight Picker - Cal AI style side-by-side */}
+      {/* Simple Input Fields */}
       <div 
-        className="flex-1 flex items-center justify-center bg-white rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300"
+        className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
       >
-        <CombinedHeightWeightPicker
-          unit={unitSystem}
-          feet={heightFeet}
-          inches={heightInches}
-          cm={heightCm}
-          weight={weight}
-          onChangeFeet={setHeightFeet}
-          onChangeInches={setHeightInches}
-          onChangeCm={setHeightCm}
-          onChangeWeight={setWeight}
-        />
+        {/* Height */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#666666]">Height</label>
+          {unitSystem === 'imperial' ? (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="5"
+                    value={heightFeet}
+                    onChange={(e) => setHeightFeet(e.target.value)}
+                    className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5]"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">ft</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="10"
+                    value={heightInches}
+                    onChange={(e) => setHeightInches(e.target.value)}
+                    className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5]"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">in</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="relative">
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder="178"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                className="text-2xl font-bold text-center h-14 pr-12 bg-white border-[#E5E5E5]"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">cm</span>
+            </div>
+          )}
+        </div>
+
+        {/* Weight */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-[#666666]">Weight</label>
+          <div className="relative">
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder={unitSystem === 'imperial' ? '180' : '82'}
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              className="text-2xl font-bold text-center h-14 pr-12 bg-white border-[#E5E5E5]"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] text-sm">
+              {unitSystem === 'imperial' ? 'lbs' : 'kg'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* CTAs */}

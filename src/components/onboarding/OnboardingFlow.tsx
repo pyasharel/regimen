@@ -143,8 +143,9 @@ export function OnboardingFlow() {
       nextStep++;
     }
     
-    // Skip goal-validation if no meaningful weight difference
-    while (SCREEN_ORDER[nextStep] === 'goal-validation' && shouldSkipGoalValidation) {
+    // Recalculate goal validation skip with CURRENT data (not stale shouldSkipGoalValidation)
+    const skipGoalValidation = !data.goalWeight || data.goalWeight === data.currentWeight;
+    while (SCREEN_ORDER[nextStep] === 'goal-validation' && skipGoalValidation) {
       nextStep++;
     }
     
@@ -282,8 +283,15 @@ export function OnboardingFlow() {
             weightUnit={data.weightUnit}
             initialGoalWeight={data.goalWeight}
             onContinue={(goalWeight) => {
+              // Update data first, then navigate with fresh data check
               updateData({ goalWeight });
-              handleNext();
+              // Navigate to next step - skip goal-validation if goalWeight equals currentWeight
+              let nextStep = currentStep + 1;
+              const skipGoalValidation = !goalWeight || goalWeight === data.currentWeight;
+              while (SCREEN_ORDER[nextStep] === 'goal-validation' && skipGoalValidation) {
+                nextStep++;
+              }
+              setCurrentStep(nextStep);
             }}
             onSkip={handleNext}
           />

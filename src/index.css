@@ -520,6 +520,10 @@ All colors MUST be HSL.
   .animate-checkmark-pop {
     animation: checkmark-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+  
+  .animate-checkmark-draw {
+    animation: checkmark-draw 0.3s ease-out forwards;
+  }
 
   /* Splash screen logo entrance - scale from small with anticipation */
   @keyframes logo-entrance {
