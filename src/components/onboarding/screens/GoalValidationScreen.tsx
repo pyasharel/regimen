@@ -47,8 +47,8 @@ export function GoalValidationScreen({
   }, [weightDiff]);
 
   const headlineText = firstName 
-    ? (isAggressive ? `You've set a bold goal, ${firstName}.` : `That's achievable, ${firstName}!`)
-    : (isAggressive ? "You've set a bold goal." : "That's achievable!");
+    ? (isAggressive ? `Great goal, ${firstName}!` : `That's achievable, ${firstName}!`)
+    : (isAggressive ? "Great goal!" : "That's achievable!");
 
   // Dynamic action text based on direction
   const actionWord = isGaining ? 'Gaining' : 'Losing';
