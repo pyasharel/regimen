@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Ruler, Target } from "lucide-react";
+import { ArrowLeft, Scale, Ruler } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Input } from "@/components/ui/input";
@@ -10,21 +10,27 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackPreferenceSet } from "@/utils/analytics";
 
+type UnitSystem = 'imperial' | 'metric';
+
 export const DisplaySettings = () => {
   const navigate = useNavigate();
 
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
-  const [heightUnit, setHeightUnit] = useState<"imperial" | "metric">("imperial");
+  const [unitSystem, setUnitSystem] = useState<UnitSystem>("imperial");
   const [heightFeet, setHeightFeet] = useState("");
   const [heightInches, setHeightInches] = useState("");
   const [heightCm, setHeightCm] = useState("");
-  const [goalWeight, setGoalWeight] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
+  const [goalWeight, setGoalWeight] = useState("");
 
-  // Load saved preferences - first from persistent storage, then sync from profile if needed
+  // Derived values based on unit system
+  const weightUnit = unitSystem === 'imperial' ? 'lbs' : 'kg';
+  const heightUnit = unitSystem;
+
+  // Load saved preferences
   useEffect(() => {
     const loadSettings = async () => {
-      // First try persistent storage
+      // Try to load unit system first, fall back to weight unit
+      const savedUnitSystem = await persistentStorage.get('unitSystem');
       const savedWeightUnit = await persistentStorage.get('weightUnit');
       const savedHeightUnit = await persistentStorage.get('heightUnit');
       const savedHeightFeet = await persistentStorage.get('heightFeet');
@@ -33,15 +39,20 @@ export const DisplaySettings = () => {
       const savedGoalWeight = await persistentStorage.get('goalWeight');
       const savedCurrentWeight = await persistentStorage.get('currentWeight');
       
-      if (savedWeightUnit) setWeightUnit(savedWeightUnit as "lbs" | "kg");
-      if (savedHeightUnit) setHeightUnit(savedHeightUnit as "imperial" | "metric");
+      // Determine unit system from saved values
+      if (savedUnitSystem) {
+        setUnitSystem(savedUnitSystem as UnitSystem);
+      } else if (savedWeightUnit === 'kg' || savedHeightUnit === 'metric') {
+        setUnitSystem('metric');
+      }
+      
       if (savedHeightFeet) setHeightFeet(savedHeightFeet);
       if (savedHeightInches) setHeightInches(savedHeightInches);
       if (savedHeightCm) setHeightCm(savedHeightCm);
       if (savedGoalWeight) setGoalWeight(savedGoalWeight);
       if (savedCurrentWeight) setCurrentWeight(savedCurrentWeight);
       
-      // If no local data, try to sync from profile (for onboarding data)
+      // If no local data, try to sync from profile
       const hasLocalData = savedHeightFeet || savedHeightInches || savedHeightCm || savedGoalWeight || savedCurrentWeight;
       if (!hasLocalData) {
         try {
@@ -54,17 +65,12 @@ export const DisplaySettings = () => {
               .maybeSingle();
             
             if (profile) {
-              // Sync profile data to local state and persistent storage
-              if (profile.height_unit) {
-                const unit = profile.height_unit === 'cm' ? 'metric' : 'imperial';
-                setHeightUnit(unit);
-                await persistentStorage.set('heightUnit', unit);
+              // Determine unit system from profile
+              if (profile.height_unit === 'cm' || profile.current_weight_unit === 'kg') {
+                setUnitSystem('metric');
+                await persistentStorage.set('unitSystem', 'metric');
               }
-              if (profile.current_weight_unit) {
-                const unit = profile.current_weight_unit as "lbs" | "kg";
-                setWeightUnit(unit);
-                await persistentStorage.set('weightUnit', unit);
-              }
+              
               if (profile.height_feet) {
                 const val = profile.height_feet.toString();
                 setHeightFeet(val);
@@ -113,39 +119,67 @@ export const DisplaySettings = () => {
     }
   };
 
-  const handleWeightUnitChange = async (unit: "lbs" | "kg") => {
+  const handleUnitSystemChange = async (newSystem: UnitSystem) => {
     triggerHaptic();
-    // Convert goal weight when switching units
-    if (goalWeight) {
-      const currentValue = parseFloat(goalWeight);
-      if (!isNaN(currentValue)) {
-        if (unit === "kg" && weightUnit === "lbs") {
-          setGoalWeight(Math.round(currentValue / 2.20462).toString());
-        } else if (unit === "lbs" && weightUnit === "kg") {
-          setGoalWeight(Math.round(currentValue * 2.20462).toString());
-        }
-      }
-    }
-    setWeightUnit(unit);
-    await persistentStorage.set('weightUnit', unit);
-    trackPreferenceSet('weightUnit', unit);
-  };
-
-  const handleHeightUnitChange = async (unit: "imperial" | "metric") => {
-    triggerHaptic();
-    // Convert height when switching units
-    if (unit === "metric" && heightUnit === "imperial" && (heightFeet || heightInches)) {
+    const oldSystem = unitSystem;
+    
+    // Convert height when switching
+    if (newSystem === 'metric' && oldSystem === 'imperial' && (heightFeet || heightInches)) {
       const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
       const cm = Math.round(totalInches * 2.54);
       setHeightCm(cm.toString());
-    } else if (unit === "imperial" && heightUnit === "metric" && heightCm) {
+      await persistentStorage.set('heightCm', cm.toString());
+    } else if (newSystem === 'imperial' && oldSystem === 'metric' && heightCm) {
       const totalInches = Math.round(parseInt(heightCm) / 2.54);
-      setHeightFeet(Math.floor(totalInches / 12).toString());
-      setHeightInches((totalInches % 12).toString());
+      const feet = Math.floor(totalInches / 12).toString();
+      const inches = (totalInches % 12).toString();
+      setHeightFeet(feet);
+      setHeightInches(inches);
+      await persistentStorage.set('heightFeet', feet);
+      await persistentStorage.set('heightInches', inches);
     }
-    setHeightUnit(unit);
-    await persistentStorage.set('heightUnit', unit);
-    trackPreferenceSet('heightUnit', unit);
+    
+    // Convert weights when switching
+    if (currentWeight) {
+      const currentValue = parseFloat(currentWeight);
+      if (!isNaN(currentValue)) {
+        let newValue: string;
+        if (newSystem === 'metric' && oldSystem === 'imperial') {
+          newValue = Math.round(currentValue / 2.20462).toString();
+        } else if (newSystem === 'imperial' && oldSystem === 'metric') {
+          newValue = Math.round(currentValue * 2.20462).toString();
+        } else {
+          newValue = currentWeight;
+        }
+        setCurrentWeight(newValue);
+        await persistentStorage.set('currentWeight', newValue);
+      }
+    }
+    
+    if (goalWeight) {
+      const currentValue = parseFloat(goalWeight);
+      if (!isNaN(currentValue)) {
+        let newValue: string;
+        if (newSystem === 'metric' && oldSystem === 'imperial') {
+          newValue = Math.round(currentValue / 2.20462).toString();
+        } else if (newSystem === 'imperial' && oldSystem === 'metric') {
+          newValue = Math.round(currentValue * 2.20462).toString();
+        } else {
+          newValue = goalWeight;
+        }
+        setGoalWeight(newValue);
+        await persistentStorage.set('goalWeight', newValue);
+      }
+    }
+    
+    setUnitSystem(newSystem);
+    
+    // Save all related unit preferences for compatibility
+    await persistentStorage.set('unitSystem', newSystem);
+    await persistentStorage.set('weightUnit', newSystem === 'imperial' ? 'lbs' : 'kg');
+    await persistentStorage.set('heightUnit', newSystem);
+    
+    trackPreferenceSet('unitSystem', newSystem);
   };
 
   const handleHeightFeetChange = async (value: string) => {
@@ -163,14 +197,14 @@ export const DisplaySettings = () => {
     await persistentStorage.set('heightCm', value);
   };
 
-  const handleGoalWeightChange = async (value: string) => {
-    setGoalWeight(value);
-    await persistentStorage.set('goalWeight', value);
-  };
-
   const handleCurrentWeightChange = async (value: string) => {
     setCurrentWeight(value);
     await persistentStorage.set('currentWeight', value);
+  };
+
+  const handleGoalWeightChange = async (value: string) => {
+    setGoalWeight(value);
+    await persistentStorage.set('goalWeight', value);
   };
 
   return (
@@ -188,119 +222,116 @@ export const DisplaySettings = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
-        {/* Body Measurements Section */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+        {/* Unit System Toggle - Prominent at top */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Scale className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold">Unit System</h2>
+              <p className="text-sm text-muted-foreground">Choose your preferred measurement units</p>
+            </div>
+          </div>
+          
+          <SegmentedControl
+            options={[
+              { value: 'imperial' as const, label: 'Imperial', sublabel: 'lbs, ft/in' },
+              { value: 'metric' as const, label: 'Metric', sublabel: 'kg, cm' }
+            ]}
+            value={unitSystem}
+            onChange={handleUnitSystemChange}
+            size="lg"
+            className="w-full"
+          />
+        </div>
+
+        {/* Body Measurements - Clean card with prominent inputs */}
+        <div className="p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)] space-y-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
               <Ruler className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="font-semibold">Body Measurements</h2>
-              <p className="text-sm text-muted-foreground">Your measurement preferences and goals</p>
-            </div>
-          </div>
-          
-          {/* Weight Unit */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Weight Unit</Label>
-            <SegmentedControl
-              options={[
-                { value: 'lbs' as const, label: 'lbs', sublabel: 'Pounds' },
-                { value: 'kg' as const, label: 'kg', sublabel: 'Kilograms' }
-              ]}
-              value={weightUnit}
-              onChange={handleWeightUnitChange}
-              size="lg"
-              className="w-full"
-            />
+            <h2 className="font-semibold">Body Measurements</h2>
           </div>
 
-          {/* Height Unit */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Height Unit</Label>
-            <SegmentedControl
-              options={[
-                { value: 'imperial' as const, label: 'ft/in', sublabel: 'Imperial' },
-                { value: 'metric' as const, label: 'cm', sublabel: 'Metric' }
-              ]}
-              value={heightUnit}
-              onChange={handleHeightUnitChange}
-              size="lg"
-              className="w-full"
-            />
-          </div>
-
-          {/* Height Input */}
+          {/* Height */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Height</Label>
-            {heightUnit === "imperial" ? (
-              <div className="flex gap-2">
+            <Label className="text-sm font-medium text-muted-foreground">Height</Label>
+            {unitSystem === "imperial" ? (
+              <div className="flex gap-3">
                 <div className="flex-1">
-                  <Input
-                    type="number"
-                    placeholder="Feet"
-                    value={heightFeet}
-                    onChange={(e) => handleHeightFeetChange(e.target.value)}
-                    className="text-center"
-                  />
-                  <p className="text-xs text-muted-foreground text-center mt-1">ft</p>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="5"
+                      value={heightFeet}
+                      onChange={(e) => handleHeightFeetChange(e.target.value)}
+                      className="text-lg font-semibold pr-10 h-12"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">ft</span>
+                  </div>
                 </div>
                 <div className="flex-1">
-                  <Input
-                    type="number"
-                    placeholder="Inches"
-                    value={heightInches}
-                    onChange={(e) => handleHeightInchesChange(e.target.value)}
-                    className="text-center"
-                  />
-                  <p className="text-xs text-muted-foreground text-center mt-1">in</p>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="10"
+                      value={heightInches}
+                      onChange={(e) => handleHeightInchesChange(e.target.value)}
+                      className="text-lg font-semibold pr-10 h-12"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">in</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div>
+              <div className="relative">
                 <Input
                   type="number"
-                  placeholder="Height in cm"
+                  inputMode="numeric"
+                  placeholder="178"
                   value={heightCm}
                   onChange={(e) => handleHeightCmChange(e.target.value)}
+                  className="text-lg font-semibold pr-12 h-12"
                 />
-                <p className="text-xs text-muted-foreground mt-1">centimeters</p>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">cm</span>
               </div>
             )}
           </div>
 
           {/* Current Weight */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Ruler className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Current Weight</Label>
+            <Label className="text-sm font-medium text-muted-foreground">Current Weight</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder={unitSystem === 'imperial' ? "180" : "82"}
+                value={currentWeight}
+                onChange={(e) => handleCurrentWeightChange(e.target.value)}
+                className="text-lg font-semibold pr-12 h-12"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
             </div>
-            <Input
-              type="number"
-              placeholder={`Current weight in ${weightUnit}`}
-              value={currentWeight}
-              onChange={(e) => handleCurrentWeightChange(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Your starting weight in {weightUnit === "lbs" ? "pounds" : "kilograms"}
-            </p>
           </div>
 
           {/* Goal Weight */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Goal Weight</Label>
+            <Label className="text-sm font-medium text-muted-foreground">Goal Weight</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder={unitSystem === 'imperial' ? "165" : "75"}
+                value={goalWeight}
+                onChange={(e) => handleGoalWeightChange(e.target.value)}
+                className="text-lg font-semibold pr-12 h-12"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{weightUnit}</span>
             </div>
-            <Input
-              type="number"
-              placeholder={`Goal weight in ${weightUnit}`}
-              value={goalWeight}
-              onChange={(e) => handleGoalWeightChange(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Your target weight in {weightUnit === "lbs" ? "pounds" : "kilograms"}
-            </p>
           </div>
         </div>
       </div>

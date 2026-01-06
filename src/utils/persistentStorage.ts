@@ -93,6 +93,9 @@ export const PERSISTENT_STORAGE_KEYS = [
   // Theme
   'vite-ui-theme',
   
+  // Unit system (unified imperial/metric preference)
+  'unitSystem',
+  
   // Display settings
   'weightUnit',
   'heightUnit',
@@ -101,6 +104,7 @@ export const PERSISTENT_STORAGE_KEYS = [
   'heightCm',
   'goalWeight',
   'userHeight',
+  'currentWeight',
   
   // Sound settings
   'soundEnabled',

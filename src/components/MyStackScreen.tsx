@@ -298,8 +298,13 @@ export const MyStackScreen = () => {
       return 'Daily';
     }
     
-    // Handle interval (from onboarding)
+    // Handle interval (from onboarding) - show actual interval if available
     if (compound.schedule_type === 'interval') {
+      // Check if interval_days exists on the compound
+      const intervalDays = (compound as any).interval_days;
+      if (intervalDays) {
+        return `Every ${intervalDays} days`;
+      }
       return 'Custom Interval';
     }
     

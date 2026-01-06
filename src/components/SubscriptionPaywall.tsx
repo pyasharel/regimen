@@ -29,25 +29,26 @@ export const SubscriptionPaywall = ({
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: string} | null>(null);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
   const { setPaywallOpen } = usePaywall();
   
   // Track when paywall opens and sync with PaywallContext
   useEffect(() => {
-    // Sync paywall open state to context so banner knows to hide
-    setPaywallOpen(open);
-    
+    // Reset closing state when opening
     if (open) {
+      setIsClosing(false);
       console.log('[PAYWALL] Component opened/mounted');
       trackPaywallShown(message || 'add_compound');
-      console.log('[PAYWALL] Supabase client check:', {
-        hasSupabase: typeof supabase !== 'undefined',
-        hasFunctions: typeof supabase?.functions !== 'undefined',
-        canInvoke: typeof supabase?.functions?.invoke === 'function'
-      });
     }
-  }, [open, message, setPaywallOpen]);
+    
+    // Sync paywall open state to context so banner knows to hide
+    // Only sync when NOT in closing state to prevent race conditions
+    if (!isClosing) {
+      setPaywallOpen(open);
+    }
+  }, [open, message, setPaywallOpen, isClosing]);
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
@@ -104,9 +105,10 @@ export const SubscriptionPaywall = ({
             const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
           }
-          // Close the modal and refresh subscription
+          // Close the modal first, then refresh subscription state without full reload
           onOpenChange(false);
-          window.location.reload();
+          onDismiss?.();
+          await refreshSubscription();
           return;
         } else if (!data?.valid) {
           toast.error(data?.message || 'Invalid promo code. Please check and try again.');
@@ -285,7 +287,10 @@ export const SubscriptionPaywall = ({
   };
 
   const handleClose = () => {
+    if (isClosing) return; // Prevent double-close
+    setIsClosing(true);
     trackPaywallDismissed(message || 'add_compound');
+    setPaywallOpen(false); // Immediately update context
     onOpenChange(false);
     onDismiss?.();
   };
