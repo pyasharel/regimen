@@ -107,6 +107,9 @@ export function OnboardingFlow() {
     };
   }, []);
 
+  // Check if goal-validation should be skipped (no meaningful weight difference)
+  const shouldSkipGoalValidation = !data.goalWeight || data.goalWeight === data.currentWeight;
+
   // Get current screen with skip logic
   const getCurrentScreenId = (): ScreenId => {
     let step = currentStep;
@@ -115,6 +118,12 @@ export function OnboardingFlow() {
     // Skip weight-related screens if no weight goal
     while (screenId && !hasWeightGoal && 
       ['height-weight', 'goal-weight', 'goal-validation', 'potential'].includes(screenId)) {
+      step++;
+      screenId = SCREEN_ORDER[step];
+    }
+    
+    // Skip goal-validation if no meaningful weight difference
+    while (screenId === 'goal-validation' && shouldSkipGoalValidation) {
       step++;
       screenId = SCREEN_ORDER[step];
     }
@@ -134,6 +143,11 @@ export function OnboardingFlow() {
       nextStep++;
     }
     
+    // Skip goal-validation if no meaningful weight difference
+    while (SCREEN_ORDER[nextStep] === 'goal-validation' && shouldSkipGoalValidation) {
+      nextStep++;
+    }
+    
     setCurrentStep(nextStep);
   };
 
@@ -143,6 +157,11 @@ export function OnboardingFlow() {
     // Skip weight screens going back
     while (SCREEN_ORDER[prevStep] && !hasWeightGoal &&
       ['height-weight', 'goal-weight', 'goal-validation', 'potential'].includes(SCREEN_ORDER[prevStep])) {
+      prevStep--;
+    }
+    
+    // Skip goal-validation going back if no meaningful weight difference
+    while (SCREEN_ORDER[prevStep] === 'goal-validation' && shouldSkipGoalValidation) {
       prevStep--;
     }
     
