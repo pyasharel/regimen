@@ -62,7 +62,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
           className="text-2xl font-bold text-[#333333] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
-          Help others find us
+          Help spread the word
         </h1>
 
         {/* Testimonials with initials */}
