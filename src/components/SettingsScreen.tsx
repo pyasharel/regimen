@@ -304,7 +304,7 @@ export const SettingsScreen = () => {
           Sign Out
         </Button>
 
-        {import.meta.env.DEV && (
+        {(import.meta.env.DEV || window.location.hostname.includes('lovable') || window.location.hostname.includes('localhost')) && (
           <Button
             onClick={handleResetOnboarding}
             variant="outline"
