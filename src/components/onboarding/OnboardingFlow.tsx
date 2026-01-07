@@ -28,7 +28,7 @@ import { DisclaimerScreen } from './screens/DisclaimerScreen';
 import { OnboardingPaywallScreen } from './screens/OnboardingPaywallScreen';
 import { CompleteScreen } from './screens/CompleteScreen';
 
-// Screen IDs in order (optimized flow - moved disclaimer after paywall)
+// Screen IDs in order - notifications after medication for contextual relevance
 const SCREEN_ORDER = [
   'splash',
   'path-selection',
@@ -44,9 +44,9 @@ const SCREEN_ORDER = [
   'features', // How Regimen helps - BEFORE 2x graph
   'outcome', // 2x graph - builds to crescendo
   'rating', // After seeing value
-  'notifications', // Then ask for notifications
   'privacy',
   'medication-setup',
+  'notifications', // After medication setup for contextual relevance
   'account-creation',
   'loading',
   'paywall', // Moved before disclaimer
@@ -128,6 +128,12 @@ export function OnboardingFlow() {
       screenId = SCREEN_ORDER[step];
     }
     
+    // Skip notifications if user skipped medication setup (will prompt after first compound in app)
+    while (screenId === 'notifications' && !data.medication?.name) {
+      step++;
+      screenId = SCREEN_ORDER[step];
+    }
+    
     return screenId || 'complete';
   };
 
@@ -149,6 +155,11 @@ export function OnboardingFlow() {
       nextStep++;
     }
     
+    // Skip notifications if no medication was set up
+    while (SCREEN_ORDER[nextStep] === 'notifications' && !data.medication?.name) {
+      nextStep++;
+    }
+    
     setCurrentStep(nextStep);
   };
 
@@ -163,6 +174,11 @@ export function OnboardingFlow() {
     
     // Skip goal-validation going back if no meaningful weight difference
     while (SCREEN_ORDER[prevStep] === 'goal-validation' && shouldSkipGoalValidation) {
+      prevStep--;
+    }
+    
+    // Skip notifications going back if no medication was set up
+    while (SCREEN_ORDER[prevStep] === 'notifications' && !data.medication?.name) {
       prevStep--;
     }
     

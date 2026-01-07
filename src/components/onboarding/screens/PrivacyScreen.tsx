@@ -22,38 +22,35 @@ export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
           </div>
         </div>
 
-        {/* Headline - flipped */}
+        {/* Headline */}
         <h1 
-          className="text-2xl font-bold text-[#333333] mb-3 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-2xl font-bold text-[#333333] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}
         >
           Your privacy matters
         </h1>
 
-        {/* Subhead - flipped */}
-        <p 
-          className="text-lg text-[#666666] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '250ms', animationFillMode: 'backwards' }}
-        >
-          Thank you for trusting us
-        </p>
-
         {/* Body - softer styling without shadow */}
         <div 
           className="bg-[#F5F3EF] rounded-xl p-5 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
+          style={{ animationDelay: '250ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#666666] leading-relaxed">
             We never sell your data. Your protocols and progress stay private, just between you and your goals.
           </p>
         </div>
+
+        {/* Warm closing - moved here from subhead */}
+        <p 
+          className="text-lg text-primary font-medium mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: '400ms', animationFillMode: 'backwards' }}
+        >
+          Thank you for trusting us
+        </p>
       </div>
 
       {/* CTA */}
-      <div 
-        className="animate-in fade-in duration-500"
-        style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}
-      >
+      <div>
         <OnboardingButton onClick={onContinue}>
           Continue
         </OnboardingButton>

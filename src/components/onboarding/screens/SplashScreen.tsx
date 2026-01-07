@@ -29,9 +29,7 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         {/* Logo with pronounced scale + fade animation - appears first */}
         <div 
-          className="animate-in fade-in duration-1000 ease-out"
           style={{ 
-            animationFillMode: 'backwards',
             animation: 'logo-entrance 1s ease-out forwards'
           }}
         >

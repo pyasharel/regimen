@@ -3,6 +3,7 @@ import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
+import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted, trackCycleEnabled, trackCalculatorUsed } from "@/utils/analytics";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
 import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
 
@@ -204,6 +206,10 @@ export const AddCompoundScreen = () => {
   const [showPastDosesDialog, setShowPastDosesDialog] = useState(false);
   const [pendingCompoundId, setPendingCompoundId] = useState<string | null>(null);
   const [markingPastDoses, setMarkingPastDoses] = useState(false);
+  
+  // Notification permission dialog state (for first compound)
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const [savedCompoundName, setSavedCompoundName] = useState<string>("");
 
   // Check if user can add/edit compound and trigger preview timer
   useEffect(() => {
@@ -768,6 +774,58 @@ export const AddCompoundScreen = () => {
       });
   };
 
+  // Check if this is user's first compound (for notification prompt)
+  const checkIsFirstCompound = async (userId: string): Promise<boolean> => {
+    const { count } = await supabase
+      .from('compounds')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    return count === 1; // Just saved the first one
+  };
+
+  // Check if notification permission was already asked
+  const checkNotificationPermissionAsked = async (userId: string): Promise<boolean> => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('notification_permission_asked')
+      .eq('user_id', userId)
+      .single();
+    return profile?.notification_permission_asked === true;
+  };
+
+  // Handle notification permission response
+  const handleNotificationResponse = async (accepted: boolean) => {
+    setShowNotificationDialog(false);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Mark permission as asked
+      await supabase
+        .from('profiles')
+        .update({ notification_permission_asked: true })
+        .eq('user_id', user.id);
+
+      if (accepted && Capacitor.isNativePlatform()) {
+        const permission = await LocalNotifications.requestPermissions();
+        if (permission.display === 'granted') {
+          toast({
+            title: "Notifications enabled",
+            description: "You'll get reminders for your doses",
+          });
+          // Schedule notifications now
+          scheduleNotificationsInBackground(user.id);
+        }
+      }
+    } catch (error) {
+      console.error('[Notification] Error:', error);
+    }
+
+    navigate('/today');
+  };
+
   // Handle marking all past doses as taken
   const handleMarkPastDosesTaken = async () => {
     if (!pendingCompoundId) return;
@@ -1111,13 +1169,24 @@ export const AddCompoundScreen = () => {
         }
       }
 
-      // Success haptic and navigate immediately (no past doses)
+      // Success haptic
       triggerHaptic('medium');
       trackCompoundAdded(name, frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency);
       
       // Track calculator usage if used
       if (activeCalculator === 'iu') trackCalculatorUsed('iu');
       if (activeCalculator === 'ml') trackCalculatorUsed('ml');
+      
+      // Check if this is first compound and notification permission wasn't asked
+      const isFirstCompound = await checkIsFirstCompound(user.id);
+      const permissionAsked = await checkNotificationPermissionAsked(user.id);
+      
+      if (isFirstCompound && !permissionAsked && !isEditing) {
+        // Show notification permission dialog
+        setSavedCompoundName(name);
+        setShowNotificationDialog(true);
+        return; // Dialog will handle navigation
+      }
       
       navigate('/today');
 
@@ -2106,6 +2175,13 @@ export const AddCompoundScreen = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Notification Permission Dialog (first compound) */}
+      <NotificationPermissionDialog
+        open={showNotificationDialog}
+        onResponse={handleNotificationResponse}
+        medicationName={savedCompoundName}
+      />
     </div>
   );
 };
