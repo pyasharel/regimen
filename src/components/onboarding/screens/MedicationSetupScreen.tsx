@@ -91,8 +91,10 @@ export function MedicationSetupScreen({
   const [doseUnit, setDoseUnit] = useState(initialMedication?.doseUnit || 'mg');
   const [frequency, setFrequency] = useState(initialMedication?.frequency || 'Weekly');
   const [frequencyDays, setFrequencyDays] = useState(initialMedication?.frequencyDays || 3);
-  // Default to today's day for weekly
-  const todayDayName = DAY_OPTIONS[new Date().getDay()];
+  // Default to today's day for weekly - fix JS getDay() mapping (0=Sun) to DAY_OPTIONS (0=Mon)
+  const jsDay = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const mondayStartIndex = jsDay === 0 ? 6 : jsDay - 1; // Convert to Mon=0, Tue=1, ..., Sun=6
+  const todayDayName = DAY_OPTIONS[mondayStartIndex];
   const [weeklyDay, setWeeklyDay] = useState<string>(initialMedication?.specificDays?.[0] || todayDayName);
   const [specificDays, setSpecificDays] = useState<string[]>(initialMedication?.specificDays || []);
   const [timeOfDay, setTimeOfDay] = useState(initialMedication?.timeOfDay || 'Morning');

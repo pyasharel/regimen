@@ -44,11 +44,11 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content positioned ~30% from top */}
-      <div className="pt-[12vh] flex flex-col items-center text-center">
+      {/* Content positioned higher with better spacing */}
+      <div className="pt-[6vh] flex flex-col items-center text-center">
         {/* Coral Stars */}
         <div 
-          className="flex gap-1 mb-6 animate-in zoom-in-50 duration-500"
+          className="flex gap-1 mb-4 animate-in zoom-in-50 duration-500"
         >
           {[1, 2, 3, 4, 5].map((_, index) => (
             <Star 
@@ -64,23 +64,23 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
         {/* Headline */}
         <h1 
-          className="text-2xl font-bold text-[#333333] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-2xl font-bold text-[#333333] mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
         >
           Help spread the word
         </h1>
 
         {/* Testimonials with initials */}
-        <div className="space-y-3 w-full max-w-[320px]">
+        <div className="space-y-2.5 w-full max-w-[340px]">
           {TESTIMONIALS.map((testimonial, index) => (
             <div 
               key={index}
-              className="bg-white rounded-xl p-4 shadow-sm text-left animate-in fade-in slide-in-from-bottom-4 duration-300"
+              className="bg-white rounded-xl p-3.5 shadow-sm text-left animate-in fade-in slide-in-from-bottom-4 duration-300"
               style={{ animationDelay: `${300 + index * 100}ms`, animationFillMode: 'backwards' }}
             >
               <div className="flex items-start gap-3">
                 {/* Avatar with initials */}
-                <div className={`h-10 w-10 rounded-full ${testimonial.color} flex items-center justify-center flex-shrink-0`}>
+                <div className={`h-9 w-9 rounded-full ${testimonial.color} flex items-center justify-center flex-shrink-0`}>
                   <span className="text-white text-sm font-semibold">{testimonial.initials}</span>
                 </div>
                 {/* Quote */}
@@ -99,7 +99,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
         {/* Body */}
         <p 
-          className="text-[#666666] mt-6 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-[#666666] mt-4 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '600ms', animationFillMode: 'backwards' }}
         >
           We designed Regimen for people like you. Your rating goes a long way!

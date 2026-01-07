@@ -22,25 +22,25 @@ export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
           </div>
         </div>
 
-        {/* Headline */}
+        {/* Headline - flipped */}
         <h1 
           className="text-2xl font-bold text-[#333333] mb-3 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '150ms', animationFillMode: 'backwards' }}
         >
-          Thank you for trusting us
+          Your privacy matters
         </h1>
 
-        {/* Subhead */}
+        {/* Subhead - flipped */}
         <p 
           className="text-lg text-[#666666] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '250ms', animationFillMode: 'backwards' }}
         >
-          Your privacy matters
+          Thank you for trusting us
         </p>
 
-        {/* Body - in a card */}
+        {/* Body - softer styling without shadow */}
         <div 
-          className="bg-white rounded-xl p-5 shadow-sm max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="bg-[#F5F3EF] rounded-xl p-5 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#666666] leading-relaxed">
