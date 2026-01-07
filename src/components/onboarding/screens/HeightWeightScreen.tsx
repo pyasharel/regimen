@@ -82,24 +82,18 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     <div className="flex-1 flex flex-col">
       {/* Headline */}
       <div className="mb-2">
-        <h1 className="text-2xl font-bold text-[#333333] animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h1 className="text-2xl font-bold text-[#333333]">
           Let's personalize your insights
         </h1>
       </div>
 
       {/* Subhead */}
-      <p 
-        className="text-[#666666] mb-6 animate-in fade-in duration-300"
-        style={{ animationDelay: '50ms', animationFillMode: 'backwards' }}
-      >
+      <p className="text-[#666666] mb-6">
         Height & Weight
       </p>
 
       {/* Unit System Toggle - Cal AI style */}
-      <div 
-        className="flex justify-center mb-6 animate-in fade-in duration-300"
-        style={{ animationDelay: '75ms', animationFillMode: 'backwards' }}
-      >
+      <div className="flex justify-center mb-6">
         <div className="flex rounded-xl bg-[#F0F0F0] p-1 gap-1">
           <button
             onClick={() => handleUnitSystemChange('imperial')}
@@ -125,10 +119,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
       </div>
 
       {/* iOS-style wheels (match the dose time picker) */}
-      <div 
-        className="flex-1 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-300"
-        style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
-      >
+      <div className="flex-1 flex items-center justify-center">
         <IOSHeightWeightPicker
           unit={unitSystem}
           feet={heightFeet}
