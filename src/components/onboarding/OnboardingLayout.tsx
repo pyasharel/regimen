@@ -21,8 +21,8 @@ export function OnboardingLayout({
 }: OnboardingLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
-      {/* Header with progress bar */}
-      <div className="safe-top px-4 pt-2 pb-4">
+      {/* Header with progress bar - extra top padding for iOS status bar */}
+      <div className="px-4 pt-14 pb-4">
         {/* Back button row */}
         <div className="h-10 flex items-center">
           {showBack && onBack && (

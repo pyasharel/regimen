@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { RulerSlider } from '@/components/ui/ruler-slider';
+import { CombinedHeightWeightPicker } from '@/components/ui/ios-wheel-picker';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -124,67 +124,22 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         </div>
       </div>
 
-      {/* Slider Inputs */}
+      {/* iOS Wheel Pickers */}
       <div 
-        className="flex-1 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300"
+        className="flex-1 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-300"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
       >
-        {/* Height */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-[#666666] block text-center">Height</label>
-          {unitSystem === 'imperial' ? (
-            <div className="flex gap-4 justify-center">
-              {/* Feet slider */}
-              <div className="flex-1 max-w-[140px]">
-                <RulerSlider
-                  min={3}
-                  max={8}
-                  value={heightFeet}
-                  onChange={setHeightFeet}
-                  unit="ft"
-                />
-              </div>
-              {/* Inches slider */}
-              <div className="flex-1 max-w-[140px]">
-                <RulerSlider
-                  min={0}
-                  max={11}
-                  value={heightInches}
-                  onChange={setHeightInches}
-                  unit="in"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="w-full max-w-sm">
-                <RulerSlider
-                  min={91}
-                  max={244}
-                  value={heightCm}
-                  onChange={setHeightCm}
-                  unit="cm"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Weight */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-[#666666] block text-center">Weight</label>
-          <div className="flex justify-center">
-            <div className="w-full max-w-sm">
-              <RulerSlider
-                min={unitSystem === 'imperial' ? 50 : 23}
-                max={unitSystem === 'imperial' ? 400 : 180}
-                value={weight}
-                onChange={setWeight}
-                unit={unitSystem === 'imperial' ? 'lb' : 'kg'}
-              />
-            </div>
-          </div>
-        </div>
+        <CombinedHeightWeightPicker
+          unit={unitSystem}
+          feet={heightFeet}
+          inches={heightInches}
+          cm={heightCm}
+          weight={weight}
+          onChangeFeet={setHeightFeet}
+          onChangeInches={setHeightInches}
+          onChangeCm={setHeightCm}
+          onChangeWeight={setWeight}
+        />
       </div>
 
       {/* CTAs */}
