@@ -30,6 +30,7 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
         {/* Logo with pronounced scale + fade animation - appears first */}
         <div 
           style={{ 
+            opacity: 0,
             animation: 'logo-entrance 1s ease-out forwards'
           }}
         >

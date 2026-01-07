@@ -70,8 +70,8 @@ export function RulerSlider({
     if (!containerRef.current) return;
     
     const scrollLeft = containerRef.current.scrollLeft;
-    // Use floor + 0.5 offset for center-aligned tick selection
-    let newValue = Math.floor((scrollLeft + TICK_WIDTH / 2) / TICK_WIDTH) + min;
+    // Round to nearest value for center-aligned tick selection
+    let newValue = Math.round(scrollLeft / TICK_WIDTH) + min;
     newValue = Math.max(min, Math.min(max, newValue));
     
     if (newValue !== lastValueRef.current) {
@@ -89,7 +89,7 @@ export function RulerSlider({
     setTimeout(() => {
       if (!containerRef.current) return;
       const scrollLeft = containerRef.current.scrollLeft;
-      let targetValue = Math.floor((scrollLeft + TICK_WIDTH / 2) / TICK_WIDTH) + min;
+      let targetValue = Math.round(scrollLeft / TICK_WIDTH) + min;
       targetValue = Math.max(min, Math.min(max, targetValue));
       scrollToValue(targetValue);
     }, 50);

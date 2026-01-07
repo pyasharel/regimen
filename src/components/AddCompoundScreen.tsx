@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -212,13 +212,23 @@ export const AddCompoundScreen = () => {
   const [savedCompoundName, setSavedCompoundName] = useState<string>("");
 
   // Check if user can add/edit compound and trigger preview timer
+  // Use a ref to prevent re-running after save (which triggers previewModeCompoundAdded change)
+  const accessCheckedRef = useRef(false);
+  
   useEffect(() => {
+    // If we've already checked access and determined we can proceed, don't re-check
+    // This prevents paywall flicker when previewModeCompoundAdded updates after save
+    if (accessCheckedRef.current && canProceed) {
+      return;
+    }
+    
     if (isEditing) {
       // For editing: Allow if subscribed OR if they only have 1 compound (preview mode)
       const checkEditPermission = async () => {
         if (isSubscribed) {
           setCanProceed(true);
           setShowPreviewTimer(false);
+          accessCheckedRef.current = true;
           return;
         }
 
@@ -238,6 +248,7 @@ export const AddCompoundScreen = () => {
         // Allow editing if they only have 1 compound (preview mode)
         if (count === 1) {
           setCanProceed(true);
+          accessCheckedRef.current = true;
           // Start preview timer if they have added a compound
           if (!previewModeCompoundAdded) {
             console.log('[AddCompound] Starting preview timer for edit');
@@ -249,6 +260,7 @@ export const AddCompoundScreen = () => {
           setShowPaywall(true);
         } else {
           setCanProceed(true);
+          accessCheckedRef.current = true;
         }
       };
       checkEditPermission();
@@ -264,6 +276,7 @@ export const AddCompoundScreen = () => {
           setShowPreviewTimer(false);
         } else {
           setCanProceed(true);
+          accessCheckedRef.current = true;
           // Start preview timer if not subscribed and haven't added preview compound yet
           if (!isSubscribed && !previewModeCompoundAdded) {
             console.log('[AddCompound] 🎯 Starting preview timer for new compound');
@@ -273,7 +286,7 @@ export const AddCompoundScreen = () => {
       };
       checkAccess();
     }
-  }, [isEditing, isSubscribed, previewModeCompoundAdded]);
+  }, [isEditing, isSubscribed, previewModeCompoundAdded, canProceed]);
 
   // Load existing compound data if editing
   useEffect(() => {

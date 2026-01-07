@@ -76,8 +76,8 @@ export const SettingsScreen = () => {
   const handleResetOnboarding = () => {
     try {
       localStorage.removeItem('regimen_onboarding_state');
-      toast.success('Onboarding reset');
-      navigate('/onboarding', { replace: true });
+      toast.success('Onboarding reset - open the app fresh or sign out to test');
+      // Stay on settings screen so user can sign out manually if they want
     } catch (error) {
       console.error('Reset onboarding error:', error);
       toast.error('Failed to reset onboarding');
