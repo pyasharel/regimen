@@ -1,7 +1,7 @@
 import { OnboardingButton } from '../OnboardingButton';
 import { Star } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { RateApp } from 'capacitor-rate-app';
+import { Browser } from '@capacitor/browser';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -29,14 +29,16 @@ const TESTIMONIALS = [
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const handleRate = async () => {
+    // Native in-app rating is intentionally deferred for now.
+    // Fallback: open the App Store search page on native.
     if (Capacitor.isNativePlatform()) {
       try {
-        // Triggers native iOS/Android rating dialog
-        await RateApp.requestReview();
-      } catch (error) {
-        console.log('Rating prompt not shown:', error);
+        await Browser.open({ url: 'https://apps.apple.com/search?term=Regimen' });
+      } catch {
+        // ignore
       }
     }
+
     onComplete();
   };
 
