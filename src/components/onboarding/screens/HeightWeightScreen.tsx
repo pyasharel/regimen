@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { CombinedHeightWeightPicker } from '@/components/ui/ios-wheel-picker';
+import { IOSHeightWeightPicker } from '@/components/ui/ios-height-weight-picker';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -124,12 +124,12 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         </div>
       </div>
 
-      {/* iOS Wheel Pickers */}
+      {/* iOS-style wheels (match the dose time picker) */}
       <div 
         className="flex-1 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-300"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
       >
-        <CombinedHeightWeightPicker
+        <IOSHeightWeightPicker
           unit={unitSystem}
           feet={heightFeet}
           inches={heightInches}
