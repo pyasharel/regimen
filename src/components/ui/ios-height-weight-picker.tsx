@@ -79,8 +79,8 @@ function FlatWheelColumn<T extends WheelValue>({
 
   return (
     <div className={cn("relative", className)} style={{ minWidth }}>
-      {/* Selection highlight with subtle coral tint */}
-      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/8 border-y border-primary/20 pointer-events-none z-10 rounded-xl" />
+      {/* Selection highlight with coral tint */}
+      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/15 border-y border-primary/25 pointer-events-none z-10 rounded-xl" />
 
       <div
         ref={ref}

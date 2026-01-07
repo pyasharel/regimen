@@ -41,25 +41,41 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
           Get a reminder when it's time for your next dose
         </h1>
 
-        {/* Mock notification - with subtle pop-in animation */}
+        {/* Mock notification - with pop-in + attention wiggle animation */}
         <div 
           className="w-full max-w-[300px] bg-white rounded-2xl shadow-lg p-4"
           style={{ 
-            animation: 'notification-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards'
+            animation: 'notification-pop-wiggle 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards'
           }}
         >
           <style>{`
-            @keyframes notification-pop {
+            @keyframes notification-pop-wiggle {
               0% {
                 opacity: 0;
                 transform: scale(0.8) translateY(20px);
               }
-              70% {
-                transform: scale(1.02) translateY(-2px);
+              50% {
+                opacity: 1;
+                transform: scale(1.03) translateY(-3px);
+              }
+              65% {
+                transform: scale(1) translateY(0) rotate(0deg);
+              }
+              72% {
+                transform: rotate(-1.5deg);
+              }
+              79% {
+                transform: rotate(1.5deg);
+              }
+              86% {
+                transform: rotate(-0.8deg);
+              }
+              93% {
+                transform: rotate(0.5deg);
               }
               100% {
                 opacity: 1;
-                transform: scale(1) translateY(0);
+                transform: rotate(0deg);
               }
             }
           `}</style>

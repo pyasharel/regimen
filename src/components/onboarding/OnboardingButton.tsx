@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 interface OnboardingButtonProps {
   children: ReactNode;
@@ -12,6 +14,16 @@ interface OnboardingButtonProps {
   type?: 'button' | 'submit';
 }
 
+const triggerHaptic = async () => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    }
+  } catch (err) {
+    // Ignore haptic errors
+  }
+};
+
 export function OnboardingButton({
   children,
   onClick,
@@ -21,10 +33,16 @@ export function OnboardingButton({
   className,
   type = 'button',
 }: OnboardingButtonProps) {
+  const handleClick = () => {
+    if (disabled || loading) return;
+    triggerHaptic();
+    onClick?.();
+  };
+
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled || loading}
       className={cn(
         // Base styles

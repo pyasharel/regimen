@@ -74,7 +74,7 @@ const initialData: OnboardingData = {
   lastActiveAt: Date.now(),
 };
 
-// Optimized screen order (removed long-term-results, moved name earlier, moved notifications/rating)
+// Optimized screen order - notifications after medication for contextual relevance
 const SCREEN_ORDER = [
   'splash',
   'path-selection',
@@ -89,10 +89,10 @@ const SCREEN_ORDER = [
   'potential', // conditional - now goal-adaptive
   'outcome', // Consolidated (removed long-term-results)
   'rating', // Moved after positive outcome screen
-  'notifications', // Moved earlier for psychological commitment
   'features',
   'privacy',
   'medication-setup',
+  'notifications', // After medication setup for contextual relevance
   'account-creation',
   'loading',
   'disclaimer',

@@ -70,8 +70,8 @@ export function RulerSlider({
     if (!containerRef.current) return;
     
     const scrollLeft = containerRef.current.scrollLeft;
-    // The scroll position directly maps to the value (padding handles centering)
-    let newValue = Math.round(scrollLeft / TICK_WIDTH) + min;
+    // Use floor + 0.5 offset for center-aligned tick selection
+    let newValue = Math.floor((scrollLeft + TICK_WIDTH / 2) / TICK_WIDTH) + min;
     newValue = Math.max(min, Math.min(max, newValue));
     
     if (newValue !== lastValueRef.current) {
@@ -83,15 +83,16 @@ export function RulerSlider({
 
   const handleScrollEnd = () => {
     isDraggingRef.current = false;
-    // Snap to nearest value
+    // Snap to nearest value with small delay to prevent jitter
     if (!containerRef.current) return;
     
-    const scrollLeft = containerRef.current.scrollLeft;
-    // The scroll position directly maps to the value
-    let targetValue = Math.round(scrollLeft / TICK_WIDTH) + min;
-    targetValue = Math.max(min, Math.min(max, targetValue));
-    
-    scrollToValue(targetValue);
+    setTimeout(() => {
+      if (!containerRef.current) return;
+      const scrollLeft = containerRef.current.scrollLeft;
+      let targetValue = Math.floor((scrollLeft + TICK_WIDTH / 2) / TICK_WIDTH) + min;
+      targetValue = Math.max(min, Math.min(max, targetValue));
+      scrollToValue(targetValue);
+    }, 50);
   };
 
   const handleTouchStart = () => {
