@@ -289,7 +289,7 @@ All colors MUST be HSL.
   
   /* iOS Safe Area Support - use max to ensure minimum padding */
   .safe-top {
-    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-top: max(1.5rem, env(safe-area-inset-top));
   }
 
   .app-top-padding {

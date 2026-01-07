@@ -8,8 +8,8 @@ interface PrivacyScreenProps {
 export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+      {/* Content - pushed up from center */}
+      <div className="flex-[0.7] flex flex-col items-center justify-center text-center">
         {/* Partnership illustration - handshake icon with warm styling */}
         <div 
           className="relative mb-8 animate-in zoom-in-50 duration-500"

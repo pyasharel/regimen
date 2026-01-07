@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { Input } from '@/components/ui/input';
+import { RulerSlider } from '@/components/ui/ruler-slider';
 
 interface HeightWeightScreenProps {
   initialData: {
@@ -28,11 +28,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     initialData.heightUnit === 'cm' || initialData.weightUnit === 'kg' ? 'metric' : 'imperial'
   );
   
-  const [heightFeet, setHeightFeet] = useState<string>(initialData.heightFeet?.toString() || '5');
-  const [heightInches, setHeightInches] = useState<string>(initialData.heightInches?.toString() || '10');
-  const [heightCm, setHeightCm] = useState<string>(initialData.heightCm?.toString() || '178');
-  const [weight, setWeight] = useState<string>(
-    initialData.currentWeight?.toString() || (unitSystem === 'imperial' ? '180' : '82')
+  const [heightFeet, setHeightFeet] = useState<number>(initialData.heightFeet || 5);
+  const [heightInches, setHeightInches] = useState<number>(initialData.heightInches || 10);
+  const [heightCm, setHeightCm] = useState<number>(initialData.heightCm || 178);
+  const [weight, setWeight] = useState<number>(
+    initialData.currentWeight || (unitSystem === 'imperial' ? 180 : 82)
   );
 
   // Derived values based on unit system
@@ -46,23 +46,22 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
     // Convert height
     if (newSystem === 'metric') {
       // ft/in to cm
-      const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(heightInches) || 0);
-      setHeightCm(Math.round(totalInches * 2.54).toString());
+      const totalInches = heightFeet * 12 + heightInches;
+      setHeightCm(Math.round(totalInches * 2.54));
     } else {
       // cm to ft/in
-      const totalInches = Math.round((parseInt(heightCm) || 0) / 2.54);
-      setHeightFeet(Math.floor(totalInches / 12).toString());
-      setHeightInches((totalInches % 12).toString());
+      const totalInches = Math.round(heightCm / 2.54);
+      setHeightFeet(Math.floor(totalInches / 12));
+      setHeightInches(totalInches % 12);
     }
     
     // Convert weight
-    const currentWeight = parseFloat(weight) || 0;
     if (newSystem === 'metric') {
       // lb to kg
-      setWeight(Math.round(currentWeight * 0.453592).toString());
+      setWeight(Math.round(weight * 0.453592));
     } else {
       // kg to lb
-      setWeight(Math.round(currentWeight / 0.453592).toString());
+      setWeight(Math.round(weight / 0.453592));
     }
     
     setUnitSystem(newSystem);
@@ -70,11 +69,11 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
   const handleContinue = () => {
     onContinue({
-      heightFeet: heightUnit === 'ft' ? parseInt(heightFeet) || null : null,
-      heightInches: heightUnit === 'ft' ? parseInt(heightInches) || null : null,
-      heightCm: heightUnit === 'cm' ? parseInt(heightCm) || null : null,
+      heightFeet: heightUnit === 'ft' ? heightFeet : null,
+      heightInches: heightUnit === 'ft' ? heightInches : null,
+      heightCm: heightUnit === 'cm' ? heightCm : null,
       heightUnit,
-      currentWeight: parseFloat(weight) || null,
+      currentWeight: weight,
       weightUnit,
     });
   };
@@ -98,7 +97,7 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
       {/* Unit System Toggle - Cal AI style */}
       <div 
-        className="flex justify-center mb-8 animate-in fade-in duration-300"
+        className="flex justify-center mb-6 animate-in fade-in duration-300"
         style={{ animationDelay: '75ms', animationFillMode: 'backwards' }}
       >
         <div className="flex rounded-xl bg-[#F0F0F0] p-1 gap-1">
@@ -125,75 +124,47 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
         </div>
       </div>
 
-      {/* Simple Input Fields */}
+      {/* Slider Inputs */}
       <div 
-        className="flex-1 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300"
+        className="flex-1 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300"
         style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
       >
         {/* Height */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-[#666666]">Height</label>
+          <label className="text-sm font-medium text-[#666666] block text-center">Height</label>
           {unitSystem === 'imperial' ? (
-            <div className="flex gap-3 justify-center">
-              <div className="relative w-24">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="5"
+            <div className="flex gap-4 justify-center">
+              {/* Feet slider */}
+              <div className="flex-1 max-w-[140px]">
+                <RulerSlider
                   min={3}
                   max={8}
                   value={heightFeet}
-                  onChange={(e) => setHeightFeet(e.target.value)}
-                  onBlur={() => {
-                    const val = parseInt(heightFeet);
-                    if (!isNaN(val)) {
-                      setHeightFeet(Math.max(3, Math.min(8, val)).toString());
-                    }
-                  }}
-                  className="text-2xl font-bold text-center h-14 pr-8 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                  onChange={setHeightFeet}
+                  unit="ft"
                 />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">ft</span>
               </div>
-              <div className="relative w-24">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="10"
+              {/* Inches slider */}
+              <div className="flex-1 max-w-[140px]">
+                <RulerSlider
                   min={0}
                   max={11}
                   value={heightInches}
-                  onChange={(e) => setHeightInches(e.target.value)}
-                  onBlur={() => {
-                    const val = parseInt(heightInches);
-                    if (!isNaN(val)) {
-                      setHeightInches(Math.max(0, Math.min(11, val)).toString());
-                    }
-                  }}
-                  className="text-2xl font-bold text-center h-14 pr-8 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                  onChange={setHeightInches}
+                  unit="in"
                 />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">in</span>
               </div>
             </div>
           ) : (
             <div className="flex justify-center">
-              <div className="relative w-28">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="178"
+              <div className="w-full max-w-sm">
+                <RulerSlider
                   min={91}
                   max={244}
                   value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
-                  onBlur={() => {
-                    const val = parseInt(heightCm);
-                    if (!isNaN(val)) {
-                      setHeightCm(Math.max(91, Math.min(244, val)).toString());
-                    }
-                  }}
-                  className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                  onChange={setHeightCm}
+                  unit="cm"
                 />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">cm</span>
               </div>
             </div>
           )}
@@ -201,30 +172,16 @@ export function HeightWeightScreen({ initialData, onContinue, onSkip }: HeightWe
 
         {/* Weight */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-[#666666]">Weight</label>
+          <label className="text-sm font-medium text-[#666666] block text-center">Weight</label>
           <div className="flex justify-center">
-            <div className="relative w-28">
-              <Input
-                type="number"
-                inputMode="decimal"
-                placeholder={unitSystem === 'imperial' ? '180' : '82'}
+            <div className="w-full max-w-sm">
+              <RulerSlider
                 min={unitSystem === 'imperial' ? 50 : 23}
-                max={unitSystem === 'imperial' ? 700 : 318}
+                max={unitSystem === 'imperial' ? 400 : 180}
                 value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                onBlur={() => {
-                  const val = parseFloat(weight);
-                  if (!isNaN(val)) {
-                    const minVal = unitSystem === 'imperial' ? 50 : 23;
-                    const maxVal = unitSystem === 'imperial' ? 700 : 318;
-                    setWeight(Math.max(minVal, Math.min(maxVal, Math.round(val))).toString());
-                  }
-                }}
-                className="text-2xl font-bold text-center h-14 pr-10 bg-white border-[#E5E5E5] text-[#333333] placeholder:text-[#999999]"
+                onChange={setWeight}
+                unit={unitSystem === 'imperial' ? 'lb' : 'kg'}
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] text-sm">
-                {unitSystem === 'imperial' ? 'lbs' : 'kg'}
-              </span>
             </div>
           </div>
         </div>

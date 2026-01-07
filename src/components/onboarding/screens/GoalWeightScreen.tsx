@@ -87,7 +87,7 @@ export function GoalWeightScreen({
           onClick={onSkip}
           className="w-full text-center text-[#999999] text-sm py-2 hover:text-[#666666] transition-colors"
         >
-          I'll set this later
+          Skip this step
         </button>
       </div>
     </div>
