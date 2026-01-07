@@ -42,7 +42,7 @@ export function PrivacyScreen({ onContinue }: PrivacyScreenProps) {
 
         {/* Warm closing - moved here from subhead */}
         <p 
-          className="text-lg text-primary font-medium mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          className="text-base text-[#666666] font-medium mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '400ms', animationFillMode: 'backwards' }}
         >
           Thank you for trusting us

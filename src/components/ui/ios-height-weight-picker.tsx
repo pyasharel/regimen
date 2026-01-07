@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 const ITEM_HEIGHT = 48;
 const WHEEL_HEIGHT = 240;
@@ -27,6 +29,16 @@ function FlatWheelColumn<T extends WheelValue>({
   const ref = React.useRef<HTMLDivElement>(null);
   const lastValueRef = React.useRef<T>(value);
   const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const triggerHaptic = async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      }
+    } catch (err) {
+      // Ignore haptic errors
+    }
+  };
 
   const scrollToValue = React.useCallback(
     (val: T, behavior: ScrollBehavior = "smooth") => {
@@ -67,6 +79,7 @@ function FlatWheelColumn<T extends WheelValue>({
 
       if (next !== lastValueRef.current) {
         lastValueRef.current = next;
+        triggerHaptic();
         onChange(next);
       }
     }, 50);
@@ -80,7 +93,7 @@ function FlatWheelColumn<T extends WheelValue>({
   return (
     <div className={cn("relative", className)} style={{ minWidth }}>
       {/* Selection highlight with coral tint */}
-      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/15 border-y border-primary/25 pointer-events-none z-10 rounded-xl" />
+      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/10 border-y border-primary/20 pointer-events-none z-10 rounded-xl" />
 
       <div
         ref={ref}
