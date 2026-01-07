@@ -79,8 +79,8 @@ function FlatWheelColumn<T extends WheelValue>({
 
   return (
     <div className={cn("relative", className)} style={{ minWidth }}>
-      {/* Selection highlight */}
-      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-muted/30 border-y border-border pointer-events-none z-10 rounded-xl" />
+      {/* Selection highlight with subtle coral tint */}
+      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/8 border-y border-primary/20 pointer-events-none z-10 rounded-xl" />
 
       <div
         ref={ref}
@@ -150,7 +150,7 @@ export function IOSHeightWeightPicker({
       <div className="grid grid-cols-2 gap-6 items-start">
         {/* Height */}
         <div className="flex flex-col items-center">
-          <div className="text-sm font-medium text-muted-foreground mb-3">Height</div>
+          <div className="text-base font-semibold text-muted-foreground mb-3">Height</div>
 
           {unit === "metric" ? (
             <FlatWheelColumn
@@ -182,7 +182,7 @@ export function IOSHeightWeightPicker({
 
         {/* Weight */}
         <div className="flex flex-col items-center">
-          <div className="text-sm font-medium text-muted-foreground mb-3">Weight</div>
+          <div className="text-base font-semibold text-muted-foreground mb-3">Weight</div>
           {unit === "metric" ? (
             <FlatWheelColumn
               options={kgValues}

@@ -61,8 +61,8 @@ export function GoalValidationScreen({
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+      {/* Content positioned ~35% from top */}
+      <div className="pt-[15vh] flex flex-col items-center text-center">
         {/* Animated Checkmark */}
         <div 
           className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-in zoom-in-50 duration-500"
@@ -114,10 +114,7 @@ export function GoalValidationScreen({
       </div>
 
       {/* CTA */}
-      <div 
-        className="animate-in fade-in duration-500"
-        style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}
-      >
+      <div className="mt-auto">
         <OnboardingButton onClick={onContinue}>
           Continue
         </OnboardingButton>

@@ -13,8 +13,8 @@ export function PersonalizationScreen({ pathRouting, onContinue }: Personalizati
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col justify-center">
+      {/* Content positioned ~40% from top */}
+      <div className="pt-[20vh]">
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h1 className="text-2xl font-bold text-[#333333] mb-3">
             {headline}
@@ -26,7 +26,7 @@ export function PersonalizationScreen({ pathRouting, onContinue }: Personalizati
       </div>
 
       {/* CTA */}
-      <div className="animate-in fade-in duration-500" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
+      <div className="mt-auto">
         <OnboardingButton onClick={onContinue}>
           Continue
         </OnboardingButton>
