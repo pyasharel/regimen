@@ -269,8 +269,8 @@ export const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8 safe-top">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm pt-14">
+    <div className="min-h-screen bg-background pb-8">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
           <button
             onClick={() => navigate("/settings")}

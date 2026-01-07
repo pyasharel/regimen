@@ -293,7 +293,7 @@ All colors MUST be HSL.
   }
 
   .app-top-padding {
-    padding-top: calc(env(safe-area-inset-top) + var(--app-banner-height));
+    padding-top: calc(max(1.5rem, env(safe-area-inset-top)) + var(--app-banner-height));
   }
   
   .safe-top-margin {
