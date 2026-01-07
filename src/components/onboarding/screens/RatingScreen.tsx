@@ -1,6 +1,7 @@
 import { OnboardingButton } from '../OnboardingButton';
 import { Star } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { RateApp } from 'capacitor-rate-app';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -28,11 +29,13 @@ const TESTIMONIALS = [
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const handleRate = async () => {
-    // On iOS, this would trigger the native rating dialog
-    // For now, we'll just proceed
     if (Capacitor.isNativePlatform()) {
-      // Could use a native rating plugin here (SKStoreReviewController)
-      // For now, just complete
+      try {
+        // Triggers native iOS/Android rating dialog
+        await RateApp.requestReview();
+      } catch (error) {
+        console.log('Rating prompt not shown:', error);
+      }
     }
     onComplete();
   };

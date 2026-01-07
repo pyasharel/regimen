@@ -47,8 +47,8 @@ export function RulerSlider({
 
   const scrollToValue = useCallback((val: number, smooth = true) => {
     if (!containerRef.current) return;
-    const containerWidth = containerRef.current.offsetWidth;
-    const targetScroll = (val - min) * TICK_WIDTH - containerWidth / 2;
+    // Target scroll positions the value at the center indicator
+    const targetScroll = (val - min) * TICK_WIDTH;
     containerRef.current.scrollTo({
       left: targetScroll,
       behavior: smooth ? 'smooth' : 'auto'
@@ -69,11 +69,9 @@ export function RulerSlider({
   const handleScroll = () => {
     if (!containerRef.current) return;
     
-    const containerWidth = containerRef.current.offsetWidth;
     const scrollLeft = containerRef.current.scrollLeft;
-    const centerPosition = scrollLeft + containerWidth / 2;
-    
-    let newValue = Math.round(centerPosition / TICK_WIDTH) + min;
+    // The scroll position directly maps to the value (padding handles centering)
+    let newValue = Math.round(scrollLeft / TICK_WIDTH) + min;
     newValue = Math.max(min, Math.min(max, newValue));
     
     if (newValue !== lastValueRef.current) {
@@ -88,11 +86,9 @@ export function RulerSlider({
     // Snap to nearest value
     if (!containerRef.current) return;
     
-    const containerWidth = containerRef.current.offsetWidth;
     const scrollLeft = containerRef.current.scrollLeft;
-    const centerPosition = scrollLeft + containerWidth / 2;
-    
-    let targetValue = Math.round(centerPosition / TICK_WIDTH) + min;
+    // The scroll position directly maps to the value
+    let targetValue = Math.round(scrollLeft / TICK_WIDTH) + min;
     targetValue = Math.max(min, Math.min(max, targetValue));
     
     scrollToValue(targetValue);

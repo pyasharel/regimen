@@ -53,13 +53,11 @@ export function GoalValidationScreen({
     return () => clearInterval(timer);
   }, [weightDiff]);
 
-  const headlineText = firstName 
-    ? (isAggressive ? `Great goal, ${firstName}!` : `That's achievable, ${firstName}!`)
-    : (isAggressive ? "Great goal!" : "That's achievable!");
-
   // Dynamic action text based on direction
   const actionWord = isGaining ? 'Gaining' : 'Losing';
   const signPrefix = isGaining ? '+' : '−';
+
+  const headlineText = `${actionWord} ${weightDiff} ${weightUnit} is a solid goal!`;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -104,26 +102,15 @@ export function GoalValidationScreen({
           </div>
         </div>
 
-        {/* Cal AI-style motivational text */}
+        {/* Motivational text in coral box */}
         <div 
           className="bg-primary/5 rounded-xl p-4 max-w-[300px] animate-in fade-in slide-in-from-bottom-4 duration-500"
           style={{ animationDelay: '350ms', animationFillMode: 'backwards' }}
         >
           <p className="text-[#333333] font-medium">
-            {actionWord} {weightDiff} {weightUnit} is a solid goal!
+            People who track consistently get there faster.
           </p>
         </div>
-
-        {/* Separate motivational text below the box */}
-        <p 
-          className="text-[#666666] text-sm mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '450ms', animationFillMode: 'backwards' }}
-        >
-          {isAggressive 
-            ? "We'll help you track every step of the way."
-            : "People who track consistently get there faster."
-          }
-        </p>
       </div>
 
       {/* CTA */}
