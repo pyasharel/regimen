@@ -20,9 +20,12 @@ export function OnboardingLayout({
   showProgress = true,
 }: OnboardingLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
+    <div className="onboarding-root min-h-screen flex flex-col bg-[#FAF8F5]">
       {/* Header with progress bar */}
-      <div className="px-4 pt-14 pb-4">
+      <div
+        className="px-4 pb-4"
+        style={{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top) + 1rem))' }}
+      >
         <div>
           {/* Back button row */}
           <div className="h-10 flex items-center">
