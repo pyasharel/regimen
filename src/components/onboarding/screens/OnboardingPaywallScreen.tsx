@@ -182,10 +182,11 @@ export function OnboardingPaywallScreen({
 
   return (
     <div className="flex-1 flex flex-col -mx-6 -mb-8">
-      {/* Close button - more subtle */}
+      {/* Close button - respects safe area */}
       <button
         onClick={onDismiss}
-        className="absolute top-4 right-4 p-2 text-[#CCCCCC] hover:text-[#999999] transition-colors z-10"
+        className="absolute right-4 p-2 text-[#CCCCCC] hover:text-[#999999] transition-colors z-10"
+        style={{ top: 'max(1rem, calc(env(safe-area-inset-top) + 0.5rem))' }}
       >
         <X className="h-5 w-5" />
       </button>

@@ -41,11 +41,28 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
           Get a reminder when it's time for your next dose
         </h1>
 
-        {/* Mock notification - below headline */}
+        {/* Mock notification - with subtle pop-in animation */}
         <div 
-          className="w-full max-w-[300px] bg-white rounded-2xl shadow-lg p-4 animate-in slide-in-from-bottom-4 duration-500"
-          style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
+          className="w-full max-w-[300px] bg-white rounded-2xl shadow-lg p-4"
+          style={{ 
+            animation: 'notification-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards'
+          }}
         >
+          <style>{`
+            @keyframes notification-pop {
+              0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(20px);
+              }
+              70% {
+                transform: scale(1.02) translateY(-2px);
+              }
+              100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+              }
+            }
+          `}</style>
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Bell className="h-5 w-5 text-primary" />
