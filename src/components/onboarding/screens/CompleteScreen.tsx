@@ -18,8 +18,8 @@ export function CompleteScreen({ firstName, medicationName, onContinue }: Comple
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+      {/* Content positioned ~40% from top */}
+      <div className="pt-[20vh] flex flex-col items-center text-center">
         {/* Success checkmark */}
         <div 
           className="h-20 w-20 rounded-full bg-primary flex items-center justify-center mb-6 animate-in zoom-in-50 duration-500"
@@ -45,10 +45,7 @@ export function CompleteScreen({ firstName, medicationName, onContinue }: Comple
       </div>
 
       {/* CTA */}
-      <div 
-        className="animate-in fade-in duration-500"
-        style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}
-      >
+      <div className="mt-auto">
         <OnboardingButton onClick={onContinue}>
           Let's Go
         </OnboardingButton>

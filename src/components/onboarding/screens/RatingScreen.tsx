@@ -44,8 +44,8 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+      {/* Content positioned ~30% from top */}
+      <div className="pt-[12vh] flex flex-col items-center text-center">
         {/* Coral Stars */}
         <div 
           className="flex gap-1 mb-6 animate-in zoom-in-50 duration-500"
@@ -107,10 +107,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
       </div>
 
       {/* CTAs */}
-      <div 
-        className="space-y-3 animate-in fade-in duration-500"
-        style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}
-      >
+      <div className="mt-auto space-y-3">
         <OnboardingButton onClick={handleRate}>
           Rate Regimen
         </OnboardingButton>

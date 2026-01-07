@@ -32,8 +32,8 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Content centered */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      {/* Content positioned ~38% from top */}
+      <div className="pt-[18vh] flex flex-col items-center">
         {/* Single simplified headline */}
         <h1 
           className="text-2xl font-bold text-[#333333] mb-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
@@ -62,10 +62,7 @@ export function NotificationsScreen({ medicationName, onEnable, onSkip }: Notifi
       </div>
 
       {/* CTAs */}
-      <div 
-        className="space-y-3 animate-in fade-in duration-500"
-        style={{ animationDelay: '400ms', animationFillMode: 'backwards' }}
-      >
+      <div className="mt-auto space-y-3">
         <OnboardingButton onClick={handleEnable}>
           Enable Reminders
         </OnboardingButton>
