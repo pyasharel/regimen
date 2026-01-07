@@ -22,8 +22,8 @@ export function OnboardingLayout({
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
       {/* Header with progress bar */}
-      <div className="safe-top px-4 pb-4">
-        <div className="pt-2">
+      <div className="px-4 pt-14 pb-4">
+        <div>
           {/* Back button row */}
           <div className="h-10 flex items-center">
             {showBack && onBack && (
