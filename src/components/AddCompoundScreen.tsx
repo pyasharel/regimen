@@ -212,18 +212,24 @@ export const AddCompoundScreen = () => {
   const [savedCompoundName, setSavedCompoundName] = useState<string>("");
 
   // Check if user can add/edit compound and trigger preview timer
-  // Use a ref to prevent re-running after save (which triggers previewModeCompoundAdded change)
+  // Use refs to prevent re-running checks and to track user dismissal
   const accessCheckedRef = useRef(false);
+  const paywallDismissedRef = useRef(false);
   
-  // Reset access check on mount to ensure fresh check each time screen opens
+  // Reset refs on mount to ensure fresh check each time screen opens
   useEffect(() => {
     accessCheckedRef.current = false;
+    paywallDismissedRef.current = false;
     setCanProceed(false);
   }, []);
   
   useEffect(() => {
+    // If user explicitly dismissed paywall, don't re-open it
+    if (paywallDismissedRef.current) {
+      return;
+    }
+    
     // If we've already checked access during THIS mount, don't re-check
-    // This prevents paywall flicker when previewModeCompoundAdded updates after save
     if (accessCheckedRef.current) {
       return;
     }
@@ -2125,10 +2131,11 @@ export const AddCompoundScreen = () => {
           <SubscriptionPaywall 
             open={showPaywall}
             onOpenChange={(open) => {
-              setShowPaywall(open);
               if (!open) {
+                paywallDismissedRef.current = true;
                 navigate(-1);
               }
+              setShowPaywall(open);
             }}
             message={isEditing ? "Subscribe to edit your compounds and access all features" : "Subscribe to add unlimited compounds and unlock all features"}
           />
@@ -2148,7 +2155,12 @@ export const AddCompoundScreen = () => {
       
       <SubscriptionPaywall 
         open={showPaywall && canProceed}
-        onOpenChange={setShowPaywall}
+        onOpenChange={(open) => {
+          if (!open) {
+            paywallDismissedRef.current = true;
+          }
+          setShowPaywall(open);
+        }}
         message="Subscribe to unlock all features"
       />
 

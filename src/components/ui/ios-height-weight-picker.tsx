@@ -30,7 +30,7 @@ function FlatWheelColumn<T extends WheelValue>({
   const lastValueRef = React.useRef<T>(value);
   const lastHapticTimeRef = React.useRef<number>(0);
 
-  const triggerHaptic = async () => {
+  const triggerHaptic = React.useCallback(async () => {
     const now = Date.now();
     if (now - lastHapticTimeRef.current < HAPTIC_THROTTLE_MS) return;
     lastHapticTimeRef.current = now;
@@ -42,7 +42,7 @@ function FlatWheelColumn<T extends WheelValue>({
     } catch (err) {
       // Ignore haptic errors
     }
-  };
+  }, []);
 
   const scrollToValue = React.useCallback(
     (val: T, behavior: ScrollBehavior = "smooth") => {
@@ -80,7 +80,7 @@ function FlatWheelColumn<T extends WheelValue>({
       lastValueRef.current = next;
       onChange(next);
     }
-  }, [onChange, options]);
+  }, [onChange, options, triggerHaptic]);
 
   const handleItemTap = (opt: T) => {
     onChange(opt);

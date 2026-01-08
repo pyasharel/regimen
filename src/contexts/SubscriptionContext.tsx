@@ -410,7 +410,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const canAddCompound = async (): Promise<boolean> => {
-    console.log('[canAddCompound] Checking...', { isSubscribed, previewModeCompoundAdded });
+    console.log('[canAddCompound] Checking...', { isSubscribed });
     
     if (isSubscribed) {
       console.log('[canAddCompound] ✅ Subscribed - unlimited');
@@ -428,27 +428,22 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
-    console.log('[canAddCompound] Compound count:', count, 'previewModeCompoundAdded:', previewModeCompoundAdded);
+    console.log('[canAddCompound] Compound count:', count);
 
     if (error) {
       console.error('[canAddCompound] Error:', error);
       return false;
     }
 
-    // Allow first compound if no compounds exist
+    // SIMPLE RULE: Only allow if user has 0 compounds
+    // Once they have ANY compound (from onboarding or manual), block additions
+    // This enforces the "1 total compound free" rule
     if (count === 0) {
       console.log('[canAddCompound] ✅ First compound allowed (no compounds)');
       return true;
     }
 
-    // If user has 1 compound and preview_mode_compound_added is NOT set,
-    // that compound is from onboarding - allow one more manual addition
-    if (count === 1 && !previewModeCompoundAdded) {
-      console.log('[canAddCompound] ✅ One compound from onboarding, allowing manual addition');
-      return true;
-    }
-
-    console.log('[canAddCompound] ❌ Blocked - already has compound(s) or preview compound added');
+    console.log('[canAddCompound] ❌ Blocked - already has compound(s)');
     return false;
   };
 
