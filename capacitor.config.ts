@@ -11,7 +11,10 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      // Set to 0 - we hide programmatically after React is ready
+      // This ensures onboarding animations are visible
+      launchShowDuration: 0,
+      launchAutoHide: false,
       backgroundColor: "#000000",
       showSpinner: false,
       splashFullScreen: true,

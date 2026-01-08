@@ -11,9 +11,10 @@ import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionCo
 import { PaywallProvider, usePaywall } from "@/contexts/PaywallContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { toast } from "sonner";
 import { persistentStorage, PERSISTENT_STORAGE_KEYS } from "@/utils/persistentStorage";
 import { Onboarding } from "./components/Onboarding";
@@ -109,6 +110,21 @@ const AppContent = () => {
 };
 
 const App = () => {
+  const splashHidden = useRef(false);
+
+  // Hide native splash screen once React is ready
+  useEffect(() => {
+    if (splashHidden.current) return;
+    splashHidden.current = true;
+    
+    // Small delay to ensure first paint, then hide native splash
+    requestAnimationFrame(() => {
+      SplashScreen.hide().catch(() => {
+        // Ignore errors on web where SplashScreen isn't available
+      });
+    });
+  }, []);
+
   // Migrate localStorage to Capacitor Preferences on app start
   useEffect(() => {
     persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
