@@ -1,7 +1,7 @@
 import { OnboardingButton } from '../OnboardingButton';
 import { Star } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
+import { InAppReview } from '@capacitor-community/in-app-review';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -29,13 +29,11 @@ const TESTIMONIALS = [
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const handleRate = async () => {
-    // Native in-app rating is intentionally deferred for now.
-    // Fallback: open the App Store search page on native.
     if (Capacitor.isNativePlatform()) {
       try {
-        await Browser.open({ url: 'https://apps.apple.com/search?term=Regimen' });
-      } catch {
-        // ignore
+        await InAppReview.requestReview();
+      } catch (error) {
+        console.log('In-app review not available:', error);
       }
     }
 
