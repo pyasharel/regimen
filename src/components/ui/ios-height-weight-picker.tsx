@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 
 const ITEM_HEIGHT = 48;
 const WHEEL_PADDING = 96; // 2 items above + 2 items below
-const HAPTIC_THROTTLE_MS = 30; // Minimum ms between haptics for rapid scrolling
+const HAPTIC_THROTTLE_MS = 25; // Minimum ms between haptics for rapid scrolling
 
 type WheelValue = string | number;
 
@@ -76,8 +76,8 @@ function FlatWheelColumn<T extends WheelValue>({
     const next = options[bounded];
 
     if (next !== lastValueRef.current) {
+      triggerHaptic(); // Fire haptic FIRST before updating ref
       lastValueRef.current = next;
-      triggerHaptic();
       onChange(next);
     }
   }, [onChange, options]);

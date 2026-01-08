@@ -18,7 +18,7 @@ const TICK_WIDTH = 10; // pixels per unit
 const MAJOR_TICK_INTERVAL = 10; // Every 10 units is a major tick
 const MINOR_TICK_HEIGHT = 24; // Taller ticks
 const MAJOR_TICK_HEIGHT = 40; // Much taller major ticks
-const HAPTIC_THROTTLE_MS = 30; // Minimum ms between haptics
+const HAPTIC_THROTTLE_MS = 25; // Minimum ms between haptics
 
 export function RulerSlider({
   min,
@@ -72,7 +72,7 @@ export function RulerSlider({
     }
   }, [value, scrollToValue]);
 
-  const handleScroll = () => {
+const handleScroll = () => {
     if (!containerRef.current) return;
     
     const scrollLeft = containerRef.current.scrollLeft;
@@ -81,8 +81,8 @@ export function RulerSlider({
     newValue = Math.max(min, Math.min(max, newValue));
     
     if (newValue !== lastValueRef.current) {
+      triggerHaptic(); // Fire haptic FIRST before updating ref
       lastValueRef.current = newValue;
-      triggerHaptic();
       onChange(newValue);
     }
   };
