@@ -1,11 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Haptics } from '@capacitor/haptics';
-import { Capacitor } from '@capacitor/core';
+import { usePickerHaptics } from "@/hooks/usePickerHaptics";
 
 const ITEM_HEIGHT = 48;
 const WHEEL_PADDING = 96; // 2 items above + 2 items below
-const HAPTIC_THROTTLE_MS = 25; // Minimum ms between haptics for rapid scrolling
 
 type WheelValue = string | number;
 
@@ -28,21 +26,7 @@ function FlatWheelColumn<T extends WheelValue>({
 }: FlatWheelColumnProps<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const lastValueRef = React.useRef<T>(value);
-  const lastHapticTimeRef = React.useRef<number>(0);
-
-  const triggerHaptic = React.useCallback(async () => {
-    const now = Date.now();
-    if (now - lastHapticTimeRef.current < HAPTIC_THROTTLE_MS) return;
-    lastHapticTimeRef.current = now;
-    
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.selectionChanged();
-      }
-    } catch (err) {
-      // Ignore haptic errors
-    }
-  }, []);
+  const { triggerHaptic } = usePickerHaptics();
 
   const scrollToValue = React.useCallback(
     (val: T, behavior: ScrollBehavior = "smooth") => {
@@ -83,6 +67,7 @@ function FlatWheelColumn<T extends WheelValue>({
   }, [onChange, options, triggerHaptic]);
 
   const handleItemTap = (opt: T) => {
+    triggerHaptic();
     onChange(opt);
     scrollToValue(opt, "smooth");
   };
