@@ -542,6 +542,11 @@ All colors MUST be HSL.
       transform: scale(1);
     }
   }
+  
+  .animate-logo-entrance {
+    animation: logo-entrance 1s ease-out forwards;
+  }
+
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     .animate-shimmer,
