@@ -1,5 +1,7 @@
 import { OnboardingButton } from '../OnboardingButton';
 import { Star } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { InAppReview } from '@/plugins/InAppReviewPlugin';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -27,9 +29,13 @@ const TESTIMONIALS = [
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const handleRate = async () => {
-    // Native in-app review requires @capacitor-community/in-app-review v8+
-    // which needs Capacitor 8.x. For now, just complete the flow.
-    // TODO: Add in-app review when upgrading to Capacitor 8
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await InAppReview.requestReview();
+      } catch (error) {
+        console.log('In-app review not available:', error);
+      }
+    }
     onComplete();
   };
 
