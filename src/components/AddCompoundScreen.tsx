@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { usePaywall } from "@/contexts/PaywallContext";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted, trackCycleEnabled, trackCalculatorUsed } from "@/utils/analytics";
@@ -196,7 +196,8 @@ export const AddCompoundScreen = () => {
     previewModeCompoundAdded 
   } = useSubscription();
   
-  const [showPaywall, setShowPaywall] = useState(false);
+  const { openPaywall } = usePaywall();
+  
   const [canProceed, setCanProceed] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -212,23 +213,16 @@ export const AddCompoundScreen = () => {
   const [savedCompoundName, setSavedCompoundName] = useState<string>("");
 
   // Check if user can add/edit compound and trigger preview timer
-  // Use refs to prevent re-running checks and to track user dismissal
+  // Use refs to prevent re-running checks
   const accessCheckedRef = useRef(false);
-  const paywallDismissedRef = useRef(false);
   
   // Reset refs on mount to ensure fresh check each time screen opens
   useEffect(() => {
     accessCheckedRef.current = false;
-    paywallDismissedRef.current = false;
     setCanProceed(false);
   }, []);
   
   useEffect(() => {
-    // If user explicitly dismissed paywall, don't re-open it
-    if (paywallDismissedRef.current) {
-      return;
-    }
-    
     // If we've already checked access during THIS mount, don't re-check
     if (accessCheckedRef.current) {
       return;
@@ -248,7 +242,10 @@ export const AddCompoundScreen = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setCanProceed(false);
-          setShowPaywall(true);
+          openPaywall({ 
+            message: "Subscribe to edit your compounds and access all features",
+            onDismiss: () => navigate(-1)
+          });
           return;
         }
 
@@ -269,7 +266,10 @@ export const AddCompoundScreen = () => {
         } else if (count && count > 1) {
           // Safety check - shouldn't happen, but block if they have multiple
           setCanProceed(false);
-          setShowPaywall(true);
+          openPaywall({ 
+            message: "Subscribe to edit your compounds and access all features",
+            onDismiss: () => navigate(-1)
+          });
         } else {
           setCanProceed(true);
           accessCheckedRef.current = true;
@@ -283,7 +283,11 @@ export const AddCompoundScreen = () => {
         console.log('[AddCompound] Can add compound:', allowed, 'isSubscribed:', isSubscribed);
         
         if (!allowed) {
-          setShowPaywall(true);
+          accessCheckedRef.current = true; // Mark as checked to prevent re-triggers
+          openPaywall({ 
+            message: "Subscribe to add unlimited compounds and unlock all features",
+            onDismiss: () => navigate(-1)
+          });
           setCanProceed(false);
           setShowPreviewTimer(false);
         } else {
@@ -298,7 +302,7 @@ export const AddCompoundScreen = () => {
       };
       checkAccess();
     }
-  }, [isEditing, isSubscribed, previewModeCompoundAdded, canProceed]);
+  }, [isEditing, isSubscribed]);
 
   // Load existing compound data if editing
   useEffect(() => {
@@ -1932,7 +1936,10 @@ export const AddCompoundScreen = () => {
               {!isSubscribed && !canProceed && (
                 <button
                   type="button"
-                  onClick={() => setShowPaywall(true)}
+                  onClick={() => openPaywall({ 
+                    message: "Subscribe to unlock cycle management",
+                    onDismiss: () => navigate(-1)
+                  })}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 >
                   🔒 <span className="underline">Subscribe</span>
@@ -2126,22 +2133,6 @@ export const AddCompoundScreen = () => {
         </div>
       </div>
 
-      {!canProceed && !isSubscribed && (
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <SubscriptionPaywall 
-            open={showPaywall}
-            onOpenChange={(open) => {
-              if (!open) {
-                paywallDismissedRef.current = true;
-                navigate(-1);
-              }
-              setShowPaywall(open);
-            }}
-            message={isEditing ? "Subscribe to edit your compounds and access all features" : "Subscribe to add unlimited compounds and unlock all features"}
-          />
-        </div>
-      )}
-      
       {showPreviewTimer && !isSubscribed && (
         <PreviewModeTimer 
           onTimerStart={() => console.log('[AddCompound] ⏱️ Preview timer started')}
@@ -2152,17 +2143,6 @@ export const AddCompoundScreen = () => {
           }}
         />
       )}
-      
-      <SubscriptionPaywall 
-        open={showPaywall && canProceed}
-        onOpenChange={(open) => {
-          if (!open) {
-            paywallDismissedRef.current = true;
-          }
-          setShowPaywall(open);
-        }}
-        message="Subscribe to unlock all features"
-      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

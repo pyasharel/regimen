@@ -51,7 +51,7 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
-  const { openPaywall, isPaywallOpen, setPaywallOpen } = usePaywall();
+  const { openPaywall, isPaywallOpen, setPaywallOpen, paywallMessage, closePaywall } = usePaywall();
 
   return (
     <>
@@ -61,7 +61,7 @@ const AppContent = () => {
         <Sonner />
         <SubscriptionBanners 
           subscriptionStatus={subscriptionStatus}
-          onUpgrade={openPaywall}
+          onUpgrade={() => openPaywall()}
         />
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
@@ -97,9 +97,12 @@ const AppContent = () => {
           </Routes>
         </TooltipProvider>
         
+        {/* SINGLE GLOBAL PAYWALL - all screens use context to open this */}
         <SubscriptionPaywall 
           open={isPaywallOpen}
           onOpenChange={setPaywallOpen}
+          onDismiss={closePaywall}
+          message={paywallMessage}
         />
     </>
   );

@@ -1,8 +1,7 @@
 import * as React from "react";
 import { useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Haptics } from '@capacitor/haptics';
-import { Capacitor } from '@capacitor/core';
+import { usePickerHaptics } from "@/hooks/usePickerHaptics";
 
 interface RulerSliderProps {
   min: number;
@@ -18,7 +17,6 @@ const TICK_WIDTH = 10; // pixels per unit
 const MAJOR_TICK_INTERVAL = 10; // Every 10 units is a major tick
 const MINOR_TICK_HEIGHT = 24; // Taller ticks
 const MAJOR_TICK_HEIGHT = 40; // Much taller major ticks
-const HAPTIC_THROTTLE_MS = 25; // Minimum ms between haptics
 
 export function RulerSlider({
   min,
@@ -33,21 +31,7 @@ export function RulerSlider({
   const rulerRef = useRef<HTMLDivElement>(null);
   const lastValueRef = useRef(value);
   const isDraggingRef = useRef(false);
-  const lastHapticTimeRef = useRef<number>(0);
-
-  const triggerHaptic = useCallback(async () => {
-    const now = Date.now();
-    if (now - lastHapticTimeRef.current < HAPTIC_THROTTLE_MS) return;
-    lastHapticTimeRef.current = now;
-    
-    try {
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.selectionChanged();
-      }
-    } catch (err) {
-      // Ignore haptic errors
-    }
-  }, []);
+  const { triggerHaptic } = usePickerHaptics();
 
   const totalWidth = (max - min) * TICK_WIDTH;
 
