@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler } from "lucide-react";
+import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler, Star } from "lucide-react";
+import { Capacitor } from '@capacitor/core';
+import { InAppReview } from '@/plugins/InAppReviewPlugin';
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -9,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Capacitor } from '@capacitor/core';
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
@@ -96,6 +97,24 @@ export const SettingsScreen = () => {
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
+  const handleRateApp = async () => {
+    console.log('[Settings] handleRateApp called, isNative:', Capacitor.isNativePlatform());
+    if (Capacitor.isNativePlatform()) {
+      try {
+        toast.info('Requesting rating prompt...', { duration: 2000 });
+        await new Promise(resolve => setTimeout(resolve, 400));
+        console.log('[Settings] Calling InAppReview.requestReview()');
+        await InAppReview.requestReview();
+        console.log('[Settings] requestReview completed');
+      } catch (error) {
+        console.log('[Settings] In-app review error:', error);
+        toast.error('Rating prompt unavailable');
+      }
+    } else {
+      toast.info('Rating is available in the native app');
+    }
+  };
+
   const settingsSections = [
     {
       icon: User,
@@ -160,6 +179,11 @@ export const SettingsScreen = () => {
       icon: MessageSquare,
       label: "Feedback",
       onClick: handleSendFeedback,
+    },
+    {
+      icon: Star,
+      label: "Rate Regimen",
+      onClick: handleRateApp,
     },
   ];
 
@@ -278,7 +302,7 @@ export const SettingsScreen = () => {
           </div>
         </button>
 
-        {/* Support - Combined into one card */}
+        {/* Support - Separate buttons */}
         <button
           onClick={() => navigate("/settings/help")}
           className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
@@ -290,6 +314,22 @@ export const SettingsScreen = () => {
             <div>
               <span className="font-semibold">Support</span>
               <p className="text-sm text-muted-foreground">Help & Feedback</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Rate App Button - for testing native review */}
+        <button
+          onClick={handleRateApp}
+          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Star className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <span className="font-semibold">Rate Regimen</span>
+              <p className="text-sm text-muted-foreground">Leave a review on the App Store</p>
             </div>
           </div>
         </button>
