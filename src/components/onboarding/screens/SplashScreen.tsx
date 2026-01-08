@@ -8,20 +8,29 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
+  const [logoAnimate, setLogoAnimate] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [showCTA, setShowCTA] = useState(false);
 
+  // Trigger logo animation after component is definitely visible
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => setLogoAnimate(true), 50);
+    });
+  }, []);
+
   // Stagger the content reveal after logo animation completes
   useEffect(() => {
-    // Text appears after logo animation (1.2s)
-    const textTimer = setTimeout(() => setShowContent(true), 1200);
-    // CTA appears 1.5s after text (so 2.7s total) - gives time to read
-    const ctaTimer = setTimeout(() => setShowCTA(true), 2700);
+    if (!logoAnimate) return;
+    // Text appears after logo animation (1s)
+    const textTimer = setTimeout(() => setShowContent(true), 1000);
+    // CTA appears 0.8s after text
+    const ctaTimer = setTimeout(() => setShowCTA(true), 1800);
     return () => {
       clearTimeout(textTimer);
       clearTimeout(ctaTimer);
     };
-  }, []);
+  }, [logoAnimate]);
 
   return (
     <div className="flex-1 flex flex-col">
@@ -30,8 +39,8 @@ export function SplashScreen({ onContinue, onSignIn }: SplashScreenProps) {
         {/* Logo with pronounced scale + fade animation - appears first */}
         <div 
           style={{ 
-            opacity: 0,
-            animation: 'logo-entrance 1s ease-out forwards'
+            opacity: logoAnimate ? undefined : 0,
+            animation: logoAnimate ? 'logo-entrance 1s ease-out forwards' : 'none'
           }}
         >
           <img 

@@ -215,10 +215,16 @@ export const AddCompoundScreen = () => {
   // Use a ref to prevent re-running after save (which triggers previewModeCompoundAdded change)
   const accessCheckedRef = useRef(false);
   
+  // Reset access check on mount to ensure fresh check each time screen opens
   useEffect(() => {
-    // If we've already checked access and determined we can proceed, don't re-check
+    accessCheckedRef.current = false;
+    setCanProceed(false);
+  }, []);
+  
+  useEffect(() => {
+    // If we've already checked access during THIS mount, don't re-check
     // This prevents paywall flicker when previewModeCompoundAdded updates after save
-    if (accessCheckedRef.current && canProceed) {
+    if (accessCheckedRef.current) {
       return;
     }
     
