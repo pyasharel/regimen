@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
-import { Star } from 'lucide-react';
+import { Star, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
+import { toast } from 'sonner';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -28,17 +30,37 @@ const TESTIMONIALS = [
 ];
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
+  const [isRequesting, setIsRequesting] = useState(false);
+
   const handleRate = async () => {
-    console.log('handleRate called, isNative:', Capacitor.isNativePlatform());
+    console.log('[RatingScreen] handleRate called, isNative:', Capacitor.isNativePlatform());
+    setIsRequesting(true);
+    
     if (Capacitor.isNativePlatform()) {
       try {
-        console.log('Calling InAppReview.requestReview()');
+        // Show toast so user knows something is happening
+        toast.info('Requesting rating prompt...', { duration: 2000 });
+        
+        // Small delay to let the UI settle
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        console.log('[RatingScreen] Calling InAppReview.requestReview()');
         await InAppReview.requestReview();
-        console.log('requestReview completed');
+        console.log('[RatingScreen] requestReview completed');
+        
+        // Wait a bit for the dialog to potentially appear
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
       } catch (error) {
-        console.log('In-app review error:', error);
+        console.log('[RatingScreen] In-app review error:', error);
+        toast.error('Rating prompt unavailable', { duration: 2000 });
       }
+    } else {
+      // Web fallback - just show a message
+      toast.info('Rating is available in the native app', { duration: 2000 });
     }
+    
+    setIsRequesting(false);
     onComplete();
   };
 
@@ -108,13 +130,21 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
       {/* CTAs */}
       <div className="mt-auto space-y-3">
-        <OnboardingButton onClick={handleRate}>
-          Rate Regimen
+        <OnboardingButton onClick={handleRate} disabled={isRequesting}>
+          {isRequesting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Requesting...
+            </>
+          ) : (
+            'Rate Regimen'
+          )}
         </OnboardingButton>
         
         <button
           onClick={onSkip}
-          className="w-full text-center text-[#999999] text-sm py-2 hover:text-[#666666] transition-colors"
+          disabled={isRequesting}
+          className="w-full text-center text-[#999999] text-sm py-2 hover:text-[#666666] transition-colors disabled:opacity-50"
         >
           Maybe later
         </button>
