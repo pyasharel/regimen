@@ -29,11 +29,14 @@ const TESTIMONIALS = [
 
 export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const handleRate = async () => {
+    console.log('handleRate called, isNative:', Capacitor.isNativePlatform());
     if (Capacitor.isNativePlatform()) {
       try {
+        console.log('Calling InAppReview.requestReview()');
         await InAppReview.requestReview();
+        console.log('requestReview completed');
       } catch (error) {
-        console.log('In-app review not available:', error);
+        console.log('In-app review error:', error);
       }
     }
     onComplete();
