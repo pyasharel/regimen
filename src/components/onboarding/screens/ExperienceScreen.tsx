@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OnboardingCard } from '../OnboardingCard';
+import { OnboardingButton } from '../OnboardingButton';
 import { ExperienceLevel } from '../hooks/useOnboardingState';
 
 interface ExperienceScreenProps {
@@ -16,12 +17,10 @@ const EXPERIENCE_OPTIONS: { id: ExperienceLevel; label: string }[] = [
 export function ExperienceScreen({ initialLevel, onSelect }: ExperienceScreenProps) {
   const [selected, setSelected] = useState<ExperienceLevel | null>(initialLevel);
 
-  const handleSelect = (level: ExperienceLevel) => {
-    setSelected(level);
-    // Auto-advance after brief delay
-    setTimeout(() => {
-      onSelect(level);
-    }, 300);
+  const handleContinue = () => {
+    if (selected) {
+      onSelect(selected);
+    }
   };
 
   return (
@@ -41,13 +40,23 @@ export function ExperienceScreen({ initialLevel, onSelect }: ExperienceScreenPro
           <OnboardingCard
             key={option.id}
             selected={selected === option.id}
-            onClick={() => handleSelect(option.id)}
+            onClick={() => setSelected(option.id)}
             accentBorder
             delay={index * 100}
           >
             <p className="font-medium text-[#333333] pr-8">{option.label}</p>
           </OnboardingCard>
         ))}
+      </div>
+
+      {/* Continue Button */}
+      <div className="mt-auto pt-6">
+        <OnboardingButton 
+          onClick={handleContinue}
+          disabled={!selected}
+        >
+          Continue
+        </OnboardingButton>
       </div>
     </div>
   );

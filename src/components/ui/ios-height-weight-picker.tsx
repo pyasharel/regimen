@@ -1,11 +1,11 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
 const ITEM_HEIGHT = 48;
-const WHEEL_HEIGHT = 240;
 const WHEEL_PADDING = 96; // 2 items above + 2 items below
+const HAPTIC_THROTTLE_MS = 30; // Minimum ms between haptics for rapid scrolling
 
 type WheelValue = string | number;
 
@@ -28,12 +28,16 @@ function FlatWheelColumn<T extends WheelValue>({
 }: FlatWheelColumnProps<T>) {
   const ref = React.useRef<HTMLDivElement>(null);
   const lastValueRef = React.useRef<T>(value);
-  const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastHapticTimeRef = React.useRef<number>(0);
 
   const triggerHaptic = async () => {
+    const now = Date.now();
+    if (now - lastHapticTimeRef.current < HAPTIC_THROTTLE_MS) return;
+    lastHapticTimeRef.current = now;
+    
     try {
       if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Light });
+        await Haptics.selectionChanged();
       }
     } catch (err) {
       // Ignore haptic errors
@@ -66,23 +70,16 @@ function FlatWheelColumn<T extends WheelValue>({
 
   const handleScroll = React.useCallback(() => {
     if (!ref.current) return;
+    
+    const index = Math.round(ref.current.scrollTop / ITEM_HEIGHT);
+    const bounded = Math.max(0, Math.min(options.length - 1, index));
+    const next = options[bounded];
 
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
+    if (next !== lastValueRef.current) {
+      lastValueRef.current = next;
+      triggerHaptic();
+      onChange(next);
     }
-
-    scrollTimeoutRef.current = setTimeout(() => {
-      if (!ref.current) return;
-      const index = Math.round(ref.current.scrollTop / ITEM_HEIGHT);
-      const bounded = Math.max(0, Math.min(options.length - 1, index));
-      const next = options[bounded];
-
-      if (next !== lastValueRef.current) {
-        lastValueRef.current = next;
-        triggerHaptic();
-        onChange(next);
-      }
-    }, 50);
   }, [onChange, options]);
 
   const handleItemTap = (opt: T) => {
@@ -92,8 +89,8 @@ function FlatWheelColumn<T extends WheelValue>({
 
   return (
     <div className={cn("relative", className)} style={{ minWidth }}>
-      {/* Selection highlight with coral tint */}
-      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/10 border-y border-primary/20 pointer-events-none z-10 rounded-xl" />
+      {/* Selection highlight with coral tint - 9% opacity */}
+      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-primary/[0.09] border-y border-primary/20 pointer-events-none z-10 rounded-xl" />
 
       <div
         ref={ref}

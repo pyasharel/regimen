@@ -292,11 +292,7 @@ All colors MUST be HSL.
     padding-top: max(1.5rem, env(safe-area-inset-top));
   }
 
-  /* Onboarding: remove staged animation delays (improves perceived performance) */
-  .onboarding-root .animate-in {
-    animation-delay: 0ms !important;
-    animation-fill-mode: both !important;
-  }
+  /* Onboarding layout uses light mode */
 
   .app-top-padding {
     padding-top: calc(max(1.5rem, env(safe-area-inset-top)) + var(--app-banner-height));

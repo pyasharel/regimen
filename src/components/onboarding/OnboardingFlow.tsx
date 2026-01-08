@@ -378,8 +378,16 @@ export function OnboardingFlow() {
             pathRouting={data.pathRouting}
             initialMedication={data.medication}
             onContinue={(medication) => {
+              // Update data first
               updateData({ medication });
-              handleNext();
+              // Navigate directly - medication is set, so don't skip notifications
+              let nextStep = currentStep + 1;
+              // Skip any non-notifications screens if needed, but NOT notifications
+              while (SCREEN_ORDER[nextStep] && 
+                !['notifications', 'account-creation', 'loading', 'paywall', 'disclaimer', 'complete'].includes(SCREEN_ORDER[nextStep])) {
+                nextStep++;
+              }
+              setCurrentStep(nextStep);
             }}
             onSkip={handleNext}
           />
