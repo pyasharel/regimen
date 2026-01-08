@@ -35,7 +35,7 @@ export function RulerSlider({
   const isDraggingRef = useRef(false);
   const lastHapticTimeRef = useRef<number>(0);
 
-  const triggerHaptic = async () => {
+  const triggerHaptic = useCallback(async () => {
     const now = Date.now();
     if (now - lastHapticTimeRef.current < HAPTIC_THROTTLE_MS) return;
     lastHapticTimeRef.current = now;
@@ -47,7 +47,7 @@ export function RulerSlider({
     } catch (err) {
       // Ignore haptic errors
     }
-  };
+  }, []);
 
   const totalWidth = (max - min) * TICK_WIDTH;
 
@@ -72,7 +72,7 @@ export function RulerSlider({
     }
   }, [value, scrollToValue]);
 
-const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (!containerRef.current) return;
     
     const scrollLeft = containerRef.current.scrollLeft;
@@ -85,7 +85,7 @@ const handleScroll = () => {
       lastValueRef.current = newValue;
       onChange(newValue);
     }
-  };
+  }, [min, max, onChange, triggerHaptic]);
 
   const handleScrollEnd = () => {
     isDraggingRef.current = false;
