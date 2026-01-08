@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OnboardingCard } from '../OnboardingCard';
+import { OnboardingButton } from '../OnboardingButton';
 import { PathType, PathRouting } from '../hooks/useOnboardingState';
 
 interface PathSelectionScreenProps {
@@ -35,13 +36,17 @@ const PATH_OPTIONS = [
 
 export function PathSelectionScreen({ onSelect }: PathSelectionScreenProps) {
   const [selected, setSelected] = useState<PathType | null>(null);
+  const [selectedRouting, setSelectedRouting] = useState<PathRouting | null>(null);
 
-  const handleSelect = (pathType: PathType, routing: PathRouting) => {
+  const handleCardClick = (pathType: PathType, routing: PathRouting) => {
     setSelected(pathType);
-    // Auto-advance after brief delay for visual feedback
-    setTimeout(() => {
-      onSelect(pathType, routing);
-    }, 300);
+    setSelectedRouting(routing);
+  };
+
+  const handleContinue = () => {
+    if (selected && selectedRouting) {
+      onSelect(selected, selectedRouting);
+    }
   };
 
   return (
@@ -61,7 +66,7 @@ export function PathSelectionScreen({ onSelect }: PathSelectionScreenProps) {
           <OnboardingCard
             key={option.id}
             selected={selected === option.id}
-            onClick={() => handleSelect(option.id, option.routing)}
+            onClick={() => handleCardClick(option.id, option.routing)}
             accentBorder
             delay={index * 100}
           >
@@ -71,6 +76,16 @@ export function PathSelectionScreen({ onSelect }: PathSelectionScreenProps) {
             </div>
           </OnboardingCard>
         ))}
+      </div>
+
+      {/* Continue Button */}
+      <div className="mt-auto pt-6">
+        <OnboardingButton 
+          onClick={handleContinue}
+          disabled={!selected}
+        >
+          Continue
+        </OnboardingButton>
       </div>
     </div>
   );
