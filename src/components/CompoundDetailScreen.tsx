@@ -16,6 +16,7 @@ import { Capacitor } from '@capacitor/core';
 import { CompoundShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
 import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/utils/analytics";
+import { ChartWatermark } from "@/components/ui/ChartWatermark";
 
 interface Compound {
   id: string;
@@ -534,7 +535,7 @@ export const CompoundDetailScreen = () => {
               </div>
             </div>
 
-            <div className="h-40">
+            <div className="h-40 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
@@ -651,6 +652,7 @@ export const CompoundDetailScreen = () => {
                   )}
                 </AreaChart>
               </ResponsiveContainer>
+              <ChartWatermark position="bottom-right" />
             </div>
             
             {/* Legend for chart */}
