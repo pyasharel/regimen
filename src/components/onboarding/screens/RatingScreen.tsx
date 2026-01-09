@@ -33,30 +33,37 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRate = async () => {
-    console.log('[RatingScreen] handleRate called, isNative:', Capacitor.isNativePlatform());
+    const platform = Capacitor.getPlatform();
+    const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
+    console.log('[RatingScreen] handleRate called');
+    console.log('[RatingScreen] Platform:', platform);
+    console.log('[RatingScreen] isPluginAvailable("InAppReview"):', isPluginAvailable);
+    
     setIsRequesting(true);
     
     if (Capacitor.isNativePlatform()) {
+      if (!isPluginAvailable) {
+        console.error('[RatingScreen] InAppReview plugin NOT available on bridge');
+        toast.error('Rating plugin not registered', { duration: 2000 });
+        setIsRequesting(false);
+        onComplete();
+        return;
+      }
       try {
-        // Show toast so user knows something is happening
         toast.info('Requesting rating prompt...', { duration: 2000 });
-        
-        // Small delay to let the UI settle
         await new Promise(resolve => setTimeout(resolve, 400));
         
         console.log('[RatingScreen] Calling InAppReview.requestReview()');
-        await InAppReview.requestReview();
-        console.log('[RatingScreen] requestReview completed');
+        const result = await InAppReview.requestReview();
+        console.log('[RatingScreen] requestReview completed, result:', result);
         
-        // Wait a bit for the dialog to potentially appear
         await new Promise(resolve => setTimeout(resolve, 600));
         
       } catch (error) {
-        console.log('[RatingScreen] In-app review error:', error);
+        console.error('[RatingScreen] In-app review error:', error);
         toast.error('Rating prompt unavailable', { duration: 2000 });
       }
     } else {
-      // Web fallback - just show a message
       toast.info('Rating is available in the native app', { duration: 2000 });
     }
     
