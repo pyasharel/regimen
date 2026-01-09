@@ -512,7 +512,7 @@ export const CompoundDetailScreen = () => {
 
         {/* Level History Chart */}
         {halfLifeData && chartData.length > 0 && (
-          <div className="rounded-2xl bg-card border border-border p-4">
+          <div className="rounded-2xl bg-card border border-border p-4 relative">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
@@ -535,7 +535,7 @@ export const CompoundDetailScreen = () => {
               </div>
             </div>
 
-            <div className="h-40 relative">
+            <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
@@ -652,7 +652,6 @@ export const CompoundDetailScreen = () => {
                   )}
                 </AreaChart>
               </ResponsiveContainer>
-              <ChartWatermark position="bottom-right" className="bottom-1 right-1" />
             </div>
             
             {/* Legend for chart */}
@@ -666,6 +665,8 @@ export const CompoundDetailScreen = () => {
                 <span>Projected</span>
               </div>
             </div>
+            
+            <ChartWatermark position="bottom-right" className="bottom-2 right-2" />
           </div>
         )}
 

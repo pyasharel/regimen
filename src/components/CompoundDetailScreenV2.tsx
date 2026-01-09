@@ -683,7 +683,7 @@ export const CompoundDetailScreenV2 = () => {
 
         {/* Level History Chart with Dose Change Markers */}
         {halfLifeData && chartData.length > 0 && (
-          <div className="rounded-2xl bg-card border border-border p-4">
+          <div className="rounded-2xl bg-card border border-border p-4 relative">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
@@ -706,7 +706,7 @@ export const CompoundDetailScreenV2 = () => {
               </div>
             </div>
 
-            <div className="h-40 relative">
+            <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
@@ -842,7 +842,6 @@ export const CompoundDetailScreenV2 = () => {
                   )}
                 </AreaChart>
               </ResponsiveContainer>
-              <ChartWatermark position="bottom-right" className="bottom-1 right-1" />
             </div>
             
             {/* Legend for chart */}
@@ -862,6 +861,8 @@ export const CompoundDetailScreenV2 = () => {
                 </div>
               )}
             </div>
+            
+            <ChartWatermark position="bottom-right" className="bottom-2 right-2" />
           </div>
         )}
 
