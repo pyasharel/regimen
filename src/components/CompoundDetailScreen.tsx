@@ -652,7 +652,7 @@ export const CompoundDetailScreen = () => {
                   )}
                 </AreaChart>
               </ResponsiveContainer>
-              <ChartWatermark position="bottom-right" />
+              <ChartWatermark position="bottom-right" className="bottom-1 right-1" />
             </div>
             
             {/* Legend for chart */}
