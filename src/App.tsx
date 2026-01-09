@@ -49,6 +49,7 @@ import CheckoutCancel from "./pages/CheckoutCancel";
 const queryClient = new QueryClient();
 
 // AppContent component - must be rendered inside SubscriptionProvider AND PaywallProvider
+// This component uses hooks that depend on the provider context
 const AppContent = () => {
   const { isOpen, weekData, closeDigest } = useWeeklyDigest();
   const { setMockState, subscriptionStatus } = useSubscription();
