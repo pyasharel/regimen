@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO, subMonths } from "date-fns";
 import { formatDose } from "@/utils/doseUtils";
 import { Star } from "lucide-react";
+import { ChartWatermark } from "@/components/ui/ChartWatermark";
 import {
   LineChart,
   Line,
@@ -269,7 +270,9 @@ export const MetricChart = ({
   // Like the medication levels visualization
   if (metricType === "energy" || metricType === "sleep" || metricType === "cravings") {
     return (
-      <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
+      <div className="relative">
+        <ChartWatermark />
+        <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
         <AreaChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
           <defs>
             <linearGradient id={`${metricType}Gradient`} x1="0" y1="0" x2="0" y2="1">
@@ -310,13 +313,16 @@ export const MetricChart = ({
             activeDot={(props: any) => <CustomActiveDot {...props} color={metricColor.stroke} />}
           />
         </AreaChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     );
   }
 
   // Line chart for weight
   return (
-    <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
+    <div className="relative">
+      <ChartWatermark />
+      <ResponsiveContainer width="100%" height={dosageChanges.length > 0 ? 250 : 200}>
       <LineChart data={chartData} margin={{ top: dosageChanges.length > 0 ? 35 : 10, right: 20, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
         <XAxis 
@@ -349,6 +355,7 @@ export const MetricChart = ({
           activeDot={<CustomActiveDot />}
         />
       </LineChart>
-    </ResponsiveContainer>
+      </ResponsiveContainer>
+    </div>
   );
 };

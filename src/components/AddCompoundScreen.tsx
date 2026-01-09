@@ -191,6 +191,7 @@ export const AddCompoundScreen = () => {
   // Subscription checks
   const { 
     canAddCompound, 
+    canEditCompound,
     isSubscribed, 
     markPreviewCompoundAdded,
     previewModeCompoundAdded 
@@ -229,50 +230,27 @@ export const AddCompoundScreen = () => {
     }
     
     if (isEditing) {
-      // For editing: Allow if subscribed OR if they only have 1 compound (preview mode)
+      // For editing: Use the centralized canEditCompound function
       const checkEditPermission = async () => {
-        if (isSubscribed) {
-          setCanProceed(true);
+        const allowed = await canEditCompound();
+        console.log('[AddCompound] Can edit compound:', allowed, 'isSubscribed:', isSubscribed);
+        
+        if (!allowed) {
+          accessCheckedRef.current = true;
+          openPaywall({ 
+            message: "Subscribe to edit your compounds and access all features",
+            onDismiss: () => navigate(-1)
+          });
+          setCanProceed(false);
           setShowPreviewTimer(false);
-          accessCheckedRef.current = true;
-          return;
-        }
-
-        // For non-subscribers, check compound count
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setCanProceed(false);
-          openPaywall({ 
-            message: "Subscribe to edit your compounds and access all features",
-            onDismiss: () => navigate(-1)
-          });
-          return;
-        }
-
-        const { count } = await supabase
-          .from('compounds')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
-
-        // Allow editing if they only have 1 compound (preview mode)
-        if (count === 1) {
-          setCanProceed(true);
-          accessCheckedRef.current = true;
-          // Start preview timer if they have added a compound
-          if (!previewModeCompoundAdded) {
-            console.log('[AddCompound] Starting preview timer for edit');
-            setShowPreviewTimer(true);
-          }
-        } else if (count && count > 1) {
-          // Safety check - shouldn't happen, but block if they have multiple
-          setCanProceed(false);
-          openPaywall({ 
-            message: "Subscribe to edit your compounds and access all features",
-            onDismiss: () => navigate(-1)
-          });
         } else {
           setCanProceed(true);
           accessCheckedRef.current = true;
+          // Start preview timer if not subscribed
+          if (!isSubscribed && !previewModeCompoundAdded) {
+            console.log('[AddCompound] Starting preview timer for edit');
+            setShowPreviewTimer(true);
+          }
         }
       };
       checkEditPermission();

@@ -29,6 +29,7 @@ interface SubscriptionContextType {
   isLoading: boolean;
   refreshSubscription: (trigger?: string) => Promise<void>;
   canAddCompound: () => Promise<boolean>;
+  canEditCompound: () => Promise<boolean>;
   markPreviewCompoundAdded: () => Promise<void>;
   getCompoundCount: () => Promise<number>;
   previewModeCompoundAdded: boolean;
@@ -444,6 +445,44 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     console.log('[canAddCompound] ❌ Blocked - already has compound(s)');
+    return false;
+  };
+
+  // Check if user can edit a compound
+  // Rules: Allow if subscribed OR if they only have 1 compound
+  const canEditCompound = async (): Promise<boolean> => {
+    console.log('[canEditCompound] Checking...', { isSubscribed });
+    
+    if (isSubscribed) {
+      console.log('[canEditCompound] ✅ Subscribed - can edit');
+      return true;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.log('[canEditCompound] ❌ No user');
+      return false;
+    }
+
+    const { count, error } = await supabase
+      .from('compounds')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    console.log('[canEditCompound] Compound count:', count);
+
+    if (error) {
+      console.error('[canEditCompound] Error:', error);
+      return false;
+    }
+
+    // Allow editing if they only have 1 compound (preview mode)
+    if (count === 1) {
+      console.log('[canEditCompound] ✅ Single compound - can edit');
+      return true;
+    }
+
+    console.log('[canEditCompound] ❌ Blocked - multiple compounds require subscription');
     return false;
   };
 
@@ -1064,6 +1103,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         isLoading,
         refreshSubscription,
         canAddCompound,
+        canEditCompound,
         markPreviewCompoundAdded,
         getCompoundCount,
         setMockState,
