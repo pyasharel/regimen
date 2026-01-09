@@ -12,13 +12,20 @@ class MainViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         NSLog("MainViewController capacitorDidLoad - starting plugin registration")
         
-        // Register by type (standard approach)
+        // Register InAppReviewPlugin
         bridge?.registerPluginType(InAppReviewPlugin.self)
         NSLog("MainViewController: Registered InAppReviewPlugin by type")
         
-        // Also register an instance for robustness
-        let pluginInstance = InAppReviewPlugin()
-        bridge?.registerPluginInstance(pluginInstance)
+        let reviewPluginInstance = InAppReviewPlugin()
+        bridge?.registerPluginInstance(reviewPluginInstance)
         NSLog("MainViewController: Registered InAppReviewPlugin instance")
+        
+        // Register TestFlightDetectorPlugin
+        bridge?.registerPluginType(TestFlightDetectorPlugin.self)
+        NSLog("MainViewController: Registered TestFlightDetectorPlugin by type")
+        
+        let testFlightPluginInstance = TestFlightDetectorPlugin()
+        bridge?.registerPluginInstance(testFlightPluginInstance)
+        NSLog("MainViewController: Registered TestFlightDetectorPlugin instance")
     }
 }
