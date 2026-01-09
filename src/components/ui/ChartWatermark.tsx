@@ -9,7 +9,7 @@ export const ChartWatermark = ({ className = "" }: ChartWatermarkProps) => {
     <img
       src={wordmarkLogo}
       alt=""
-      className={`absolute top-2 right-2 h-4 w-auto opacity-[0.22] pointer-events-none select-none z-10 ${className}`}
+      className={`absolute top-2 right-2 h-4 w-auto opacity-[0.25] pointer-events-none select-none z-10 ${className}`}
       draggable={false}
     />
   );
