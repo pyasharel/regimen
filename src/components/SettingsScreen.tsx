@@ -98,16 +98,26 @@ export const SettingsScreen = () => {
   };
 
   const handleRateApp = async () => {
-    console.log('[Settings] handleRateApp called, isNative:', Capacitor.isNativePlatform());
+    const platform = Capacitor.getPlatform();
+    const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
+    console.log('[Settings] handleRateApp called');
+    console.log('[Settings] Platform:', platform);
+    console.log('[Settings] isPluginAvailable("InAppReview"):', isPluginAvailable);
+    
     if (Capacitor.isNativePlatform()) {
+      if (!isPluginAvailable) {
+        console.error('[Settings] InAppReview plugin NOT available on bridge');
+        toast.error('Rating plugin not registered');
+        return;
+      }
       try {
         toast.info('Requesting rating prompt...', { duration: 2000 });
         await new Promise(resolve => setTimeout(resolve, 400));
         console.log('[Settings] Calling InAppReview.requestReview()');
-        await InAppReview.requestReview();
-        console.log('[Settings] requestReview completed');
+        const result = await InAppReview.requestReview();
+        console.log('[Settings] requestReview completed, result:', result);
       } catch (error) {
-        console.log('[Settings] In-app review error:', error);
+        console.error('[Settings] In-app review error:', error);
         toast.error('Rating prompt unavailable');
       }
     } else {
