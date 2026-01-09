@@ -74,16 +74,6 @@ export const SettingsScreen = () => {
     }
   };
 
-  const handleResetOnboarding = () => {
-    try {
-      localStorage.removeItem('regimen_onboarding_state');
-      toast.success('Onboarding reset - open the app fresh or sign out to test');
-      // Stay on settings screen so user can sign out manually if they want
-    } catch (error) {
-      console.error('Reset onboarding error:', error);
-      toast.error('Failed to reset onboarding');
-    }
-  };
 
   const toggleSound = (checked: boolean) => {
     setSoundEnabled(checked);
@@ -98,26 +88,18 @@ export const SettingsScreen = () => {
   };
 
   const handleRateApp = async () => {
-    const platform = Capacitor.getPlatform();
     const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
-    console.log('[Settings] handleRateApp called');
-    console.log('[Settings] Platform:', platform);
-    console.log('[Settings] isPluginAvailable("InAppReview"):', isPluginAvailable);
     
     if (Capacitor.isNativePlatform()) {
       if (!isPluginAvailable) {
-        console.error('[Settings] InAppReview plugin NOT available on bridge');
         toast.error('Rating plugin not registered');
         return;
       }
       try {
         toast.info('Requesting rating prompt...', { duration: 2000 });
         await new Promise(resolve => setTimeout(resolve, 400));
-        console.log('[Settings] Calling InAppReview.requestReview()');
-        const result = await InAppReview.requestReview();
-        console.log('[Settings] requestReview completed, result:', result);
+        await InAppReview.requestReview();
       } catch (error) {
-        console.error('[Settings] In-app review error:', error);
         toast.error('Rating prompt unavailable');
       }
     } else {
@@ -354,15 +336,6 @@ export const SettingsScreen = () => {
           Sign Out
         </Button>
 
-        {(import.meta.env.DEV || window.location.hostname.includes('lovable') || window.location.hostname.includes('localhost')) && (
-          <Button
-            onClick={handleResetOnboarding}
-            variant="outline"
-            className="w-full"
-          >
-            Reset Onboarding (Testing)
-          </Button>
-        )}
 
         {/* Version Number - Long press to open diagnostics */}
         <div 

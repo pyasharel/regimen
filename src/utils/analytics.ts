@@ -299,3 +299,28 @@ export const trackWeeklyDigestClosed = (method: 'dismiss' | 'complete') => {
     label: method,
   });
 };
+
+// Onboarding funnel tracking
+export const trackOnboardingStep = (screenId: string, stepNumber: number, totalSteps: number) => {
+  ReactGA.event({
+    category: 'Onboarding',
+    action: 'Screen View',
+    label: screenId,
+    value: stepNumber,
+  });
+};
+
+export const trackOnboardingComplete = () => {
+  ReactGA.event({
+    category: 'Onboarding',
+    action: 'Completed',
+  });
+};
+
+export const trackOnboardingSkip = (screenId: string, reason?: string) => {
+  ReactGA.event({
+    category: 'Onboarding',
+    action: 'Skipped',
+    label: reason ? `${screenId}: ${reason}` : screenId,
+  });
+};

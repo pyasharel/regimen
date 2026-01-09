@@ -562,7 +562,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       console.log('[RevenueCat] Initializing...');
-      await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+      await Purchases.setLogLevel({ level: LOG_LEVEL.WARN });
       await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
       setRevenueCatConfigured(true);
       revenueCatConfiguredRef.current = true;
