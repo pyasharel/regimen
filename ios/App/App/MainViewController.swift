@@ -20,11 +20,5 @@ class MainViewController: CAPBridgeViewController {
         let pluginInstance = InAppReviewPlugin()
         bridge?.registerPluginInstance(pluginInstance)
         NSLog("MainViewController: Registered InAppReviewPlugin instance")
-        
-        // Log registered plugins for debugging
-        if let plugins = bridge?.plugins {
-            let pluginNames = plugins.keys.joined(separator: ", ")
-            NSLog("MainViewController: Registered plugins: %@", pluginNames)
-        }
     }
 }
