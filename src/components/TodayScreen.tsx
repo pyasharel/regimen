@@ -1574,6 +1574,9 @@ export const TodayScreen = () => {
         dose={editingDose}
         onDoseUpdated={loadDoses}
       />
+
+      {/* TestFlight Migration Modal */}
+      <TestFlightMigrationModal isTestFlight={isTestFlight} />
     </div>
   );
 };
