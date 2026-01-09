@@ -842,7 +842,7 @@ export const CompoundDetailScreenV2 = () => {
                   )}
                 </AreaChart>
               </ResponsiveContainer>
-              <ChartWatermark />
+              <ChartWatermark position="bottom-right" />
             </div>
             
             {/* Legend for chart */}
