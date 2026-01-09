@@ -18,6 +18,7 @@ import { shareElementAsImage } from "@/utils/visualShare";
 import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/utils/analytics";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import { ChartWatermark } from "@/components/ui/ChartWatermark";
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -705,7 +706,8 @@ export const CompoundDetailScreenV2 = () => {
               </div>
             </div>
 
-            <div className="h-40">
+            <div className="h-40 relative">
+              <ChartWatermark />
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
                   <defs>
