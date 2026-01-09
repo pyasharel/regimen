@@ -17,7 +17,11 @@ export const useAppStateSync = () => {
     if (!Capacitor.isNativePlatform()) return;
 
     const syncNotifications = async () => {
-      console.log('🔄 App resumed - syncing notifications...');
+      // Skip if user is in onboarding flow - permissions will be asked at the right time
+      if (window.location.pathname.includes('/onboarding')) {
+        return;
+      }
+      
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { OnboardingLayout } from './OnboardingLayout';
 import { useOnboardingState, PathType, PathRouting, ExperienceLevel } from './hooks/useOnboardingState';
 import { supabase } from '@/integrations/supabase/client';
+import { trackOnboardingStep, trackOnboardingComplete, trackOnboardingSkip } from '@/utils/analytics';
 
 // Screen imports
 import { SplashScreen } from './screens/SplashScreen';
@@ -139,6 +140,14 @@ export function OnboardingFlow() {
 
   const currentScreen = getCurrentScreenId();
 
+  // Track onboarding screen views for funnel analysis
+  useEffect(() => {
+    const screenIndex = SCREEN_ORDER.indexOf(currentScreen as typeof SCREEN_ORDER[number]);
+    if (screenIndex >= 0) {
+      trackOnboardingStep(currentScreen, screenIndex + 1, SCREEN_ORDER.length);
+    }
+  }, [currentScreen]);
+
   // Handle navigation
   const handleNext = () => {
     let nextStep = currentStep + 1;
@@ -190,6 +199,8 @@ export function OnboardingFlow() {
   };
 
   const handleComplete = () => {
+    // Track successful onboarding completion
+    trackOnboardingComplete();
     // Force light mode for all users completing onboarding
     localStorage.setItem('vite-ui-theme', 'light');
     document.documentElement.classList.remove('dark');
@@ -269,7 +280,10 @@ export function OnboardingFlow() {
               updateData({ firstName });
               handleNext();
             }}
-            onSkip={handleNext}
+            onSkip={() => {
+              trackOnboardingSkip('name');
+              handleNext();
+            }}
           />
         );
 
@@ -288,7 +302,10 @@ export function OnboardingFlow() {
               updateData(heightWeight);
               handleNext();
             }}
-            onSkip={handleNext}
+            onSkip={() => {
+              trackOnboardingSkip('height-weight');
+              handleNext();
+            }}
           />
         );
 
@@ -309,7 +326,10 @@ export function OnboardingFlow() {
               }
               setCurrentStep(nextStep);
             }}
-            onSkip={handleNext}
+            onSkip={() => {
+              trackOnboardingSkip('goal-weight');
+              handleNext();
+            }}
           />
         );
 
@@ -389,7 +409,10 @@ export function OnboardingFlow() {
               }
               setCurrentStep(nextStep);
             }}
-            onSkip={handleNext}
+            onSkip={() => {
+              trackOnboardingSkip('medication-setup');
+              handleNext();
+            }}
           />
         );
 
