@@ -82,6 +82,11 @@ const DAY_INDEX_TO_NAME: Record<string, string> = {
   '6': 'Sat',
 };
 
+// Format level for display - round to whole numbers for values >= 1
+const formatLevel = (level: number): string => {
+  return level >= 1 ? Math.round(level).toString() : level.toFixed(2);
+};
+
 export const CompoundDetailScreenV2 = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -344,7 +349,7 @@ export const CompoundDetailScreenV2 = () => {
     date: format(point.timestamp, 'MMM d'),
     timestamp: point.timestamp.getTime(),
     level: point.absoluteLevel,
-    absoluteLevel: point.absoluteLevel.toFixed(2),
+    absoluteLevel: formatLevel(point.absoluteLevel),
     percentOfPeak: Math.round(point.level * 10) / 10,
     isFuture: point.isFuture || false,
     pastLevel: !point.isFuture ? point.absoluteLevel : null,
@@ -439,7 +444,7 @@ export const CompoundDetailScreenV2 = () => {
     shareText += `✓ Total doses: ${totalDosesTaken}\n`;
     
     if (currentLevel) {
-      shareText += `📊 Est. level: ~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}\n`;
+      shareText += `📊 Est. level: ~${formatLevel(currentLevel.absoluteLevel)} ${compound.dose_unit}\n`;
     }
     
     shareText += `\nTrack your protocol at regimen.app`;
@@ -572,9 +577,7 @@ export const CompoundDetailScreenV2 = () => {
               <>
                 <div className="text-xl font-bold">
                   <span className="text-primary">
-                    ~{currentLevel.absoluteLevel >= 1 
-                      ? Math.round(currentLevel.absoluteLevel) 
-                      : currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}
+                    ~{formatLevel(currentLevel.absoluteLevel)} {compound.dose_unit}
                   </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -1139,7 +1142,7 @@ export const CompoundDetailScreenV2 = () => {
             scheduleTime={compound.time_of_day.map(t => formatTime(t)).join(', ')}
             startDate={format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
             totalDoses={totalDosesTaken}
-            estimatedLevel={currentLevel ? `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` : undefined}
+            estimatedLevel={currentLevel ? `~${formatLevel(currentLevel.absoluteLevel)} ${compound.dose_unit}` : undefined}
             doseUnit={compound.dose_unit}
             nextDose={nextScheduledDose ? format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d') : undefined}
             nextDoseTime={nextScheduledDose ? formatTime(nextScheduledDose.scheduled_time) : undefined}
