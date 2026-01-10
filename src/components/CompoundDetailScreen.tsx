@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, S
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatDose } from "@/utils/doseUtils";
+import { formatDose, formatLevel } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
@@ -229,7 +229,7 @@ export const CompoundDetailScreen = () => {
     date: format(point.timestamp, 'MMM d'),
     timestamp: point.timestamp.getTime(),
     level: point.absoluteLevel, // Use absolute level directly
-    absoluteLevel: point.absoluteLevel.toFixed(2),
+    absoluteLevel: formatLevel(point.absoluteLevel),
     percentOfPeak: Math.round(point.level * 10) / 10,
     isFuture: point.isFuture || false,
     // Split data for dual-area rendering
@@ -334,7 +334,7 @@ export const CompoundDetailScreen = () => {
     shareText += `✓ Total doses: ${totalDosesTaken}\n`;
     
     if (currentLevel) {
-      shareText += `📊 Est. level: ~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}\n`;
+      shareText += `📊 Est. level: ~${formatLevel(currentLevel.absoluteLevel)} ${compound.dose_unit}\n`;
     }
     
     shareText += `\nTrack your protocol at regimen.app`;
@@ -419,7 +419,7 @@ export const CompoundDetailScreen = () => {
             {halfLifeData && currentLevel ? (
               <>
                 <div className="text-xl font-bold">
-                  <span className="text-primary">~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}</span>
+                  <span className="text-primary">~{formatLevel(currentLevel.absoluteLevel)} {compound.dose_unit}</span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
                   in system
@@ -782,7 +782,7 @@ export const CompoundDetailScreen = () => {
             scheduleTime={compound.time_of_day.map(t => formatTime(t)).join(', ')}
             startDate={format(new Date(compound.start_date + 'T00:00:00'), 'MMM d, yyyy')}
             totalDoses={totalDosesTaken}
-            estimatedLevel={currentLevel ? `~${currentLevel.absoluteLevel.toFixed(2)} ${compound.dose_unit}` : undefined}
+            estimatedLevel={currentLevel ? `~${formatLevel(currentLevel.absoluteLevel)} ${compound.dose_unit}` : undefined}
             doseUnit={compound.dose_unit}
             nextDose={nextScheduledDose ? format(new Date(nextScheduledDose.scheduled_date + 'T00:00:00'), 'EEE, MMM d') : undefined}
             nextDoseTime={nextScheduledDose ? formatTime(nextScheduledDose.scheduled_time) : undefined}
