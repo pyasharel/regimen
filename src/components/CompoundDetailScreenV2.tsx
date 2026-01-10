@@ -3,7 +3,7 @@ import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, S
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatDose } from "@/utils/doseUtils";
+import { formatDose, formatLevel } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
@@ -80,11 +80,6 @@ const DAY_INDEX_TO_NAME: Record<string, string> = {
   '4': 'Thu',
   '5': 'Fri',
   '6': 'Sat',
-};
-
-// Format level for display - round to whole numbers for values >= 1
-const formatLevel = (level: number): string => {
-  return level >= 1 ? Math.round(level).toString() : level.toFixed(2);
 };
 
 export const CompoundDetailScreenV2 = () => {

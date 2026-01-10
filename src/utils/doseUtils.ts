@@ -32,3 +32,14 @@ export const pluralizeDoseUnit = (amount: number, unit: string): string => {
 export const formatDose = (amount: number, unit: string): string => {
   return `${amount} ${pluralizeDoseUnit(amount, unit)}`;
 };
+
+/**
+ * Formats a medication level for display
+ * - Rounds to whole numbers for values >= 1 (e.g., 304.33 → 304)
+ * - Keeps 2 decimals for small values < 1 (e.g., 0.25 stays 0.25)
+ * @param level - The medication level amount
+ * @returns Formatted string
+ */
+export const formatLevel = (level: number): string => {
+  return level >= 1 ? Math.round(level).toString() : level.toFixed(2);
+};
