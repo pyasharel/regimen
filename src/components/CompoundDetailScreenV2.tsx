@@ -571,7 +571,11 @@ export const CompoundDetailScreenV2 = () => {
             {halfLifeData && currentLevel ? (
               <>
                 <div className="text-xl font-bold">
-                  <span className="text-primary">~{currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}</span>
+                  <span className="text-primary">
+                    ~{currentLevel.absoluteLevel >= 1 
+                      ? Math.round(currentLevel.absoluteLevel) 
+                      : currentLevel.absoluteLevel.toFixed(2)} {compound.dose_unit}
+                  </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
                   in system
