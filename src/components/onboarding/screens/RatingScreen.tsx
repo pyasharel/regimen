@@ -3,7 +3,6 @@ import { OnboardingButton } from '../OnboardingButton';
 import { Star, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
-import { toast } from 'sonner';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -34,26 +33,31 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
 
   const handleRate = async () => {
     const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
+    console.log('[RatingScreen] handleRate called');
+    console.log('[RatingScreen] isNativePlatform:', Capacitor.isNativePlatform());
+    console.log('[RatingScreen] InAppReview plugin available:', isPluginAvailable);
     
     setIsRequesting(true);
     
     if (Capacitor.isNativePlatform()) {
       if (!isPluginAvailable) {
-        toast.error('Rating plugin not registered', { duration: 2000 });
+        console.log('[RatingScreen] Plugin not registered, skipping');
         setIsRequesting(false);
         onComplete();
         return;
       }
       try {
-        toast.info('Requesting rating prompt...', { duration: 2000 });
+        console.log('[RatingScreen] Requesting review...');
         await new Promise(resolve => setTimeout(resolve, 400));
         await InAppReview.requestReview();
+        console.log('[RatingScreen] Review request completed successfully');
         await new Promise(resolve => setTimeout(resolve, 600));
       } catch (error) {
-        toast.error('Rating prompt unavailable', { duration: 2000 });
+        console.error('[RatingScreen] Review request failed:', error);
+        // Silent failure - continue to next screen
       }
     } else {
-      toast.info('Rating is available in the native app', { duration: 2000 });
+      console.log('[RatingScreen] Not native platform, skipping review request');
     }
     
     setIsRequesting(false);

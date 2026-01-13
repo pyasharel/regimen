@@ -24,7 +24,7 @@ import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 import logoSquare from "@/assets/logo-regimen-vertical-new.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
-import { getSignedUrl } from "@/utils/storageUtils";
+import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { trackPhotoCompareUsed, trackShareAction } from "@/utils/analytics";
 
 interface PhotoEntry {
@@ -73,13 +73,16 @@ export default function PhotoCompareScreen() {
       return;
     }
 
-    // Generate signed URLs for all photos
-    const photosWithUrls = await Promise.all(
-      (data || []).map(async (photo) => ({
-        ...photo,
-        signedUrl: await getSignedUrl('progress-photos', photo.photo_url) || ''
-      }))
-    );
+    // Generate signed URLs for all photos using batch API for better performance
+    const paths = (data || []).map(photo => photo.photo_url);
+    console.log('[PhotoCompare] Loading batch signed URLs for', paths.length, 'photos');
+    const urlMap = await getBatchSignedUrls('progress-photos', paths);
+    
+    const photosWithUrls = (data || []).map(photo => ({
+      ...photo,
+      signedUrl: urlMap.get(photo.photo_url) || ''
+    }));
+    console.log('[PhotoCompare] Loaded', urlMap.size, 'photo URLs');
 
     setAvailablePhotos(photosWithUrls);
     

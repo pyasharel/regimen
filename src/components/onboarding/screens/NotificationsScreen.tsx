@@ -2,7 +2,6 @@ import { OnboardingButton } from '../OnboardingButton';
 import { Bell } from 'lucide-react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
-import { toast } from 'sonner';
 
 interface NotificationsScreenProps {
   medicationName?: string;
@@ -12,16 +11,18 @@ interface NotificationsScreenProps {
 
 export function NotificationsScreen({ medicationName, onEnable, onSkip }: NotificationsScreenProps) {
   const handleEnable = async () => {
+    console.log('[NotificationsScreen] handleEnable called');
     try {
       if (Capacitor.isNativePlatform()) {
+        console.log('[NotificationsScreen] Requesting permissions...');
         const permission = await LocalNotifications.requestPermissions();
-        if (permission.display === 'granted') {
-          toast.success('Notifications enabled!');
-        }
+        console.log('[NotificationsScreen] Permission result:', permission.display);
+      } else {
+        console.log('[NotificationsScreen] Not native platform, skipping permission request');
       }
       onEnable();
     } catch (error) {
-      console.error('[Notifications] Error:', error);
+      console.error('[NotificationsScreen] Error:', error);
       onEnable();
     }
   };
