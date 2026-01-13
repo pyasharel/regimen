@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { getSignedUrl } from "@/utils/storageUtils";
+import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -86,16 +86,60 @@ export const ProgressScreen = () => {
   const [weightUnit, setWeightUnit] = useState<string>('lbs');
   const [goalWeight, setGoalWeight] = useState<number | undefined>();
   
-  // Load user settings from persistent storage (survives app updates)
+  // Load user settings from persistent storage with database fallback
   useEffect(() => {
     const loadSettings = async () => {
       const savedUnit = await persistentStorage.get('weightUnit');
       const savedGoal = await persistentStorage.get('goalWeight');
+      
+      // If local storage has both values, use them
+      if (savedUnit && savedGoal) {
+        setWeightUnit(savedUnit);
+        const goalValue = parseFloat(savedGoal);
+        const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+        setGoalWeight(goalInLbs);
+        return;
+      }
+      
+      // Fallback: sync from database (for values set during onboarding)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('goal_weight, current_weight_unit, current_weight')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (profile) {
+            // Sync unit from database if not in local storage
+            if (!savedUnit && profile.current_weight_unit) {
+              const unit = profile.current_weight_unit === 'kg' ? 'kg' : 'lbs';
+              setWeightUnit(unit);
+              await persistentStorage.set('weightUnit', unit);
+              console.log('[ProgressScreen] Synced weight unit from database:', unit);
+            }
+            
+            // Sync goal weight from database if not in local storage
+            if (!savedGoal && profile.goal_weight) {
+              const dbUnit = profile.current_weight_unit || 'lbs';
+              const goalInLbs = dbUnit === 'kg' 
+                ? profile.goal_weight * 2.20462 
+                : profile.goal_weight;
+              setGoalWeight(goalInLbs);
+              await persistentStorage.set('goalWeight', profile.goal_weight.toString());
+              console.log('[ProgressScreen] Synced goal weight from database:', profile.goal_weight, dbUnit);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[ProgressScreen] Error syncing settings from database:', err);
+      }
+      
+      // Apply any local values that existed
       if (savedUnit) setWeightUnit(savedUnit);
-      // Goal weight is stored in the user's preferred unit, convert to lbs for internal use
       if (savedGoal) {
         const goalValue = parseFloat(savedGoal);
-        // If user uses kg, convert to lbs for internal storage consistency
         const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
         setGoalWeight(goalInLbs);
       }
@@ -193,16 +237,22 @@ export const ProgressScreen = () => {
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;
   
-  // Preload signed URLs for photos
+  // Preload signed URLs for photos using batch API for better performance
   useEffect(() => {
     const loadPhotoUrls = async () => {
       const photoEntries = entries.filter(e => e.photo_url);
+      if (photoEntries.length === 0) return;
+      
+      const paths = photoEntries.map(e => e.photo_url!);
+      console.log('[ProgressScreen] Loading batch signed URLs for', paths.length, 'photos');
+      const urlMap = await getBatchSignedUrls('progress-photos', paths);
+      
       const urls: Record<string, string> = {};
-      await Promise.all(photoEntries.map(async (entry) => {
-        const signedUrl = await getSignedUrl('progress-photos', entry.photo_url);
-        if (signedUrl) urls[entry.photo_url!] = signedUrl;
-      }));
+      urlMap.forEach((signedUrl, path) => {
+        urls[path] = signedUrl;
+      });
       setPhotoUrls(urls);
+      console.log('[ProgressScreen] Loaded', Object.keys(urls).length, 'photo URLs');
     };
     if (entries.length > 0) loadPhotoUrls();
   }, [entries]);
@@ -330,21 +380,38 @@ export const ProgressScreen = () => {
 
   const uploadPhotoFromDataUrl = async (dataUrl: string) => {
     setLoading(true);
+    console.log('[PhotoUpload] Starting upload...');
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user) {
+        console.error('[PhotoUpload] No authenticated user');
+        toast.error('Please sign in to upload photos');
+        return;
+      }
+      console.log('[PhotoUpload] User authenticated:', user.id);
 
       const response = await fetch(dataUrl);
       const blob = await response.blob();
+      console.log('[PhotoUpload] Blob created, size:', blob.size, 'type:', blob.type);
       
       const fileName = `${user.id}/${Date.now()}-image.jpg`;
+      console.log('[PhotoUpload] Uploading to:', fileName);
+      
       const { error: uploadError } = await supabase.storage
         .from('progress-photos')
         .upload(fileName, blob, { contentType: 'image/jpeg' });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[PhotoUpload] Storage upload failed:', uploadError);
+        toast.error(`Upload failed: ${uploadError.message}`);
+        return;
+      }
+      console.log('[PhotoUpload] Storage upload successful');
 
       const dateStr = format(photoDate, 'yyyy-MM-dd');
+      console.log('[PhotoUpload] Creating entry for date:', dateStr);
+      
       const { data: existingEntry } = await supabase
         .from('progress_entries')
         .select('id')
@@ -355,11 +422,13 @@ export const ProgressScreen = () => {
 
       let entryError;
       if (existingEntry) {
+        console.log('[PhotoUpload] Updating existing entry:', existingEntry.id);
         ({ error: entryError } = await supabase
           .from('progress_entries')
           .update({ photo_url: fileName })
           .eq('id', existingEntry.id));
       } else {
+        console.log('[PhotoUpload] Creating new entry');
         ({ error: entryError } = await supabase
           .from('progress_entries')
           .insert([{
@@ -370,16 +439,21 @@ export const ProgressScreen = () => {
           }]));
       }
 
-      if (entryError) throw entryError;
+      if (entryError) {
+        console.error('[PhotoUpload] Database entry failed:', entryError);
+        toast.error(`Failed to save photo: ${entryError.message}`);
+        return;
+      }
+      console.log('[PhotoUpload] Entry saved successfully');
 
       triggerHaptic('medium');
       trackPhotoUploaded('progress');
       toast.success('Photo uploaded successfully');
       setShowPhotoModal(false);
       refetchEntries();
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
+    } catch (error: any) {
+      console.error('[PhotoUpload] Exception:', error);
+      toast.error(`Failed to upload: ${error?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
