@@ -45,6 +45,7 @@ import Terms from "./pages/Terms";
 import WidgetPreview from "./pages/WidgetPreview";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
+import AdminAnalytics from "./pages/AdminAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const AppContent = () => {
             <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
             <Route path="/email-test" element={<ProtectedRoute><EmailTest /></ProtectedRoute>} />
             <Route path="/widget-preview" element={<WidgetPreview />} />
+            <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
