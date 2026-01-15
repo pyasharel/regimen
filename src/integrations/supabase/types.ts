@@ -180,6 +180,7 @@ export type Database = {
           height_inches: number | null
           height_unit: string | null
           id: string
+          last_active_at: string | null
           last_payment_attempt: string | null
           notification_permission_asked: boolean | null
           onboarding_completed: boolean | null
@@ -216,6 +217,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
@@ -252,6 +254,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
@@ -307,6 +310,63 @@ export type Database = {
           notes?: string | null
           photo_url?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_activity: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          event_name: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          screen_name: string | null
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          event_name: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          screen_name?: string | null
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          event_name?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          screen_name?: string | null
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -370,9 +430,16 @@ export type Database = {
     }
     Functions: {
       cleanup_duplicate_doses: { Args: never; Returns: number }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -499,6 +566,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

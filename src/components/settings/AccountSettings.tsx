@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
+import { trackAccountDeleted } from "@/utils/analytics";
 
 export const AccountSettings = () => {
   const navigate = useNavigate();
@@ -242,6 +243,9 @@ export const AccountSettings = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
+
+      // Track before deletion (in case it fails, we still want to know they tried)
+      trackAccountDeleted();
 
       // Call edge function to delete account (requires service role key)
       const { error } = await supabase.functions.invoke('delete-account', {

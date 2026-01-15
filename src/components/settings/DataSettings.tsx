@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackDataExported, trackDataCleared } from "@/utils/analytics";
 
 export const DataSettings = () => {
   const navigate = useNavigate();
@@ -63,6 +64,7 @@ export const DataSettings = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
+      trackDataExported();
       toast.success("Data exported successfully");
     } catch (error: any) {
       toast.error(error.message || "Failed to export data");
@@ -81,6 +83,7 @@ export const DataSettings = () => {
       await supabase.from('compounds').delete().eq('user_id', user.id);
       await supabase.from('doses').delete().eq('user_id', user.id);
 
+      trackDataCleared();
       toast.success("All data cleared successfully");
       navigate("/today");
     } catch (error: any) {

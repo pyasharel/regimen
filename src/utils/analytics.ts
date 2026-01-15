@@ -324,3 +324,75 @@ export const trackOnboardingSkip = (screenId: string, reason?: string) => {
     label: reason ? `${screenId}: ${reason}` : screenId,
   });
 };
+
+// Promo code tracking
+export const trackPromoCodeApplied = (code: string, daysGranted: number) => {
+  ReactGA.event({
+    category: 'Subscription',
+    action: 'Promo Code Applied',
+    label: code,
+    value: daysGranted,
+  });
+};
+
+// Subscription outcome tracking
+export const trackSubscriptionSuccess = (plan: string, source: 'revenuecat' | 'stripe') => {
+  ReactGA.event({
+    category: 'Subscription',
+    action: 'Purchase Success',
+    label: `${plan} via ${source}`,
+  });
+};
+
+export const trackSubscriptionFailed = (plan: string, error: string) => {
+  ReactGA.event({
+    category: 'Subscription',
+    action: 'Purchase Failed',
+    label: `${plan}: ${error}`,
+  });
+};
+
+// Account actions
+export const trackAccountDeleted = () => {
+  ReactGA.event({
+    category: 'Account',
+    action: 'Deleted',
+  });
+};
+
+export const trackDataCleared = () => {
+  ReactGA.event({
+    category: 'Account',
+    action: 'Data Cleared',
+  });
+};
+
+export const trackDataExported = () => {
+  ReactGA.event({
+    category: 'Account',
+    action: 'Data Exported',
+  });
+};
+
+export const trackSignOut = () => {
+  ReactGA.event({
+    category: 'Account',
+    action: 'Sign Out',
+  });
+};
+
+// Engagement
+export const trackRatingRequested = (source: 'settings' | 'onboarding') => {
+  ReactGA.event({
+    category: 'Engagement',
+    action: 'Rating Requested',
+    label: source,
+  });
+};
+
+export const trackFeedbackInitiated = () => {
+  ReactGA.event({
+    category: 'Engagement',
+    action: 'Feedback Initiated',
+  });
+};

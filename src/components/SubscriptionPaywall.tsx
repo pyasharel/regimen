@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted } from '@/utils/analytics';
+import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
 
@@ -104,6 +104,8 @@ export const SubscriptionPaywall = ({
             const now = new Date();
             const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
+            // Track promo code applied
+            trackPromoCodeApplied(code, daysRemaining);
           }
           // Close the modal first, then refresh subscription state without full reload
           onOpenChange(false);
@@ -220,6 +222,7 @@ export const SubscriptionPaywall = ({
         if (result.success) {
           console.log('[PAYWALL] Purchase successful! State already updated by purchasePackage');
           toast.success('Welcome to Regimen Premium! 🎉');
+          trackSubscriptionSuccess(selectedPlan, 'revenuecat');
           onOpenChange(false);
           // purchasePackage already updated the subscription state synchronously - no need to refresh
           // This prevents race conditions where refresh could overwrite the correct state
@@ -228,6 +231,7 @@ export const SubscriptionPaywall = ({
           // Don't show error for user cancellation
         } else {
           console.error('[PAYWALL] Purchase failed:', result.error);
+          trackSubscriptionFailed(selectedPlan, result.error || 'Unknown error');
           toast.error(result.error || 'Purchase failed. Please try again.');
         }
         

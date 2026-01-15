@@ -3,6 +3,7 @@ import { OnboardingButton } from '../OnboardingButton';
 import { Star, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
+import { trackRatingRequested } from '@/utils/analytics';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -32,6 +33,7 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRate = async () => {
+    trackRatingRequested('onboarding');
     const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
     console.log('[RatingScreen] handleRate called');
     console.log('[RatingScreen] isNativePlatform:', Capacitor.isNativePlatform());
