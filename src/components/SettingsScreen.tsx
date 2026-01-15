@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { trackSignOut, trackRatingRequested, trackFeedbackInitiated } from "@/utils/analytics";
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
@@ -57,6 +58,7 @@ export const SettingsScreen = () => {
 
   const handleSignOut = async () => {
     try {
+      trackSignOut();
       await queryClient.clear();
 
       // Clear onboarding state so fresh users get clean experience
@@ -81,6 +83,7 @@ export const SettingsScreen = () => {
   };
 
   const handleSendFeedback = () => {
+    trackFeedbackInitiated();
     const email = "support@helloregimen.com";
     const subject = "Feedback & Feature Requests - Regimen App";
     const body = "Hi there,\n\nI'd like to share feedback about the Regimen app:\n\n";
@@ -88,6 +91,7 @@ export const SettingsScreen = () => {
   };
 
   const handleRateApp = async () => {
+    trackRatingRequested('settings');
     const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
     
     if (Capacitor.isNativePlatform()) {
