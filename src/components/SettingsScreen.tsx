@@ -86,6 +86,12 @@ export const SettingsScreen = () => {
 
   const handleShareApp = async () => {
     trackShareAction('app');
+    
+    if (!Capacitor.isNativePlatform()) {
+      toast.info('Sharing is available in the native app');
+      return;
+    }
+    
     try {
       await Share.share({
         title: 'Check out Regimen',
@@ -329,24 +335,24 @@ export const SettingsScreen = () => {
         </Button>
 
         {/* Footer: Legal Links + Version */}
-        <div className="text-center mt-6 space-y-2">
-          <div className="flex justify-center gap-4 text-xs text-muted-foreground/70">
+        <div className="text-center mt-3 space-y-0.5">
+          <div className="flex justify-center items-center gap-2 text-[10px] text-muted-foreground/50">
             <button 
               onClick={() => navigate("/settings/terms")}
-              className="hover:text-foreground transition-colors"
+              className="hover:text-muted-foreground transition-colors"
             >
               Terms
             </button>
-            <span>·</span>
+            <span className="text-muted-foreground/30">·</span>
             <button 
               onClick={() => navigate("/settings/privacy")}
-              className="hover:text-foreground transition-colors"
+              className="hover:text-muted-foreground transition-colors"
             >
               Privacy
             </button>
           </div>
           <div 
-            className="text-xs text-muted-foreground/60 select-none cursor-pointer"
+            className="text-[10px] text-muted-foreground/40 select-none cursor-pointer"
             onTouchStart={() => {
               longPressTimerRef.current = setTimeout(() => {
                 setShowDiagnostics(true);
