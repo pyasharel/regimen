@@ -178,7 +178,7 @@ export const SettingsScreen = () => {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
-      <div className="flex-1 min-h-0 scroll-container pb-24">
+      <div className="flex-1 min-h-0 scroll-container pb-20">
         {/* Header */}
         <MainHeader
           title="Settings"
@@ -335,7 +335,7 @@ export const SettingsScreen = () => {
         </Button>
 
         {/* Footer: Legal Links + Version */}
-        <div className="text-center mt-3 space-y-0.5">
+        <div className="text-center mt-2 space-y-0.5">
           <div className="flex justify-center items-center gap-2 text-[10px] text-muted-foreground/50">
             <button 
               onClick={() => navigate("/settings/terms")}
