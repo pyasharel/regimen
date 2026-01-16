@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler, Star } from "lucide-react";
+import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler, Star, Share2 } from "lucide-react";
 import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { trackSignOut, trackRatingRequested, trackFeedbackInitiated } from "@/utils/analytics";
+import { trackSignOut, trackRatingRequested, trackFeedbackInitiated, trackShareAction, trackThemeChanged, trackSoundToggled } from "@/utils/analytics";
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
@@ -80,6 +81,21 @@ export const SettingsScreen = () => {
   const toggleSound = (checked: boolean) => {
     setSoundEnabled(checked);
     localStorage.setItem('soundEnabled', String(checked));
+    trackSoundToggled(checked);
+  };
+
+  const handleShareApp = async () => {
+    trackShareAction('app');
+    try {
+      await Share.share({
+        title: 'Check out Regimen',
+        text: 'I use Regimen to track my health protocol. You should try it!',
+        url: 'https://apps.apple.com/app/id6753005449',
+        dialogTitle: 'Share Regimen',
+      });
+    } catch (error) {
+      console.log('Share cancelled or failed:', error);
+    }
   };
 
   const handleSendFeedback = () => {
@@ -167,6 +183,11 @@ export const SettingsScreen = () => {
 
   const supportSettings = [
     {
+      icon: Share2,
+      label: "Share with Friends",
+      onClick: handleShareApp,
+    },
+    {
       icon: HelpCircle,
       label: "Help & Support",
       onClick: () => navigate("/settings/help"),
@@ -221,7 +242,7 @@ export const SettingsScreen = () => {
                     </div>
                     <div className="flex gap-1 bg-muted rounded-lg p-1">
                       <button
-                        onClick={() => setTheme("light")}
+                        onClick={() => { setTheme("light"); trackThemeChanged("light"); }}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                           theme === "light" ? "bg-background shadow-sm" : "hover:bg-background/50"
                         }`}
@@ -229,7 +250,7 @@ export const SettingsScreen = () => {
                         Light
                       </button>
                       <button
-                        onClick={() => setTheme("dark")}
+                        onClick={() => { setTheme("dark"); trackThemeChanged("dark"); }}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                           theme === "dark" ? "bg-background shadow-sm" : "hover:bg-background/50"
                         }`}
@@ -237,7 +258,7 @@ export const SettingsScreen = () => {
                         Dark
                       </button>
                       <button
-                        onClick={() => setTheme("system")}
+                        onClick={() => { setTheme("system"); trackThemeChanged("system"); }}
                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                           theme === "system" ? "bg-background shadow-sm" : "hover:bg-background/50"
                         }`}
@@ -298,7 +319,23 @@ export const SettingsScreen = () => {
           </div>
         </button>
 
-        {/* Support - Separate buttons */}
+        {/* Share with Friends */}
+        <button
+          onClick={handleShareApp}
+          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Share2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <span className="font-semibold">Share with Friends</span>
+              <p className="text-sm text-muted-foreground">Invite others to try Regimen</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Support */}
         <button
           onClick={() => navigate("/settings/help")}
           className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"

@@ -112,11 +112,39 @@ export const trackLevelsViewed = (compoundName: string) => {
 };
 
 // Share tracking
-export const trackShareAction = (shareType: 'stack' | 'progress' | 'photo') => {
+export const trackShareAction = (shareType: 'stack' | 'progress' | 'photo' | 'app') => {
   ReactGA.event({
     category: 'Social',
     action: 'Share',
     label: shareType,
+  });
+};
+
+// Settings change tracking
+export const trackThemeChanged = (theme: 'light' | 'dark' | 'system') => {
+  ReactGA.event({
+    category: 'Settings',
+    action: 'Theme Changed',
+    label: theme,
+  });
+};
+
+export const trackSoundToggled = (enabled: boolean) => {
+  ReactGA.event({
+    category: 'Settings',
+    action: 'Sound Effects Toggled',
+    label: enabled ? 'enabled' : 'disabled',
+  });
+};
+
+export const trackNotificationToggled = (
+  type: 'dose' | 'cycle' | 'photo' | 'weight',
+  enabled: boolean
+) => {
+  ReactGA.event({
+    category: 'Settings',
+    action: 'Notification Toggled',
+    label: `${type}: ${enabled ? 'enabled' : 'disabled'}`,
   });
 };
 
