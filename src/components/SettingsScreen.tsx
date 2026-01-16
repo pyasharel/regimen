@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Palette, Download, HelpCircle, LogOut, FileText, Lock, MessageSquare, Volume2, Bell, Ruler, Star, Share2 } from "lucide-react";
+import { User, Palette, Download, HelpCircle, LogOut, Volume2, Bell, Ruler, Star, Share2, Heart } from "lucide-react";
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
@@ -168,41 +168,7 @@ export const SettingsScreen = () => {
     },
   ];
 
-  const legalSettings = [
-    {
-      icon: FileText,
-      label: "Terms of Service",
-      onClick: () => navigate("/settings/terms"),
-    },
-    {
-      icon: Lock,
-      label: "Privacy Policy",
-      onClick: () => navigate("/settings/privacy"),
-    },
-  ];
-
-  const supportSettings = [
-    {
-      icon: Share2,
-      label: "Share with Friends",
-      onClick: handleShareApp,
-    },
-    {
-      icon: HelpCircle,
-      label: "Help & Support",
-      onClick: () => navigate("/settings/help"),
-    },
-    {
-      icon: MessageSquare,
-      label: "Feedback",
-      onClick: handleSendFeedback,
-    },
-    {
-      icon: Star,
-      label: "Rate Regimen",
-      onClick: handleRateApp,
-    },
-  ];
+  // legalSettings and supportSettings removed - consolidated into inline elements
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
@@ -303,38 +269,6 @@ export const SettingsScreen = () => {
           ))}
         </div>
 
-        {/* Legal - Combined into one expandable card */}
-        <button
-          onClick={() => navigate("/settings/terms")}
-          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <span className="font-semibold">Legal</span>
-              <p className="text-sm text-muted-foreground">Terms of Service & Privacy Policy</p>
-            </div>
-          </div>
-        </button>
-
-        {/* Share with Friends */}
-        <button
-          onClick={handleShareApp}
-          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Share2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <span className="font-semibold">Share with Friends</span>
-              <p className="text-sm text-muted-foreground">Invite others to try Regimen</p>
-            </div>
-          </div>
-        </button>
-
         {/* Support */}
         <button
           onClick={() => navigate("/settings/help")}
@@ -351,21 +285,38 @@ export const SettingsScreen = () => {
           </div>
         </button>
 
-        {/* Rate App Button - for testing native review */}
-        <button
-          onClick={handleRateApp}
-          className="w-full rounded-xl dark:border dark:border-border/50 bg-card p-4 text-left transition-all hover:shadow-[var(--shadow-elevated)] shadow-[var(--shadow-card)]"
-        >
-          <div className="flex items-center gap-4">
+        {/* Spread the Word - Combined Share + Rate */}
+        <div className="rounded-xl dark:border dark:border-border/50 bg-card p-4 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-4 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Star className="h-5 w-5 text-primary" />
+              <Heart className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <span className="font-semibold">Rate Regimen</span>
-              <p className="text-sm text-muted-foreground">Leave a review on the App Store</p>
+              <span className="font-semibold">Spread the Word</span>
+              <p className="text-sm text-muted-foreground">Help others discover Regimen</p>
             </div>
           </div>
-        </button>
+          <div className="flex gap-2 ml-14">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 gap-2"
+              onClick={handleShareApp}
+            >
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 gap-2"
+              onClick={handleRateApp}
+            >
+              <Star className="h-4 w-4" />
+              Rate
+            </Button>
+          </div>
+        </div>
 
         {/* Sign Out Button */}
         <Button 
@@ -377,40 +328,56 @@ export const SettingsScreen = () => {
           Sign Out
         </Button>
 
-
-        {/* Version Number - Long press to open diagnostics */}
-        <div 
-          className="text-center text-xs text-muted-foreground/60 mt-4 select-none cursor-pointer"
-          onTouchStart={() => {
-            longPressTimerRef.current = setTimeout(() => {
-              setShowDiagnostics(true);
-            }, 1500);
-          }}
-          onTouchEnd={() => {
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
-            }
-          }}
-          onMouseDown={() => {
-            longPressTimerRef.current = setTimeout(() => {
-              setShowDiagnostics(true);
-            }, 1500);
-          }}
-          onMouseUp={() => {
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
-            }
-          }}
-          onMouseLeave={() => {
-            if (longPressTimerRef.current) {
-              clearTimeout(longPressTimerRef.current);
-              longPressTimerRef.current = null;
-            }
-          }}
-        >
-          Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
+        {/* Footer: Legal Links + Version */}
+        <div className="text-center mt-6 space-y-2">
+          <div className="flex justify-center gap-4 text-xs text-muted-foreground/70">
+            <button 
+              onClick={() => navigate("/settings/terms")}
+              className="hover:text-foreground transition-colors"
+            >
+              Terms
+            </button>
+            <span>·</span>
+            <button 
+              onClick={() => navigate("/settings/privacy")}
+              className="hover:text-foreground transition-colors"
+            >
+              Privacy
+            </button>
+          </div>
+          <div 
+            className="text-xs text-muted-foreground/60 select-none cursor-pointer"
+            onTouchStart={() => {
+              longPressTimerRef.current = setTimeout(() => {
+                setShowDiagnostics(true);
+              }, 1500);
+            }}
+            onTouchEnd={() => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }}
+            onMouseDown={() => {
+              longPressTimerRef.current = setTimeout(() => {
+                setShowDiagnostics(true);
+              }, 1500);
+            }}
+            onMouseUp={() => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }}
+            onMouseLeave={() => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }}
+          >
+            Version {appVersion} {Capacitor.isNativePlatform() && `(Build ${appBuild})`}
+          </div>
         </div>
         </div>
       </div>
