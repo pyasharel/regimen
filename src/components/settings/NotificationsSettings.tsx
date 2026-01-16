@@ -13,6 +13,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from "@/integrations/supabase/client";
 import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { trackNotificationToggled } from "@/utils/analytics";
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -78,6 +79,7 @@ export const NotificationsSettings = () => {
     }
     setPhotoReminders(checked);
     await persistentStorage.setBoolean('photoReminders', checked);
+    trackNotificationToggled('photo', checked);
     if (checked) {
       toast.success("Photo reminders enabled");
     }
@@ -87,6 +89,7 @@ export const NotificationsSettings = () => {
     triggerHaptic();
     setWeightReminders(checked);
     await persistentStorage.setBoolean('weightReminders', checked);
+    trackNotificationToggled('weight', checked);
     if (checked) {
       toast.success("Weight tracking reminders enabled");
     }
@@ -96,6 +99,7 @@ export const NotificationsSettings = () => {
     triggerHaptic();
     setDoseReminders(checked);
     await persistentStorage.setBoolean('doseReminders', checked);
+    trackNotificationToggled('dose', checked);
     if (checked) {
       toast.success("Dose reminders enabled");
     } else {
@@ -107,6 +111,7 @@ export const NotificationsSettings = () => {
     triggerHaptic();
     setCycleReminders(checked);
     await persistentStorage.setBoolean('cycleReminders', checked);
+    trackNotificationToggled('cycle', checked);
 
     // Update all compounds' cycle_reminders_enabled field
     const { data: { user } } = await supabase.auth.getUser();
