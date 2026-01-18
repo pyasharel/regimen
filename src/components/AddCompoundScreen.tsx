@@ -1397,7 +1397,7 @@ export const AddCompoundScreen = () => {
           {/* Mode Toggle - only for oil-based compounds with mg unit */}
           {isOilBasedCompound(name) && doseUnit === 'mg' && (
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">How do you measure your dose?</Label>
+              <Label className="text-xs text-muted-foreground">Enter your dose as</Label>
               <SegmentedControl
                 options={[
                   { value: 'per-injection' as const, label: 'Per Injection' },
@@ -1738,12 +1738,23 @@ export const AddCompoundScreen = () => {
                     const injectionsPerWeek = calculateInjectionsPerWeek();
                     const result = calculateFromWeekly();
                     
-                    // No schedule set yet
-                    if (!injectionsPerWeek || frequency === 'As Needed') {
+                    // No schedule set yet or As Needed selected
+                    if (!injectionsPerWeek) {
                       return (
                         <div className="border border-border rounded-lg p-4 bg-muted/30 text-center">
                           <p className="text-sm text-muted-foreground">
-                            Set your schedule below to see per-injection calculations
+                            Set a regular schedule below to see per-injection calculations
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    // "As Needed" doesn't have fixed per-injection calculations
+                    if (frequency === 'As Needed') {
+                      return (
+                        <div className="border border-border rounded-lg p-4 bg-muted/30 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Per-injection calculations aren't available for "As Needed" schedules
                           </p>
                         </div>
                       );
@@ -1781,16 +1792,18 @@ export const AddCompoundScreen = () => {
                             ? "bg-destructive/10 border-destructive" 
                             : "bg-card border-secondary"
                         )}>
-                          <button 
-                            onClick={() => {
-                              document.getElementById('frequency-select')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              setTimeout(() => document.getElementById('frequency-select')?.focus(), 300);
-                            }}
-                            className="text-sm text-primary text-center mb-3 pb-2 border-b border-border/50 hover:underline w-full flex items-center justify-center gap-1"
-                          >
-                            <span>Schedule: {getScheduleDescription()}</span>
-                            <span className="text-xs opacity-70">(tap to change)</span>
-                          </button>
+                          <div className="text-sm text-center mb-3 pb-2 border-b border-border/50">
+                            <span className="text-muted-foreground">Schedule: </span>
+                            <button 
+                              onClick={() => {
+                                document.getElementById('frequency-select')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                setTimeout(() => document.getElementById('frequency-select')?.focus(), 300);
+                              }}
+                              className="text-primary hover:underline"
+                            >
+                              {getScheduleDescription()}
+                            </button>
+                          </div>
                           
                           <div className="space-y-2 text-center">
                             <div>
