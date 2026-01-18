@@ -1469,8 +1469,8 @@ export const AddCompoundScreen = () => {
 
           {doseUnit === 'mg' && (
             <div className="flex items-center gap-3">
-              {/* Hide IU calculator when in weekly mode for oil-based compounds */}
-              {!(doseInputMode === 'weekly' && isOilBasedCompound(name)) && (
+              {/* Hide IU calculator entirely for oil-based compounds - they never use IU */}
+              {!isOilBasedCompound(name) && (
                 <>
                   <button
                     onClick={() => {
