@@ -592,6 +592,10 @@ export const AddCompoundScreen = () => {
   // Check if compound is oil-based (for weekly dose calculator)
   const isOilBasedCompound = (compoundName: string): boolean => {
     const nameLower = compoundName.toLowerCase().trim();
+    
+    // Don't match empty or very short strings
+    if (!nameLower || nameLower.length < 3) return false;
+    
     return OIL_BASED_COMPOUNDS.some(oil => 
       nameLower.includes(oil.toLowerCase()) || 
       oil.toLowerCase().includes(nameLower)
