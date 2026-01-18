@@ -36,6 +36,26 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+
+// Oil-based compounds that commonly use weekly dosing protocols
+const OIL_BASED_COMPOUNDS = [
+  // Testosterone variants
+  "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
+  "Test Cyp", "Test C", "Test E", "Test Prop", "Test P",
+  // Nandrolone
+  "Nandrolone Decanoate", "Deca", "Deca-Durabolin", "Nandrolone Phenylpropionate", "NPP",
+  // Trenbolone
+  "Trenbolone Acetate", "Trenbolone Enanthate", "Tren A", "Tren E", "Tren",
+  // Boldenone
+  "Boldenone Undecylenate", "Equipoise", "EQ", "Bold",
+  // Masteron
+  "Masteron", "Masteron Propionate", "Masteron Enanthate", "Drostanolone", "Drostanolone Propionate", "Drostanolone Enanthate",
+  // Primobolan
+  "Primobolan", "Primobolan Depot", "Methenolone Enanthate", "Methenolone Acetate", "Primo",
+  // Other injectables
+  "Sustanon", "Sustanon 250", "Omnadren"
+];
 
 const COMMON_PEPTIDES = [
   // Research Peptides - Healing & Recovery
@@ -159,6 +179,10 @@ export const AddCompoundScreen = () => {
   
   // IU/mL calculator (for pre-mixed IU-based compounds like HGH)
   const [iuConcentration, setIuConcentration] = useState("");
+
+  // Weekly dose mode for oil-based compounds
+  const [doseInputMode, setDoseInputMode] = useState<'per-dose' | 'weekly'>('per-dose');
+  const [weeklyDose, setWeeklyDose] = useState("");
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -565,6 +589,92 @@ export const AddCompoundScreen = () => {
     
     return null;
   };
+
+  // Check if compound is oil-based (for weekly dose calculator)
+  const isOilBasedCompound = (compoundName: string): boolean => {
+    const nameLower = compoundName.toLowerCase().trim();
+    return OIL_BASED_COMPOUNDS.some(oil => 
+      nameLower.includes(oil.toLowerCase()) || 
+      oil.toLowerCase().includes(nameLower)
+    );
+  };
+
+  // Calculate injections per week based on schedule
+  const calculateInjectionsPerWeek = (): number | null => {
+    if (frequency === 'As Needed') return null;
+    if (frequency === 'Daily') return 7 * numberOfDoses;
+    if (frequency === 'Specific day(s)') {
+      return (customDays.length || 0) * numberOfDoses;
+    }
+    if (frequency === 'Every X Days') {
+      return (7 / everyXDays) * numberOfDoses;
+    }
+    // Weekly (not used in current UI but handle gracefully)
+    return numberOfDoses;
+  };
+
+  // Calculate per-dose values from weekly total
+  const calculateFromWeekly = (): { mgPerInjection: number; mlPerInjection: number; injectionsPerWeek: number } | null => {
+    const weekly = parseFloat(weeklyDose);
+    const conc = parseFloat(concentration);
+    const injectionsPerWeek = calculateInjectionsPerWeek();
+    
+    if (!weekly || !conc || !injectionsPerWeek || injectionsPerWeek <= 0) return null;
+    
+    const mgPerInjection = weekly / injectionsPerWeek;
+    const mlPerInjection = mgPerInjection / conc;
+    
+    // Validate results
+    if (!isFinite(mgPerInjection) || !isFinite(mlPerInjection) || mgPerInjection <= 0 || mlPerInjection <= 0) {
+      return null;
+    }
+    
+    return {
+      mgPerInjection: Math.round(mgPerInjection), // Round to whole number
+      mlPerInjection: Math.round(mlPerInjection * 20) / 20, // Round to nearest 0.05
+      injectionsPerWeek
+    };
+  };
+
+  // Format injections per week for display
+  const formatInjectionsPerWeek = (count: number): string => {
+    if (Number.isInteger(count)) return `${count}x/week`;
+    return `~${count.toFixed(1)}x/week`;
+  };
+
+  // Get schedule description for weekly calculator
+  const getScheduleDescription = (): string => {
+    if (frequency === 'Daily') return `Daily (${formatInjectionsPerWeek(7 * numberOfDoses)})`;
+    if (frequency === 'Specific day(s)') {
+      const dayCount = customDays.length;
+      if (dayCount === 0) return 'No days selected';
+      return `${dayCount} day${dayCount > 1 ? 's' : ''}/week (${formatInjectionsPerWeek(dayCount * numberOfDoses)})`;
+    }
+    if (frequency === 'Every X Days') {
+      return `Every ${everyXDays} days (${formatInjectionsPerWeek((7 / everyXDays) * numberOfDoses)})`;
+    }
+    return 'Set schedule below';
+  };
+
+  // Warning for weekly calculation results
+  const getWeeklyCalcWarning = () => {
+    const result = calculateFromWeekly();
+    if (!result) return null;
+    
+    if (result.mlPerInjection > 2) return "⚠️ Large injection volume";
+    if (result.mlPerInjection < 0.1) return "⚠️ Very small volume - verify measurement";
+    return null;
+  };
+
+  // Sync weekly calculations to intendedDose when in weekly mode
+  useEffect(() => {
+    if (doseInputMode === 'weekly' && weeklyDose && concentration) {
+      const result = calculateFromWeekly();
+      if (result) {
+        setIntendedDose(result.mgPerInjection.toString());
+      }
+    }
+  }, [doseInputMode, weeklyDose, concentration, frequency, customDays, everyXDays, numberOfDoses]);
 
   const filteredPeptides = Array.from(new Set(COMMON_PEPTIDES))
     .filter(p => p.toLowerCase().includes(name.toLowerCase()))
@@ -1523,46 +1633,180 @@ export const AddCompoundScreen = () => {
           {/* mL Calculator - for oil-based compounds */}
           {activeCalculator === 'ml' && doseUnit === 'mg' && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <Label className="sm:mb-0">Concentration (mg/mL)</Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={concentration}
-                  onChange={(e) => setConcentration(e.target.value)}
-                  placeholder="e.g., 200"
-                  className="text-lg h-12 w-full sm:w-64"
+              {/* Weekly/Per-Dose Toggle - only for oil-based compounds */}
+              {isOilBasedCompound(name) && (
+                <SegmentedControl
+                  options={[
+                    { value: 'per-dose', label: 'Per Dose' },
+                    { value: 'weekly', label: 'Weekly Dose' }
+                  ]}
+                  value={doseInputMode}
+                  onChange={(val) => {
+                    setDoseInputMode(val);
+                    if (val === 'per-dose') {
+                      // Keep the calculated per-dose value if switching from weekly
+                      setWeeklyDose('');
+                    }
+                  }}
+                  className="w-full"
+                  size="sm"
                 />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter the mg/mL shown on your vial label
-              </p>
+              )}
 
-              {calculatedML && (
+              {/* Per-Dose Mode (default) */}
+              {doseInputMode === 'per-dose' && (
                 <>
-                  <div className={cn(
-                    "border-2 rounded-lg p-4 text-center",
-                    getMLWarning()?.startsWith("❌") 
-                      ? "bg-destructive/10 border-destructive" 
-                      : "bg-card border-secondary"
-                  )}>
-                    <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Volume to inject
-                    </div>
-                    {getMLWarning() && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-center">{getMLWarning()}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Label className="sm:mb-0">Concentration (mg/mL)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={concentration}
+                      onChange={(e) => setConcentration(e.target.value)}
+                      placeholder="e.g., 200"
+                      className="text-lg h-12 w-full sm:w-64"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter the mg/mL shown on your vial label
+                  </p>
+
+                  {calculatedML && (
+                    <>
+                      <div className={cn(
+                        "border-2 rounded-lg p-4 text-center",
+                        getMLWarning()?.startsWith("❌") 
+                          ? "bg-destructive/10 border-destructive" 
+                          : "bg-card border-secondary"
+                      )}>
+                        <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Volume to inject
+                        </div>
+                        {getMLWarning() && (
+                          <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            <span className="text-center">{getMLWarning()}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      
+                      {/* Medical disclaimer */}
+                      <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>Always verify your calculations before use</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Weekly Dose Mode - for oil-based compounds */}
+              {doseInputMode === 'weekly' && isOilBasedCompound(name) && (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Label className="sm:mb-0">Weekly Total (mg)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={weeklyDose}
+                      onChange={(e) => setWeeklyDose(e.target.value)}
+                      placeholder="e.g., 200"
+                      className="text-lg h-12 w-full sm:w-64"
+                    />
                   </div>
-                  
-                  {/* Medical disclaimer */}
-                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Always verify your calculations before use</span>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Label className="sm:mb-0">Concentration (mg/mL)</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={concentration}
+                      onChange={(e) => setConcentration(e.target.value)}
+                      placeholder="e.g., 200"
+                      className="text-lg h-12 w-full sm:w-64"
+                    />
                   </div>
+
+                  {/* Schedule info and calculation results */}
+                  {(() => {
+                    const injectionsPerWeek = calculateInjectionsPerWeek();
+                    const result = calculateFromWeekly();
+                    
+                    // No schedule set yet
+                    if (!injectionsPerWeek || frequency === 'As Needed') {
+                      return (
+                        <div className="border border-border rounded-lg p-4 bg-muted/30 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Set your schedule below to see per-injection calculations
+                          </p>
+                        </div>
+                      );
+                    }
+                    
+                    // Has schedule but missing inputs
+                    if (!result && weeklyDose && concentration) {
+                      return (
+                        <div className="border-2 border-destructive/50 rounded-lg p-4 bg-destructive/10">
+                          <div className="flex items-start gap-2 text-destructive">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                              <div className="font-semibold">Cannot calculate</div>
+                              <div>Please check your values</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    if (!result) {
+                      return (
+                        <div className="text-sm text-muted-foreground text-center py-2">
+                          Enter weekly dose and concentration to see calculation
+                        </div>
+                      );
+                    }
+                    
+                    // Show calculation results
+                    return (
+                      <>
+                        <div className={cn(
+                          "border-2 rounded-lg p-4",
+                          getWeeklyCalcWarning()?.startsWith("❌") 
+                            ? "bg-destructive/10 border-destructive" 
+                            : "bg-card border-secondary"
+                        )}>
+                          <div className="text-sm text-muted-foreground text-center mb-3 pb-2 border-b border-border/50">
+                            Schedule: {getScheduleDescription()}
+                          </div>
+                          
+                          <div className="space-y-2 text-center">
+                            <div>
+                              <div className="text-3xl font-bold text-primary">{result.mgPerInjection} mg</div>
+                              <div className="text-sm text-muted-foreground">per injection</div>
+                            </div>
+                            <div>
+                              <div className="text-2xl font-semibold text-primary">{result.mlPerInjection} mL</div>
+                              <div className="text-sm text-muted-foreground">per injection</div>
+                            </div>
+                          </div>
+                          
+                          {getWeeklyCalcWarning() && (
+                            <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                              <span className="text-center">{getWeeklyCalcWarning()}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Medical disclaimer */}
+                        <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Always verify your calculations before use</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
