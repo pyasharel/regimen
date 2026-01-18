@@ -181,8 +181,7 @@ export const AddCompoundScreen = () => {
   const [iuConcentration, setIuConcentration] = useState("");
 
   // Weekly dose mode for oil-based compounds
-  const [doseInputMode, setDoseInputMode] = useState<'per-dose' | 'weekly'>('per-dose');
-  const [weeklyDose, setWeeklyDose] = useState("");
+  const [doseInputMode, setDoseInputMode] = useState<'per-injection' | 'weekly'>('per-injection');
 
   // Schedule
   const [frequency, setFrequency] = useState("Daily");
@@ -613,9 +612,9 @@ export const AddCompoundScreen = () => {
     return numberOfDoses;
   };
 
-  // Calculate per-dose values from weekly total
+  // Calculate per-dose values from weekly total (reads from intendedDose when in weekly mode)
   const calculateFromWeekly = (): { mgPerInjection: number; mlPerInjection: number; injectionsPerWeek: number } | null => {
-    const weekly = parseFloat(weeklyDose);
+    const weekly = parseFloat(intendedDose); // In weekly mode, intendedDose IS the weekly dose
     const conc = parseFloat(concentration);
     const injectionsPerWeek = calculateInjectionsPerWeek();
     
@@ -666,15 +665,16 @@ export const AddCompoundScreen = () => {
     return null;
   };
 
-  // Sync weekly calculations to intendedDose when in weekly mode
-  useEffect(() => {
-    if (doseInputMode === 'weekly' && weeklyDose && concentration) {
+  // Get the final intended dose for saving (converts weekly to per-injection if needed)
+  const getFinalIntendedDose = (): number => {
+    if (doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg') {
       const result = calculateFromWeekly();
       if (result) {
-        setIntendedDose(result.mgPerInjection.toString());
+        return result.mgPerInjection;
       }
     }
-  }, [doseInputMode, weeklyDose, concentration, frequency, customDays, everyXDays, numberOfDoses]);
+    return parseFloat(intendedDose);
+  };
 
   const filteredPeptides = Array.from(new Set(COMMON_PEPTIDES))
     .filter(p => p.toLowerCase().includes(name.toLowerCase()))
@@ -785,7 +785,7 @@ export const AddCompoundScreen = () => {
         }
       }
 
-      let currentDose = parseFloat(intendedDose);
+      let currentDose = getFinalIntendedDose();
 
       // Generate doses based on number of doses per day
       const timesToGenerate = numberOfDoses === 2 
@@ -1062,7 +1062,7 @@ export const AddCompoundScreen = () => {
             vial_size: vialSize ? parseFloat(vialSize) : null,
             vial_unit: vialUnit,
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
-            intended_dose: parseFloat(intendedDose),
+            intended_dose: getFinalIntendedDose(),
             dose_unit: doseUnit,
             calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
@@ -1210,7 +1210,7 @@ export const AddCompoundScreen = () => {
             vial_size: vialSize ? parseFloat(vialSize) : null,
             vial_unit: vialUnit,
             bac_water_volume: bacWater ? parseFloat(bacWater) : null,
-            intended_dose: parseFloat(intendedDose),
+            intended_dose: getFinalIntendedDose(),
             dose_unit: doseUnit,
           calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
@@ -1383,21 +1383,48 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
+          {/* Mode Toggle - only for oil-based compounds with mg unit */}
+          {isOilBasedCompound(name) && doseUnit === 'mg' && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">How is your dose prescribed?</Label>
+              <SegmentedControl
+                options={[
+                  { value: 'per-injection' as const, label: 'Per Injection' },
+                  { value: 'weekly' as const, label: 'Weekly Total' }
+                ]}
+                value={doseInputMode}
+                onChange={(val) => setDoseInputMode(val as 'per-injection' | 'weekly')}
+                className="w-full"
+                size="sm"
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="intendedDose">Dose Amount <span className="text-destructive">*</span></Label>
+            <Label htmlFor="intendedDose">
+              {doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg' 
+                ? 'Weekly Dose' 
+                : 'Dose Amount'} <span className="text-destructive">*</span>
+            </Label>
             <div className="flex gap-3">
               <Input
                 id="intendedDose"
                 type="number"
                 value={intendedDose}
                 onChange={(e) => setIntendedDose(e.target.value)}
-                placeholder="Enter amount"
+                placeholder={doseInputMode === 'weekly' && isOilBasedCompound(name) ? "e.g., 200" : "Enter amount"}
                 className="text-lg h-12 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <select
                 id="unit"
                 value={doseUnit}
-                onChange={(e) => setDoseUnit(e.target.value)}
+                onChange={(e) => {
+                  setDoseUnit(e.target.value);
+                  // Reset to per-injection mode when switching away from mg
+                  if (e.target.value !== 'mg') {
+                    setDoseInputMode('per-injection');
+                  }
+                }}
                 className="w-[120px] h-12 bg-input border-border rounded-lg border px-3 text-sm font-medium"
               >
                 <option value="mcg">mcg</option>
@@ -1409,6 +1436,11 @@ export const AddCompoundScreen = () => {
                 <option value="spray">spray</option>
               </select>
             </div>
+            {doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg' && (
+              <p className="text-xs text-muted-foreground">
+                Enter your total weekly dose (e.g., 200mg/week)
+              </p>
+            )}
           </div>
 
           {/* Calculator buttons - shown based on dose unit */}
@@ -1633,102 +1665,59 @@ export const AddCompoundScreen = () => {
           {/* mL Calculator - for oil-based compounds */}
           {activeCalculator === 'ml' && doseUnit === 'mg' && (
             <div className="space-y-4 p-4 bg-surface rounded-lg">
-              {/* Weekly/Per-Dose Toggle - only for oil-based compounds */}
-              {isOilBasedCompound(name) && (
-                <SegmentedControl
-                  options={[
-                    { value: 'per-dose', label: 'Per Dose' },
-                    { value: 'weekly', label: 'Weekly Dose' }
-                  ]}
-                  value={doseInputMode}
-                  onChange={(val) => {
-                    setDoseInputMode(val);
-                    if (val === 'per-dose') {
-                      // Keep the calculated per-dose value if switching from weekly
-                      setWeeklyDose('');
+              {/* Concentration Input - always shown */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <Label className="sm:mb-0">Concentration (mg/mL)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={concentration}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                      setConcentration(val);
                     }
                   }}
-                  className="w-full"
-                  size="sm"
+                  placeholder="e.g., 200"
+                  className="text-lg h-12 w-full sm:w-64 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
-              )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the mg/mL shown on your vial label
+              </p>
 
-              {/* Per-Dose Mode (default) */}
-              {doseInputMode === 'per-dose' && (
+              {/* Per-Injection Mode: Show simple mL calculation */}
+              {doseInputMode === 'per-injection' && calculatedML && (
                 <>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Label className="sm:mb-0">Concentration (mg/mL)</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      value={concentration}
-                      onChange={(e) => setConcentration(e.target.value)}
-                      placeholder="e.g., 200"
-                      className="text-lg h-12 w-full sm:w-64"
-                    />
+                  <div className={cn(
+                    "border-2 rounded-lg p-4 text-center",
+                    getMLWarning()?.startsWith("❌") 
+                      ? "bg-destructive/10 border-destructive" 
+                      : "bg-card border-secondary"
+                  )}>
+                    <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Volume to inject
+                    </div>
+                    {getMLWarning() && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-center">{getMLWarning()}</span>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Enter the mg/mL shown on your vial label
-                  </p>
-
-                  {calculatedML && (
-                    <>
-                      <div className={cn(
-                        "border-2 rounded-lg p-4 text-center",
-                        getMLWarning()?.startsWith("❌") 
-                          ? "bg-destructive/10 border-destructive" 
-                          : "bg-card border-secondary"
-                      )}>
-                        <div className="text-3xl font-bold text-primary">{calculatedML} mL</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Volume to inject
-                        </div>
-                        {getMLWarning() && (
-                          <div className="flex items-center justify-center gap-2 text-sm text-yellow-400/90 mt-3 bg-yellow-400/10 rounded-lg p-2.5 border border-yellow-400/20">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                            <span className="text-center">{getMLWarning()}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Medical disclaimer */}
-                      <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span>Always verify your calculations before use</span>
-                      </div>
-                    </>
-                  )}
+                  
+                  {/* Medical disclaimer */}
+                  <div className="text-center text-muted-foreground/60 text-xs mt-4 flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Always verify your calculations before use</span>
+                  </div>
                 </>
               )}
 
-              {/* Weekly Dose Mode - for oil-based compounds */}
+              {/* Weekly Mode: Show per-injection breakdown */}
               {doseInputMode === 'weekly' && isOilBasedCompound(name) && (
                 <>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Label className="sm:mb-0">Weekly Total (mg)</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      value={weeklyDose}
-                      onChange={(e) => setWeeklyDose(e.target.value)}
-                      placeholder="e.g., 200"
-                      className="text-lg h-12 w-full sm:w-64"
-                    />
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <Label className="sm:mb-0">Concentration (mg/mL)</Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      value={concentration}
-                      onChange={(e) => setConcentration(e.target.value)}
-                      placeholder="e.g., 200"
-                      className="text-lg h-12 w-full sm:w-64"
-                    />
-                  </div>
-
-                  {/* Schedule info and calculation results */}
                   {(() => {
                     const injectionsPerWeek = calculateInjectionsPerWeek();
                     const result = calculateFromWeekly();
@@ -1745,7 +1734,7 @@ export const AddCompoundScreen = () => {
                     }
                     
                     // Has schedule but missing inputs
-                    if (!result && weeklyDose && concentration) {
+                    if (!result && intendedDose && concentration) {
                       return (
                         <div className="border-2 border-destructive/50 rounded-lg p-4 bg-destructive/10">
                           <div className="flex items-start gap-2 text-destructive">
@@ -1762,7 +1751,7 @@ export const AddCompoundScreen = () => {
                     if (!result) {
                       return (
                         <div className="text-sm text-muted-foreground text-center py-2">
-                          Enter weekly dose and concentration to see calculation
+                          Enter weekly dose above and concentration to see calculation
                         </div>
                       );
                     }
