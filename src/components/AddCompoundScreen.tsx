@@ -1483,14 +1483,17 @@ export const AddCompoundScreen = () => {
                   <span className="text-muted-foreground">|</span>
                 </>
               )}
-              <button
-                onClick={() => {
-                  setActiveCalculator(activeCalculator === 'ml' ? null : 'ml');
-                }}
-                className="text-sm text-primary hover:underline"
-              >
-                {activeCalculator === 'ml' ? '- Hide' : '+ Show'} mL Calculator
-              </button>
+              {/* Show mL calculator only for oil-based compounds */}
+              {isOilBasedCompound(name) && (
+                <button
+                  onClick={() => {
+                    setActiveCalculator(activeCalculator === 'ml' ? null : 'ml');
+                  }}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {activeCalculator === 'ml' ? '- Hide' : '+ Show'} mL Calculator
+                </button>
+              )}
             </div>
           )}
 
