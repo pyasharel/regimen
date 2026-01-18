@@ -405,6 +405,13 @@ export const AddCompoundScreen = () => {
     }
   }, []);
 
+  // Auto-show mL calculator when switching to weekly mode for oil-based compounds
+  useEffect(() => {
+    if (doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg') {
+      setActiveCalculator('ml');
+    }
+  }, [doseInputMode]);
+
   // Calculate IU (syringe units on 100-unit insulin syringe)
   // This converts your dose to the number of units on a standard insulin syringe
   const calculateIU = () => {
@@ -1390,7 +1397,7 @@ export const AddCompoundScreen = () => {
           {/* Mode Toggle - only for oil-based compounds with mg unit */}
           {isOilBasedCompound(name) && doseUnit === 'mg' && (
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">How is your dose prescribed?</Label>
+              <Label className="text-xs text-muted-foreground">How do you measure your dose?</Label>
               <SegmentedControl
                 options={[
                   { value: 'per-injection' as const, label: 'Per Injection' },
@@ -1462,15 +1469,20 @@ export const AddCompoundScreen = () => {
 
           {doseUnit === 'mg' && (
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
-                }}
-                className="text-sm text-primary hover:underline"
-              >
-                {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
-              </button>
-              <span className="text-muted-foreground">|</span>
+              {/* Hide IU calculator when in weekly mode for oil-based compounds */}
+              {!(doseInputMode === 'weekly' && isOilBasedCompound(name)) && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
+                    }}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
+                  </button>
+                  <span className="text-muted-foreground">|</span>
+                </>
+              )}
               <button
                 onClick={() => {
                   setActiveCalculator(activeCalculator === 'ml' ? null : 'ml');
@@ -1769,9 +1781,16 @@ export const AddCompoundScreen = () => {
                             ? "bg-destructive/10 border-destructive" 
                             : "bg-card border-secondary"
                         )}>
-                          <div className="text-sm text-muted-foreground text-center mb-3 pb-2 border-b border-border/50">
-                            Schedule: {getScheduleDescription()}
-                          </div>
+                          <button 
+                            onClick={() => {
+                              document.getElementById('frequency-select')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              setTimeout(() => document.getElementById('frequency-select')?.focus(), 300);
+                            }}
+                            className="text-sm text-primary text-center mb-3 pb-2 border-b border-border/50 hover:underline w-full flex items-center justify-center gap-1"
+                          >
+                            <span>Schedule: {getScheduleDescription()}</span>
+                            <span className="text-xs opacity-70">(tap to change)</span>
+                          </button>
                           
                           <div className="space-y-2 text-center">
                             <div>
@@ -1866,6 +1885,7 @@ export const AddCompoundScreen = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <Label className="sm:mb-0">Frequency <span className="text-destructive">*</span></Label>
             <select
+              id="frequency-select"
               value={frequency}
               onChange={(e) => {
                 setFrequency(e.target.value);
