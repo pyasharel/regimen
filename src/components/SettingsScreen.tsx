@@ -118,15 +118,16 @@ export const SettingsScreen = () => {
     
     if (Capacitor.isNativePlatform()) {
       if (!isPluginAvailable) {
-        toast.error('Rating plugin not registered');
+        console.log('[Settings] Rating plugin not registered');
         return;
       }
       try {
-        toast.info('Requesting rating prompt...', { duration: 2000 });
+        console.log('[Settings] Requesting rating prompt...');
         await new Promise(resolve => setTimeout(resolve, 400));
         await InAppReview.requestReview();
+        console.log('[Settings] Rating prompt completed');
       } catch (error) {
-        toast.error('Rating prompt unavailable');
+        console.error('[Settings] Rating prompt failed:', error);
       }
     } else {
       toast.info('Rating is available in the native app');
