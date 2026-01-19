@@ -57,9 +57,12 @@ export const CalculatorModal = ({
   initialDoseUnit = 'mg'
 }: CalculatorModalProps) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<CalculatorTab>('reconstitution');
+  // Default to 'reconstitution' unless initialConcentration provided (meaning mL calc)
+  const [activeTab, setActiveTab] = useState<CalculatorTab>(
+    initialConcentration ? 'ml' : 'reconstitution'
+  );
   
-  // Reconstitution calculator state
+  // Reconstitution calculator state - NO default values
   const [reconMode, setReconMode] = useState<ReconstitutionMode>('standard');
   const [vialSize, setVialSize] = useState(initialVialSize?.toString() || '');
   const [vialUnit, setVialUnit] = useState(initialVialUnit);
@@ -67,7 +70,7 @@ export const CalculatorModal = ({
   const [intendedDose, setIntendedDose] = useState(initialDose?.toString() || '');
   const [doseUnit, setDoseUnit] = useState(initialDoseUnit);
   const [syringeSize, setSyringeSize] = useState(100); // 1mL is most common
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false); // Always start collapsed
   
   // Reverse mode state
   const [preferredUnits, setPreferredUnits] = useState('');
@@ -126,7 +129,9 @@ export const CalculatorModal = ({
     const iu = mlNeeded * syringeSize;
 
     if (iu <= 0 || !isFinite(iu)) return null;
-    return iu.toFixed(1);
+    // Format: remove trailing .0 for whole numbers, but keep decimals when needed
+    const formatted = iu.toFixed(1);
+    return formatted.endsWith('.0') ? Math.round(iu).toString() : formatted;
   };
 
   // Calculate BAC water for reverse mode
@@ -318,7 +323,7 @@ export const CalculatorModal = ({
                         placeholder="Other"
                         value={VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
                         onChange={(e) => handlePositiveInput(e.target.value, setVialSize, 0)}
-                        className="w-14 h-8 text-xs px-2"
+                        className="w-16 h-8 text-xs px-2"
                       />
                     </div>
               </div>
@@ -348,7 +353,7 @@ export const CalculatorModal = ({
                         placeholder="Other"
                         value={BAC_WATER_AMOUNTS.includes(Number(bacWater)) ? '' : bacWater}
                         onChange={(e) => handlePositiveInput(e.target.value, setBacWater, 0)}
-                        className="w-14 h-8 text-xs px-2"
+                        className="w-16 h-8 text-xs px-2"
                       />
                     </div>
                   </div>
@@ -527,11 +532,10 @@ export const CalculatorModal = ({
                 </div>
               )}
 
-              {/* Add to Stack Button */}
+              {/* Add to Stack Button - Primary CTA */}
               {(calculatedIU || calculatedReverseBAC) && (
                 <Button 
                   onClick={handleAddToStack}
-                  variant="outline"
                   className="w-full flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -544,6 +548,9 @@ export const CalculatorModal = ({
           {/* mL Calculator */}
           {activeTab === 'ml' && (
             <div className="space-y-4">
+              <p className="text-xs text-muted-foreground -mt-2">
+                For oil-based compounds (testosterone, etc.)
+              </p>
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   Concentration
@@ -566,7 +573,7 @@ export const CalculatorModal = ({
                     placeholder="Other"
                     value={CONCENTRATION_PRESETS.includes(Number(concentration)) ? '' : concentration}
                     onChange={(e) => handlePositiveInput(e.target.value, setConcentration, 0)}
-                    className="w-14 h-8 text-xs px-2"
+                    className="w-16 h-8 text-xs px-2"
                   />
                   <span className="text-xs text-muted-foreground">mg/mL</span>
                 </div>
@@ -603,7 +610,6 @@ export const CalculatorModal = ({
 
                   <Button 
                     onClick={handleAddToStack}
-                    variant="outline"
                     className="w-full flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
