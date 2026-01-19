@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
 import logoIcon from '@/assets/logo-regimen-icon-final.png';
 
@@ -14,7 +15,8 @@ const STORAGE_KEYS = {
 
 // App Store ID for Regimen
 const APP_STORE_ID = '6753005449';
-const APP_STORE_URL = `itms-apps://apps.apple.com/app/id${APP_STORE_ID}`;
+const APP_STORE_URL_NATIVE = `itms-apps://apps.apple.com/app/id${APP_STORE_ID}`;
+const APP_STORE_URL_WEB = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
 // 7 days in milliseconds
 const REMIND_LATER_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -83,12 +85,23 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
       // Mark as migrated so we never show again
       await persistentStorage.setBoolean(STORAGE_KEYS.MIGRATED, true);
       
-      // Open App Store
-      await Browser.open({ url: APP_STORE_URL });
+      // Try native URL scheme first (iOS handles this automatically)
+      if (Capacitor.isNativePlatform()) {
+        window.location.href = APP_STORE_URL_NATIVE;
+      } else {
+        // Fallback for web preview
+        await Browser.open({ url: APP_STORE_URL_WEB });
+      }
       
       setIsOpen(false);
     } catch (error) {
       console.error('[TestFlightModal] Error opening App Store:', error);
+      // Ultimate fallback: try HTTPS URL
+      try {
+        await Browser.open({ url: APP_STORE_URL_WEB });
+      } catch (e) {
+        console.error('[TestFlightModal] Fallback also failed:', e);
+      }
     }
   };
 
