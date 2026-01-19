@@ -198,6 +198,86 @@ export type Database = {
           },
         ]
       }
+      partner_code_redemptions: {
+        Row: {
+          code_id: string
+          id: string
+          metadata: Json | null
+          offer_applied: boolean
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          code_id: string
+          id?: string
+          metadata?: Json | null
+          offer_applied?: boolean
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          code_id?: string
+          id?: string
+          metadata?: Json | null
+          offer_applied?: boolean
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_code_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "partner_promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_promo_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          free_days: number
+          id: string
+          is_active: boolean
+          max_redemptions: number | null
+          offer_identifier: string
+          partner_name: string
+          plan_type: string
+          redemption_count: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          free_days?: number
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          offer_identifier: string
+          partner_name: string
+          plan_type?: string
+          redemption_count?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          free_days?: number
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          offer_identifier?: string
+          partner_name?: string
+          plan_type?: string
+          redemption_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
