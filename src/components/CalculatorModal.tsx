@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Calculator, Droplets, FlaskConical, Copy, Plus, HelpCircle, ChevronDown, Settings2 } from "lucide-react";
+import { X, Calculator, Copy, Plus, HelpCircle, ChevronDown, Settings2, ArrowRightLeft } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -41,9 +41,9 @@ const VIAL_SIZES = [5, 10, 15, 20];
 const BAC_WATER_AMOUNTS = [1, 2, 3, 5];
 const CONCENTRATION_PRESETS = [100, 200, 250, 300];
 const SYRINGE_SIZES = [
-  { value: 30, label: '0.3mL' },
-  { value: 50, label: '0.5mL' },
-  { value: 100, label: '1mL' },
+  { value: 30, label: '0.3mL (30u)' },
+  { value: 50, label: '0.5mL (50u)' },
+  { value: 100, label: '1mL (100u)' },
 ];
 
 export const CalculatorModal = ({
@@ -85,6 +85,18 @@ export const CalculatorModal = ({
       console.log('Haptic failed:', err);
     }
   }, []);
+
+  // Clamp input to positive values
+  const handlePositiveInput = (value: string, setter: (val: string) => void, minValue: number = 0) => {
+    const num = parseFloat(value);
+    if (value === '' || value === '0' || value === '0.') {
+      setter(value);
+    } else if (!isNaN(num) && num >= minValue) {
+      setter(value);
+    } else if (!isNaN(num) && num < minValue) {
+      setter(minValue.toString());
+    }
+  };
 
   // Calculate IU for reconstitution (standard mode)
   const calculateIU = (): string | null => {
@@ -248,45 +260,37 @@ export const CalculatorModal = ({
     </button>
   );
 
-  const tabOptions = [
-    { value: 'reconstitution', label: 'Peptides' },
-    { value: 'ml', label: 'Oil-Based' }
-  ];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" hideClose>
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
             <Calculator className="w-5 h-5 text-primary" />
-            Dose Calculator
+            {activeTab === 'reconstitution' ? 'Reconstitution Calculator' : 'mL Calculator'}
           </DialogTitle>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Switch calculator type */}
+            <button
+              onClick={() => {
+                triggerHaptic();
+                setActiveTab(activeTab === 'reconstitution' ? 'ml' : 'reconstitution');
+              }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              {activeTab === 'reconstitution' ? 'mL calc' : 'Peptide calc'}
+            </button>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Tab Selector with Tooltips */}
-          <div className="space-y-1">
-            <SegmentedControl
-              value={activeTab}
-              onChange={(val) => {
-                triggerHaptic();
-                setActiveTab(val as CalculatorTab);
-              }}
-              options={tabOptions}
-            />
-            <p className="text-xs text-muted-foreground text-center">
-              {activeTab === 'reconstitution' 
-                ? 'For peptides, GLP-1s, HCG (powders mixed with BAC water)'
-                : 'For testosterone, anabolics (pre-mixed oils)'}
-            </p>
-          </div>
 
           {/* Reconstitution Calculator */}
           {activeTab === 'reconstitution' && (
@@ -307,15 +311,16 @@ export const CalculatorModal = ({
                       suffix="mg"
                     />
                   ))}
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Other"
-                    value={VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
-                    onChange={(e) => setVialSize(e.target.value)}
-                    className="w-16 h-8 text-xs px-2"
-                  />
-                </div>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min="0.1"
+                        placeholder="Other"
+                        value={VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
+                        onChange={(e) => handlePositiveInput(e.target.value, setVialSize, 0)}
+                        className="w-14 h-8 text-xs px-2"
+                      />
+                    </div>
               </div>
 
               {/* Standard Mode: BAC Water + Dose */}
@@ -339,23 +344,28 @@ export const CalculatorModal = ({
                       <Input
                         type="number"
                         inputMode="decimal"
+                        min="0.1"
                         placeholder="Other"
                         value={BAC_WATER_AMOUNTS.includes(Number(bacWater)) ? '' : bacWater}
-                        onChange={(e) => setBacWater(e.target.value)}
-                        className="w-16 h-8 text-xs px-2"
+                        onChange={(e) => handlePositiveInput(e.target.value, setBacWater, 0)}
+                        className="w-14 h-8 text-xs px-2"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Dose</Label>
+                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                        Dose
+                        <InfoTooltip content="The amount you want to inject per dose" />
+                      </Label>
                       <Input
                         type="number"
                         inputMode="decimal"
+                        min="0"
                         placeholder="e.g., 250"
                         value={intendedDose}
-                        onChange={(e) => setIntendedDose(e.target.value)}
+                        onChange={(e) => handlePositiveInput(e.target.value, setIntendedDose, 0)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -378,13 +388,17 @@ export const CalculatorModal = ({
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Dose</Label>
+                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                        Dose
+                        <InfoTooltip content="The amount you want to inject per dose" />
+                      </Label>
                       <Input
                         type="number"
                         inputMode="decimal"
+                        min="0"
                         placeholder="e.g., 250"
                         value={intendedDose}
-                        onChange={(e) => setIntendedDose(e.target.value)}
+                        onChange={(e) => handlePositiveInput(e.target.value, setIntendedDose, 0)}
                       />
                     </div>
                     <div className="space-y-2">
@@ -408,9 +422,10 @@ export const CalculatorModal = ({
                     <Input
                       type="number"
                       inputMode="decimal"
+                      min="1"
                       placeholder="e.g., 10"
                       value={preferredUnits}
-                      onChange={(e) => setPreferredUnits(e.target.value)}
+                      onChange={(e) => handlePositiveInput(e.target.value, setPreferredUnits, 1)}
                     />
                   </div>
                 </>
@@ -547,23 +562,28 @@ export const CalculatorModal = ({
                   <Input
                     type="number"
                     inputMode="decimal"
+                    min="1"
                     placeholder="Other"
                     value={CONCENTRATION_PRESETS.includes(Number(concentration)) ? '' : concentration}
-                    onChange={(e) => setConcentration(e.target.value)}
-                    className="w-16 h-8 text-xs px-2"
+                    onChange={(e) => handlePositiveInput(e.target.value, setConcentration, 0)}
+                    className="w-14 h-8 text-xs px-2"
                   />
                   <span className="text-xs text-muted-foreground">mg/mL</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Dose (mg)</Label>
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  Dose (mg)
+                  <InfoTooltip content="The amount you want to inject per dose" />
+                </Label>
                 <Input
                   type="number"
                   inputMode="decimal"
+                  min="0"
                   placeholder="e.g., 200"
                   value={mgDose}
-                  onChange={(e) => setMgDose(e.target.value)}
+                  onChange={(e) => handlePositiveInput(e.target.value, setMgDose, 0)}
                 />
               </div>
 
