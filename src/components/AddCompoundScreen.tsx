@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, AlertTriangle, Calendar as CalendarIcon, Trash2, Calculator } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { usePaywall } from "@/contexts/PaywallContext";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -1454,55 +1454,116 @@ export const AddCompoundScreen = () => {
             )}
           </div>
 
-          {/* Calculator buttons - shown based on dose unit */}
-          {/* FIX #4: Hide IU calculator when dose unit is already 'iu' */}
+          {/* Calculator Cards - styled and prominent */}
+          {/* Reconstitution Calculator for mcg doses */}
           {doseUnit === 'mcg' && (
             <button
               onClick={() => {
+                triggerHaptic('light');
                 setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
               }}
-              className="text-sm text-primary hover:underline"
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                activeCalculator === 'iu' 
+                  ? "bg-primary/10 border-primary/30" 
+                  : "bg-muted/50 border-border hover:bg-muted"
+              )}
             >
-              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} Reconstitution Calculator
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Calculator className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-sm">Reconstitution Calculator</div>
+                <div className="text-xs text-muted-foreground">Calculate units to draw on your syringe</div>
+              </div>
+              <span className="text-primary text-sm font-medium">
+                {activeCalculator === 'iu' ? '−' : '+'}
+              </span>
             </button>
           )}
 
           {doseUnit === 'mg' && (
-            <div className="flex items-center gap-3">
-              {/* Show Reconstitution Calculator for non-oil-based compounds */}
+            <>
+              {/* Reconstitution Calculator for non-oil-based mg compounds */}
               {!isOilBasedCompound(name) && (
                 <button
                   onClick={() => {
+                    triggerHaptic('light');
                     setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
                   }}
-                  className="text-sm text-primary hover:underline"
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                    activeCalculator === 'iu' 
+                      ? "bg-primary/10 border-primary/30" 
+                      : "bg-muted/50 border-border hover:bg-muted"
+                  )}
                 >
-                  {activeCalculator === 'iu' ? '- Hide' : '+ Show'} Reconstitution Calculator
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Calculator className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">Reconstitution Calculator</div>
+                    <div className="text-xs text-muted-foreground">Calculate units to draw on your syringe</div>
+                  </div>
+                  <span className="text-primary text-sm font-medium">
+                    {activeCalculator === 'iu' ? '−' : '+'}
+                  </span>
                 </button>
               )}
-              {/* Show mL calculator only for oil-based compounds */}
+              
+              {/* mL Calculator for oil-based compounds */}
               {isOilBasedCompound(name) && (
                 <button
                   onClick={() => {
+                    triggerHaptic('light');
                     setActiveCalculator(activeCalculator === 'ml' ? null : 'ml');
                   }}
-                  className="text-sm text-primary hover:underline"
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                    activeCalculator === 'ml' 
+                      ? "bg-primary/10 border-primary/30" 
+                      : "bg-muted/50 border-border hover:bg-muted"
+                  )}
                 >
-                  {activeCalculator === 'ml' ? '- Hide' : '+ Show'} mL Calculator
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Calculator className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">mL Calculator</div>
+                    <div className="text-xs text-muted-foreground">Calculate volume to inject from concentration</div>
+                  </div>
+                  <span className="text-primary text-sm font-medium">
+                    {activeCalculator === 'ml' ? '−' : '+'}
+                  </span>
                 </button>
               )}
-            </div>
+            </>
           )}
 
-          {/* IU/mL Calculator button - for IU-based compounds like HGH */}
+          {/* IU/mL Calculator for IU-based compounds like HGH */}
           {doseUnit === 'iu' && (
             <button
               onClick={() => {
+                triggerHaptic('light');
                 setActiveCalculator(activeCalculator === 'iu-ml' ? null : 'iu-ml');
               }}
-              className="text-sm text-primary hover:underline"
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left",
+                activeCalculator === 'iu-ml' 
+                  ? "bg-primary/10 border-primary/30" 
+                  : "bg-muted/50 border-border hover:bg-muted"
+              )}
             >
-              {activeCalculator === 'iu-ml' ? '- Hide' : '+ Show'} mL Calculator
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Calculator className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-sm">mL Calculator</div>
+                <div className="text-xs text-muted-foreground">Calculate volume from IU concentration</div>
+              </div>
+              <span className="text-primary text-sm font-medium">
+                {activeCalculator === 'iu-ml' ? '−' : '+'}
+              </span>
             </button>
           )}
 
