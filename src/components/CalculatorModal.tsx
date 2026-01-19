@@ -126,7 +126,8 @@ export const CalculatorModal = ({
 
     const concentrationMcgPerMl = vialMcg / bacWaterNum;
     const mlNeeded = doseMcg / concentrationMcgPerMl;
-    const iu = mlNeeded * syringeSize;
+    // Units are always mL × 100 (1 unit = 0.01mL on any insulin syringe)
+    const iu = mlNeeded * 100;
 
     if (iu <= 0 || !isFinite(iu)) return null;
     // Format: remove trailing .0 for whole numbers, but keep decimals when needed
@@ -368,7 +369,7 @@ export const CalculatorModal = ({
                         type="number"
                         inputMode="decimal"
                         min="0"
-                        placeholder="e.g., 250"
+                        placeholder="e.g. 5"
                         value={intendedDose}
                         onChange={(e) => handlePositiveInput(e.target.value, setIntendedDose, 0)}
                       />
@@ -505,9 +506,9 @@ export const CalculatorModal = ({
                   <div>
                     <p className="text-sm text-muted-foreground">Draw on syringe</p>
                     <p className="text-2xl font-bold text-primary">{calculatedIU} units</p>
-                    {syringeSize !== 100 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        on a {syringeSize}u syringe
+                    {Number(calculatedIU) > syringeSize && (
+                      <p className="text-xs text-destructive mt-1">
+                        ⚠️ Exceeds {syringeSize}u syringe capacity
                       </p>
                     )}
                   </div>
@@ -588,7 +589,7 @@ export const CalculatorModal = ({
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  placeholder="e.g., 200"
+                  placeholder="e.g. 200"
                   value={mgDose}
                   onChange={(e) => handlePositiveInput(e.target.value, setMgDose, 0)}
                 />
