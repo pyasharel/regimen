@@ -12,6 +12,9 @@ const PROMO_CODES: Record<string, { days: number; description: string }> = {
   "REDDIT30": { days: 30, description: "1 month free" },
 };
 
+// Far future date for lifetime access
+const LIFETIME_END_DATE = '2099-12-31T23:59:59.999Z';
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -48,6 +51,82 @@ serve(async (req) => {
     console.log('[ACTIVATE-BETA] Checking code:', code);
     
     const upperCode = code.toUpperCase();
+    
+    // FIRST: Check if this is a VIP lifetime code
+    const { data: lifetimeCode, error: lifetimeError } = await supabaseClient
+      .from('lifetime_codes')
+      .select('id, code, redeemed_at, redeemed_by')
+      .eq('code', upperCode)
+      .maybeSingle();
+    
+    if (lifetimeError) {
+      console.error('[ACTIVATE-BETA] Error checking lifetime codes:', lifetimeError);
+    }
+    
+    if (lifetimeCode) {
+      // Check if already redeemed
+      if (lifetimeCode.redeemed_at) {
+        console.log('[ACTIVATE-BETA] Lifetime code already redeemed:', upperCode);
+        return new Response(JSON.stringify({ 
+          valid: false,
+          message: "This code has already been redeemed"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      console.log('[ACTIVATE-BETA] Valid VIP lifetime code found:', upperCode);
+      
+      // Mark the code as redeemed
+      const { error: redeemError } = await supabaseClient
+        .from('lifetime_codes')
+        .update({ 
+          redeemed_at: new Date().toISOString(),
+          redeemed_by: user.id
+        })
+        .eq('id', lifetimeCode.id);
+      
+      if (redeemError) {
+        console.error('[ACTIVATE-BETA] Error marking code as redeemed:', redeemError);
+        throw redeemError;
+      }
+      
+      // Grant lifetime access to user
+      const { data: updateData, error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ 
+          is_lifetime_access: true,
+          beta_access_end_date: LIFETIME_END_DATE
+        })
+        .eq('user_id', user.id)
+        .select();
+      
+      if (updateError) {
+        console.error('[ACTIVATE-BETA] Error granting lifetime access:', updateError);
+        throw updateError;
+      }
+      
+      if (!updateData || updateData.length === 0) {
+        console.error('[ACTIVATE-BETA] No rows updated! User may not have a profile.');
+        throw new Error('Failed to update profile - user profile may not exist');
+      }
+      
+      console.log('[ACTIVATE-BETA] Lifetime VIP access granted to user:', user.id);
+      
+      return new Response(JSON.stringify({ 
+        valid: true,
+        activated: true,
+        isLifetime: true,
+        message: "Lifetime VIP access activated successfully",
+        endDate: LIFETIME_END_DATE
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
+    // SECOND: Check regular promo codes
     const promoConfig = PROMO_CODES[upperCode];
     
     if (!promoConfig) {
@@ -62,12 +141,25 @@ serve(async (req) => {
     
     console.log('[ACTIVATE-BETA] Valid code found:', upperCode, promoConfig);
 
-    // Check if user already has beta access
+    // Check if user already has beta access or lifetime access
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('beta_access_end_date')
+      .select('beta_access_end_date, is_lifetime_access')
       .eq('user_id', user.id)
       .single();
+
+    // Don't allow promo codes for lifetime users
+    if (profile?.is_lifetime_access) {
+      console.log('[ACTIVATE-BETA] User already has lifetime access');
+      return new Response(JSON.stringify({ 
+        valid: true,
+        alreadyActive: true,
+        message: "You already have lifetime VIP access"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     if (profile?.beta_access_end_date) {
       const endDate = new Date(profile.beta_access_end_date);
