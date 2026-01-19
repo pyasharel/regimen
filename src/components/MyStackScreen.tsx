@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2 } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect, useRef } from "react";
@@ -15,6 +15,7 @@ import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
 import { trackCompoundDeleted, trackCompoundViewed } from "@/utils/analytics";
+import { CalculatorModal } from "@/components/CalculatorModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,7 @@ export const MyStackScreen = () => {
   const [weeklyDoses, setWeeklyDoses] = useState(0);
   const [adherenceRate, setAdherenceRate] = useState(0);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
   
   // Check if progress animation already played this session
   const [hasAnimatedProgress, setHasAnimatedProgress] = useState(() => {
@@ -396,8 +398,20 @@ export const MyStackScreen = () => {
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
       {/* Scrollable Content - Header inside scroll area */}
       <div className="flex-1 min-h-0 scroll-container pb-24">
-        {/* Header */}
-        <MainHeader title="My Stack" />
+        {/* Header with Calculator Button */}
+        <div className="flex items-center justify-between px-4 pt-4">
+          <h1 className="text-2xl font-bold text-foreground">My Stack</h1>
+          <button
+            onClick={() => {
+              triggerHaptic();
+              setShowCalculator(true);
+            }}
+            className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
+            aria-label="Open Calculator"
+          >
+            <Calculator className="w-5 h-5 text-primary" />
+          </button>
+        </div>
         {/* Dashboard Stats - Compact Row with more spacing */}
         <div className="px-4 pt-5 pb-5">
           <div className="grid grid-cols-2 gap-2">
@@ -698,6 +712,12 @@ export const MyStackScreen = () => {
           }))}
         />
       </div>
+      
+      {/* Calculator Modal */}
+      <CalculatorModal 
+        open={showCalculator} 
+        onOpenChange={setShowCalculator} 
+      />
     </div>
   );
 };

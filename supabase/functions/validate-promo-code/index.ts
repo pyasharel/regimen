@@ -25,13 +25,13 @@ serve(async (req) => {
     
     console.log(`[VALIDATE-PROMO] Checking code: ${upperCode}`);
     
-    // FIRST: Check if this is a VIP lifetime code
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
     
+    // FIRST: Check if this is a VIP lifetime code
     const { data: lifetimeCode, error: lifetimeError } = await supabaseClient
       .from('lifetime_codes')
       .select('id, code, redeemed_at')
@@ -71,21 +71,65 @@ serve(async (req) => {
       });
     }
     
-    // SECOND: Check if this is a backend promo code (for backwards compatibility)
-    // This allows old app versions to validate codes like REDDIT30
+    // SECOND: Check if this is a partner promotional offer code (Apple Promotional Offers)
+    const { data: partnerCode, error: partnerError } = await supabaseClient
+      .from('partner_promo_codes')
+      .select('*')
+      .eq('code', upperCode)
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (partnerError) {
+      console.error(`[VALIDATE-PROMO] Error checking partner codes:`, partnerError);
+    }
+    
+    if (partnerCode) {
+      console.log(`[VALIDATE-PROMO] Found valid partner promo code: ${upperCode}`, {
+        partner: partnerCode.partner_name,
+        offerIdentifier: partnerCode.offer_identifier,
+        freeDays: partnerCode.free_days
+      });
+      
+      // Check if max redemptions reached
+      if (partnerCode.max_redemptions !== null && partnerCode.redemption_count >= partnerCode.max_redemptions) {
+        console.log(`[VALIDATE-PROMO] Partner code max redemptions reached`);
+        return new Response(JSON.stringify({
+          valid: false,
+          message: 'This promo code has reached its maximum redemptions'
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      return new Response(JSON.stringify({
+        valid: true,
+        type: 'partner_offer',
+        isPartnerOffer: true,
+        offerIdentifier: partnerCode.offer_identifier,
+        planType: partnerCode.plan_type,
+        freeDays: partnerCode.free_days,
+        partnerName: partnerCode.partner_name,
+        description: partnerCode.description,
+        discount: 100 // Free trial period
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
+    // THIRD: Check if this is a backend promo code (for backwards compatibility)
     if (BACKEND_PROMO_CODES[upperCode]) {
       const promoConfig = BACKEND_PROMO_CODES[upperCode];
       console.log(`[VALIDATE-PROMO] Found backend promo code: ${upperCode}`, promoConfig);
       
-      // Return as valid with special type to indicate this is a backend code
-      // The frontend will then call activate-beta-access to apply it
       return new Response(JSON.stringify({
         valid: true,
         type: 'beta_access',
         duration: promoConfig.days,
-        discount: 100, // 100% off (free)
+        discount: 100,
         planType: 'both',
-        isBackendCode: true, // Flag so frontend knows to call activate-beta-access
+        isBackendCode: true,
         description: promoConfig.description
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -93,7 +137,7 @@ serve(async (req) => {
       });
     }
     
-    // SECOND: Check Stripe promo codes
+    // FOURTH: Check Stripe promo codes
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
     });
@@ -120,7 +164,7 @@ serve(async (req) => {
     const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
     const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";
     
-    let planType = 'both'; // default if no restrictions
+    let planType = 'both';
     if (applicablePrices.length > 0) {
       const hasMonthly = applicablePrices.includes(monthlyPriceId);
       const hasAnnual = applicablePrices.includes(annualPriceId);
@@ -136,7 +180,7 @@ serve(async (req) => {
       type: coupon.percent_off === 100 ? 'free' : 'discount',
       duration: coupon.duration_in_months || 12,
       discount: coupon.percent_off || 0,
-      planType, // Add which plan this code applies to
+      planType,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
