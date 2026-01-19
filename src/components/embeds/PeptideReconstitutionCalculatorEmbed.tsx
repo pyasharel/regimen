@@ -1,32 +1,4 @@
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronDown, Copy } from "lucide-react";
-
-type MassUnit = "mg" | "mcg";
-
-type SyringeOption = { unitsMax: number; label: string };
-const SYRINGE_OPTIONS: SyringeOption[] = [
-  { unitsMax: 30, label: "0.3 mL (30u)" },
-  { unitsMax: 50, label: "0.5 mL (50u)" },
-  { unitsMax: 100, label: "1.0 mL (100u)" },
-];
-
-const toMcg = (value: number, unit: MassUnit) => (unit === "mg" ? value * 1000 : value);
 
 const parsePositive = (s: string): number | null => {
   if (!s) return null;
@@ -40,208 +12,116 @@ const formatSmart = (n: number, maxDecimals: number) => {
   return fixed.replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
 };
 
-export function PeptideReconstitutionCalculatorEmbed() {
-  const [vialSize, setVialSize] = useState("");
-  const [vialUnit, setVialUnit] = useState<MassUnit>("mg");
-  const [bacWaterMl, setBacWaterMl] = useState("");
-  const [dose, setDose] = useState("");
-  const [doseUnit, setDoseUnit] = useState<MassUnit>("mg");
+const PRESET_VIAL = [5, 10, 15, 20];
+const PRESET_BAC = [1, 2, 3];
 
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [syringeUnitsMax, setSyringeUnitsMax] = useState<number>(100);
-  const [copied, setCopied] = useState<"units" | "ml" | null>(null);
+const CopyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+export function PeptideReconstitutionCalculatorEmbed() {
+  const [vialMg, setVialMg] = useState("");
+  const [bacMl, setBacMl] = useState("");
+  const [doseMcg, setDoseMcg] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [showFaq, setShowFaq] = useState(false);
 
   const result = useMemo(() => {
-    const vialNum = parsePositive(vialSize);
-    const bacNum = parsePositive(bacWaterMl);
-    const doseNum = parsePositive(dose);
-    if (!vialNum || !bacNum || !doseNum) return null;
+    const vial = parsePositive(vialMg);
+    const bac = parsePositive(bacMl);
+    const dose = parsePositive(doseMcg);
+    if (!vial || !bac || !dose) return null;
+    const concentrationMcgPerMl = (vial * 1000) / bac;
+    const mlToDraw = dose / concentrationMcgPerMl;
+    const unitsToDraw = mlToDraw * 100;
+    if (!Number.isFinite(unitsToDraw) || unitsToDraw <= 0) return null;
+    return { units: unitsToDraw, ml: mlToDraw, concentrationMcgPerMl };
+  }, [vialMg, bacMl, doseMcg]);
 
-    const vialMcg = toMcg(vialNum, vialUnit);
-    const doseMcg = toMcg(doseNum, doseUnit);
-
-    const concentrationMcgPerMl = vialMcg / bacNum;
-    const mlToDraw = doseMcg / concentrationMcgPerMl;
-    const unitsToDraw = mlToDraw * 100; // 1u = 0.01 mL (always)
-
-    if (!Number.isFinite(mlToDraw) || mlToDraw <= 0) return null;
-
-    return {
-      concentrationMcgPerMl,
-      mlToDraw,
-      unitsToDraw,
-      exceedsSyringe: unitsToDraw > syringeUnitsMax,
-    };
-  }, [vialSize, vialUnit, bacWaterMl, dose, doseUnit, syringeUnitsMax]);
-
-  const copy = async (text: string, which: "units" | "ml") => {
+  const copy = async () => {
+    if (!result) return;
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(which);
-      window.setTimeout(() => setCopied(null), 1200);
-    } catch {
-      // ignore
-    }
+      await navigator.clipboard.writeText(`${formatSmart(result.units, 1)} units`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch { /* ignore */ }
   };
 
+  const QuickButton = ({ value, current, onClick, unit }: { value: number; current: string; onClick: () => void; unit: string }) => (
+    <button type="button" onClick={onClick} style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", backgroundColor: current === String(value) ? "#f97316" : "#f3f4f6", color: current === String(value) ? "#fff" : "#374151", boxShadow: current === String(value) ? "0 4px 6px -1px rgba(249,115,22,0.3)" : "none" }}>{value}{unit}</button>
+  );
+
   return (
-    <Card className="w-full">
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-xl">Peptide Reconstitution Calculator</CardTitle>
-        <CardDescription>
-          Enter your vial size, BAC water, and dose. Assumes an insulin syringe where <span className="font-medium text-foreground">1 unit = 0.01 mL</span>.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Vial size</Label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="e.g. 10"
-                value={vialSize}
-                onChange={(e) => setVialSize(e.target.value)}
-              />
-              <Select value={vialUnit} onValueChange={(v) => setVialUnit(v as MassUnit)}>
-                <SelectTrigger className="w-[96px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mg">mg</SelectItem>
-                  <SelectItem value="mcg">mcg</SelectItem>
-                </SelectContent>
-              </Select>
+    <div style={{ width: "100%", maxWidth: "672px", margin: "0 auto" }}>
+      <div style={{ backgroundColor: "#fff", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", border: "1px solid #f3f4f6", overflow: "hidden" }}>
+        <div style={{ background: "linear-gradient(to right, #f97316, #ea580c)", padding: "20px 24px" }}>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#fff", margin: 0 }}>Peptide Reconstitution Calculator</h2>
+          <p style={{ color: "#fed7aa", marginTop: "4px", fontSize: "14px" }}>Calculate exactly how many units to draw for your peptide dose</p>
+        </div>
+        <div style={{ padding: "16px 24px", backgroundColor: "#fff7ed", borderBottom: "1px solid #fed7aa" }}>
+          <h3 style={{ fontWeight: 600, color: "#1f2937", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px", fontSize: "14px" }}>
+            <span style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#f97316", color: "#fff", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>?</span>How to Use
+          </h3>
+          <ol style={{ fontSize: "14px", color: "#4b5563", marginLeft: "32px", lineHeight: 1.8 }}>
+            <li><span style={{ fontWeight: 500, color: "#ea580c" }}>Step 1:</span> Enter your vial size (mg)</li>
+            <li><span style={{ fontWeight: 500, color: "#ea580c" }}>Step 2:</span> Enter BAC water added (mL)</li>
+            <li><span style={{ fontWeight: 500, color: "#ea580c" }}>Step 3:</span> Enter desired dose (mcg)</li>
+            <li><span style={{ fontWeight: 500, color: "#ea580c" }}>Step 4:</span> Read units to draw</li>
+          </ol>
+        </div>
+        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>Vial Size (mg)</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {PRESET_VIAL.map((v) => <QuickButton key={v} value={v} current={vialMg} onClick={() => setVialMg(String(v))} unit="mg" />)}
+              <input type="number" min={0} placeholder="Other" value={PRESET_VIAL.includes(Number(vialMg)) ? "" : vialMg} onChange={(e) => setVialMg(e.target.value)} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
             </div>
           </div>
-
-          <div className="space-y-2">
-            <Label>BAC water added (mL)</Label>
-            <Input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              placeholder="e.g. 2"
-              value={bacWaterMl}
-              onChange={(e) => setBacWaterMl(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Dose</Label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                placeholder="e.g. 1"
-                value={dose}
-                onChange={(e) => setDose(e.target.value)}
-              />
-              <Select value={doseUnit} onValueChange={(v) => setDoseUnit(v as MassUnit)}>
-                <SelectTrigger className="w-[96px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mg">mg</SelectItem>
-                  <SelectItem value="mcg">mcg</SelectItem>
-                </SelectContent>
-              </Select>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>BAC Water (mL)</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {PRESET_BAC.map((b) => <QuickButton key={b} value={b} current={bacMl} onClick={() => setBacMl(String(b))} unit="mL" />)}
+              <input type="number" min={0} placeholder="Other" value={PRESET_BAC.includes(Number(bacMl)) ? "" : bacMl} onChange={(e) => setBacMl(e.target.value)} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
             </div>
           </div>
-
-          <div className="rounded-xl border border-border bg-muted/20 p-4">
-            <p className="text-sm text-muted-foreground">Output</p>
-            {!result ? (
-              <p className="mt-2 text-sm">Fill in the fields to see units to draw.</p>
-            ) : (
-              <div className="mt-3 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Draw</p>
-                    <p className="text-2xl font-semibold text-foreground">{formatSmart(result.unitsToDraw, 1)}u</p>
-                    <p className="text-xs text-muted-foreground">({formatSmart(result.mlToDraw, 3)} mL)</p>
-                    {result.exceedsSyringe && (
-                      <p className="mt-1 text-xs text-destructive">
-                        Exceeds a {syringeUnitsMax}u insulin syringe.
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9"
-                      onClick={() => copy(`${formatSmart(result.unitsToDraw, 1)}u`, "units")}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      {copied === "units" ? "Copied" : "Copy units"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-9"
-                      onClick={() => copy(`${formatSmart(result.mlToDraw, 3)} mL`, "ml")}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      {copied === "ml" ? "Copied" : "Copy mL"}
-                    </Button>
-                  </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <label style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>Desired Dose (mcg)</label>
+            <input type="number" min={0} placeholder="e.g. 250" value={doseMcg} onChange={(e) => setDoseMcg(e.target.value)} style={{ width: "100%", padding: "12px 16px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "16px" }} />
+          </div>
+          <div style={{ borderRadius: "12px", padding: "20px", backgroundColor: result ? "#f0fdf4" : "#f9fafb", border: result ? "2px solid #bbf7d0" : "1px solid #e5e7eb" }}>
+            <p style={{ fontSize: "14px", fontWeight: 500, color: "#6b7280", marginBottom: "8px" }}>Your Result</p>
+            {!result ? <p style={{ color: "#9ca3af" }}>Fill in all fields above</p> : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <p style={{ fontSize: "14px", color: "#6b7280" }}>Draw:</p>
+                  <p style={{ fontSize: "36px", fontWeight: "bold", color: "#16a34a" }}>{formatSmart(result.units, 1)} units</p>
+                  <p style={{ fontSize: "14px", color: "#6b7280" }}>({formatSmart(result.ml, 3)} mL)</p>
                 </div>
-
-                <div className="rounded-lg border border-border bg-background/40 p-3">
-                  <p className="text-xs text-muted-foreground">Concentration</p>
-                  <p className="text-sm font-medium">
-                    {formatSmart(result.concentrationMcgPerMl, 0)} mcg/mL
-                  </p>
-                </div>
+                <button type="button" onClick={copy} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", backgroundColor: "#fff", border: "1px solid #d1d5db", borderRadius: "8px", cursor: "pointer" }}>{copied ? <CheckIcon /> : <CopyIcon />}{copied ? "Copied!" : "Copy"}</button>
               </div>
             )}
           </div>
         </div>
-
-        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg border border-border bg-background px-4 py-3 text-sm"
-            >
-              <span className="text-muted-foreground">Advanced (optional)</span>
-              <ChevronDown
-                className={`h-4 w-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Insulin syringe capacity</Label>
-                <Select
-                  value={String(syringeUnitsMax)}
-                  onValueChange={(v) => setSyringeUnitsMax(Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SYRINGE_OPTIONS.map((o) => (
-                      <SelectItem key={o.unitsMax} value={String(o.unitsMax)}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  This is only used for the “exceeds syringe capacity” warning.
-                </p>
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+        <div style={{ padding: "16px 24px", backgroundColor: "#eff6ff", borderTop: "1px solid #bfdbfe" }}>
+          <h3 style={{ fontWeight: 600, color: "#1e40af", marginBottom: "8px", fontSize: "14px" }}>📝 Example</h3>
+          <p style={{ fontSize: "14px", color: "#1d4ed8" }}>10mg vial + 2mL BAC = 5000 mcg/mL → 250mcg dose = <strong>5 units</strong></p>
+        </div>
+        <div style={{ borderTop: "1px solid #e5e7eb" }}>
+          <button type="button" onClick={() => setShowFaq(!showFaq)} style={{ width: "100%", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "transparent", border: "none", cursor: "pointer" }}>
+            <span style={{ fontWeight: 600, color: "#1f2937" }}>FAQ</span><span style={{ transform: showFaq ? "rotate(180deg)" : "none" }}>▼</span>
+          </button>
+          {showFaq && <div style={{ padding: "0 24px 24px", fontSize: "14px", color: "#4b5563" }}><p><strong>What is BAC water?</strong> Sterile water with benzyl alcohol to prevent bacteria.</p><p style={{ marginTop: "8px" }}><strong>Units vs mL?</strong> 100 units = 1mL on standard insulin syringes.</p></div>}
+        </div>
+      </div>
+      <div style={{ marginTop: "24px", textAlign: "center" }}><p style={{ color: "#4b5563", marginBottom: "12px" }}>Need to track doses?</p><a href="https://regimen.lovable.app" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", backgroundColor: "#f97316", color: "#fff", fontWeight: 600, borderRadius: "12px", textDecoration: "none" }}>Download Regimen →</a></div>
+    </div>
   );
 }
