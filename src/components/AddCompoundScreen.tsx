@@ -1463,25 +1463,22 @@ export const AddCompoundScreen = () => {
               }}
               className="text-sm text-primary hover:underline"
             >
-              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
+              {activeCalculator === 'iu' ? '- Hide' : '+ Show'} Reconstitution Calculator
             </button>
           )}
 
           {doseUnit === 'mg' && (
             <div className="flex items-center gap-3">
-              {/* Hide IU calculator entirely for oil-based compounds - they never use IU */}
+              {/* Show Reconstitution Calculator for non-oil-based compounds */}
               {!isOilBasedCompound(name) && (
-                <>
-                  <button
-                    onClick={() => {
-                      setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
-                    }}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {activeCalculator === 'iu' ? '- Hide' : '+ Show'} IU Calculator
-                  </button>
-                  <span className="text-muted-foreground">|</span>
-                </>
+                <button
+                  onClick={() => {
+                    setActiveCalculator(activeCalculator === 'iu' ? null : 'iu');
+                  }}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {activeCalculator === 'iu' ? '- Hide' : '+ Show'} Reconstitution Calculator
+                </button>
               )}
               {/* Show mL calculator only for oil-based compounds */}
               {isOilBasedCompound(name) && (
