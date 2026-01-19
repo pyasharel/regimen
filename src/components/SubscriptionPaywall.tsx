@@ -8,8 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useSubscription, PromotionalOfferParams } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
+
+// Partner promo code state
+interface PartnerPromoState {
+  code: string;
+  offerIdentifier: string;
+  planType: 'monthly' | 'annual';
+  freeDays: number;
+  partnerName: string;
+}
 
 interface SubscriptionPaywallProps {
   open: boolean;
@@ -27,6 +36,7 @@ export const SubscriptionPaywall = ({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: string} | null>(null);
+  const [partnerPromo, setPartnerPromo] = useState<PartnerPromoState | null>(null);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -50,6 +60,16 @@ export const SubscriptionPaywall = ({
     }
   }, [open, message, setPaywallOpen, isClosing]);
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setPartnerPromo(null);
+      setAppliedPromo(null);
+      setPromoCode('');
+      setShowPromoInput(false);
+    }
+  }, [open]);
+
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
     
@@ -59,7 +79,7 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      // First validate the code against the backend (checks both beta codes and Stripe codes)
+      // First validate the code against the backend (checks beta codes, partner codes, and Stripe codes)
       console.log('[PROMO] Calling validate-promo-code function...');
       
       const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
@@ -77,6 +97,45 @@ export const SubscriptionPaywall = ({
       if (!validateData?.valid) {
         console.log('[PROMO] Invalid code');
         toast.error('Invalid promo code. Please check and try again.');
+        return;
+      }
+
+      // Handle partner promotional offers (Apple signed offers)
+      if (validateData.isPartnerOffer) {
+        console.log('[PROMO] Partner promo code detected:', {
+          offerIdentifier: validateData.offerIdentifier,
+          planType: validateData.planType,
+          freeDays: validateData.freeDays,
+          partnerName: validateData.partnerName
+        });
+        
+        // Store partner promo state
+        setPartnerPromo({
+          code,
+          offerIdentifier: validateData.offerIdentifier,
+          planType: validateData.planType || 'annual',
+          freeDays: validateData.freeDays || 30,
+          partnerName: validateData.partnerName || 'Partner'
+        });
+        
+        // Lock to the required plan type
+        if (validateData.planType === 'annual') {
+          setSelectedPlan('annual');
+        } else if (validateData.planType === 'monthly') {
+          setSelectedPlan('monthly');
+        }
+        
+        // Show success with partner-specific messaging
+        const freePeriod = validateData.freeDays >= 30 
+          ? `${Math.round(validateData.freeDays / 30)} month${validateData.freeDays >= 60 ? 's' : ''}` 
+          : `${validateData.freeDays} days`;
+        setAppliedPromo({ 
+          code, 
+          discount: `${freePeriod} FREE then ${validateData.planType === 'annual' ? '$39.99/year' : '$4.99/month'}`
+        });
+        setShowPromoInput(false);
+        toast.success(`Partner code applied! ${freePeriod} free trial.`);
+        trackPromoCodeApplied(code, validateData.freeDays);
         return;
       }
 
@@ -104,10 +163,8 @@ export const SubscriptionPaywall = ({
             const now = new Date();
             const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             toast.success(`Promo activated! Enjoy ${daysRemaining} days free - no credit card required.`);
-            // Track promo code applied
             trackPromoCodeApplied(code, daysRemaining);
           }
-          // Close the modal first, then refresh subscription state without full reload
           onOpenChange(false);
           onDismiss?.();
           await refreshSubscription();
@@ -172,6 +229,7 @@ export const SubscriptionPaywall = ({
     console.log('[PAYWALL] Current state:', { 
       selectedPlan, 
       appliedPromo: appliedPromo?.code,
+      partnerPromo: partnerPromo?.code,
       isLoading,
       isNativePlatform,
       hasOfferings: !!offerings
@@ -217,7 +275,37 @@ export const SubscriptionPaywall = ({
         console.log('[PAYWALL] Purchasing package:', selectedPackage.identifier);
         trackSubscriptionStarted(selectedPlan);
 
-        const result = await purchasePackage(selectedPackage);
+        // If we have a partner promo, get the signed offer from our backend
+        let promotionalOffer: PromotionalOfferParams | undefined;
+        if (partnerPromo && isNativePlatform) {
+          console.log('[PAYWALL] Getting signed promotional offer for partner code:', partnerPromo.code);
+          
+          const { data: offerData, error: offerError } = await supabase.functions.invoke('generate-promotional-offer', {
+            body: {
+              promoCode: partnerPromo.code,
+              productId: selectedPackage.product.identifier
+            }
+          });
+
+          if (offerError || !offerData?.signedOffer) {
+            console.error('[PAYWALL] Failed to get promotional offer:', offerError || 'No signed offer returned');
+            toast.error('Unable to apply partner code. Please try again.');
+            setIsLoading(false);
+            return;
+          }
+
+          promotionalOffer = {
+            productIdentifier: offerData.signedOffer.productIdentifier,
+            offerIdentifier: offerData.signedOffer.offerIdentifier,
+            keyIdentifier: offerData.signedOffer.keyIdentifier,
+            nonce: offerData.signedOffer.nonce,
+            signature: offerData.signedOffer.signature,
+            timestamp: offerData.signedOffer.timestamp
+          };
+          console.log('[PAYWALL] Got signed promotional offer:', promotionalOffer.offerIdentifier);
+        }
+
+        const result = await purchasePackage(selectedPackage, promotionalOffer);
 
         if (result.success) {
           console.log('[PAYWALL] Purchase successful! State already updated by purchasePackage');
@@ -304,6 +392,9 @@ export const SubscriptionPaywall = ({
   };
 
   const getButtonText = () => {
+    if (partnerPromo) {
+      return `Start My ${partnerPromo.freeDays >= 30 ? Math.round(partnerPromo.freeDays / 30) + '-Month' : partnerPromo.freeDays + '-Day'} Free Trial`;
+    }
     if (appliedPromo) {
       return `Start Free Access`;
     }
@@ -312,12 +403,21 @@ export const SubscriptionPaywall = ({
 
   const getPriceText = () => {
     if (appliedPromo) {
-      // For applied promo codes, show the discount
       return appliedPromo.discount;
     }
     return selectedPlan === 'annual'
       ? "14 days free, then $39.99/year ($3.33/month)"
       : "14 days free, then $4.99/month";
+  };
+
+  // Get trial period text for header
+  const getTrialPeriodText = () => {
+    if (partnerPromo) {
+      return partnerPromo.freeDays >= 30 
+        ? `${Math.round(partnerPromo.freeDays / 30)}-month` 
+        : `${partnerPromo.freeDays}-day`;
+    }
+    return "14-day";
   };
 
   return (
@@ -337,8 +437,8 @@ export const SubscriptionPaywall = ({
               <X size={24} />
             </button>
             
-            <h1 className="text-center text-[28px] font-bold text-[#1A1A1A] dark:text-white mt-6">
-              Start your 14-day FREE trial
+            <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
+              Start your {getTrialPeriodText()} FREE trial
             </h1>
           </div>
 

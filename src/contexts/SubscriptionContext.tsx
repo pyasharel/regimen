@@ -4,6 +4,16 @@ import { User } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
+
+// Partner promotional offer parameters (from signed offer generation)
+export interface PromotionalOfferParams {
+  productIdentifier: string;
+  offerIdentifier: string;
+  keyIdentifier: string;
+  nonce: string;
+  signature: string;
+  timestamp: number;
+}
 import { addDiagnosticsLog } from '@/components/subscription/SubscriptionDiagnostics';
 import { persistentStorage, CachedEntitlement, CACHED_ENTITLEMENT_MAX_AGE_MS } from '@/utils/persistentStorage';
 
@@ -36,7 +46,7 @@ interface SubscriptionContextType {
   setMockState: (state: 'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled') => void;
   // RevenueCat-specific
   offerings: PurchasesOfferings | null;
-  purchasePackage: (pkg: PurchasesPackage) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
+  purchasePackage: (pkg: PurchasesPackage, promotionalOffer?: PromotionalOfferParams) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   restorePurchases: () => Promise<{ success: boolean; isPro?: boolean; error?: string }>;
   isNativePlatform: boolean;
   // Tracks which payment provider the subscription came from
@@ -704,8 +714,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     [isNativePlatform, saveEntitlementToCache]
   );
 
-  // Purchase a package
-  const purchasePackage = useCallback(async (packageToPurchase: PurchasesPackage): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
+  // Purchase a package (optionally with a promotional offer for partner codes)
+  const purchasePackage = useCallback(async (
+    packageToPurchase: PurchasesPackage, 
+    promotionalOffer?: PromotionalOfferParams
+  ): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
     if (!isNativePlatform) {
       return { success: false, error: 'Purchases only available on native platforms' };
     }
@@ -744,8 +757,36 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         console.warn('[RevenueCat] purchasePackage: RevenueCat not configured; purchase may proceed as anonymous');
       }
 
-      console.log('[RevenueCat] Purchasing package:', packageToPurchase);
-      const { customerInfo } = await Purchases.purchasePackage({ aPackage: packageToPurchase });
+      let customerInfo: CustomerInfo;
+
+      // If a promotional offer is provided (partner codes), use purchaseDiscountedPackage
+      if (promotionalOffer) {
+        console.log('[RevenueCat] Purchasing package with promotional offer:', {
+          package: packageToPurchase.identifier,
+          offerIdentifier: promotionalOffer.offerIdentifier
+        });
+        
+        // Create the promotional offer object for RevenueCat
+        const promoOffer = {
+          identifier: promotionalOffer.offerIdentifier,
+          keyIdentifier: promotionalOffer.keyIdentifier,
+          nonce: promotionalOffer.nonce,
+          signature: promotionalOffer.signature,
+          timestamp: promotionalOffer.timestamp
+        };
+        
+        // Use purchaseDiscountedPackage for promotional offers
+        const result = await Purchases.purchaseDiscountedPackage({ 
+          aPackage: packageToPurchase,
+          discount: promoOffer
+        });
+        customerInfo = result.customerInfo;
+      } else {
+        console.log('[RevenueCat] Purchasing package:', packageToPurchase);
+        const result = await Purchases.purchasePackage({ aPackage: packageToPurchase });
+        customerInfo = result.customerInfo;
+      }
+      
       setCustomerInfo(customerInfo);
 
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
