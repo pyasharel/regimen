@@ -163,6 +163,41 @@ export type Database = {
           },
         ]
       }
+      lifetime_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          notes: string | null
+          redeemed_at: string | null
+          redeemed_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lifetime_codes_redeemed_by_fkey"
+            columns: ["redeemed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -180,6 +215,7 @@ export type Database = {
           height_inches: number | null
           height_unit: string | null
           id: string
+          is_lifetime_access: boolean | null
           last_active_at: string | null
           last_payment_attempt: string | null
           notification_permission_asked: boolean | null
@@ -217,6 +253,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          is_lifetime_access?: boolean | null
           last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null
@@ -254,6 +291,7 @@ export type Database = {
           height_inches?: number | null
           height_unit?: string | null
           id?: string
+          is_lifetime_access?: boolean | null
           last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null

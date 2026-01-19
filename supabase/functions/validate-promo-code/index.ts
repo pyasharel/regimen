@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 
 const corsHeaders = {
@@ -24,7 +25,53 @@ serve(async (req) => {
     
     console.log(`[VALIDATE-PROMO] Checking code: ${upperCode}`);
     
-    // FIRST: Check if this is a backend promo code (for backwards compatibility)
+    // FIRST: Check if this is a VIP lifetime code
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    
+    const { data: lifetimeCode, error: lifetimeError } = await supabaseClient
+      .from('lifetime_codes')
+      .select('id, code, redeemed_at')
+      .eq('code', upperCode)
+      .maybeSingle();
+    
+    if (lifetimeError) {
+      console.error(`[VALIDATE-PROMO] Error checking lifetime codes:`, lifetimeError);
+    }
+    
+    if (lifetimeCode) {
+      // Check if already redeemed
+      if (lifetimeCode.redeemed_at) {
+        console.log(`[VALIDATE-PROMO] Lifetime code already redeemed: ${upperCode}`);
+        return new Response(JSON.stringify({
+          valid: false,
+          message: 'This code has already been redeemed'
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      console.log(`[VALIDATE-PROMO] Found valid VIP lifetime code: ${upperCode}`);
+      return new Response(JSON.stringify({
+        valid: true,
+        type: 'lifetime',
+        duration: 0, // Lifetime = forever
+        discount: 100,
+        planType: 'both',
+        isBackendCode: true,
+        isLifetime: true,
+        description: 'Lifetime VIP access'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
+    // SECOND: Check if this is a backend promo code (for backwards compatibility)
     // This allows old app versions to validate codes like REDDIT30
     if (BACKEND_PROMO_CODES[upperCode]) {
       const promoConfig = BACKEND_PROMO_CODES[upperCode];

@@ -338,7 +338,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       const profileStart = Date.now();
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date')
+        .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date, is_lifetime_access')
         .eq('user_id', user.id)
         .maybeSingle();
       console.log('[SubscriptionContext] ⏱️ profile fetch took:', Date.now() - profileStart, 'ms');
@@ -351,18 +351,28 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       if (profile) {
         console.log('[SubscriptionContext] Profile data:', profile);
         
+        // Check for lifetime VIP access first (highest priority)
+        const hasLifetimeAccess = profile.is_lifetime_access === true;
+        
         // Check for active beta access
         const betaAccessEndDate = profile.beta_access_end_date ? new Date(profile.beta_access_end_date) : null;
         const hasBetaAccess = betaAccessEndDate && betaAccessEndDate > new Date();
         
-        if (hasBetaAccess) {
+        if (hasLifetimeAccess) {
+          console.log('[SubscriptionContext] Lifetime VIP access detected');
+          setIsSubscribed(true);
+          setSubscriptionStatus('active', 'lifetime_access');
+          setSubscriptionType(null); // Lifetime users don't have a subscription type
+          setSubscriptionEndDate(null); // No end date for lifetime
+          setTrialEndDate(null);
+        } else if (hasBetaAccess) {
           console.log('[SubscriptionContext] Active beta access detected until:', betaAccessEndDate);
           setIsSubscribed(true);
           setSubscriptionStatus('active', 'beta_access');
           setSubscriptionType(null); // Beta users don't have a subscription type
           setSubscriptionEndDate(profile.beta_access_end_date);
           setTrialEndDate(null);
-          } else {
+        } else {
             const statusFromProfile = (profile.subscription_status || 'none') as 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
 
             // Prevent stale backend reads from downgrading a real active subscription.
