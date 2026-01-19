@@ -155,6 +155,7 @@ export const AddCompoundScreen = () => {
   
   // Check if we're editing an existing compound
   const editingCompound = location.state?.editingCompound;
+  const prefillData = location.state?.prefillData;
   const isEditing = !!editingCompound;
 
   // Basic info
@@ -401,6 +402,35 @@ export const AddCompoundScreen = () => {
         setVialSize(editingCompound.vial_size.toString());
         setVialUnit(editingCompound.vial_unit || "mg");
         setBacWater(editingCompound.bac_water_volume?.toString() || "");
+      }
+    }
+    
+    // Handle prefillData from calculator modal
+    if (prefillData && !editingCompound) {
+      console.log('[AddCompound] Prefilling from calculator:', prefillData);
+      
+      if (prefillData.intendedDose) {
+        setIntendedDose(prefillData.intendedDose.toString());
+      }
+      if (prefillData.doseUnit) {
+        setDoseUnit(prefillData.doseUnit);
+      }
+      
+      // Peptide calculator data (reconstitution)
+      if (prefillData.vialSize) {
+        setActiveCalculator('iu');
+        setVialSize(prefillData.vialSize.toString());
+        setVialUnit(prefillData.vialUnit || 'mg');
+        if (prefillData.bacWater) {
+          setBacWater(prefillData.bacWater.toString());
+        }
+      }
+      
+      // Oil-based calculator data (mL)
+      if (prefillData.concentration) {
+        setActiveCalculator('ml');
+        setConcentration(prefillData.concentration.toString());
+        setDoseUnit('mg');
       }
     }
   }, []);
