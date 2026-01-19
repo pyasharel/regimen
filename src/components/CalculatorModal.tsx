@@ -4,17 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Calculator, Droplets, FlaskConical, Copy, Plus, ArrowRightLeft, Syringe } from "lucide-react";
+import { X, Calculator, Droplets, FlaskConical, Copy, Plus, HelpCircle, ChevronDown, Settings2 } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackCalculatorUsed } from '@/utils/analytics';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface CalculatorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Optional pre-fill from existing compound
   initialVialSize?: number;
   initialVialUnit?: string;
   initialBacWater?: number;
@@ -29,10 +39,11 @@ type ReconstitutionMode = 'standard' | 'reverse';
 // Common presets
 const VIAL_SIZES = [5, 10, 15, 20];
 const BAC_WATER_AMOUNTS = [1, 2, 3, 5];
+const CONCENTRATION_PRESETS = [100, 200, 250, 300];
 const SYRINGE_SIZES = [
-  { value: 30, label: '0.3mL (30u)' },
-  { value: 50, label: '0.5mL (50u)' },
-  { value: 100, label: '1.0mL (100u)' },
+  { value: 30, label: '0.3mL' },
+  { value: 50, label: '0.5mL' },
+  { value: 100, label: '1mL' },
 ];
 
 export const CalculatorModal = ({
@@ -55,7 +66,8 @@ export const CalculatorModal = ({
   const [bacWater, setBacWater] = useState(initialBacWater?.toString() || '');
   const [intendedDose, setIntendedDose] = useState(initialDose?.toString() || '');
   const [doseUnit, setDoseUnit] = useState(initialDoseUnit);
-  const [syringeSize, setSyringeSize] = useState(100);
+  const [syringeSize, setSyringeSize] = useState(100); // 1mL is most common
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Reverse mode state
   const [preferredUnits, setPreferredUnits] = useState('');
@@ -87,7 +99,6 @@ export const CalculatorModal = ({
       return null;
     }
 
-    // Convert to mcg
     const vialMcg = vialUnit === 'mg' ? vialNum * 1000 : vialNum;
     let doseMcg: number;
     if (doseUnit === 'mg') {
@@ -100,7 +111,6 @@ export const CalculatorModal = ({
 
     const concentrationMcgPerMl = vialMcg / bacWaterNum;
     const mlNeeded = doseMcg / concentrationMcgPerMl;
-    // Scale by syringe size (100u = 1mL, 50u = 0.5mL, 30u = 0.3mL)
     const iu = mlNeeded * syringeSize;
 
     if (iu <= 0 || !isFinite(iu)) return null;
@@ -120,7 +130,6 @@ export const CalculatorModal = ({
       return null;
     }
 
-    // Convert to mcg
     const vialMcg = vialUnit === 'mg' ? vialNum * 1000 : vialNum;
     let doseMcg: number;
     if (doseUnit === 'mg') {
@@ -131,13 +140,6 @@ export const CalculatorModal = ({
       return null;
     }
 
-    // Working backwards: 
-    // iu = mlNeeded * syringeSize
-    // mlNeeded = doseMcg / concentrationMcgPerMl
-    // concentrationMcgPerMl = vialMcg / bacWater
-    // So: unitsNum = (doseMcg / (vialMcg / bacWater)) * syringeSize
-    // unitsNum = (doseMcg * bacWater / vialMcg) * syringeSize
-    // bacWater = (unitsNum * vialMcg) / (doseMcg * syringeSize)
     const bacWaterNeeded = (unitsNum * vialMcg) / (doseMcg * syringeSize);
 
     if (bacWaterNeeded <= 0 || !isFinite(bacWaterNeeded)) return null;
@@ -164,7 +166,7 @@ export const CalculatorModal = ({
     try {
       await navigator.clipboard.writeText(value);
       triggerHaptic();
-      toast.success(`${label} copied to clipboard`);
+      toast.success(`${label} copied`);
       trackCalculatorUsed(activeTab === 'reconstitution' ? 'iu' : 'ml');
     } catch (err) {
       toast.error('Failed to copy');
@@ -203,14 +205,52 @@ export const CalculatorModal = ({
   const calculatedReverseBAC = calculateReverseBAC();
   const calculatedML = calculateML();
 
-  const tabOptions = [
-    { value: 'reconstitution', label: 'Reconstitution' },
-    { value: 'ml', label: 'mL Calculator' }
-  ];
+  // Helper component for info tooltip
+  const InfoTooltip = ({ content }: { content: string }) => (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+            <HelpCircle className="w-3.5 h-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs">
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 
-  const modeOptions = [
-    { value: 'standard', label: 'Standard' },
-    { value: 'reverse', label: 'Reverse' }
+  // Quick select button component
+  const QuickSelectButton = ({ 
+    value, 
+    currentValue, 
+    onSelect, 
+    suffix 
+  }: { 
+    value: number; 
+    currentValue: string; 
+    onSelect: (val: string) => void;
+    suffix: string;
+  }) => (
+    <button
+      onClick={() => {
+        triggerHaptic();
+        onSelect(value.toString());
+      }}
+      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+        currentValue === value.toString()
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted hover:bg-muted/80'
+      }`}
+    >
+      {value}{suffix}
+    </button>
+  );
+
+  const tabOptions = [
+    { value: 'reconstitution', label: 'Peptides' },
+    { value: 'ml', label: 'Oil-Based' }
   ];
 
   return (
@@ -230,115 +270,86 @@ export const CalculatorModal = ({
           </button>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
-          {/* Tab Selector */}
-          <SegmentedControl
-            value={activeTab}
-            onChange={(val) => {
-              triggerHaptic();
-              setActiveTab(val as CalculatorTab);
-            }}
-            options={tabOptions}
-          />
+        <div className="space-y-4 pt-2">
+          {/* Tab Selector with Tooltips */}
+          <div className="space-y-1">
+            <SegmentedControl
+              value={activeTab}
+              onChange={(val) => {
+                triggerHaptic();
+                setActiveTab(val as CalculatorTab);
+              }}
+              options={tabOptions}
+            />
+            <p className="text-xs text-muted-foreground text-center">
+              {activeTab === 'reconstitution' 
+                ? 'For peptides, GLP-1s, HCG (powders mixed with BAC water)'
+                : 'For testosterone, anabolics (pre-mixed oils)'}
+            </p>
+          </div>
 
           {/* Reconstitution Calculator */}
           {activeTab === 'reconstitution' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <FlaskConical className="w-4 h-4 flex-shrink-0" />
-                <span>
-                  {reconMode === 'standard' 
-                    ? 'Calculate how many units to draw on your syringe'
-                    : 'Calculate how much BAC water to add for your preferred units'
-                  }
-                </span>
-              </div>
-
-              {/* Mode Toggle */}
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <ArrowRightLeft className="w-4 h-4" />
-                  Calculator Mode
-                </Label>
-                <SegmentedControl
-                  value={reconMode}
-                  onChange={(val) => {
-                    triggerHaptic();
-                    setReconMode(val as ReconstitutionMode);
-                  }}
-                  options={modeOptions}
-                />
-              </div>
-
-              {/* Vial Size with Quick Select */}
+              {/* Vial Size */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Vial Size</Label>
-                <div className="flex gap-2 flex-wrap">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  Vial Size
+                  <InfoTooltip content="The total mg in your peptide vial, shown on the label" />
+                </Label>
+                <div className="flex gap-1.5 flex-wrap items-center">
                   {VIAL_SIZES.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => {
-                        triggerHaptic();
-                        setVialSize(size.toString());
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                        vialSize === size.toString()
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
-                    >
-                      {size}mg
-                    </button>
+                    <QuickSelectButton 
+                      key={size} 
+                      value={size} 
+                      currentValue={vialSize} 
+                      onSelect={setVialSize}
+                      suffix="mg"
+                    />
                   ))}
                   <Input
                     type="number"
                     inputMode="decimal"
-                    placeholder="Custom"
+                    placeholder="Other"
                     value={VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
                     onChange={(e) => setVialSize(e.target.value)}
-                    className="w-20 h-8"
+                    className="w-16 h-8 text-xs px-2"
                   />
                 </div>
               </div>
 
-              {/* Standard Mode Fields */}
+              {/* Standard Mode: BAC Water + Dose */}
               {reconMode === 'standard' && (
                 <>
-                  {/* BAC Water with Quick Select */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">BAC Water Added (mL)</Label>
-                    <div className="flex gap-2 flex-wrap">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      BAC Water Added
+                      <InfoTooltip content="How much bacteriostatic water you added to reconstitute the peptide" />
+                    </Label>
+                    <div className="flex gap-1.5 flex-wrap items-center">
                       {BAC_WATER_AMOUNTS.map((amount) => (
-                        <button
-                          key={amount}
-                          onClick={() => {
-                            triggerHaptic();
-                            setBacWater(amount.toString());
-                          }}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            bacWater === amount.toString()
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80'
-                          }`}
-                        >
-                          {amount}mL
-                        </button>
+                        <QuickSelectButton 
+                          key={amount} 
+                          value={amount} 
+                          currentValue={bacWater} 
+                          onSelect={setBacWater}
+                          suffix="mL"
+                        />
                       ))}
                       <Input
                         type="number"
                         inputMode="decimal"
-                        placeholder="Custom"
+                        placeholder="Other"
                         value={BAC_WATER_AMOUNTS.includes(Number(bacWater)) ? '' : bacWater}
                         onChange={(e) => setBacWater(e.target.value)}
-                        className="w-20 h-8"
+                        className="w-16 h-8 text-xs px-2"
                       />
                     </div>
                   </div>
 
-                  {/* Desired Dose */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Desired Dose</Label>
+                      <Label className="text-sm font-medium">Dose</Label>
                       <Input
                         type="number"
                         inputMode="decimal"
@@ -353,65 +364,21 @@ export const CalculatorModal = ({
                         value={doseUnit}
                         onChange={(val) => setDoseUnit(val)}
                         options={[
-                          { value: 'mg', label: 'mg' },
-                          { value: 'mcg', label: 'mcg' }
+                          { value: 'mcg', label: 'mcg' },
+                          { value: 'mg', label: 'mg' }
                         ]}
                       />
                     </div>
                   </div>
-
-                  {/* Syringe Size Selector */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Syringe className="w-4 h-4" />
-                      Syringe Size
-                    </Label>
-                    <div className="flex gap-2">
-                      {SYRINGE_SIZES.map((syringe) => (
-                        <button
-                          key={syringe.value}
-                          onClick={() => {
-                            triggerHaptic();
-                            setSyringeSize(syringe.value);
-                          }}
-                          className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                            syringeSize === syringe.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80'
-                          }`}
-                        >
-                          {syringe.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Standard Result */}
-                  {calculatedIU && (
-                    <div 
-                      className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-primary/15 transition-colors"
-                      onClick={() => handleCopyResult(calculatedIU, 'Units value')}
-                    >
-                      <div>
-                        <p className="text-sm text-muted-foreground">Draw on syringe</p>
-                        <p className="text-2xl font-bold text-primary">{calculatedIU} units</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          on a {syringeSize}-unit syringe
-                        </p>
-                      </div>
-                      <Copy className="w-5 h-5 text-primary" />
-                    </div>
-                  )}
                 </>
               )}
 
               {/* Reverse Mode Fields */}
               {reconMode === 'reverse' && (
                 <>
-                  {/* Desired Dose */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Desired Dose</Label>
+                      <Label className="text-sm font-medium">Dose</Label>
                       <Input
                         type="number"
                         inputMode="decimal"
@@ -426,16 +393,18 @@ export const CalculatorModal = ({
                         value={doseUnit}
                         onChange={(val) => setDoseUnit(val)}
                         options={[
-                          { value: 'mg', label: 'mg' },
-                          { value: 'mcg', label: 'mcg' }
+                          { value: 'mcg', label: 'mcg' },
+                          { value: 'mg', label: 'mg' }
                         ]}
                       />
                     </div>
                   </div>
 
-                  {/* Preferred Units to Draw */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Preferred Units to Draw</Label>
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      Preferred Units to Draw
+                      <InfoTooltip content="The number of units you want each dose to be (e.g., 10u for easy measuring)" />
+                    </Label>
                     <Input
                       type="number"
                       inputMode="decimal"
@@ -443,16 +412,47 @@ export const CalculatorModal = ({
                       value={preferredUnits}
                       onChange={(e) => setPreferredUnits(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      How many units you want to draw for each dose
-                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Advanced Options (Collapsible) */}
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger asChild>
+                  <button 
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                    onClick={triggerHaptic}
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    <span>Advanced Options</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-3">
+                  {/* Mode Toggle */}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
+                      Mode
+                      <InfoTooltip content="Standard: calculate units to draw. Reverse: calculate BAC water needed for preferred units." />
+                    </Label>
+                    <SegmentedControl
+                      value={reconMode}
+                      onChange={(val) => {
+                        triggerHaptic();
+                        setReconMode(val as ReconstitutionMode);
+                      }}
+                      options={[
+                        { value: 'standard', label: 'Standard' },
+                        { value: 'reverse', label: 'Reverse' }
+                      ]}
+                    />
                   </div>
 
-                  {/* Syringe Size Selector */}
+                  {/* Syringe Size */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Syringe className="w-4 h-4" />
+                    <Label className="text-sm font-medium flex items-center gap-1.5">
                       Syringe Size
+                      <InfoTooltip content="Select your insulin syringe size. 1mL (100u) is most common." />
                     </Label>
                     <div className="flex gap-2">
                       {SYRINGE_SIZES.map((syringe) => (
@@ -473,24 +473,43 @@ export const CalculatorModal = ({
                       ))}
                     </div>
                   </div>
+                </CollapsibleContent>
+              </Collapsible>
 
-                  {/* Reverse Result */}
-                  {calculatedReverseBAC && (
-                    <div 
-                      className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-primary/15 transition-colors"
-                      onClick={() => handleCopyResult(calculatedReverseBAC, 'BAC water amount')}
-                    >
-                      <div>
-                        <p className="text-sm text-muted-foreground">Add BAC water</p>
-                        <p className="text-2xl font-bold text-primary">{calculatedReverseBAC} mL</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          to draw {preferredUnits} units per {intendedDose}{doseUnit} dose
-                        </p>
-                      </div>
-                      <Copy className="w-5 h-5 text-primary" />
-                    </div>
-                  )}
-                </>
+              {/* Standard Result */}
+              {reconMode === 'standard' && calculatedIU && (
+                <div 
+                  className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => handleCopyResult(calculatedIU, 'Units')}
+                >
+                  <div>
+                    <p className="text-sm text-muted-foreground">Draw on syringe</p>
+                    <p className="text-2xl font-bold text-primary">{calculatedIU} units</p>
+                    {syringeSize !== 100 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        on a {syringeSize}u syringe
+                      </p>
+                    )}
+                  </div>
+                  <Copy className="w-5 h-5 text-primary" />
+                </div>
+              )}
+
+              {/* Reverse Result */}
+              {reconMode === 'reverse' && calculatedReverseBAC && (
+                <div 
+                  className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-primary/15 transition-colors"
+                  onClick={() => handleCopyResult(calculatedReverseBAC, 'BAC water')}
+                >
+                  <div>
+                    <p className="text-sm text-muted-foreground">Add BAC water</p>
+                    <p className="text-2xl font-bold text-primary">{calculatedReverseBAC} mL</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      to draw {preferredUnits}u per {intendedDose}{doseUnit} dose
+                    </p>
+                  </div>
+                  <Copy className="w-5 h-5 text-primary" />
+                </div>
               )}
 
               {/* Add to Stack Button */}
@@ -501,7 +520,7 @@ export const CalculatorModal = ({
                   className="w-full flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Add this compound to your stack
+                  Add to Stack
                 </Button>
               )}
             </div>
@@ -510,27 +529,35 @@ export const CalculatorModal = ({
           {/* mL Calculator */}
           {activeTab === 'ml' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                <Droplets className="w-4 h-4 flex-shrink-0" />
-                <span>Calculate mL to draw for oil-based compounds</span>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  Concentration
+                  <InfoTooltip content="The mg/mL shown on your vial label (e.g., 250mg/mL)" />
+                </Label>
+                <div className="flex gap-1.5 flex-wrap items-center">
+                  {CONCENTRATION_PRESETS.map((conc) => (
+                    <QuickSelectButton 
+                      key={conc} 
+                      value={conc} 
+                      currentValue={concentration} 
+                      onSelect={setConcentration}
+                      suffix=""
+                    />
+                  ))}
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="Other"
+                    value={CONCENTRATION_PRESETS.includes(Number(concentration)) ? '' : concentration}
+                    onChange={(e) => setConcentration(e.target.value)}
+                    className="w-16 h-8 text-xs px-2"
+                  />
+                  <span className="text-xs text-muted-foreground">mg/mL</span>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Concentration (mg/mL)</Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="e.g., 250"
-                  value={concentration}
-                  onChange={(e) => setConcentration(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter the mg/mL shown on your vial label
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Desired Dose (mg)</Label>
+                <Label className="text-sm font-medium">Dose (mg)</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -554,14 +581,13 @@ export const CalculatorModal = ({
                     <Copy className="w-5 h-5 text-primary" />
                   </div>
 
-                  {/* Add to Stack Button */}
                   <Button 
                     onClick={handleAddToStack}
                     variant="outline"
                     className="w-full flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Add this compound to your stack
+                    Add to Stack
                   </Button>
                 </>
               )}
