@@ -1560,7 +1560,7 @@ export const AddCompoundScreen = () => {
                         setIsCustomVialSize(true);
                       }}
                       placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                      className="h-full border-0 bg-transparent p-0 text-center text-xs font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
                   </button>
                 </div>
@@ -1618,7 +1618,7 @@ export const AddCompoundScreen = () => {
                         setIsCustomBacWater(true);
                       }}
                       placeholder="Custom"
-                      className="h-full border-0 bg-transparent p-0 text-center text-base font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
+                      className="h-full border-0 bg-transparent p-0 text-center text-xs font-medium placeholder:text-current [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-0"
                     />
                   </button>
                 </div>
