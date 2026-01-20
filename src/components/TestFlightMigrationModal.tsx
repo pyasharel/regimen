@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
-import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
 import logoIcon from '@/assets/logo-regimen-icon-final.png';
