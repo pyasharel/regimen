@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +74,8 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(false);
+  const [notesKeyboardOpen, setNotesKeyboardOpen] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   // Load existing entry when date changes
   useEffect(() => {
@@ -221,7 +223,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const hasContent = weight || energy !== null || sleep !== null || cravings !== null || notes.trim();
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5 transition-all duration-200", notesKeyboardOpen && "pb-64")}>
       {/* Weight Section */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-sm font-medium">
@@ -284,11 +286,20 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           Notes
         </Label>
         <Textarea
+          ref={notesRef}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={loadingEntry ? "..." : "How are you feeling?"}
           className="min-h-[60px] resize-none"
           disabled={loadingEntry}
+          onFocus={() => {
+            setNotesKeyboardOpen(true);
+            // Scroll textarea into view after a brief delay for keyboard animation
+            setTimeout(() => {
+              notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+          }}
+          onBlur={() => setNotesKeyboardOpen(false)}
         />
       </div>
 
