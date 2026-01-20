@@ -272,7 +272,7 @@ export const CalculatorModal = ({
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
             <Calculator className="w-5 h-5 text-primary" />
-            {activeTab === 'reconstitution' ? 'Reconstitution Calculator' : 'mL Calculator'}
+            {activeTab === 'reconstitution' ? 'Peptides' : 'Oil-Based'}
           </DialogTitle>
           <div className="flex items-center gap-2">
             {/* Switch calculator type */}
@@ -284,7 +284,7 @@ export const CalculatorModal = ({
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
-              {activeTab === 'reconstitution' ? 'mL calc' : 'Peptide calc'}
+              {activeTab === 'reconstitution' ? 'Oil-Based' : 'Peptides'}
             </button>
             <button
               onClick={() => onOpenChange(false)}
