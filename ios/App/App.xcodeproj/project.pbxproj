@@ -17,6 +17,7 @@
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 		E91234560001000000000001 /* InAppReviewPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234560001000000000002 /* InAppReviewPlugin.swift */; };
 		E91234560001000000000003 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234560001000000000004 /* MainViewController.swift */; };
+		E91234560001000000000005 /* TestFlightDetectorPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91234560001000000000006 /* TestFlightDetectorPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 		E91234560001000000000002 /* InAppReviewPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppReviewPlugin.swift; sourceTree = "<group>"; };
 		E91234560001000000000004 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		E91234560001000000000006 /* TestFlightDetectorPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFlightDetectorPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +83,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				E91234560001000000000002 /* InAppReviewPlugin.swift */,
 				E91234560001000000000004 /* MainViewController.swift */,
+				E91234560001000000000006 /* TestFlightDetectorPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -218,6 +221,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				E91234560001000000000001 /* InAppReviewPlugin.swift in Sources */,
 				E91234560001000000000003 /* MainViewController.swift in Sources */,
+				E91234560001000000000005 /* TestFlightDetectorPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

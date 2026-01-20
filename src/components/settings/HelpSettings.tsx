@@ -2,6 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink } from "lucide-react";
 import { appVersion, appBuild } from "../../../capacitor.config";
 
+// Build-time constant defined in vite.config.ts
+declare const __WEB_BUNDLE_STAMP__: string;
+
 export const HelpSettings = () => {
   const navigate = useNavigate();
 
@@ -100,6 +103,9 @@ export const HelpSettings = () => {
         {/* App Version */}
         <div className="text-center text-sm text-muted-foreground">
           <p>Regimen v{appVersion} (Build {appBuild})</p>
+          <p className="text-xs mt-1 font-mono opacity-70">
+            Bundle: {typeof __WEB_BUNDLE_STAMP__ !== 'undefined' ? __WEB_BUNDLE_STAMP__ : 'dev'}
+          </p>
           <p className="mt-1">© 2025 All rights reserved</p>
         </div>
       </div>

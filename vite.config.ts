@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    __WEB_BUNDLE_STAMP__: JSON.stringify(new Date().toISOString()),
+  },
   base: './',
   build: {
     outDir: 'dist',

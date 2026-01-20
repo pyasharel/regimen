@@ -228,13 +228,14 @@ export const TodayScreen = () => {
     initializeEngagementNotifications();
   }, []);
 
-  // Check if running on TestFlight
+  // Check if running on TestFlight (iOS only)
   useEffect(() => {
     const checkTestFlight = async () => {
-      if (Capacitor.isNativePlatform()) {
+      // Only check on iOS - Android and web should never show TestFlight modal
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
         try {
           const result = await TestFlightDetector.isTestFlight();
-          console.log('[TodayScreen] TestFlight check:', result.isTestFlight);
+          console.log('[TodayScreen] TestFlight check (iOS):', result.isTestFlight);
           setIsTestFlight(result.isTestFlight);
         } catch (error) {
           console.error('[TodayScreen] Error checking TestFlight:', error);

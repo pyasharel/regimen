@@ -10,6 +10,21 @@ public class TestFlightDetectorPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
     
     @objc public func isTestFlight(_ call: CAPPluginCall) {
+        #if DEBUG
+        // Never report TestFlight during Xcode debug builds
+        // This prevents the migration modal from appearing during development
+        NSLog("TestFlightDetectorPlugin: DEBUG build detected - returning false")
+        call.resolve(["isTestFlight": false])
+        return
+        #endif
+        
+        #if targetEnvironment(simulator)
+        // Never report TestFlight on simulator
+        NSLog("TestFlightDetectorPlugin: Simulator detected - returning false")
+        call.resolve(["isTestFlight": false])
+        return
+        #endif
+        
         var isTestFlight = false
         
         // Check if the app was installed from TestFlight
