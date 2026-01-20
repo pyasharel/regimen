@@ -293,7 +293,7 @@ export const CalculatorModal = ({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2 border border-border/50 rounded-xl p-4 bg-card/30">
+        <div className="space-y-4 pt-2 border border-primary/20 rounded-xl p-4 bg-muted/30">
 
           {/* Reconstitution Calculator */}
           {activeTab === 'reconstitution' && (
