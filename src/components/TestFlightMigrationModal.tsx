@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
 import logoIcon from '@/assets/logo-regimen-icon-final.png';
@@ -28,7 +29,12 @@ interface TestFlightMigrationModalProps {
 export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const closeReasonRef = useRef<'none' | 'later' | 'migrate'>('none');
 
+  const closeModal = (reason: 'later' | 'migrate') => {
+    closeReasonRef.current = reason;
+    setIsOpen(false);
+  };
   useEffect(() => {
     if (!isTestFlight) {
       setIsChecking(false);
@@ -81,24 +87,30 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
   }, [isTestFlight]);
 
   const handleGetApp = async () => {
+    // Close immediately to keep the tap gesture "fresh" for iOS URL opening
+    closeModal('migrate');
+
+    // Mark as migrated so we never show again (fire-and-forget; don't await before opening)
+    void persistentStorage.setBoolean(STORAGE_KEYS.MIGRATED, true);
+
     try {
-      // Mark as migrated so we never show again
-      await persistentStorage.setBoolean(STORAGE_KEYS.MIGRATED, true);
-      
-      // Try native URL scheme first (iOS handles this automatically)
       if (Capacitor.isNativePlatform()) {
-        window.location.href = APP_STORE_URL_NATIVE;
+        // Use native URL opener (works even with app-bound domain restrictions)
+        await Browser.open({ url: APP_STORE_URL_NATIVE });
       } else {
-        // Fallback for web preview
+        // Web preview
         await Browser.open({ url: APP_STORE_URL_WEB });
       }
-      
-      setIsOpen(false);
     } catch (error) {
       console.error('[TestFlightModal] Error opening App Store:', error);
-      // Ultimate fallback: try HTTPS URL
+
+      // Fallback: open the HTTPS App Store URL
       try {
-        await Browser.open({ url: APP_STORE_URL_WEB });
+        if (Capacitor.isNativePlatform()) {
+          await Browser.open({ url: APP_STORE_URL_WEB });
+        } else {
+          await Browser.open({ url: APP_STORE_URL_WEB });
+        }
       } catch (e) {
         console.error('[TestFlightModal] Fallback also failed:', e);
       }
@@ -106,19 +118,16 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
   };
 
   const handleMaybeLater = async () => {
+    closeModal('later');
+
     try {
-      // Increment dismiss count
-      const currentCount = await persistentStorage.getNumber(STORAGE_KEYS.DISMISS_COUNT, 0) || 0;
+      const currentCount = (await persistentStorage.getNumber(STORAGE_KEYS.DISMISS_COUNT, 0)) || 0;
       await persistentStorage.setNumber(STORAGE_KEYS.DISMISS_COUNT, currentCount + 1);
-      
-      // Store dismissal time
       await persistentStorage.set(STORAGE_KEYS.DISMISSED_AT, new Date().toISOString());
-      
+
       console.log('[TestFlightModal] Dismissed, count:', currentCount + 1);
-      setIsOpen(false);
     } catch (error) {
       console.error('[TestFlightModal] Error saving dismissal:', error);
-      setIsOpen(false);
     }
   };
 
@@ -127,7 +136,23 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleMaybeLater()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          setIsOpen(true);
+          return;
+        }
+
+        const reason = closeReasonRef.current;
+        closeReasonRef.current = 'none';
+
+        // If the user tapped outside / dismissed without choosing, treat as "Maybe Later"
+        if (reason === 'none') {
+          void handleMaybeLater();
+        }
+      }}
+    >
       <DialogContent className="max-w-[340px] rounded-3xl border-border/50 bg-card p-6" hideClose>
         <DialogHeader className="space-y-4">
           {/* Logo and sparkle icon */}
