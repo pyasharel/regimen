@@ -293,3 +293,53 @@ cd ios/App && pod install && cd ../..
 # Full nuclear rebuild
 npm run build && npx cap update ios && npx cap sync ios && npx cap open ios
 ```
+
+---
+
+## TestFlightDetectorPlugin Build Stability
+
+### Problem
+The `TestFlightDetectorPlugin.swift` file was not formally included in the Xcode project configuration (`project.pbxproj`), causing `npx cap update ios` to break the build with "cannot find TestFlightDetectorPlugin" errors.
+
+### Solution (Now Permanently Fixed)
+The `ios/App/App.xcodeproj/project.pbxproj` now includes `TestFlightDetectorPlugin.swift` in all required sections:
+- **PBXFileReference** - File reference entry
+- **PBXBuildFile** - Build file entry
+- **PBXGroup** - Group membership
+- **PBXSourcesBuildPhase** - Compile sources phase
+
+This means builds remain stable even after running `npx cap sync ios` or `npx cap update ios`.
+
+### Verifying the Latest Web Bundle
+Settings → Help now shows a **"Bundle"** timestamp (e.g., `2026-01-20T14:30:00.000Z`).
+This confirms exactly which web code is running, independent of the native build number (`appBuild`).
+
+**To verify your changes are deployed:**
+1. Check the Bundle timestamp in Settings → Help
+2. It should match approximately when you ran `npm run build`
+
+### DEBUG Guard
+The plugin includes a `#if DEBUG` guard that returns `isTestFlight: false` during Xcode development runs. This prevents the TestFlight migration modal from appearing while testing locally, ensuring a clean development experience.
+
+```swift
+#if DEBUG
+// In debug builds, always return false to avoid migration modal during development
+call.resolve(["isTestFlight": false])
+return
+#endif
+```
+
+---
+
+## Adding Custom Swift Plugins
+
+When adding custom Swift plugins (like `TestFlightDetectorPlugin.swift` or `InAppReviewPlugin.swift`):
+
+1. **Create the Swift file** in `ios/App/App/`
+2. **Open `ios/App/App.xcworkspace`** in Xcode (NOT `.xcodeproj`)
+3. **Right-click the `App` folder** → "Add Files to App..."
+4. **Ensure the `App` target is checked** in the dialog
+5. **Clean Build Folder** (Cmd+Shift+K)
+6. **Rebuild** (Cmd+B)
+
+This ensures the Swift file is properly linked to the build target and won't break after `cap sync`.

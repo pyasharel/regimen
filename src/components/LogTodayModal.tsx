@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Camera, Image as ImageIcon, Utensils } from "lucide-react";
+import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Utensils } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +63,8 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(false);
+  const [notesKeyboardOpen, setNotesKeyboardOpen] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   // Load existing entry when date changes or modal opens
   useEffect(() => {
@@ -237,7 +239,7 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
           <p className="text-sm text-muted-foreground">Track your daily metrics</p>
         </DialogHeader>
 
-        <div className="overflow-y-auto px-6 space-y-6 max-h-[50vh]">
+        <div className={cn("overflow-y-auto px-6 space-y-6 max-h-[50vh]", notesKeyboardOpen && "pb-48")}>
           {/* Weight Section */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium">
@@ -327,11 +329,19 @@ export const LogTodayModal = ({ open, onOpenChange, onSuccess }: LogTodayModalPr
               Quick notes
             </Label>
             <Textarea
+              ref={notesRef}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={loadingEntry ? "Loading..." : "What's going on today?"}
               className="min-h-[80px] resize-none"
               disabled={loadingEntry}
+              onFocus={() => {
+                setNotesKeyboardOpen(true);
+                setTimeout(() => {
+                  notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+              }}
+              onBlur={() => setNotesKeyboardOpen(false)}
             />
           </div>
 

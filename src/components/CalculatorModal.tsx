@@ -11,11 +11,10 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackCalculatorUsed } from '@/utils/analytics';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Collapsible,
   CollapsibleContent,
@@ -223,20 +222,18 @@ export const CalculatorModal = ({
   const calculatedReverseBAC = calculateReverseBAC();
   const calculatedML = calculateML();
 
-  // Helper component for info tooltip
+  // Helper component for info tooltip - now tap-friendly for mobile
   const InfoTooltip = ({ content }: { content: string }) => (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-            <HelpCircle className="w-3.5 h-3.5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[200px] text-xs">
-          {content}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+          <HelpCircle className="w-3.5 h-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="max-w-[200px] text-xs p-2">
+        {content}
+      </PopoverContent>
+    </Popover>
   );
 
   // Quick select button component
@@ -296,7 +293,7 @@ export const CalculatorModal = ({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 border border-border/50 rounded-xl p-4 bg-card/30">
 
           {/* Reconstitution Calculator */}
           {activeTab === 'reconstitution' && (
@@ -359,7 +356,7 @@ export const CalculatorModal = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         Dose
@@ -392,7 +389,7 @@ export const CalculatorModal = ({
               {/* Reverse Mode Fields */}
               {reconMode === 'reverse' && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         Dose
@@ -621,14 +618,15 @@ export const CalculatorModal = ({
             </div>
           )}
 
-          <Button 
-            onClick={() => onOpenChange(false)} 
-            variant="ghost" 
-            className="w-full"
-          >
-            Done
-          </Button>
         </div>
+
+        <Button 
+          onClick={() => onOpenChange(false)} 
+          variant="ghost" 
+          className="w-full mt-2"
+        >
+          Done
+        </Button>
       </DialogContent>
     </Dialog>
   );
