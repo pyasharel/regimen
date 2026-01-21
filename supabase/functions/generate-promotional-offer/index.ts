@@ -148,18 +148,29 @@ serve(async (req) => {
     const derSignature = rawToDer(rawSignature);
     const signature = b64Encode(derSignature.buffer as ArrayBuffer);
 
-    // Record redemption with platform tracking
-    await supabaseClient.from('partner_code_redemptions').insert({
-      code_id: partnerCode.id,
-      user_id: user.id,
-      platform: 'ios',
-      metadata: { productId, timestamp, offerIdentifier: partnerCode.offer_identifier }
-    });
+    // Record or update redemption with platform tracking
+    if (isRetry && existingRedemption) {
+      // Update existing failed redemption record
+      await supabaseClient.from('partner_code_redemptions')
+        .update({
+          metadata: { productId, timestamp, offerIdentifier: partnerCode.offer_identifier, retryCount: 1 }
+        })
+        .eq('id', existingRedemption.id);
+      logStep("Retry - updated existing redemption record");
+    } else {
+      // New redemption - insert record and increment count
+      await supabaseClient.from('partner_code_redemptions').insert({
+        code_id: partnerCode.id,
+        user_id: user.id,
+        platform: 'ios',
+        metadata: { productId, timestamp, offerIdentifier: partnerCode.offer_identifier }
+      });
 
-    await supabaseClient
-      .from('partner_promo_codes')
-      .update({ redemption_count: partnerCode.redemption_count + 1 })
-      .eq('id', partnerCode.id);
+      await supabaseClient
+        .from('partner_promo_codes')
+        .update({ redemption_count: partnerCode.redemption_count + 1 })
+        .eq('id', partnerCode.id);
+    }
 
     logStep("Success", { offerIdentifier: partnerCode.offer_identifier });
 
