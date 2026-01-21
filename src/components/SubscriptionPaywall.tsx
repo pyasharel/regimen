@@ -134,7 +134,7 @@ export const SubscriptionPaywall = ({
           discount: `${freePeriod} FREE then ${validateData.planType === 'annual' ? '$39.99/year' : '$4.99/month'}`
         });
         setShowPromoInput(false);
-        toast.success(`Partner code applied! ${freePeriod} free trial.`);
+        // Toast removed - inline UI already shows "Code applied" message
         trackPromoCodeApplied(code, validateData.freeDays);
         return;
       }
@@ -291,7 +291,7 @@ export const SubscriptionPaywall = ({
 
           if (offerError || !offerData?.valid) {
             console.error('[PAYWALL] Failed to get promotional offer:', offerError || offerData?.error || 'Invalid response');
-            toast.error('Unable to apply partner code. Please try again.');
+            toast.error('Unable to apply offer. Please try again.');
             setIsLoading(false);
             return;
           }
