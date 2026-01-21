@@ -97,19 +97,23 @@ serve(async (req) => {
       });
     }
 
-    // Check existing redemption
+    // Check existing redemption - allow retry if offer wasn't successfully applied
     const { data: existingRedemption } = await supabaseClient
       .from('partner_code_redemptions')
-      .select('id')
+      .select('id, offer_applied')
       .eq('code_id', partnerCode.id)
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (existingRedemption) {
+    // Only block if user already successfully applied the offer
+    if (existingRedemption?.offer_applied === true) {
       return new Response(JSON.stringify({ valid: false, error: "Already used" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    // If there's a failed redemption record, we'll reuse it (don't increment count again)
+    const isRetry = !!existingRedemption;
 
     const keyId = Deno.env.get("APP_STORE_CONNECT_KEY_ID");
     const privateKey = Deno.env.get("APP_STORE_CONNECT_PRIVATE_KEY");
