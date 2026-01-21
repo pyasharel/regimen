@@ -14,6 +14,9 @@ const BACKEND_PROMO_CODES: Record<string, { days: number; description: string }>
   'REDDIT30': { days: 30, description: '1 month free' },
 };
 
+// Apple App ID for Regimen
+const APPLE_APP_ID = '6753905449';
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -71,7 +74,7 @@ serve(async (req) => {
       });
     }
     
-    // SECOND: Check if this is a partner promotional offer code (Apple Promotional Offers)
+    // SECOND: Check if this is a partner Apple Offer Code
     const { data: partnerCode, error: partnerError } = await supabaseClient
       .from('partner_promo_codes')
       .select('*')
@@ -86,7 +89,7 @@ serve(async (req) => {
     if (partnerCode) {
       console.log(`[VALIDATE-PROMO] Found valid partner promo code: ${upperCode}`, {
         partner: partnerCode.partner_name,
-        offerIdentifier: partnerCode.offer_identifier,
+        appleOfferCode: partnerCode.apple_offer_code || partnerCode.code,
         freeDays: partnerCode.free_days
       });
       
@@ -102,14 +105,22 @@ serve(async (req) => {
         });
       }
       
+      // Use apple_offer_code if set, otherwise fall back to the code itself
+      const appleOfferCode = partnerCode.apple_offer_code || partnerCode.code;
+      
+      // Build the Apple redemption URL
+      const redemptionUrl = `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${encodeURIComponent(appleOfferCode)}`;
+      
       return new Response(JSON.stringify({
         valid: true,
-        type: 'partner_offer',
-        isPartnerOffer: true,
-        offerIdentifier: partnerCode.offer_identifier,
+        type: 'apple_offer_code',
+        isAppleOfferCode: true,
+        appleOfferCode: appleOfferCode,
+        redemptionUrl: redemptionUrl,
         planType: partnerCode.plan_type,
         freeDays: partnerCode.free_days,
         partnerName: partnerCode.partner_name,
+        partnerCodeId: partnerCode.id,
         description: partnerCode.description,
         discount: 100 // Free trial period
       }), {

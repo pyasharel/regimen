@@ -7,17 +7,20 @@ import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
-import { useSubscription, PromotionalOfferParams } from '@/contexts/SubscriptionContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
 
-// Partner promo code state
-interface PartnerPromoState {
+// Apple Offer Code partner promo state
+interface AppleOfferCodePromo {
   code: string;
-  offerIdentifier: string;
+  appleOfferCode: string;
+  redemptionUrl: string;
   planType: 'monthly' | 'annual';
   freeDays: number;
   partnerName: string;
+  partnerCodeId: string;
 }
 
 interface SubscriptionPaywallProps {
@@ -36,10 +39,11 @@ export const SubscriptionPaywall = ({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: string} | null>(null);
-  const [partnerPromo, setPartnerPromo] = useState<PartnerPromoState | null>(null);
+  const [appleOfferPromo, setAppleOfferPromo] = useState<AppleOfferCodePromo | null>(null);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isAwaitingAppleReturn, setIsAwaitingAppleReturn] = useState(false);
 
   const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
   const { setPaywallOpen } = usePaywall();
@@ -63,12 +67,49 @@ export const SubscriptionPaywall = ({
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
-      setPartnerPromo(null);
+      setAppleOfferPromo(null);
       setAppliedPromo(null);
       setPromoCode('');
       setShowPromoInput(false);
+      setIsAwaitingAppleReturn(false);
     }
   }, [open]);
+
+  // Listen for app resume after Apple redemption
+  useEffect(() => {
+    if (!isAwaitingAppleReturn) return;
+    
+    const handleAppResume = async () => {
+      console.log('[PAYWALL] App resumed after Apple redemption flow');
+      setIsAwaitingAppleReturn(false);
+      setIsLoading(true);
+      
+      // Give RevenueCat a moment to sync with Apple
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      try {
+        await refreshSubscription();
+        // The subscription context will update if they subscribed
+        toast.success('Welcome to Regimen Premium! 🎉');
+        onOpenChange(false);
+        onDismiss?.();
+      } catch (error) {
+        console.error('[PAYWALL] Error refreshing after Apple return:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && isAwaitingAppleReturn) {
+        handleAppResume();
+      }
+    });
+    
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, [isAwaitingAppleReturn, refreshSubscription, onOpenChange, onDismiss]);
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
@@ -100,25 +141,28 @@ export const SubscriptionPaywall = ({
         return;
       }
 
-      // Handle partner promotional offers (Apple signed offers)
-      if (validateData.isPartnerOffer) {
-        console.log('[PROMO] Partner promo code detected:', {
-          offerIdentifier: validateData.offerIdentifier,
+      // Handle Apple Offer Code (partner promo codes for new users)
+      if (validateData.isAppleOfferCode) {
+        console.log('[PROMO] Apple Offer Code detected:', {
+          appleOfferCode: validateData.appleOfferCode,
+          redemptionUrl: validateData.redemptionUrl,
           planType: validateData.planType,
           freeDays: validateData.freeDays,
           partnerName: validateData.partnerName
         });
         
-        // Store partner promo state
-        setPartnerPromo({
+        // Store Apple offer code state
+        setAppleOfferPromo({
           code,
-          offerIdentifier: validateData.offerIdentifier,
+          appleOfferCode: validateData.appleOfferCode,
+          redemptionUrl: validateData.redemptionUrl,
           planType: validateData.planType || 'annual',
           freeDays: validateData.freeDays || 30,
-          partnerName: validateData.partnerName || 'Partner'
+          partnerName: validateData.partnerName || 'Partner',
+          partnerCodeId: validateData.partnerCodeId
         });
         
-        // Lock to the required plan type
+        // Lock to the required plan type (Apple offer codes are typically annual)
         if (validateData.planType === 'annual') {
           setSelectedPlan('annual');
         } else if (validateData.planType === 'monthly') {
@@ -134,7 +178,6 @@ export const SubscriptionPaywall = ({
           discount: `${freePeriod} FREE then ${validateData.planType === 'annual' ? '$39.99/year' : '$4.99/month'}`
         });
         setShowPromoInput(false);
-        // Toast removed - inline UI already shows "Code applied" message
         trackPromoCodeApplied(code, validateData.freeDays);
         return;
       }
@@ -229,7 +272,7 @@ export const SubscriptionPaywall = ({
     console.log('[PAYWALL] Current state:', { 
       selectedPlan, 
       appliedPromo: appliedPromo?.code,
-      partnerPromo: partnerPromo?.code,
+      appleOfferPromo: appleOfferPromo?.code,
       isLoading,
       isNativePlatform,
       hasOfferings: !!offerings
@@ -243,9 +286,32 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      // ==================== NATIVE IAP (RevenueCat) ====================
+      // ==================== APPLE OFFER CODE REDEMPTION (Partner Promos) ====================
+      if (appleOfferPromo && isNativePlatform) {
+        console.log('[PAYWALL] Apple Offer Code flow - opening redemption URL:', appleOfferPromo.redemptionUrl);
+        trackSubscriptionStarted(selectedPlan);
+        
+        // Set partner attribution in RevenueCat before redemption
+        try {
+          const { Purchases } = await import('@revenuecat/purchases-capacitor');
+          await Purchases.setAttributes({ partner_code: appleOfferPromo.code });
+          console.log('[PAYWALL] Set RevenueCat partner_code attribute:', appleOfferPromo.code);
+        } catch (attrError) {
+          console.warn('[PAYWALL] Could not set RevenueCat attribute:', attrError);
+        }
+        
+        // Open Apple's redemption page - user will confirm purchase there
+        setIsAwaitingAppleReturn(true);
+        await Browser.open({ url: appleOfferPromo.redemptionUrl });
+        
+        // Don't close the paywall - we'll detect app resume and refresh subscription
+        setIsLoading(false);
+        return;
+      }
+      
+      // ==================== NATIVE IAP (RevenueCat - Standard Flow) ====================
       if (isNativePlatform) {
-        console.log('[PAYWALL] Native platform - using RevenueCat');
+        console.log('[PAYWALL] Native platform - using RevenueCat standard flow');
         
         if (!offerings?.current?.availablePackages) {
           console.error('[PAYWALL] No offerings available');
@@ -275,51 +341,16 @@ export const SubscriptionPaywall = ({
         console.log('[PAYWALL] Purchasing package:', selectedPackage.identifier);
         trackSubscriptionStarted(selectedPlan);
 
-        // If we have a partner promo, get the signed offer from our backend
-        let promotionalOffer: PromotionalOfferParams | undefined;
-        if (partnerPromo && isNativePlatform) {
-          console.log('[PAYWALL] Getting signed promotional offer for partner code:', partnerPromo.code);
-          
-          const { data: offerData, error: offerError } = await supabase.functions.invoke('generate-promotional-offer', {
-            body: {
-              code: partnerPromo.code,  // Fixed: was 'promoCode'
-              productId: selectedPackage.product.identifier
-            }
-          });
-
-          console.log('[PAYWALL] Promotional offer response:', JSON.stringify({ offerData, offerError }, null, 2));
-
-          if (offerError || !offerData?.valid) {
-            console.error('[PAYWALL] Failed to get promotional offer:', offerError || offerData?.error || 'Invalid response');
-            toast.error('Unable to apply offer. Please try again.');
-            setIsLoading(false);
-            return;
-          }
-
-          // Build promotional offer from response (fields are at root level, not nested)
-          promotionalOffer = {
-            productIdentifier: selectedPackage.product.identifier,
-            offerIdentifier: offerData.offerIdentifier,
-            keyIdentifier: offerData.keyId,
-            nonce: offerData.nonce,
-            signature: offerData.signature,
-            timestamp: offerData.timestamp
-          };
-          console.log('[PAYWALL] Got signed promotional offer:', promotionalOffer.offerIdentifier);
-        }
-
-        const result = await purchasePackage(selectedPackage, promotionalOffer);
+        // Standard purchase without promotional offer
+        const result = await purchasePackage(selectedPackage);
 
         if (result.success) {
-          console.log('[PAYWALL] Purchase successful! State already updated by purchasePackage');
+          console.log('[PAYWALL] Purchase successful!');
           toast.success('Welcome to Regimen Premium! 🎉');
           trackSubscriptionSuccess(selectedPlan, 'revenuecat');
           onOpenChange(false);
-          // purchasePackage already updated the subscription state synchronously - no need to refresh
-          // This prevents race conditions where refresh could overwrite the correct state
         } else if (result.cancelled) {
           console.log('[PAYWALL] Purchase cancelled by user');
-          // Don't show error for user cancellation
         } else {
           console.error('[PAYWALL] Purchase failed:', result.error);
           trackSubscriptionFailed(selectedPlan, result.error || 'Unknown error');
@@ -395,8 +426,11 @@ export const SubscriptionPaywall = ({
   };
 
   const getButtonText = () => {
-    if (partnerPromo) {
-      return `Start My ${partnerPromo.freeDays >= 30 ? Math.round(partnerPromo.freeDays / 30) + '-Month' : partnerPromo.freeDays + '-Day'} Free Trial`;
+    if (appleOfferPromo) {
+      const monthText = appleOfferPromo.freeDays >= 30 
+        ? `${Math.round(appleOfferPromo.freeDays / 30)} Month${appleOfferPromo.freeDays >= 60 ? 's' : ''}` 
+        : `${appleOfferPromo.freeDays} Days`;
+      return `Claim Your ${monthText} Free`;
     }
     if (appliedPromo) {
       return `Start Free Access`;
@@ -415,10 +449,10 @@ export const SubscriptionPaywall = ({
 
   // Get trial period text for header
   const getTrialPeriodText = () => {
-    if (partnerPromo) {
-      return partnerPromo.freeDays >= 30 
-        ? `${Math.round(partnerPromo.freeDays / 30)}-month` 
-        : `${partnerPromo.freeDays}-day`;
+    if (appleOfferPromo) {
+      return appleOfferPromo.freeDays >= 30 
+        ? `${Math.round(appleOfferPromo.freeDays / 30)}-month` 
+        : `${appleOfferPromo.freeDays}-day`;
     }
     return "14-day";
   };
