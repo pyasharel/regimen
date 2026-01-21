@@ -201,26 +201,38 @@ export type Database = {
       partner_code_redemptions: {
         Row: {
           code_id: string
+          converted_at: string | null
+          first_year_revenue: number | null
           id: string
           metadata: Json | null
           offer_applied: boolean
+          platform: string | null
           redeemed_at: string
+          subscription_id: string | null
           user_id: string
         }
         Insert: {
           code_id: string
+          converted_at?: string | null
+          first_year_revenue?: number | null
           id?: string
           metadata?: Json | null
           offer_applied?: boolean
+          platform?: string | null
           redeemed_at?: string
+          subscription_id?: string | null
           user_id: string
         }
         Update: {
           code_id?: string
+          converted_at?: string | null
+          first_year_revenue?: number | null
           id?: string
           metadata?: Json | null
           offer_applied?: boolean
+          platform?: string | null
           redeemed_at?: string
+          subscription_id?: string | null
           user_id?: string
         }
         Relationships: [

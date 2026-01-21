@@ -101,11 +101,12 @@ serve(async (req) => {
     
     const signature = b64Encode(signatureBuffer);
 
-    // Record redemption
+    // Record redemption with platform tracking
     await supabaseClient.from('partner_code_redemptions').insert({
       code_id: partnerCode.id,
       user_id: user.id,
-      metadata: { productId, timestamp }
+      platform: 'ios',
+      metadata: { productId, timestamp, offerIdentifier: partnerCode.offer_identifier }
     });
 
     await supabaseClient
