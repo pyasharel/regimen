@@ -11,6 +11,46 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[GENERATE-PROMO-OFFER] ${step}${details ? ` - ${JSON.stringify(details)}` : ''}`);
 };
 
+// Convert raw ECDSA signature (64 bytes: R || S) to DER format required by Apple
+function rawToDer(rawSignature: Uint8Array): Uint8Array {
+  const r = rawSignature.slice(0, 32);
+  const s = rawSignature.slice(32, 64);
+  
+  function encodeInteger(bytes: Uint8Array): Uint8Array {
+    // Remove leading zeros
+    let start = 0;
+    while (start < bytes.length - 1 && bytes[start] === 0) start++;
+    bytes = bytes.slice(start);
+    
+    // Add 0x00 prefix if high bit is set (to indicate positive number)
+    if (bytes[0] & 0x80) {
+      const padded = new Uint8Array(bytes.length + 1);
+      padded[0] = 0x00;
+      padded.set(bytes, 1);
+      bytes = padded;
+    }
+    
+    // Return: 0x02 (integer tag) + length + value
+    const result = new Uint8Array(2 + bytes.length);
+    result[0] = 0x02;
+    result[1] = bytes.length;
+    result.set(bytes, 2);
+    return result;
+  }
+  
+  const encodedR = encodeInteger(r);
+  const encodedS = encodeInteger(s);
+  
+  // Combine: 0x30 (sequence tag) + total length + R + S
+  const sequence = new Uint8Array(2 + encodedR.length + encodedS.length);
+  sequence[0] = 0x30;
+  sequence[1] = encodedR.length + encodedS.length;
+  sequence.set(encodedR, 2);
+  sequence.set(encodedS, 2 + encodedR.length);
+  
+  return sequence;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -76,7 +116,7 @@ serve(async (req) => {
     if (!keyId || !privateKey) throw new Error("App Store credentials missing");
 
     const nonce = crypto.randomUUID().toLowerCase();
-    const timestamp = Math.floor(Date.now() / 1000);
+    const timestamp = Date.now(); // Milliseconds required by Apple
     const appBundleId = "com.regimenapp.regimen";
 
     // Create signature payload
@@ -99,7 +139,10 @@ serve(async (req) => {
       new TextEncoder().encode(payload)
     );
     
-    const signature = b64Encode(signatureBuffer);
+    // Convert raw signature to DER format required by Apple
+    const rawSignature = new Uint8Array(signatureBuffer);
+    const derSignature = rawToDer(rawSignature);
+    const signature = b64Encode(derSignature.buffer as ArrayBuffer);
 
     // Record redemption with platform tracking
     await supabaseClient.from('partner_code_redemptions').insert({
