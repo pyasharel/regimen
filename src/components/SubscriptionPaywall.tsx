@@ -282,25 +282,28 @@ export const SubscriptionPaywall = ({
           
           const { data: offerData, error: offerError } = await supabase.functions.invoke('generate-promotional-offer', {
             body: {
-              promoCode: partnerPromo.code,
+              code: partnerPromo.code,  // Fixed: was 'promoCode'
               productId: selectedPackage.product.identifier
             }
           });
 
-          if (offerError || !offerData?.signedOffer) {
-            console.error('[PAYWALL] Failed to get promotional offer:', offerError || 'No signed offer returned');
+          console.log('[PAYWALL] Promotional offer response:', JSON.stringify({ offerData, offerError }, null, 2));
+
+          if (offerError || !offerData?.valid) {
+            console.error('[PAYWALL] Failed to get promotional offer:', offerError || offerData?.error || 'Invalid response');
             toast.error('Unable to apply partner code. Please try again.');
             setIsLoading(false);
             return;
           }
 
+          // Build promotional offer from response (fields are at root level, not nested)
           promotionalOffer = {
-            productIdentifier: offerData.signedOffer.productIdentifier,
-            offerIdentifier: offerData.signedOffer.offerIdentifier,
-            keyIdentifier: offerData.signedOffer.keyIdentifier,
-            nonce: offerData.signedOffer.nonce,
-            signature: offerData.signedOffer.signature,
-            timestamp: offerData.signedOffer.timestamp
+            productIdentifier: selectedPackage.product.identifier,
+            offerIdentifier: offerData.offerIdentifier,
+            keyIdentifier: offerData.keyId,
+            nonce: offerData.nonce,
+            signature: offerData.signature,
+            timestamp: offerData.timestamp
           };
           console.log('[PAYWALL] Got signed promotional offer:', promotionalOffer.offerIdentifier);
         }

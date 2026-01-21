@@ -157,6 +157,35 @@ serve(async (req) => {
 
     console.log("[REVENUECAT-WEBHOOK] Successfully updated profile");
 
+    // Mark partner code redemption as converted on initial purchase
+    if (event.type === "INITIAL_PURCHASE") {
+      console.log("[REVENUECAT-WEBHOOK] Checking for partner code redemption to mark as converted");
+      
+      const { data: redemption } = await supabase
+        .from("partner_code_redemptions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("offer_applied", false)
+        .order("redeemed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (redemption) {
+        console.log("[REVENUECAT-WEBHOOK] Found pending redemption, marking as converted:", redemption.id);
+        
+        await supabase
+          .from("partner_code_redemptions")
+          .update({
+            offer_applied: true,
+            converted_at: new Date().toISOString(),
+            subscription_id: event.original_transaction_id || event.transaction_id
+          })
+          .eq("id", redemption.id);
+          
+        console.log("[REVENUECAT-WEBHOOK] Partner redemption marked as converted");
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
