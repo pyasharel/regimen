@@ -247,6 +247,7 @@ export type Database = {
       }
       partner_promo_codes: {
         Row: {
+          apple_offer_code: string | null
           code: string
           created_at: string
           description: string | null
@@ -261,6 +262,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          apple_offer_code?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -275,6 +277,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          apple_offer_code?: string | null
           code?: string
           created_at?: string
           description?: string | null
