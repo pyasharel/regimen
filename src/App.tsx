@@ -45,6 +45,7 @@ import Terms from "./pages/Terms";
 import WidgetPreview from "./pages/WidgetPreview";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
+import PartnerLanding from "./pages/PartnerLanding";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const AppContent = () => {
             <Route path="/terms" element={<Terms />} />
             <Route path="/checkout/success" element={<CheckoutSuccess />} />
             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+            <Route path="/partners/:partnerSlug" element={<PartnerLanding />} />
             <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
             <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
