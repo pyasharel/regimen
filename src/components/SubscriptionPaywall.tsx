@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Copy, Check } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
 import { App } from '@capacitor/app';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -44,6 +43,7 @@ export const SubscriptionPaywall = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isAwaitingAppleReturn, setIsAwaitingAppleReturn] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
   const { setPaywallOpen } = usePaywall();
@@ -288,7 +288,7 @@ export const SubscriptionPaywall = ({
     try {
       // ==================== APPLE OFFER CODE REDEMPTION (Partner Promos) ====================
       if (appleOfferPromo && isNativePlatform) {
-        console.log('[PAYWALL] Apple Offer Code flow - opening redemption URL:', appleOfferPromo.redemptionUrl);
+        console.log('[PAYWALL] Apple Offer Code flow - opening native redemption sheet');
         trackSubscriptionStarted(selectedPlan);
         
         // Set partner attribution in RevenueCat before redemption
@@ -296,13 +296,24 @@ export const SubscriptionPaywall = ({
           const { Purchases } = await import('@revenuecat/purchases-capacitor');
           await Purchases.setAttributes({ partner_code: appleOfferPromo.code });
           console.log('[PAYWALL] Set RevenueCat partner_code attribute:', appleOfferPromo.code);
+          
+          // Auto-copy the code to clipboard for easy pasting
+          try {
+            await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
+            toast.success('Code copied! Paste it in the next screen.');
+          } catch (clipboardError) {
+            console.warn('[PAYWALL] Could not copy to clipboard:', clipboardError);
+          }
+          
+          // Open RevenueCat's native code redemption sheet (user will type/paste code)
+          setIsAwaitingAppleReturn(true);
+          await Purchases.presentCodeRedemptionSheet();
+          console.log('[PAYWALL] Opened native code redemption sheet');
         } catch (attrError) {
-          console.warn('[PAYWALL] Could not set RevenueCat attribute:', attrError);
+          console.warn('[PAYWALL] Could not open redemption sheet:', attrError);
+          toast.error('Unable to open redemption. Please try again.');
+          setIsAwaitingAppleReturn(false);
         }
-        
-        // Open Apple's redemption page - user will confirm purchase there
-        setIsAwaitingAppleReturn(true);
-        await Browser.open({ url: appleOfferPromo.redemptionUrl });
         
         // Don't close the paywall - we'll detect app resume and refresh subscription
         setIsLoading(false);
@@ -587,7 +598,7 @@ export const SubscriptionPaywall = ({
               {!showPromoInput ? (
                 <button
                   onClick={() => setShowPromoInput(true)}
-                  className="text-[14px] text-[#4A4A4A] dark:text-gray-300 underline hover:text-[#FF6F61]"
+                  className="text-[14px] text-muted-foreground underline hover:text-primary"
                 >
                   Have a promo code?
                 </button>
@@ -614,19 +625,80 @@ export const SubscriptionPaywall = ({
                   </div>
                 </div>
               )}
-              {appliedPromo && (
-                <div className="bg-[#8B5CF6]/10 rounded-lg p-3 flex items-center justify-between">
+              {appliedPromo && !appleOfferPromo && (
+                <div className="bg-accent/50 rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6]" />
-                    <span className="text-[14px] text-[#8B5CF6] font-medium">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <span className="text-[14px] text-primary font-medium">
                       Code {appliedPromo.code} applied - {appliedPromo.discount}
                     </span>
                   </div>
                   <button
-                    onClick={() => setAppliedPromo(null)}
-                    className="text-[12px] text-[#8B5CF6] underline hover:no-underline"
+                    onClick={() => {
+                      setAppliedPromo(null);
+                      setAppleOfferPromo(null);
+                    }}
+                    className="text-[12px] text-primary underline hover:no-underline"
                   >
                     Remove
+                  </button>
+                </div>
+              )}
+              
+              {/* Apple Offer Code - Prominent Code Display with Copy Button */}
+              {appleOfferPromo && (
+                <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 space-y-3">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Enter this code on the next screen
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      (The code will be copied automatically)
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="bg-background border-2 border-dashed border-primary rounded-lg px-6 py-3">
+                      <span className="text-xl font-mono font-bold text-foreground tracking-wider">
+                        {appleOfferPromo.appleOfferCode}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
+                          setCodeCopied(true);
+                          toast.success('Code copied!');
+                          setTimeout(() => setCodeCopied(false), 2000);
+                        } catch {
+                          toast.error('Failed to copy code');
+                        }
+                      }}
+                      className="h-12 w-12 rounded-lg border-primary/50"
+                    >
+                      {codeCopied ? <Check className="h-5 w-5 text-primary" /> : <Copy className="h-5 w-5" />}
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-primary">
+                      {appleOfferPromo.freeDays >= 30 
+                        ? `${Math.round(appleOfferPromo.freeDays / 30)} month${appleOfferPromo.freeDays >= 60 ? 's' : ''} FREE` 
+                        : `${appleOfferPromo.freeDays} days FREE`}
+                      , then ${appleOfferPromo.planType === 'annual' ? '$39.99/year' : '$4.99/month'}
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setAppliedPromo(null);
+                      setAppleOfferPromo(null);
+                    }}
+                    className="w-full text-[12px] text-muted-foreground underline hover:no-underline"
+                  >
+                    Remove code
                   </button>
                 </div>
               )}
