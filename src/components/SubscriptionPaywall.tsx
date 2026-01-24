@@ -80,21 +80,22 @@ export const SubscriptionPaywall = ({
     if (!isAwaitingAppleReturn) return;
     
     const handleAppResume = async () => {
-      console.log('[PAYWALL] App resumed after Apple redemption flow');
+      console.log('[PAYWALL] App resumed after Safari/Apple redemption flow');
       setIsAwaitingAppleReturn(false);
       setIsLoading(true);
       
-      // Give RevenueCat a moment to sync with Apple
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Give RevenueCat time to sync with Apple (Safari flow needs slightly longer)
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       try {
-        await refreshSubscription();
+        await refreshSubscription('partner_redemption');
         // The subscription context will update if they subscribed
         toast.success('Welcome to Regimen Premium! 🎉');
         onOpenChange(false);
         onDismiss?.();
       } catch (error) {
         console.error('[PAYWALL] Error refreshing after Apple return:', error);
+        toast.info('If you completed the redemption, please close and reopen the app to refresh.');
       } finally {
         setIsLoading(false);
       }
@@ -288,7 +289,7 @@ export const SubscriptionPaywall = ({
     try {
       // ==================== APPLE OFFER CODE REDEMPTION (Partner Promos) ====================
       if (appleOfferPromo && isNativePlatform) {
-        console.log('[PAYWALL] Apple Offer Code flow - opening native redemption sheet');
+        console.log('[PAYWALL] Apple Offer Code flow - opening Safari with pre-filled code');
         trackSubscriptionStarted(selectedPlan);
         
         // Set partner attribution in RevenueCat before redemption
@@ -297,20 +298,33 @@ export const SubscriptionPaywall = ({
           await Purchases.setAttributes({ partner_code: appleOfferPromo.code });
           console.log('[PAYWALL] Set RevenueCat partner_code attribute:', appleOfferPromo.code);
           
-          // Auto-copy the code to clipboard for easy pasting
-          try {
-            await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
-            toast.success('Code copied! Paste it in the next screen.');
-          } catch (clipboardError) {
-            console.warn('[PAYWALL] Could not copy to clipboard:', clipboardError);
-          }
+          // Open Safari with pre-filled redemption URL (eliminates double-entry friction)
+          const { Browser } = await import('@capacitor/browser');
+          const url = appleOfferPromo.redemptionUrl;
+          console.log('[PAYWALL] Opening Safari with pre-filled code:', url);
           
-          // Open RevenueCat's native code redemption sheet (user will type/paste code)
           setIsAwaitingAppleReturn(true);
-          await Purchases.presentCodeRedemptionSheet();
-          console.log('[PAYWALL] Opened native code redemption sheet');
+          
+          try {
+            await Browser.open({ 
+              url,
+              presentationStyle: 'popover' // Opens as Safari modal overlay
+            });
+            console.log('[PAYWALL] Safari opened successfully');
+          } catch (browserError) {
+            // Fallback: If Safari fails, use native sheet with clipboard
+            console.warn('[PAYWALL] Safari failed, falling back to native sheet:', browserError);
+            try {
+              await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
+              toast.info('Code copied! Paste it in the next screen.');
+            } catch (clipboardError) {
+              console.warn('[PAYWALL] Could not copy to clipboard:', clipboardError);
+            }
+            await Purchases.presentCodeRedemptionSheet();
+            console.log('[PAYWALL] Opened native code redemption sheet as fallback');
+          }
         } catch (attrError) {
-          console.warn('[PAYWALL] Could not open redemption sheet:', attrError);
+          console.warn('[PAYWALL] Could not open redemption:', attrError);
           toast.error('Unable to open redemption. Please try again.');
           setIsAwaitingAppleReturn(false);
         }
