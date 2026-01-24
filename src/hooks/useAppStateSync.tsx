@@ -6,6 +6,7 @@ import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/uti
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 import { runFullCleanup } from '@/utils/doseCleanup';
+import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -101,8 +102,68 @@ export const useAppStateSync = () => {
           
           console.log('✅ Notifications synced successfully with isPremium:', isSubscribed);
         }
+        
+        // Weekly engagement snapshot tracking
+        await checkAndSendWeeklySnapshot(user.id, profile?.subscription_status || 'none');
       } catch (error) {
         console.error('❌ Error syncing notifications:', error);
+      }
+    };
+    
+    // Check and send weekly engagement snapshot
+    const checkAndSendWeeklySnapshot = async (userId: string, subscriptionStatus: string) => {
+      try {
+        const SNAPSHOT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+        const SNAPSHOT_KEY = 'regimen_last_engagement_snapshot';
+        const INSTALL_DATE_KEY = 'regimen_install_date';
+        
+        const lastSnapshotStr = localStorage.getItem(SNAPSHOT_KEY);
+        const lastSnapshot = lastSnapshotStr ? parseInt(lastSnapshotStr, 10) : 0;
+        const now = Date.now();
+        
+        // Only send snapshot if 7+ days since last one
+        if (now - lastSnapshot < SNAPSHOT_INTERVAL_MS) {
+          return;
+        }
+        
+        // Get install date or set it
+        let installDateStr = localStorage.getItem(INSTALL_DATE_KEY);
+        if (!installDateStr) {
+          installDateStr = now.toString();
+          localStorage.setItem(INSTALL_DATE_KEY, installDateStr);
+        }
+        const installDate = parseInt(installDateStr, 10);
+        const daysSinceInstall = Math.floor((now - installDate) / (24 * 60 * 60 * 1000));
+        
+        // Fetch engagement metrics
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const [compoundsResult, dosesResult, photosResult, statsResult] = await Promise.all([
+          supabase.from('compounds').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+          supabase.from('doses').select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('taken', true)
+            .gte('taken_at', thirtyDaysAgo.toISOString()),
+          supabase.from('progress_entries').select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .not('photo_url', 'is', null),
+          supabase.from('user_stats').select('current_streak').eq('user_id', userId).single(),
+        ]);
+        
+        trackWeeklyEngagementSnapshot({
+          compounds_count: compoundsResult.count || 0,
+          doses_last_30d: dosesResult.count || 0,
+          photos_count: photosResult.count || 0,
+          current_streak: statsResult.data?.current_streak || 0,
+          days_since_install: daysSinceInstall,
+          subscription_status: subscriptionStatus,
+        });
+        
+        localStorage.setItem(SNAPSHOT_KEY, now.toString());
+        console.log('📊 Weekly engagement snapshot sent');
+      } catch (error) {
+        console.error('Error sending weekly engagement snapshot:', error);
       }
     };
 

@@ -493,6 +493,29 @@ export const trackAccountDeleted = () => {
   });
 };
 
+/**
+ * Tracks a weekly engagement snapshot for retention and cohort analysis.
+ * Call this once per week (e.g., on app resume if 7+ days since last snapshot).
+ */
+export const trackWeeklyEngagementSnapshot = (metrics: {
+  compounds_count: number;
+  doses_last_30d: number;
+  photos_count: number;
+  current_streak: number;
+  days_since_install: number;
+  subscription_status: string;
+}) => {
+  ReactGA.event('engagement_snapshot', {
+    compounds_count: metrics.compounds_count,
+    doses_last_30d: metrics.doses_last_30d,
+    photos_count: metrics.photos_count,
+    current_streak: metrics.current_streak,
+    days_since_install: metrics.days_since_install,
+    subscription_status: metrics.subscription_status,
+  });
+  console.log('[Analytics] Weekly engagement snapshot tracked');
+};
+
 export const trackDataCleared = () => {
   ReactGA.event({
     category: 'Account',
