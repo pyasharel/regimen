@@ -6,6 +6,102 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Sends server-side GA4 events using the Measurement Protocol.
+ * This ensures subscription lifecycle events are tracked even when users are outside the app.
+ */
+const trackGA4Event = async (
+  userId: string, 
+  eventName: string, 
+  params: Record<string, unknown>
+) => {
+  const measurementId = Deno.env.get("GA4_MEASUREMENT_ID");
+  const apiSecret = Deno.env.get("GA4_API_SECRET");
+  
+  if (!measurementId || !apiSecret) {
+    console.log("[REVENUECAT-WEBHOOK] GA4 credentials not configured, skipping analytics");
+    return;
+  }
+  
+  try {
+    const response = await fetch(
+      `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: userId,
+          user_id: userId,
+          events: [{
+            name: eventName,
+            params: {
+              ...params,
+              source: "revenuecat_webhook",
+              engagement_time_msec: 1, // Required for GA4 MP
+            }
+          }]
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      console.error("[REVENUECAT-WEBHOOK] GA4 tracking failed:", await response.text());
+    } else {
+      console.log(`[REVENUECAT-WEBHOOK] GA4 event sent: ${eventName}`);
+    }
+  } catch (error) {
+    console.error("[REVENUECAT-WEBHOOK] GA4 tracking error:", error);
+  }
+};
+
+/**
+ * Calculates days between two dates from millisecond timestamps.
+ */
+const calculateDaysActive = (startMs: number | undefined, endMs: number | undefined): number => {
+  if (!startMs || !endMs) return 0;
+  const diffMs = endMs - startMs;
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Fetches user engagement metrics for churn analysis.
+ */
+// deno-lint-ignore no-explicit-any
+const fetchUserEngagementMetrics = async (
+  supabase: any,
+  userId: string
+): Promise<{ compounds_count: number; doses_last_30d: number; photos_count: number }> => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  // Fetch compounds count
+  const { data: compounds } = await supabase
+    .from("compounds")
+    .select("id")
+    .eq("user_id", userId);
+  
+  // Fetch doses in last 30 days
+  const { data: doses } = await supabase
+    .from("doses")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("taken", true)
+    .gte("scheduled_date", thirtyDaysAgo.toISOString().split('T')[0]);
+  
+  // Fetch progress photos count
+  const { data: photos } = await supabase
+    .from("progress_entries")
+    .select("id")
+    .eq("user_id", userId)
+    .not("photo_url", "is", null);
+  
+  return {
+    compounds_count: compounds?.length || 0,
+    doses_last_30d: doses?.length || 0,
+    photos_count: photos?.length || 0,
+  };
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -77,7 +173,43 @@ serve(async (req) => {
     // RevenueCat event types: https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
     switch (event.type) {
       case "INITIAL_PURCHASE":
+        subscriptionStatus = "active";
+        subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
+        subscriptionStartDate = event.purchased_at_ms 
+          ? new Date(event.purchased_at_ms).toISOString() 
+          : new Date().toISOString();
+        subscriptionEndDate = event.expiration_at_ms 
+          ? new Date(event.expiration_at_ms).toISOString() 
+          : null;
+        console.log("[REVENUECAT-WEBHOOK] Setting active subscription:", { subscriptionType, subscriptionEndDate });
+        
+        // Track subscription started in GA4
+        await trackGA4Event(userId, "subscription_started", {
+          plan_type: subscriptionType,
+          is_trial: event.period_type === "TRIAL",
+          price: event.price || 0,
+          currency: event.currency || "USD",
+        });
+        break;
+
       case "RENEWAL":
+        subscriptionStatus = "active";
+        subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
+        subscriptionStartDate = event.purchased_at_ms 
+          ? new Date(event.purchased_at_ms).toISOString() 
+          : new Date().toISOString();
+        subscriptionEndDate = event.expiration_at_ms 
+          ? new Date(event.expiration_at_ms).toISOString() 
+          : null;
+        console.log("[REVENUECAT-WEBHOOK] Subscription renewed:", { subscriptionType, subscriptionEndDate });
+        
+        // Track renewal in GA4
+        await trackGA4Event(userId, "subscription_renewed", {
+          plan_type: subscriptionType,
+          renewal_count: event.renewal_number || 1,
+        });
+        break;
+
       case "PRODUCT_CHANGE":
       case "UNCANCELLATION":
         subscriptionStatus = "active";
@@ -91,20 +223,52 @@ serve(async (req) => {
         console.log("[REVENUECAT-WEBHOOK] Setting active subscription:", { subscriptionType, subscriptionEndDate });
         break;
 
-      case "CANCELLATION":
+      case "CANCELLATION": {
         // User cancelled but still has access until expiration
         subscriptionStatus = "active";
         subscriptionEndDate = event.expiration_at_ms 
           ? new Date(event.expiration_at_ms).toISOString() 
           : null;
         console.log("[REVENUECAT-WEBHOOK] Subscription cancelled, expires:", subscriptionEndDate);
+        
+        // Fetch engagement metrics for churn analysis
+        const engagementMetrics = await fetchUserEngagementMetrics(supabase, userId);
+        const daysActive = calculateDaysActive(event.purchased_at_ms, Date.now());
+        
+        // Track cancellation with engagement data in GA4
+        await trackGA4Event(userId, "subscription_cancelled", {
+          plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
+          cancel_reason: event.cancel_reason || "unknown",
+          days_active: daysActive,
+          was_trial: event.period_type === "TRIAL",
+          compounds_count: engagementMetrics.compounds_count,
+          doses_last_30d: engagementMetrics.doses_last_30d,
+          photos_count: engagementMetrics.photos_count,
+        });
         break;
+      }
 
       case "EXPIRATION":
-      case "BILLING_ISSUE":
+      case "BILLING_ISSUE": {
         subscriptionStatus = "none";
         console.log("[REVENUECAT-WEBHOOK] Subscription expired/billing issue");
+        
+        // Fetch engagement metrics for churn analysis
+        const engagementMetrics = await fetchUserEngagementMetrics(supabase, userId);
+        const daysActive = calculateDaysActive(event.original_purchase_date_ms, Date.now());
+        
+        // Track expiration in GA4
+        await trackGA4Event(userId, "subscription_expired", {
+          plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
+          was_trial: event.period_type === "TRIAL",
+          days_active: daysActive,
+          expiration_reason: event.type === "BILLING_ISSUE" ? "billing_issue" : "natural_expiration",
+          compounds_count: engagementMetrics.compounds_count,
+          doses_last_30d: engagementMetrics.doses_last_30d,
+          photos_count: engagementMetrics.photos_count,
+        });
         break;
+      }
 
       case "SUBSCRIBER_ALIAS":
         // User identity changed, no status update needed
