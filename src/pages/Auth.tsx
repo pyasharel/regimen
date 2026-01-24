@@ -12,7 +12,8 @@ import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
-import { trackSignup, trackLogin } from "@/utils/analytics";
+import { trackSignup, trackLogin, setUserId } from "@/utils/analytics";
+import { getStoredAttribution, clearAttribution } from "@/utils/attribution";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -71,6 +72,8 @@ export default function Auth() {
         setIsResettingPassword(true);
       } else if (event === 'SIGNED_IN' && currentSession) {
         console.log('[Auth] User signed in, checking onboarding status');
+        // Set GA4 user ID for cross-session tracking
+        setUserId(currentSession.user.id);
         setCheckingAuth(true);
         checkOnboardingStatus(currentSession.user.id);
       } else if (event === 'SIGNED_OUT') {
@@ -345,6 +348,8 @@ export default function Auth() {
         // Account created - onAuthStateChange will handle navigation
         // Welcome email will be sent in checkOnboardingStatus
         trackSignup('email');
+        // Clear attribution after successful signup
+        clearAttribution();
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

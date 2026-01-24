@@ -6,9 +6,16 @@ import App from "./App.tsx";
 import "./index.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { initGA } from './utils/analytics';
+import { captureAttribution } from './utils/attribution';
+import { setInstallDate } from './utils/featureTracking';
+
+// Capture UTM attribution on app entry (before GA4 init so we can set user properties)
+captureAttribution();
+
+// Set install date for days-since-install tracking
+setInstallDate();
 
 // Initialize Google Analytics 4
-// Replace 'G-XXXXXXXXXX' with your actual GA4 Measurement ID
 const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (GA_MEASUREMENT_ID) {
   initGA(GA_MEASUREMENT_ID);
