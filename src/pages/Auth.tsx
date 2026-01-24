@@ -333,7 +333,7 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -348,6 +348,21 @@ export default function Auth() {
         // Account created - onAuthStateChange will handle navigation
         // Welcome email will be sent in checkOnboardingStatus
         trackSignup('email');
+        
+        // Persist attribution data to the user's profile
+        const attribution = getStoredAttribution();
+        if (signUpData?.user && attribution && (attribution.utm_source || attribution.referrer)) {
+          await supabase.from('profiles').update({
+            utm_source: attribution.utm_source,
+            utm_medium: attribution.utm_medium,
+            utm_campaign: attribution.utm_campaign,
+            utm_content: attribution.utm_content,
+            referrer: attribution.referrer,
+            landing_page: attribution.landing_page,
+            attributed_at: new Date().toISOString(),
+          }).eq('user_id', signUpData.user.id);
+          console.log('[Auth] Attribution data persisted to profile');
+        }
         // Clear attribution after successful signup
         clearAttribution();
       } else {

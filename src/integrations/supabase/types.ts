@@ -295,6 +295,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          attributed_at: string | null
           avatar_url: string | null
           beta_access_end_date: string | null
           challenges: string[] | null
@@ -311,6 +312,7 @@ export type Database = {
           height_unit: string | null
           id: string
           is_lifetime_access: boolean | null
+          landing_page: string | null
           last_active_at: string | null
           last_payment_attempt: string | null
           notification_permission_asked: boolean | null
@@ -319,6 +321,7 @@ export type Database = {
           pain_points: string[] | null
           path_type: string | null
           preview_mode_compound_added: boolean | null
+          referrer: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_end_date: string | null
@@ -330,9 +333,14 @@ export type Database = {
           trial_start_date: string | null
           updated_at: string | null
           user_id: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
           welcome_email_sent: boolean | null
         }
         Insert: {
+          attributed_at?: string | null
           avatar_url?: string | null
           beta_access_end_date?: string | null
           challenges?: string[] | null
@@ -349,6 +357,7 @@ export type Database = {
           height_unit?: string | null
           id?: string
           is_lifetime_access?: boolean | null
+          landing_page?: string | null
           last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null
@@ -357,6 +366,7 @@ export type Database = {
           pain_points?: string[] | null
           path_type?: string | null
           preview_mode_compound_added?: boolean | null
+          referrer?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_end_date?: string | null
@@ -368,9 +378,14 @@ export type Database = {
           trial_start_date?: string | null
           updated_at?: string | null
           user_id: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           welcome_email_sent?: boolean | null
         }
         Update: {
+          attributed_at?: string | null
           avatar_url?: string | null
           beta_access_end_date?: string | null
           challenges?: string[] | null
@@ -387,6 +402,7 @@ export type Database = {
           height_unit?: string | null
           id?: string
           is_lifetime_access?: boolean | null
+          landing_page?: string | null
           last_active_at?: string | null
           last_payment_attempt?: string | null
           notification_permission_asked?: boolean | null
@@ -395,6 +411,7 @@ export type Database = {
           pain_points?: string[] | null
           path_type?: string | null
           preview_mode_compound_added?: boolean | null
+          referrer?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_end_date?: string | null
@@ -406,6 +423,10 @@ export type Database = {
           trial_start_date?: string | null
           updated_at?: string | null
           user_id?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           welcome_email_sent?: boolean | null
         }
         Relationships: []

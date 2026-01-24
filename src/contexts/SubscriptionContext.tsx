@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
+import { getStoredAttribution } from '@/utils/attribution';
 
 // Partner promotional offer parameters (from signed offer generation)
 export interface PromotionalOfferParams {
@@ -667,6 +668,41 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         revenueCatIdentifiedRef.current = true;
         revenueCatAppUserIdRef.current = userId;
         setRevenueCatIdentified(true);
+
+        // Enrich RevenueCat with user details (name, email, UTM attributes)
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', userId)
+            .single();
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          // Set display name and email in RevenueCat
+          if (profile?.full_name) {
+            await Purchases.setDisplayName({ displayName: profile.full_name });
+            console.log('[RevenueCat] Display name set:', profile.full_name);
+          }
+          if (user?.email) {
+            await Purchases.setEmail({ email: user.email });
+            console.log('[RevenueCat] Email set');
+          }
+          
+          // Also set attribution as custom attributes
+          const attribution = getStoredAttribution();
+          if (attribution?.utm_source) {
+            await Purchases.setAttributes({
+              utm_source: attribution.utm_source,
+              utm_medium: attribution.utm_medium || '',
+              utm_campaign: attribution.utm_campaign || '',
+            });
+            console.log('[RevenueCat] UTM attributes set');
+          }
+        } catch (enrichError) {
+          console.warn('[RevenueCat] Failed to enrich user details:', enrichError);
+          // Don't fail the whole identify flow if enrichment fails
+        }
 
         const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
         const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
