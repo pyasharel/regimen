@@ -26,6 +26,7 @@ import logoSquare from "@/assets/logo-regimen-vertical-new.png";
 import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { trackPhotoCompareUsed, trackShareAction } from "@/utils/analytics";
+import { trackFeatureFirstUse } from "@/utils/featureTracking";
 
 interface PhotoEntry {
   id: string;
@@ -55,6 +56,7 @@ export default function PhotoCompareScreen() {
   useEffect(() => {
     fetchPhotos();
     trackPhotoCompareUsed();
+    trackFeatureFirstUse('photo_compare');
   }, []);
 
   const fetchPhotos = async () => {
@@ -472,6 +474,7 @@ export default function PhotoCompareScreen() {
 
   const handleShare = async () => {
     trackShareAction('photo');
+    trackFeatureFirstUse('share');
     setShowShareSheet(true);
   };
 

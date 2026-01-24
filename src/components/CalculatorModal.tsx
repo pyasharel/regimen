@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackCalculatorUsed } from '@/utils/analytics';
+import { trackFeatureFirstUse } from '@/utils/featureTracking';
 import {
   Popover,
   PopoverContent,
@@ -184,7 +185,8 @@ export const CalculatorModal = ({
       await navigator.clipboard.writeText(value);
       triggerHaptic();
       toast.success(`${label} copied`);
-      trackCalculatorUsed(activeTab === 'reconstitution' ? 'iu' : 'ml');
+      trackCalculatorUsed(activeTab === 'reconstitution' ? 'peptide' : 'oil');
+      trackFeatureFirstUse('calculator');
     } catch (err) {
       toast.error('Failed to copy');
     }
