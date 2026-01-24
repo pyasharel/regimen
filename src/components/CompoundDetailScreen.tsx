@@ -16,6 +16,7 @@ import { Capacitor } from '@capacitor/core';
 import { CompoundShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
 import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/utils/analytics";
+import { trackFeatureFirstUse } from "@/utils/featureTracking";
 import { ChartWatermark } from "@/components/ui/ChartWatermark";
 
 interface Compound {
@@ -166,6 +167,7 @@ export const CompoundDetailScreen = () => {
   useEffect(() => {
     if (!loading && compound && halfLifeData && takenDosesForCalc.length > 0 && !levelsTrackedRef.current) {
       trackLevelsViewed(compound.name);
+      trackFeatureFirstUse('levels_graph');
       levelsTrackedRef.current = true;
     }
   }, [loading, compound, halfLifeData, takenDosesForCalc.length]);
@@ -315,6 +317,7 @@ export const CompoundDetailScreen = () => {
     
     triggerHaptic();
     trackShareAction('stack');
+    trackFeatureFirstUse('share');
     
     // Try visual share first
     if (shareCardRef.current) {

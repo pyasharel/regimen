@@ -1,5 +1,7 @@
 import { addDays, differenceInDays } from "date-fns";
+import { useEffect } from "react";
 import { safeParseDate, safeFormatDate } from "@/utils/dateUtils";
+import { trackFeatureFirstUse } from "@/utils/featureTracking";
 
 type CycleTimelineProps = {
   compound: {
@@ -15,6 +17,13 @@ type CycleTimelineProps = {
 };
 
 export const CycleTimeline = ({ compound }: CycleTimelineProps) => {
+  // Track feature first use when cycle timeline is rendered
+  useEffect(() => {
+    if (compound.has_cycles && compound.cycle_weeks_on) {
+      trackFeatureFirstUse('cycle');
+    }
+  }, [compound.has_cycles, compound.cycle_weeks_on]);
+
   if (!compound.has_cycles || !compound.cycle_weeks_on) {
     return null;
   }

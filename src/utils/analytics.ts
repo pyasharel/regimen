@@ -115,18 +115,16 @@ export const trackDoseSkipped = (compoundName: string) => {
   });
 };
 
-// Compound tracking
-export const trackCompoundAdded = (compoundName: string, scheduleType: string) => {
-  ReactGA.event({
-    category: 'Compound',
-    action: 'Added',
-    label: `${compoundName} - ${scheduleType}`,
-  });
-  // Also track the schedule type separately for easier filtering
-  ReactGA.event({
-    category: 'Schedule',
-    action: 'Type Selected',
-    label: scheduleType,
+// Compound tracking - includes compound_type for GA4 custom dimension
+export const trackCompoundAdded = (
+  compoundName: string, 
+  scheduleType: string,
+  compoundType?: 'peptide' | 'trt' | 'glp1' | 'supplement' | 'other'
+) => {
+  ReactGA.event('compound_added', {
+    compound_name: compoundName,
+    schedule_type: scheduleType,
+    compound_type: compoundType || 'other',
   });
 };
 
@@ -163,12 +161,10 @@ export const trackCycleEnabled = (compoundName: string, weeksOn: number, weeksOf
   });
 };
 
-// Calculator tracking
-export const trackCalculatorUsed = (calculatorType: 'iu' | 'ml') => {
-  ReactGA.event({
-    category: 'Calculator',
-    action: 'Used',
-    label: calculatorType.toUpperCase(),
+// Calculator tracking - sends calculator_type as proper parameter for GA4 custom dimension
+export const trackCalculatorUsed = (calculatorType: 'iu' | 'ml' | 'peptide' | 'testosterone' | 'oil') => {
+  ReactGA.event('calculator_used', {
+    calculator_type: calculatorType,
   });
 };
 

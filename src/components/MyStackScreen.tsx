@@ -14,7 +14,8 @@ import { Share } from '@capacitor/share';
 import { hasHalfLifeTracking } from "@/utils/halfLifeData";
 import { StackShareCard } from "@/components/ShareCard";
 import { shareElementAsImage } from "@/utils/visualShare";
-import { trackCompoundDeleted, trackCompoundViewed } from "@/utils/analytics";
+import { trackCompoundDeleted, trackCompoundViewed, trackShareAction } from "@/utils/analytics";
+import { trackFeatureFirstUse } from "@/utils/featureTracking";
 import { CalculatorModal } from "@/components/CalculatorModal";
 import {
   DropdownMenu,
@@ -346,6 +347,8 @@ export const MyStackScreen = () => {
     }
 
     triggerHaptic();
+    trackShareAction('stack');
+    trackFeatureFirstUse('share');
     
     // Try visual share first
     if (shareCardRef.current) {
