@@ -6,6 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Net revenue after Apple's 30% cut (first year) or 15% cut (after first year)
+// We use 70% for simplicity since we're tracking first year revenue
+const APPLE_NET_REVENUE_MULTIPLIER = 0.70;
+
+// Pricing in cents
+const ANNUAL_PRICE_CENTS = 3999; // $39.99
+const MONTHLY_PRICE_CENTS = 499; // $4.99
+
+/**
+ * Calculates net revenue after Apple's cut
+ */
+const calculateNetRevenue = (priceInCents: number): number => {
+  return (priceInCents / 100) * APPLE_NET_REVENUE_MULTIPLIER;
+};
+
 /**
  * Sends server-side GA4 events using the Measurement Protocol.
  * This ensures subscription lifecycle events are tracked even when users are outside the app.
@@ -102,6 +117,109 @@ const fetchUserEngagementMetrics = async (
   };
 };
 
+/**
+ * Updates partner code redemption with first-year revenue tracking
+ */
+// deno-lint-ignore no-explicit-any
+const updatePartnerRedemptionRevenue = async (
+  supabase: any,
+  userId: string,
+  subscriptionType: string,
+  eventType: string,
+  transactionId?: string
+) => {
+  console.log("[REVENUECAT-WEBHOOK] Checking for partner redemption to update revenue");
+  
+  // Look up the user's partner redemption
+  const { data: redemption, error: fetchError } = await supabase
+    .from("partner_code_redemptions")
+    .select("id, first_year_end, first_year_revenue, converted_at")
+    .eq("user_id", userId)
+    .order("redeemed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("[REVENUECAT-WEBHOOK] Error fetching partner redemption:", fetchError);
+    return;
+  }
+
+  if (!redemption) {
+    console.log("[REVENUECAT-WEBHOOK] No partner redemption found for user");
+    return;
+  }
+
+  const now = new Date();
+  const priceInCents = subscriptionType === "annual" ? ANNUAL_PRICE_CENTS : MONTHLY_PRICE_CENTS;
+  const netRevenue = calculateNetRevenue(priceInCents);
+
+  if (eventType === "INITIAL_PURCHASE") {
+    // First purchase - set up first year tracking
+    const firstYearEnd = new Date(now);
+    firstYearEnd.setFullYear(firstYearEnd.getFullYear() + 1);
+
+    console.log("[REVENUECAT-WEBHOOK] Initial purchase - setting up first year revenue tracking:", {
+      redemptionId: redemption.id,
+      netRevenue,
+      firstYearEnd: firstYearEnd.toISOString()
+    });
+
+    const { error: updateError } = await supabase
+      .from("partner_code_redemptions")
+      .update({
+        converted_at: now.toISOString(),
+        subscription_id: transactionId,
+        offer_applied: true,
+        first_year_revenue: netRevenue,
+        first_year_end: firstYearEnd.toISOString(),
+        last_revenue_update: now.toISOString()
+      })
+      .eq("id", redemption.id);
+
+    if (updateError) {
+      console.error("[REVENUECAT-WEBHOOK] Error updating partner redemption for initial purchase:", updateError);
+    } else {
+      console.log("[REVENUECAT-WEBHOOK] Partner redemption updated with initial revenue:", netRevenue);
+    }
+  } else if (eventType === "RENEWAL") {
+    // Renewal - add to first year revenue if still within first year
+    if (!redemption.first_year_end) {
+      console.log("[REVENUECAT-WEBHOOK] No first_year_end set, skipping renewal tracking");
+      return;
+    }
+
+    const firstYearEnd = new Date(redemption.first_year_end);
+    if (now > firstYearEnd) {
+      console.log("[REVENUECAT-WEBHOOK] Renewal is after first year window, skipping revenue update");
+      return;
+    }
+
+    const currentRevenue = redemption.first_year_revenue || 0;
+    const newTotalRevenue = currentRevenue + netRevenue;
+
+    console.log("[REVENUECAT-WEBHOOK] Renewal within first year - adding revenue:", {
+      redemptionId: redemption.id,
+      currentRevenue,
+      addedRevenue: netRevenue,
+      newTotalRevenue
+    });
+
+    const { error: updateError } = await supabase
+      .from("partner_code_redemptions")
+      .update({
+        first_year_revenue: newTotalRevenue,
+        last_revenue_update: now.toISOString()
+      })
+      .eq("id", redemption.id);
+
+    if (updateError) {
+      console.error("[REVENUECAT-WEBHOOK] Error updating partner redemption for renewal:", updateError);
+    } else {
+      console.log("[REVENUECAT-WEBHOOK] Partner redemption updated with renewal revenue. New total:", newTotalRevenue);
+    }
+  }
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -190,6 +308,15 @@ serve(async (req) => {
           price: event.price || 0,
           currency: event.currency || "USD",
         });
+
+        // Update partner redemption with initial revenue
+        await updatePartnerRedemptionRevenue(
+          supabase,
+          userId,
+          subscriptionType,
+          "INITIAL_PURCHASE",
+          event.original_transaction_id || event.transaction_id
+        );
         break;
 
       case "RENEWAL":
@@ -208,6 +335,14 @@ serve(async (req) => {
           plan_type: subscriptionType,
           renewal_count: event.renewal_number || 1,
         });
+
+        // Update partner redemption with renewal revenue (only if within first year)
+        await updatePartnerRedemptionRevenue(
+          supabase,
+          userId,
+          subscriptionType,
+          "RENEWAL"
+        );
         break;
 
       case "PRODUCT_CHANGE":
@@ -320,35 +455,6 @@ serve(async (req) => {
     }
 
     console.log("[REVENUECAT-WEBHOOK] Successfully updated profile");
-
-    // Mark partner code redemption as converted on initial purchase
-    if (event.type === "INITIAL_PURCHASE") {
-      console.log("[REVENUECAT-WEBHOOK] Checking for partner code redemption to mark as converted");
-      
-      const { data: redemption } = await supabase
-        .from("partner_code_redemptions")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("offer_applied", false)
-        .order("redeemed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (redemption) {
-        console.log("[REVENUECAT-WEBHOOK] Found pending redemption, marking as converted:", redemption.id);
-        
-        await supabase
-          .from("partner_code_redemptions")
-          .update({
-            offer_applied: true,
-            converted_at: new Date().toISOString(),
-            subscription_id: event.original_transaction_id || event.transaction_id
-          })
-          .eq("id", redemption.id);
-          
-        console.log("[REVENUECAT-WEBHOOK] Partner redemption marked as converted");
-      }
-    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
