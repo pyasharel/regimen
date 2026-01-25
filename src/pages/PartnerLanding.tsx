@@ -87,8 +87,11 @@ export default function PartnerLanding() {
           <p className="text-sm text-muted-foreground mb-2">
             Exclusive offer from {config.name}
           </p>
-          <p className="text-2xl font-bold text-primary mb-4">
+          <p className="text-2xl font-bold text-primary mb-1">
             {config.freePeriod} FREE
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            That's a $3.99 value — on us!
           </p>
           
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -108,7 +111,7 @@ export default function PartnerLanding() {
           </div>
           
           <p className="text-xs text-muted-foreground">
-            Use this code after downloading the app
+            Enter this code in the app to claim your free month
           </p>
         </div>
         
@@ -198,13 +201,23 @@ export default function PartnerLanding() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Enter code {config.code}</h3>
-              <p className="text-sm text-muted-foreground">When prompted to subscribe</p>
+              <p className="text-sm text-muted-foreground">Tap "Have a promo code?" and paste your code</p>
             </div>
           </div>
           
           <div className="flex items-start gap-4">
             <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
               4
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Complete in App Store</h3>
+              <p className="text-sm text-muted-foreground">Copy your code and finish in Safari</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shrink-0">
+              5
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Enjoy {config.freePeriod} free!</h3>

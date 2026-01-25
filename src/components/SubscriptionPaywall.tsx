@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, Copy, Check, ExternalLink } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
@@ -13,6 +14,14 @@ import { usePaywall } from '@/contexts/PaywallContext';
 // Partner promo state for VIP welcome message
 interface PartnerPromo {
   code: string;
+  partnerName: string;
+  partnerCodeId: string;
+}
+
+// Apple Offer Code promo state for Safari redirect flow
+interface AppleOfferCodePromo {
+  code: string;
+  redemptionUrl: string;
   partnerName: string;
   partnerCodeId: string;
 }
@@ -34,6 +43,8 @@ export const SubscriptionPaywall = ({
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: string} | null>(null);
   const [partnerPromo, setPartnerPromo] = useState<PartnerPromo | null>(null);
+  const [appleOfferPromo, setAppleOfferPromo] = useState<AppleOfferCodePromo | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -61,6 +72,8 @@ export const SubscriptionPaywall = ({
   useEffect(() => {
     if (open) {
       setPartnerPromo(null);
+      setAppleOfferPromo(null);
+      setCodeCopied(false);
       setAppliedPromo(null);
       setPromoCode('');
       setShowPromoInput(false);
@@ -88,6 +101,43 @@ export const SubscriptionPaywall = ({
       }
     } catch (err) {
       console.error('[PAYWALL] Error saving partner attribution:', err);
+    }
+  };
+
+  // Copy promo code to clipboard
+  const copyToClipboard = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCodeCopied(true);
+      toast.success('Code copied!');
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch (err) {
+      console.error('[PAYWALL] Failed to copy code:', err);
+      toast.error('Failed to copy code');
+    }
+  };
+
+  // Open Safari for Apple Offer Code redemption
+  const openSafariRedemption = async (promo: AppleOfferCodePromo) => {
+    try {
+      // Save attribution before redirecting
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await savePartnerAttribution(promo.partnerCodeId, user.id);
+      }
+      
+      console.log('[PAYWALL] Opening Safari for redemption:', promo.redemptionUrl);
+      
+      // Open Safari for Apple Offer Code redemption
+      await Browser.open({ url: promo.redemptionUrl });
+      
+      // Close paywall - user will complete in Safari
+      toast.success('Complete your subscription in Safari, then return to the app');
+      onOpenChange(false);
+      onDismiss?.();
+    } catch (err) {
+      console.error('[PAYWALL] Error opening Safari:', err);
+      toast.error('Failed to open App Store. Please try again.');
     }
   };
 
@@ -121,9 +171,32 @@ export const SubscriptionPaywall = ({
         return;
       }
 
-      // Handle Partner Code (uses native purchase flow)
+      // Handle Partner Code with Safari redirect flow (1 month free)
+      if (validateData.isPartnerCode && !validateData.useNativePurchase) {
+        console.log('[PROMO] Partner code detected - Safari redirect flow:', {
+          partnerName: validateData.partnerName,
+          partnerCodeId: validateData.partnerCodeId,
+          redemptionUrl: validateData.redemptionUrl
+        });
+        
+        // Store Apple Offer Code state for Safari redirect UI
+        setAppleOfferPromo({
+          code,
+          redemptionUrl: validateData.redemptionUrl,
+          partnerName: validateData.partnerName || 'Partner',
+          partnerCodeId: validateData.partnerCodeId
+        });
+        
+        setShowPromoInput(false);
+        trackPromoCodeApplied(code, 0);
+        
+        console.log('[PROMO] Partner code applied - ready for Safari redirect');
+        return;
+      }
+      
+      // Handle Partner Code with native purchase flow (legacy support)
       if (validateData.isPartnerCode && validateData.useNativePurchase) {
-        console.log('[PROMO] Partner code detected:', {
+        console.log('[PROMO] Partner code detected - native flow:', {
           partnerName: validateData.partnerName,
           partnerCodeId: validateData.partnerCodeId
         });
@@ -411,7 +484,7 @@ export const SubscriptionPaywall = ({
             </button>
             
             {/* VIP Partner Welcome Message */}
-            {partnerPromo && (
+            {partnerPromo && !appleOfferPromo && (
               <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-6">
                 <p className="text-center text-sm font-medium text-primary">
                   Welcome from {partnerPromo.partnerName}! 🎉
@@ -419,11 +492,63 @@ export const SubscriptionPaywall = ({
               </div>
             )}
             
-            <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
-              Start your {getTrialPeriodText()} FREE trial
-            </h1>
+            {/* Apple Offer Code Safari Flow */}
+            {appleOfferPromo ? (
+              <div className="mt-6 space-y-4">
+                <div className="bg-primary/10 border border-primary/30 rounded-2xl p-5">
+                  <p className="text-center text-xl font-bold text-primary mb-2">
+                    🎉 1 Month FREE!
+                  </p>
+                  <p className="text-center text-sm text-muted-foreground">
+                    From {appleOfferPromo.partnerName}
+                  </p>
+                </div>
+                
+                <p className="text-center text-sm text-muted-foreground">
+                  Copy your code, then complete signup in the App Store
+                </p>
+                
+                {/* Copy Code Button */}
+                <Button 
+                  onClick={() => copyToClipboard(appleOfferPromo.code)}
+                  variant="outline"
+                  className="w-full h-14 text-lg font-mono border-2 border-dashed"
+                >
+                  {codeCopied ? (
+                    <>
+                      <Check className="mr-2 h-5 w-5 text-primary" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-5 w-5" />
+                      {appleOfferPromo.code}
+                    </>
+                  )}
+                </Button>
+                
+                {/* Continue to App Store Button */}
+                <Button 
+                  onClick={() => openSafariRedemption(appleOfferPromo)}
+                  className="w-full h-14 text-lg font-semibold"
+                >
+                  <ExternalLink className="mr-2 h-5 w-5" />
+                  Continue to App Store
+                </Button>
+                
+                <p className="text-center text-xs text-muted-foreground">
+                  You'll be redirected to the App Store to complete your subscription
+                </p>
+              </div>
+            ) : (
+              <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
+                Start your {getTrialPeriodText()} FREE trial
+              </h1>
+            )}
           </div>
 
+          {/* Only show the rest of the UI if NOT in Apple Offer Code flow */}
+          {!appleOfferPromo && (
           <div className="px-6 space-y-8 pb-6">
             {/* Timeline */}
             <div className="space-y-6 relative pl-10">
@@ -642,6 +767,7 @@ export const SubscriptionPaywall = ({
               </div>
             </div>
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

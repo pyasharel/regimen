@@ -104,12 +104,13 @@ serve(async (req) => {
         });
       }
       
-      // Return partner code details for native purchase flow (no Safari redirect)
+      // Return partner code details for Safari redirect flow with 1-month free offer
       return new Response(JSON.stringify({
         valid: true,
         type: 'partner_code',
         isPartnerCode: true,
-        useNativePurchase: true, // Use native RevenueCat purchase, not Safari redirect
+        useNativePurchase: false, // Use Safari redirect for Apple Offer Code redemption
+        redemptionUrl: `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${upperCode}`,
         planType: partnerCode.plan_type,
         partnerName: partnerCode.partner_name,
         partnerCodeId: partnerCode.id,
