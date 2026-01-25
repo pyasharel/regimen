@@ -5,8 +5,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
-import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
-import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
+// TestFlight migration modal removed - modal was not linking correctly to App Store
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,7 +94,7 @@ export const TodayScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
-  const [isTestFlight, setIsTestFlight] = useState(false);
+  
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
     const days = [];
@@ -228,23 +227,7 @@ export const TodayScreen = () => {
     initializeEngagementNotifications();
   }, []);
 
-  // Check if running on TestFlight (iOS only)
-  useEffect(() => {
-    const checkTestFlight = async () => {
-      // Only check on iOS - Android and web should never show TestFlight modal
-      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios') {
-        try {
-          const result = await TestFlightDetector.isTestFlight();
-          console.log('[TodayScreen] TestFlight check (iOS):', result.isTestFlight);
-          setIsTestFlight(result.isTestFlight);
-        } catch (error) {
-          console.error('[TodayScreen] Error checking TestFlight:', error);
-          setIsTestFlight(false);
-        }
-      }
-    };
-    checkTestFlight();
-  }, []);
+  // TestFlight migration modal removed - no longer needed
 
   const loadUserName = async () => {
     try {
@@ -1573,8 +1556,6 @@ export const TodayScreen = () => {
         onDoseUpdated={loadDoses}
       />
 
-      {/* TestFlight Migration Modal */}
-      <TestFlightMigrationModal isTestFlight={isTestFlight} />
 
     </div>
   );
