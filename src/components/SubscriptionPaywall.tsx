@@ -219,46 +219,31 @@ export const SubscriptionPaywall = ({
         }
       }
 
-      // Otherwise try Stripe promo code
-      console.log('[PROMO] Calling validate-promo-code function...');
+      // Otherwise it's a Stripe promo code (already validated above)
+      // Use the validateData we already have - no need for second call
+      console.log('[PROMO] Stripe promo code detected, using already-validated data');
       
-      const { data, error } = await supabase.functions.invoke('validate-promo-code', {
-        body: { code }
-      });
-
-      console.log('[PROMO] Response received:', JSON.stringify({ data, error }, null, 2));
-
-      if (error) {
-        console.error('[PROMO] ERROR:', error);
-        toast.error(`Failed to validate promo code: ${error.message || 'Unknown error'}`);
-        return;
-      }
+      const discountText = validateData.type === 'free' 
+        ? `FREE for ${validateData.duration} months!`
+        : `${validateData.discount}% off first year!`;
+      setAppliedPromo({ code, discount: discountText });
+      setShowPromoInput(false);
       
-      if (data?.valid) {
-        const discountText = data.type === 'free' 
-          ? `FREE for ${data.duration} months!`
-          : `${data.discount}% off first year!`;
-        setAppliedPromo({ code, discount: discountText });
-        setShowPromoInput(false);
-        
-        // Auto-switch plan based on promo code compatibility
-        if (data.planType === 'monthly') {
-          setSelectedPlan('monthly');
-          console.log('[PROMO] Auto-switched to monthly plan (code only works with monthly)');
-          toast.success(`Promo code applied: ${discountText} - Switched to monthly plan`);
-        } else if (data.planType === 'annual') {
-          setSelectedPlan('annual');
-          console.log('[PROMO] Auto-switched to annual plan (code only works with annual)');
-          toast.success(`Promo code applied: ${discountText} - Switched to annual plan`);
-        } else {
-          toast.success(`Promo code applied: ${discountText}`);
-        }
-        
-        console.log('[PROMO] SUCCESS! Applied:', discountText);
+      // Auto-switch plan based on promo code compatibility
+      if (validateData.planType === 'monthly') {
+        setSelectedPlan('monthly');
+        console.log('[PROMO] Auto-switched to monthly plan (code only works with monthly)');
+        toast.success(`Promo code applied: ${discountText} - Switched to monthly plan`);
+      } else if (validateData.planType === 'annual') {
+        setSelectedPlan('annual');
+        console.log('[PROMO] Auto-switched to annual plan (code only works with annual)');
+        toast.success(`Promo code applied: ${discountText} - Switched to annual plan`);
       } else {
-        console.log('[PROMO] Invalid code');
-        toast.error('Invalid promo code. Please check and try again.');
+        toast.success(`Promo code applied: ${discountText}`);
       }
+      
+      trackPromoCodeApplied(code, validateData.discount);
+      console.log('[PROMO] SUCCESS! Applied:', discountText);
     } catch (error: any) {
       console.error('[PROMO] EXCEPTION:', error);
       toast.error(`Error: ${error.message || 'Failed to validate promo code'}`);
