@@ -89,8 +89,7 @@ serve(async (req) => {
     if (partnerCode) {
       console.log(`[VALIDATE-PROMO] Found valid partner promo code: ${upperCode}`, {
         partner: partnerCode.partner_name,
-        appleOfferCode: partnerCode.apple_offer_code || partnerCode.code,
-        freeDays: partnerCode.free_days
+        partnerCodeId: partnerCode.id
       });
       
       // Check if max redemptions reached
@@ -105,24 +104,16 @@ serve(async (req) => {
         });
       }
       
-      // Use apple_offer_code if set, otherwise fall back to the code itself
-      const appleOfferCode = partnerCode.apple_offer_code || partnerCode.code;
-      
-      // Build the Apple redemption URL
-      const redemptionUrl = `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${encodeURIComponent(appleOfferCode)}`;
-      
+      // Return partner code details for native purchase flow (no Safari redirect)
       return new Response(JSON.stringify({
         valid: true,
-        type: 'apple_offer_code',
-        isAppleOfferCode: true,
-        appleOfferCode: appleOfferCode,
-        redemptionUrl: redemptionUrl,
+        type: 'partner_code',
+        isPartnerCode: true,
+        useNativePurchase: true, // Use native RevenueCat purchase, not Safari redirect
         planType: partnerCode.plan_type,
-        freeDays: partnerCode.free_days,
         partnerName: partnerCode.partner_name,
         partnerCodeId: partnerCode.id,
-        description: partnerCode.description,
-        discount: 100 // Free trial period
+        description: partnerCode.description
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

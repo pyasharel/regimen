@@ -202,8 +202,10 @@ export type Database = {
         Row: {
           code_id: string
           converted_at: string | null
+          first_year_end: string | null
           first_year_revenue: number | null
           id: string
+          last_revenue_update: string | null
           metadata: Json | null
           offer_applied: boolean
           platform: string | null
@@ -214,8 +216,10 @@ export type Database = {
         Insert: {
           code_id: string
           converted_at?: string | null
+          first_year_end?: string | null
           first_year_revenue?: number | null
           id?: string
+          last_revenue_update?: string | null
           metadata?: Json | null
           offer_applied?: boolean
           platform?: string | null
@@ -226,8 +230,10 @@ export type Database = {
         Update: {
           code_id?: string
           converted_at?: string | null
+          first_year_end?: string | null
           first_year_revenue?: number | null
           id?: string
+          last_revenue_update?: string | null
           metadata?: Json | null
           offer_applied?: boolean
           platform?: string | null

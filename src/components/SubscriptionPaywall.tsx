@@ -1,23 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Copy, Check } from "lucide-react";
+import { X } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
 import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
 
-// Apple Offer Code partner promo state
-interface AppleOfferCodePromo {
+// Partner promo state for VIP welcome message
+interface PartnerPromo {
   code: string;
-  appleOfferCode: string;
-  redemptionUrl: string;
-  planType: 'monthly' | 'annual';
-  freeDays: number;
   partnerName: string;
   partnerCodeId: string;
 }
@@ -38,12 +33,10 @@ export const SubscriptionPaywall = ({
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: string} | null>(null);
-  const [appleOfferPromo, setAppleOfferPromo] = useState<AppleOfferCodePromo | null>(null);
+  const [partnerPromo, setPartnerPromo] = useState<PartnerPromo | null>(null);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [isAwaitingAppleReturn, setIsAwaitingAppleReturn] = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
 
   const { refreshSubscription, offerings, purchasePackage, restorePurchases, isNativePlatform } = useSubscription();
   const { setPaywallOpen } = usePaywall();
@@ -67,50 +60,36 @@ export const SubscriptionPaywall = ({
   // Reset state when modal opens
   useEffect(() => {
     if (open) {
-      setAppleOfferPromo(null);
+      setPartnerPromo(null);
       setAppliedPromo(null);
       setPromoCode('');
       setShowPromoInput(false);
-      setIsAwaitingAppleReturn(false);
     }
   }, [open]);
 
-  // Listen for app resume after Apple redemption
-  useEffect(() => {
-    if (!isAwaitingAppleReturn) return;
-    
-    const handleAppResume = async () => {
-      console.log('[PAYWALL] App resumed after Safari/Apple redemption flow');
-      setIsAwaitingAppleReturn(false);
-      setIsLoading(true);
+  // Save partner attribution to database
+  const savePartnerAttribution = async (partnerCodeId: string, userId: string) => {
+    try {
+      console.log('[PAYWALL] Saving partner attribution:', { partnerCodeId, userId });
       
-      // Give RevenueCat time to sync with Apple (Safari flow needs slightly longer)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { error } = await supabase
+        .from('partner_code_redemptions')
+        .insert({
+          code_id: partnerCodeId,
+          user_id: userId,
+          platform: Capacitor.isNativePlatform() ? 'ios' : 'web',
+          offer_applied: false // Will be set to true by webhook on INITIAL_PURCHASE
+        });
       
-      try {
-        await refreshSubscription('partner_redemption');
-        // The subscription context will update if they subscribed
-        toast.success('Welcome to Regimen Premium! 🎉');
-        onOpenChange(false);
-        onDismiss?.();
-      } catch (error) {
-        console.error('[PAYWALL] Error refreshing after Apple return:', error);
-        toast.info('If you completed the redemption, please close and reopen the app to refresh.');
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        console.error('[PAYWALL] Failed to save partner attribution:', error);
+      } else {
+        console.log('[PAYWALL] Partner attribution saved successfully');
       }
-    };
-    
-    const listener = App.addListener('appStateChange', ({ isActive }) => {
-      if (isActive && isAwaitingAppleReturn) {
-        handleAppResume();
-      }
-    });
-    
-    return () => {
-      listener.then(l => l.remove());
-    };
-  }, [isAwaitingAppleReturn, refreshSubscription, onOpenChange, onDismiss]);
+    } catch (err) {
+      console.error('[PAYWALL] Error saving partner attribution:', err);
+    }
+  };
 
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
@@ -142,44 +121,29 @@ export const SubscriptionPaywall = ({
         return;
       }
 
-      // Handle Apple Offer Code (partner promo codes for new users)
-      if (validateData.isAppleOfferCode) {
-        console.log('[PROMO] Apple Offer Code detected:', {
-          appleOfferCode: validateData.appleOfferCode,
-          redemptionUrl: validateData.redemptionUrl,
-          planType: validateData.planType,
-          freeDays: validateData.freeDays,
-          partnerName: validateData.partnerName
+      // Handle Partner Code (uses native purchase flow)
+      if (validateData.isPartnerCode && validateData.useNativePurchase) {
+        console.log('[PROMO] Partner code detected:', {
+          partnerName: validateData.partnerName,
+          partnerCodeId: validateData.partnerCodeId
         });
         
-        // Store Apple offer code state
-        setAppleOfferPromo({
+        // Store partner promo state for VIP message
+        setPartnerPromo({
           code,
-          appleOfferCode: validateData.appleOfferCode,
-          redemptionUrl: validateData.redemptionUrl,
-          planType: validateData.planType || 'annual',
-          freeDays: validateData.freeDays || 30,
           partnerName: validateData.partnerName || 'Partner',
           partnerCodeId: validateData.partnerCodeId
         });
         
-        // Lock to the required plan type (Apple offer codes are typically annual)
-        if (validateData.planType === 'annual') {
-          setSelectedPlan('annual');
-        } else if (validateData.planType === 'monthly') {
-          setSelectedPlan('monthly');
-        }
-        
-        // Show success with partner-specific messaging
-        const freePeriod = validateData.freeDays >= 30 
-          ? `${Math.round(validateData.freeDays / 30)} month${validateData.freeDays >= 60 ? 's' : ''}` 
-          : `${validateData.freeDays} days`;
+        // Show VIP welcome message
         setAppliedPromo({ 
           code, 
-          discount: `${freePeriod} FREE then ${validateData.planType === 'annual' ? '$39.99/year' : '$4.99/month'}`
+          discount: `Welcome from ${validateData.partnerName}!`
         });
         setShowPromoInput(false);
-        trackPromoCodeApplied(code, validateData.freeDays);
+        trackPromoCodeApplied(code, 0);
+        
+        console.log('[PROMO] Partner code applied successfully');
         return;
       }
 
@@ -258,7 +222,7 @@ export const SubscriptionPaywall = ({
     console.log('[PAYWALL] Current state:', { 
       selectedPlan, 
       appliedPromo: appliedPromo?.code,
-      appleOfferPromo: appleOfferPromo?.code,
+      partnerPromo: partnerPromo?.code,
       isLoading,
       isNativePlatform,
       hasOfferings: !!offerings
@@ -272,56 +236,26 @@ export const SubscriptionPaywall = ({
     setIsLoading(true);
     
     try {
-      // ==================== APPLE OFFER CODE REDEMPTION (Partner Promos) ====================
-      if (appleOfferPromo && isNativePlatform) {
-        console.log('[PAYWALL] Apple Offer Code flow - opening Safari with pre-filled code');
-        trackSubscriptionStarted(selectedPlan);
-        
-        // Set partner attribution in RevenueCat before redemption
-        try {
-          const { Purchases } = await import('@revenuecat/purchases-capacitor');
-          await Purchases.setAttributes({ partner_code: appleOfferPromo.code });
-          console.log('[PAYWALL] Set RevenueCat partner_code attribute:', appleOfferPromo.code);
-          
-          // Open Safari with pre-filled redemption URL (eliminates double-entry friction)
-          const { Browser } = await import('@capacitor/browser');
-          const url = appleOfferPromo.redemptionUrl;
-          console.log('[PAYWALL] Opening Safari with pre-filled code:', url);
-          
-          setIsAwaitingAppleReturn(true);
-          
-          try {
-            await Browser.open({ 
-              url,
-              presentationStyle: 'popover' // Opens as Safari modal overlay
-            });
-            console.log('[PAYWALL] Safari opened successfully');
-          } catch (browserError) {
-            // Fallback: If Safari fails, use native sheet with clipboard
-            console.warn('[PAYWALL] Safari failed, falling back to native sheet:', browserError);
-            try {
-              await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
-              toast.info('Code copied! Paste it in the next screen.');
-            } catch (clipboardError) {
-              console.warn('[PAYWALL] Could not copy to clipboard:', clipboardError);
-            }
-            await Purchases.presentCodeRedemptionSheet();
-            console.log('[PAYWALL] Opened native code redemption sheet as fallback');
-          }
-        } catch (attrError) {
-          console.warn('[PAYWALL] Could not open redemption:', attrError);
-          toast.error('Unable to open redemption. Please try again.');
-          setIsAwaitingAppleReturn(false);
-        }
-        
-        // Don't close the paywall - we'll detect app resume and refresh subscription
-        setIsLoading(false);
-        return;
-      }
-      
-      // ==================== NATIVE IAP (RevenueCat - Standard Flow) ====================
+      // ==================== NATIVE IAP (RevenueCat - Standard Flow for all users including partners) ====================
       if (isNativePlatform) {
         console.log('[PAYWALL] Native platform - using RevenueCat standard flow');
+        
+        // Save partner attribution BEFORE purchase if applicable
+        if (partnerPromo) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await savePartnerAttribution(partnerPromo.partnerCodeId, user.id);
+            
+            // Also set partner attribute in RevenueCat for tracking
+            try {
+              const { Purchases } = await import('@revenuecat/purchases-capacitor');
+              await Purchases.setAttributes({ partner_code: partnerPromo.code });
+              console.log('[PAYWALL] Set RevenueCat partner_code attribute:', partnerPromo.code);
+            } catch (attrError) {
+              console.warn('[PAYWALL] Could not set RevenueCat attribute:', attrError);
+            }
+          }
+        }
         
         if (!offerings?.current?.availablePackages) {
           console.error('[PAYWALL] No offerings available');
@@ -436,11 +370,8 @@ export const SubscriptionPaywall = ({
   };
 
   const getButtonText = () => {
-    if (appleOfferPromo) {
-      const monthText = appleOfferPromo.freeDays >= 30 
-        ? `${Math.round(appleOfferPromo.freeDays / 30)} Month${appleOfferPromo.freeDays >= 60 ? 's' : ''}` 
-        : `${appleOfferPromo.freeDays} Days`;
-      return `Claim Your ${monthText} Free`;
+    if (partnerPromo) {
+      return "Start My 14-Day Free Trial";
     }
     if (appliedPromo) {
       return `Start Free Access`;
@@ -449,7 +380,7 @@ export const SubscriptionPaywall = ({
   };
 
   const getPriceText = () => {
-    if (appliedPromo) {
+    if (appliedPromo && !partnerPromo) {
       return appliedPromo.discount;
     }
     return selectedPlan === 'annual'
@@ -459,11 +390,6 @@ export const SubscriptionPaywall = ({
 
   // Get trial period text for header
   const getTrialPeriodText = () => {
-    if (appleOfferPromo) {
-      return appleOfferPromo.freeDays >= 30 
-        ? `${Math.round(appleOfferPromo.freeDays / 30)}-month` 
-        : `${appleOfferPromo.freeDays}-day`;
-    }
     return "14-day";
   };
 
@@ -483,6 +409,15 @@ export const SubscriptionPaywall = ({
             >
               <X size={24} />
             </button>
+            
+            {/* VIP Partner Welcome Message */}
+            {partnerPromo && (
+              <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-6">
+                <p className="text-center text-sm font-medium text-primary">
+                  Welcome from {partnerPromo.partnerName}! 🎉
+                </p>
+              </div>
+            )}
             
             <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
               Start your {getTrialPeriodText()} FREE trial
@@ -624,7 +559,7 @@ export const SubscriptionPaywall = ({
                   </div>
                 </div>
               )}
-              {appliedPromo && !appleOfferPromo && (
+              {appliedPromo && !partnerPromo && (
                 <div className="bg-accent/50 rounded-lg p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -635,69 +570,11 @@ export const SubscriptionPaywall = ({
                   <button
                     onClick={() => {
                       setAppliedPromo(null);
-                      setAppleOfferPromo(null);
+                      setPartnerPromo(null);
                     }}
                     className="text-[12px] text-primary underline hover:no-underline"
                   >
                     Remove
-                  </button>
-                </div>
-              )}
-              
-              {/* Apple Offer Code - Prominent Code Display with Copy Button */}
-              {appleOfferPromo && (
-                <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 space-y-3">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Enter this code on the next screen
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      (The code will be copied automatically)
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="bg-background border-2 border-dashed border-primary rounded-lg px-6 py-3">
-                      <span className="text-xl font-mono font-bold text-foreground tracking-wider">
-                        {appleOfferPromo.appleOfferCode}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(appleOfferPromo.appleOfferCode);
-                          setCodeCopied(true);
-                          toast.success('Code copied!');
-                          setTimeout(() => setCodeCopied(false), 2000);
-                        } catch {
-                          toast.error('Failed to copy code');
-                        }
-                      }}
-                      className="h-12 w-12 rounded-lg border-primary/50"
-                    >
-                      {codeCopied ? <Check className="h-5 w-5 text-primary" /> : <Copy className="h-5 w-5" />}
-                    </Button>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-primary">
-                      {appleOfferPromo.freeDays >= 30 
-                        ? `${Math.round(appleOfferPromo.freeDays / 30)} month${appleOfferPromo.freeDays >= 60 ? 's' : ''} FREE` 
-                        : `${appleOfferPromo.freeDays} days FREE`}
-                      , then ${appleOfferPromo.planType === 'annual' ? '$39.99/year' : '$4.99/month'}
-                    </p>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setAppliedPromo(null);
-                      setAppleOfferPromo(null);
-                    }}
-                    className="w-full text-[12px] text-muted-foreground underline hover:no-underline"
-                  >
-                    Remove code
                   </button>
                 </div>
               )}

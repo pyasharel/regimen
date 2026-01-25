@@ -8,6 +8,13 @@ import { toast } from 'sonner';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 
+// Partner promo state for VIP welcome message
+interface PartnerPromo {
+  code: string;
+  partnerName: string;
+  partnerCodeId: string;
+}
+
 interface OnboardingPaywallScreenProps {
   medicationName?: string;
   pathRouting: PathRouting | null;
@@ -29,6 +36,31 @@ export function OnboardingPaywallScreen({
   const [promoCode, setPromoCode] = useState(initialPromoCode || '');
   const [loading, setLoading] = useState(false);
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [partnerPromo, setPartnerPromo] = useState<PartnerPromo | null>(null);
+
+  // Save partner attribution to database
+  const savePartnerAttribution = async (partnerCodeId: string, userId: string) => {
+    try {
+      console.log('[ONBOARDING-PAYWALL] Saving partner attribution:', { partnerCodeId, userId });
+      
+      const { error } = await supabase
+        .from('partner_code_redemptions')
+        .insert({
+          code_id: partnerCodeId,
+          user_id: userId,
+          platform: Capacitor.isNativePlatform() ? 'ios' : 'web',
+          offer_applied: false // Will be set to true by webhook on INITIAL_PURCHASE
+        });
+      
+      if (error) {
+        console.error('[ONBOARDING-PAYWALL] Failed to save partner attribution:', error);
+      } else {
+        console.log('[ONBOARDING-PAYWALL] Partner attribution saved successfully');
+      }
+    } catch (err) {
+      console.error('[ONBOARDING-PAYWALL] Error saving partner attribution:', err);
+    }
+  };
   
   const handleApplyPromo = async () => {
     const code = promoCode.toUpperCase();
@@ -49,6 +81,25 @@ export function OnboardingPaywallScreen({
       
       if (!validateData?.valid) {
         toast.error('Invalid promo code. Please check and try again.');
+        return;
+      }
+
+      // Handle Partner Code (uses native purchase flow)
+      if (validateData.isPartnerCode && validateData.useNativePurchase) {
+        console.log('[ONBOARDING-PAYWALL] Partner code detected:', {
+          partnerName: validateData.partnerName,
+          partnerCodeId: validateData.partnerCodeId
+        });
+        
+        // Store partner promo state for VIP message
+        setPartnerPromo({
+          code,
+          partnerName: validateData.partnerName || 'Partner',
+          partnerCodeId: validateData.partnerCodeId
+        });
+        
+        toast.success(`Welcome from ${validateData.partnerName}!`);
+        setShowPromo(false);
         return;
       }
       
@@ -146,6 +197,23 @@ export function OnboardingPaywallScreen({
 
     try {
       if (isNativePlatform && offerings) {
+        // Save partner attribution BEFORE purchase if applicable
+        if (partnerPromo) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await savePartnerAttribution(partnerPromo.partnerCodeId, user.id);
+            
+            // Also set partner attribute in RevenueCat for tracking
+            try {
+              const { Purchases } = await import('@revenuecat/purchases-capacitor');
+              await Purchases.setAttributes({ partner_code: partnerPromo.code });
+              console.log('[ONBOARDING-PAYWALL] Set RevenueCat partner_code attribute:', partnerPromo.code);
+            } catch (attrError) {
+              console.warn('[ONBOARDING-PAYWALL] Could not set RevenueCat attribute:', attrError);
+            }
+          }
+        }
+
         // Use RevenueCat for native
         const availablePackage = selectedPlan === 'annual'
           ? offerings.current?.annual
@@ -193,6 +261,15 @@ export function OnboardingPaywallScreen({
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 pb-4">
+        {/* VIP Partner Welcome Message */}
+        {partnerPromo && (
+          <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-8">
+            <p className="text-center text-sm font-medium text-primary">
+              Welcome from {partnerPromo.partnerName}! 🎉
+            </p>
+          </div>
+        )}
+
         {/* Headline */}
         <div className="text-center pt-8 pb-6">
           <h1 className="text-2xl font-bold text-[#333333] mb-2">
