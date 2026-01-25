@@ -1,190 +1,199 @@
 
 
-## Plan: Hybrid Partner Attribution with First-Year Revenue Tracking
+## Plan: Re-Enable Safari Partner Flow with 1-Month Free Offer + GA4 Consolidation
 
 ### Overview
-Replace the Safari redirect flow with native RevenueCat purchases while maintaining partner attribution. Track first-year revenue for quarterly partner payouts (25% cut).
+Revert the paywall components to use Safari redirects for partner codes, giving users a tangible "1 month free" incentive to enter codes. This ensures partners get proper attribution while keeping the native Face ID flow for organic users.
 
 ---
 
-### Phase 1: Database Schema Update
+### Phase 1: Update validate-promo-code Edge Function
 
-**Migration: Add first-year tracking fields to `partner_code_redemptions`**
+**File:** `supabase/functions/validate-promo-code/index.ts`
 
-Add columns:
-- `first_year_end` (timestamptz) - 12 months after conversion, used to determine when to stop counting renewals
-- `last_revenue_update` (timestamptz) - Timestamp of last revenue update from webhook
+**Current behavior:** Returns `useNativePurchase: true` for partner codes
 
-This allows the webhook to update `first_year_revenue` on each renewal until the first year is complete.
+**Change to:** 
+- Set `useNativePurchase: false` for partner codes
+- Add `redemptionUrl` with the Apple Offer Code redemption URL
 
----
-
-### Phase 2: Update validate-promo-code Edge Function
-
-**File: `supabase/functions/validate-promo-code/index.ts`**
-
-Changes:
-- Add `useNativePurchase: true` flag for partner codes
-- Remove `redemptionUrl` generation (no Safari redirect needed)
-- Keep `partnerName` and `partnerCodeId` for attribution tracking
-
-**Response for partner codes will change from:**
-```json
-{
-  "valid": true,
-  "isAppleOfferCode": true,
-  "redemptionUrl": "https://apps.apple.com/redeem?...",
-  ...
-}
-```
-
-**To:**
-```json
-{
-  "valid": true,
-  "isPartnerCode": true,
-  "useNativePurchase": true,
-  "partnerName": "Research 1 Peptides",
-  "partnerCodeId": "uuid-here",
-  ...
-}
+```typescript
+// For partner codes, return Safari redirect flow
+return new Response(JSON.stringify({
+  valid: true,
+  type: 'partner_code',
+  isPartnerCode: true,
+  useNativePurchase: false,  // Changed from true
+  redemptionUrl: `https://apps.apple.com/redeem?ctx=offercodes&id=6753905449&code=${upperCode}`,
+  planType: partnerCode.plan_type,
+  partnerName: partnerCode.partner_name,
+  partnerCodeId: partnerCode.id,
+  description: partnerCode.description
+}), { ... });
 ```
 
 ---
 
-### Phase 3: Update SubscriptionPaywall.tsx
+### Phase 2: Update SubscriptionPaywall.tsx for Safari Flow
 
-**File: `src/components/SubscriptionPaywall.tsx`**
-
-**Remove:**
-- `AppleOfferCodePromo` interface and state
-- `isAwaitingAppleReturn` state
-- Safari resume listener (`handleAppResume`)
-- Safari Browser.open flow for partner codes
-- Code copy/clipboard UI
+**File:** `src/components/SubscriptionPaywall.tsx`
 
 **Add:**
-- Save partner attribution to `partner_code_redemptions` table when code is validated
-- Display VIP welcome message: "Welcome from Research 1 Peptides!"
-- Use standard `purchasePackage()` flow (same as organic users)
-- Let plan selection remain user's choice (monthly or annual)
+1. State for Apple Offer Code flow:
+   ```typescript
+   interface AppleOfferCodePromo {
+     code: string;
+     redemptionUrl: string;
+     partnerName: string;
+     partnerCodeId: string;
+   }
+   const [appleOfferPromo, setAppleOfferPromo] = useState<AppleOfferCodePromo | null>(null);
+   const [codeCopied, setCodeCopied] = useState(false);
+   ```
 
-**New Partner Code Flow:**
-```
-1. User enters RESEARCH1 → Validate against partner_promo_codes
-2. Show: "Welcome from Research 1 Peptides! Start your 14-day free trial"
-3. Insert record into partner_code_redemptions (user_id, code_id, redeemed_at)
-4. User taps "Start Trial" → Native Face ID purchase
-5. RevenueCat webhook links subscription to redemption on INITIAL_PURCHASE
-```
+2. Update `handleApplyPromo` to detect Safari redirect flow:
+   ```typescript
+   if (validateData.isPartnerCode && !validateData.useNativePurchase) {
+     // Safari redirect flow for partner codes
+     setAppleOfferPromo({
+       code,
+       redemptionUrl: validateData.redemptionUrl,
+       partnerName: validateData.partnerName,
+       partnerCodeId: validateData.partnerCodeId
+     });
+     toast.success(`Code applied! You'll get 1 month FREE via ${validateData.partnerName}`);
+   }
+   ```
 
----
+3. Add copy-and-redirect UI when `appleOfferPromo` is set:
+   ```tsx
+   {appleOfferPromo && (
+     <div className="space-y-4">
+       <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+         <p className="text-center font-medium text-primary mb-2">
+           🎉 1 Month FREE from {appleOfferPromo.partnerName}!
+         </p>
+         <p className="text-sm text-muted-foreground text-center">
+           Copy your code, then complete signup in Safari
+         </p>
+       </div>
+       
+       <Button 
+         onClick={() => copyToClipboard(appleOfferPromo.code)}
+         variant="outline"
+       >
+         {codeCopied ? "Copied!" : `Copy Code: ${appleOfferPromo.code}`}
+       </Button>
+       
+       <Button 
+         onClick={() => openSafariRedemption(appleOfferPromo)}
+       >
+         Continue to App Store
+       </Button>
+     </div>
+   )}
+   ```
 
-### Phase 4: Update OnboardingPaywallScreen.tsx
-
-**File: `src/components/onboarding/screens/OnboardingPaywallScreen.tsx`**
-
-Apply the same partner attribution logic:
-- When promo code is validated as a partner code, save attribution
-- Show VIP welcome message
-- Use standard RevenueCat purchase flow
-
----
-
-### Phase 5: Enhance RevenueCat Webhook for Revenue Tracking
-
-**File: `supabase/functions/revenuecat-webhook/index.ts`**
-
-**On INITIAL_PURCHASE:**
-1. Look up pending redemption for user (where `converted_at` is null)
-2. Calculate `first_year_revenue` based on plan:
-   - Annual: $39.99 (minus Apple's 30% = ~$28)
-   - Monthly: $4.99 (minus 30% = ~$3.50)
-3. Set `first_year_end` = converted_at + 12 months
-4. Mark as converted
-
-**On RENEWAL:**
-1. Check if user has a partner redemption
-2. Check if current date is before `first_year_end`
-3. If yes, add renewal revenue to `first_year_revenue`
-4. Update `last_revenue_update` timestamp
-
----
-
-### Phase 6: Partner Revenue Reporting Queries
-
-After implementation, calculate quarterly partner payouts with:
-
-```sql
--- Quarterly partner payout report
-SELECT 
-  ppc.partner_name,
-  COUNT(DISTINCT pcr.user_id) as total_conversions,
-  SUM(pcr.first_year_revenue) as total_first_year_revenue,
-  ROUND(SUM(pcr.first_year_revenue) * 0.25, 2) as partner_payout_25_percent
-FROM partner_code_redemptions pcr
-JOIN partner_promo_codes ppc ON pcr.code_id = ppc.id
-WHERE pcr.converted_at IS NOT NULL
-  AND pcr.converted_at >= '2025-01-01'  -- Adjust quarter dates
-  AND pcr.converted_at < '2025-04-01'
-GROUP BY ppc.partner_name
-ORDER BY partner_payout_25_percent DESC;
-```
-
----
-
-### Manual Steps After Implementation
-
-**Delete Apple Custom Offer Codes (App Store Connect):**
-- RESEARCH1
-- TRYREGIMEN
-
-These are no longer needed since partner users will use the standard 14-day trial flow.
-
-**Keep Standard Introductory Offer:**
-- 14-day free trial on both monthly and annual products (no changes needed)
+4. Add Safari redirect handler:
+   ```typescript
+   const openSafariRedemption = async (promo: AppleOfferCodePromo) => {
+     // Save attribution before redirecting
+     const { data: { user } } = await supabase.auth.getUser();
+     if (user) {
+       await savePartnerAttribution(promo.partnerCodeId, user.id);
+     }
+     
+     // Open Safari for Apple Offer Code redemption
+     await Browser.open({ url: promo.redemptionUrl });
+     
+     // Close paywall - user will complete in Safari
+     onOpenChange(false);
+   };
+   ```
 
 ---
 
-### Files to Modify Summary
+### Phase 3: Update OnboardingPaywallScreen.tsx Similarly
+
+**File:** `src/components/onboarding/screens/OnboardingPaywallScreen.tsx`
+
+Apply the same Safari redirect logic:
+1. Add `AppleOfferCodePromo` state
+2. Update promo validation to detect `useNativePurchase: false`
+3. Show copy-code + Safari redirect UI for partner codes
+4. Save attribution before Safari redirect
+
+---
+
+### Phase 4: Keep Revenue Tracking (Already Done)
+
+The `revenuecat-webhook` changes we made earlier still apply:
+- When users complete the Apple Offer Code flow and their subscription starts
+- The webhook will detect pending partner attribution and link it
+- First-year revenue tracking continues to work
+
+---
+
+### Phase 5: Update Partner Landing Page Messaging
+
+**File:** `src/pages/PartnerLanding.tsx`
+
+Ensure the messaging clearly states "1 month FREE" so partners can market this benefit:
+- "Use code RESEARCH1 to get your first month FREE!"
+- Emphasize the value: "That's a $3.99 value - free!"
+
+---
+
+### GA4 Scroll Tracking Consolidation
+
+**Recommendation:** Disable GA4 Enhanced Measurement "Scrolls"
+
+The `scroll_depth` event (if present on the landing page) provides more granular data (25%, 50%, 75%, 90%) compared to GA4's automatic `scroll` event (fires once at 90% only).
+
+**Steps:**
+1. Go to **GA4 Admin** → **Data Streams**
+2. Select your web stream
+3. Click **Enhanced Measurement** (gear icon)
+4. Toggle OFF the **"Scrolls"** option
+5. Keep your custom `scroll_depth` implementation (on landing page)
+
+This consolidates to a single scroll tracking method with more actionable data.
+
+---
+
+### Files Changed Summary
 
 | File | Changes |
 |------|---------|
-| `partner_code_redemptions` table | Add `first_year_end`, `last_revenue_update` columns |
-| `validate-promo-code/index.ts` | Add `useNativePurchase: true`, remove `redemptionUrl` |
-| `SubscriptionPaywall.tsx` | Remove Safari flow, save attribution before purchase, show VIP message |
-| `OnboardingPaywallScreen.tsx` | Add partner code handling with attribution |
-| `revenuecat-webhook/index.ts` | Calculate and update first_year_revenue on renewals |
+| `validate-promo-code/index.ts` | Set `useNativePurchase: false`, add `redemptionUrl` for partner codes |
+| `SubscriptionPaywall.tsx` | Add Safari redirect flow with copy-code UI |
+| `OnboardingPaywallScreen.tsx` | Add Safari redirect flow with copy-code UI |
+| `PartnerLanding.tsx` | Update messaging to emphasize "1 month FREE" |
 
 ---
 
-### User Experience Summary
+### App Store Connect Action
+
+**Keep "Partner - 1 Month Free" offer ACTIVE**
+
+Do NOT deactivate this offer - it's needed for the Safari redemption flow.
+
+---
+
+### User Experience After Implementation
 
 **Organic Users (unchanged):**
-1. See paywall with 14-day trial messaging
-2. Select monthly ($4.99) or annual ($39.99)
-3. Tap "Start Trial" → Face ID → Done
+1. See paywall → 14-day trial
+2. Select plan → Face ID → Done
 
-**Partner-Referred Users (simplified):**
+**Partner-Referred Users:**
 1. Enter partner code (e.g., RESEARCH1)
-2. See: "Welcome from Research 1 Peptides! Start your 14-day free trial"
-3. Select monthly or annual plan
-4. Tap "Start Trial" → Face ID → Done
-5. Attribution tracked for partner payout
+2. See: "🎉 1 Month FREE from Research 1 Peptides!"
+3. Tap "Copy Code: RESEARCH1" → Code copied
+4. Tap "Continue to App Store" → Safari opens
+5. Paste code in Safari → Face ID → Done
+6. Return to app → Subscription active
 
----
-
-### Revenue Tracking Example
-
-**Annual subscriber via RESEARCH1:**
-- Converted: Jan 15, 2025
-- First year revenue: $39.99 × 0.70 (after Apple cut) = ~$28
-- Partner payout (25%): ~$7
-
-**Monthly subscriber via RESEARCH1:**
-- Converted: Jan 15, 2025
-- Month 1: $4.99 × 0.70 = ~$3.50
-- Month 6: Cumulative = ~$21
-- Month 12: Cumulative = ~$42
-- Partner payout after 12 months (25%): ~$10.50
+**What Partners Can Market:**
+> "Download Regimen and use code **RESEARCH1** to get your first month FREE!"
 
