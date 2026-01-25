@@ -1,238 +1,190 @@
 
 
-## Complete Analytics & Attribution Enhancement Plan
+## Plan: Hybrid Partner Attribution with First-Year Revenue Tracking
 
 ### Overview
-This plan adds attribution persistence, RevenueCat enrichment, engagement snapshots, and provides Apple Search Ads guidance to enable full user journey analysis and cohort understanding.
+Replace the Safari redirect flow with native RevenueCat purchases while maintaining partner attribution. Track first-year revenue for quarterly partner payouts (25% cut).
 
 ---
 
-### Part 1: Persist Attribution to Database
+### Phase 1: Database Schema Update
 
-**Goal**: Store UTM data in Supabase so you can run SQL queries on "which source drives the most conversions"
+**Migration: Add first-year tracking fields to `partner_code_redemptions`**
 
-**Database Migration:**
-```sql
--- Add attribution columns to profiles table
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS utm_source TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS utm_medium TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS utm_campaign TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS utm_content TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS referrer TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS landing_page TEXT;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS attributed_at TIMESTAMPTZ;
+Add columns:
+- `first_year_end` (timestamptz) - 12 months after conversion, used to determine when to stop counting renewals
+- `last_revenue_update` (timestamptz) - Timestamp of last revenue update from webhook
+
+This allows the webhook to update `first_year_revenue` on each renewal until the first year is complete.
+
+---
+
+### Phase 2: Update validate-promo-code Edge Function
+
+**File: `supabase/functions/validate-promo-code/index.ts`**
+
+Changes:
+- Add `useNativePurchase: true` flag for partner codes
+- Remove `redemptionUrl` generation (no Safari redirect needed)
+- Keep `partnerName` and `partnerCodeId` for attribution tracking
+
+**Response for partner codes will change from:**
+```json
+{
+  "valid": true,
+  "isAppleOfferCode": true,
+  "redemptionUrl": "https://apps.apple.com/redeem?...",
+  ...
+}
 ```
 
-**Code Changes:**
-
-**File: `src/pages/Auth.tsx`**
-- After successful signup, retrieve stored attribution from sessionStorage
-- Update the user's profile with UTM data
-- Clear sessionStorage after persisting
-
-```typescript
-// After signup success, persist attribution
-const attribution = getStoredAttribution();
-if (attribution && (attribution.utm_source || attribution.referrer)) {
-  await supabase.from('profiles').update({
-    utm_source: attribution.utm_source,
-    utm_medium: attribution.utm_medium,
-    utm_campaign: attribution.utm_campaign,
-    utm_content: attribution.utm_content,
-    referrer: attribution.referrer,
-    landing_page: attribution.landing_page,
-    attributed_at: new Date().toISOString(),
-  }).eq('user_id', user.id);
-  clearAttribution();
+**To:**
+```json
+{
+  "valid": true,
+  "isPartnerCode": true,
+  "useNativePurchase": true,
+  "partnerName": "Research 1 Peptides",
+  "partnerCodeId": "uuid-here",
+  ...
 }
 ```
 
 ---
 
-### Part 2: Enrich RevenueCat with User Details
+### Phase 3: Update SubscriptionPaywall.tsx
 
-**Goal**: See customer names and emails in RevenueCat dashboard instead of blank fields
+**File: `src/components/SubscriptionPaywall.tsx`**
 
-**File: `src/contexts/SubscriptionContext.tsx`**
-- In the `identifyRevenueCatUser` function, after `Purchases.logIn()`:
+**Remove:**
+- `AppleOfferCodePromo` interface and state
+- `isAwaitingAppleReturn` state
+- Safari resume listener (`handleAppResume`)
+- Safari Browser.open flow for partner codes
+- Code copy/clipboard UI
 
-```typescript
-// After successful login, fetch profile and set attributes
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('full_name')
-  .eq('user_id', userId)
-  .single();
+**Add:**
+- Save partner attribution to `partner_code_redemptions` table when code is validated
+- Display VIP welcome message: "Welcome from Research 1 Peptides!"
+- Use standard `purchasePackage()` flow (same as organic users)
+- Let plan selection remain user's choice (monthly or annual)
 
-const { data: { user } } = await supabase.auth.getUser();
-
-// Set display name and email in RevenueCat
-if (profile?.full_name) {
-  await Purchases.setDisplayName({ displayName: profile.full_name });
-}
-if (user?.email) {
-  await Purchases.setEmail({ email: user.email });
-}
-
-// Also set attribution as custom attributes
-const attribution = getStoredAttribution();
-if (attribution?.utm_source) {
-  await Purchases.setAttributes({
-    utm_source: attribution.utm_source,
-    utm_medium: attribution.utm_medium || '',
-    utm_campaign: attribution.utm_campaign || '',
-  });
-}
+**New Partner Code Flow:**
 ```
-
-**Result**: RevenueCat dashboard will show:
-- Customer name (from profile)
-- Customer email (from auth)
-- UTM source/medium/campaign as custom attributes
-
----
-
-### Part 3: Add Weekly Engagement Snapshot
-
-**Goal**: Track retention metrics over time for cohort analysis
-
-**File: `src/utils/analytics.ts`**
-- Add new function:
-
-```typescript
-export const trackWeeklyEngagementSnapshot = (metrics: {
-  compounds_count: number;
-  doses_last_30d: number;
-  photos_count: number;
-  current_streak: number;
-  days_since_install: number;
-  subscription_status: string;
-}) => {
-  ReactGA.event('engagement_snapshot', {
-    compounds_count: metrics.compounds_count,
-    doses_last_30d: metrics.doses_last_30d,
-    photos_count: metrics.photos_count,
-    current_streak: metrics.current_streak,
-    days_since_install: metrics.days_since_install,
-    subscription_status: metrics.subscription_status,
-  });
-};
-```
-
-**File: `src/hooks/useAppStateSync.tsx`**
-- Add weekly check on app resume
-- If more than 7 days since last snapshot, trigger `trackWeeklyEngagementSnapshot()`
-- Store last snapshot date in localStorage
-
----
-
-### Part 4: Apple Search Ads Setup (Manual Steps)
-
-**Recommended Budget**: $5/day to start, scale to $10/day after 2 weeks
-
-**Step 1: Create Apple Search Ads Account**
-1. Go to searchads.apple.com
-2. Sign in with your Apple Developer account
-3. Accept terms and add payment method
-
-**Step 2: Create Discovery Campaign**
-1. Create new campaign → Search Results
-2. Campaign name: "Regimen - Discovery"
-3. Daily budget: $5
-4. Ad Group settings:
-   - Search Match: ON (let Apple find keywords)
-   - Audience: All Users
-   - Locations: United States (start narrow)
-5. Run for 2-3 weeks
-
-**Step 3: Analyze & Optimize (Week 3+)**
-1. Go to Keywords tab → see which search terms drove installs
-2. Export high-performing keywords
-3. Create new "Exact Match" campaign with winners
-4. Pause underperforming Search Match terms
-
-**What You'll Learn**:
-- Exact keywords driving your installs
-- Cost per acquisition by keyword
-- Keyword opportunities you didn't know about
-- Competitive keyword landscape
-
----
-
-### Part 5: GA4 Landing Page Coordination
-
-**Ensure these match between landing page and app:**
-
-| Custom Dimension | Landing Page | App |
-|-----------------|--------------|-----|
-| `content_group` | `website` | `app` |
-| `platform_type` | `website` | `app` |
-| `calculator_type` | ✅ Same values | ✅ Same values |
-| `promo_code` | ✅ Tracks | ✅ Tracks |
-| `utm_source/medium/campaign` | ✅ Captured | ✅ Captured |
-
-**Landing page additional setup (their project)**:
-- Mark `download_initiated` as conversion
-- Create "Calculator Users" audience
-- Track `cta_location` for A/B insights
-
-**Cross-session funnel you can build after this**:
-```
-Landing: page_view → calculator_completed → download_initiated
-App: app_opened (with UTM) → signup_complete → subscription_started
+1. User enters RESEARCH1 → Validate against partner_promo_codes
+2. Show: "Welcome from Research 1 Peptides! Start your 14-day free trial"
+3. Insert record into partner_code_redemptions (user_id, code_id, redeemed_at)
+4. User taps "Start Trial" → Native Face ID purchase
+5. RevenueCat webhook links subscription to redemption on INITIAL_PURCHASE
 ```
 
 ---
 
-### Part 6: Churn Analysis Queries (After Implementation)
+### Phase 4: Update OnboardingPaywallScreen.tsx
 
-Once attribution is persisted, you can run queries like:
+**File: `src/components/onboarding/screens/OnboardingPaywallScreen.tsx`**
+
+Apply the same partner attribution logic:
+- When promo code is validated as a partner code, save attribution
+- Show VIP welcome message
+- Use standard RevenueCat purchase flow
+
+---
+
+### Phase 5: Enhance RevenueCat Webhook for Revenue Tracking
+
+**File: `supabase/functions/revenuecat-webhook/index.ts`**
+
+**On INITIAL_PURCHASE:**
+1. Look up pending redemption for user (where `converted_at` is null)
+2. Calculate `first_year_revenue` based on plan:
+   - Annual: $39.99 (minus Apple's 30% = ~$28)
+   - Monthly: $4.99 (minus 30% = ~$3.50)
+3. Set `first_year_end` = converted_at + 12 months
+4. Mark as converted
+
+**On RENEWAL:**
+1. Check if user has a partner redemption
+2. Check if current date is before `first_year_end`
+3. If yes, add renewal revenue to `first_year_revenue`
+4. Update `last_revenue_update` timestamp
+
+---
+
+### Phase 6: Partner Revenue Reporting Queries
+
+After implementation, calculate quarterly partner payouts with:
 
 ```sql
--- Conversion rate by source
+-- Quarterly partner payout report
 SELECT 
-  utm_source,
-  COUNT(*) as signups,
-  SUM(CASE WHEN subscription_status = 'active' THEN 1 ELSE 0 END) as subscribed,
-  ROUND(100.0 * SUM(CASE WHEN subscription_status = 'active' THEN 1 ELSE 0 END) / COUNT(*), 1) as conversion_rate
-FROM profiles
-WHERE utm_source IS NOT NULL
-GROUP BY utm_source
-ORDER BY signups DESC;
-
--- Churn analysis by onboarding path
-SELECT 
-  path_type,
-  experience_level,
-  COUNT(*) as users,
-  SUM(CASE WHEN subscription_status = 'canceled' THEN 1 ELSE 0 END) as churned
-FROM profiles
-WHERE subscription_status IS NOT NULL
-GROUP BY path_type, experience_level;
+  ppc.partner_name,
+  COUNT(DISTINCT pcr.user_id) as total_conversions,
+  SUM(pcr.first_year_revenue) as total_first_year_revenue,
+  ROUND(SUM(pcr.first_year_revenue) * 0.25, 2) as partner_payout_25_percent
+FROM partner_code_redemptions pcr
+JOIN partner_promo_codes ppc ON pcr.code_id = ppc.id
+WHERE pcr.converted_at IS NOT NULL
+  AND pcr.converted_at >= '2025-01-01'  -- Adjust quarter dates
+  AND pcr.converted_at < '2025-04-01'
+GROUP BY ppc.partner_name
+ORDER BY partner_payout_25_percent DESC;
 ```
 
 ---
 
-### Summary of Changes
+### Manual Steps After Implementation
 
-| Component | Changes |
-|-----------|---------|
-| **Database** | Add 7 attribution columns to profiles table |
-| **Auth.tsx** | Persist UTM data after signup |
-| **SubscriptionContext.tsx** | Set RevenueCat display name, email, and attributes |
-| **analytics.ts** | Add `trackWeeklyEngagementSnapshot()` function |
-| **useAppStateSync.tsx** | Trigger weekly engagement snapshot |
-| **Apple Search Ads** | Create $5/day discovery campaign (manual) |
-| **GA4 Dashboard** | Create cross-session funnel exploration (manual) |
+**Delete Apple Custom Offer Codes (App Store Connect):**
+- RESEARCH1
+- TRYREGIMEN
+
+These are no longer needed since partner users will use the standard 14-day trial flow.
+
+**Keep Standard Introductory Offer:**
+- 14-day free trial on both monthly and annual products (no changes needed)
 
 ---
 
-### Expected Outcomes
+### Files to Modify Summary
 
-After implementation:
-1. **RevenueCat**: Customer names and emails visible, UTM source as attribute
-2. **Database**: Full attribution data for SQL analysis
-3. **GA4**: Weekly engagement snapshots for retention tracking
-4. **Apple Search Ads**: Keyword visibility within 2-3 weeks
-5. **Cohort Analysis**: Ability to compare subscribers vs churners by source/path
+| File | Changes |
+|------|---------|
+| `partner_code_redemptions` table | Add `first_year_end`, `last_revenue_update` columns |
+| `validate-promo-code/index.ts` | Add `useNativePurchase: true`, remove `redemptionUrl` |
+| `SubscriptionPaywall.tsx` | Remove Safari flow, save attribution before purchase, show VIP message |
+| `OnboardingPaywallScreen.tsx` | Add partner code handling with attribution |
+| `revenuecat-webhook/index.ts` | Calculate and update first_year_revenue on renewals |
+
+---
+
+### User Experience Summary
+
+**Organic Users (unchanged):**
+1. See paywall with 14-day trial messaging
+2. Select monthly ($4.99) or annual ($39.99)
+3. Tap "Start Trial" → Face ID → Done
+
+**Partner-Referred Users (simplified):**
+1. Enter partner code (e.g., RESEARCH1)
+2. See: "Welcome from Research 1 Peptides! Start your 14-day free trial"
+3. Select monthly or annual plan
+4. Tap "Start Trial" → Face ID → Done
+5. Attribution tracked for partner payout
+
+---
+
+### Revenue Tracking Example
+
+**Annual subscriber via RESEARCH1:**
+- Converted: Jan 15, 2025
+- First year revenue: $39.99 × 0.70 (after Apple cut) = ~$28
+- Partner payout (25%): ~$7
+
+**Monthly subscriber via RESEARCH1:**
+- Converted: Jan 15, 2025
+- Month 1: $4.99 × 0.70 = ~$3.50
+- Month 6: Cumulative = ~$21
+- Month 12: Cumulative = ~$42
+- Partner payout after 12 months (25%): ~$10.50
 
