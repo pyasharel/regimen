@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
 import { PathRouting } from '../hooks/useOnboardingState';
-import { Check, X } from 'lucide-react';
+import { Check, X, Copy, ExternalLink } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+import { Button } from '@/components/ui/button';
 
 // Partner promo state for VIP welcome message
 interface PartnerPromo {
   code: string;
+  partnerName: string;
+  partnerCodeId: string;
+}
+
+// Apple Offer Code promo state for Safari redirect flow
+interface AppleOfferCodePromo {
+  code: string;
+  redemptionUrl: string;
   partnerName: string;
   partnerCodeId: string;
 }
@@ -37,6 +46,8 @@ export function OnboardingPaywallScreen({
   const [loading, setLoading] = useState(false);
   const [applyingPromo, setApplyingPromo] = useState(false);
   const [partnerPromo, setPartnerPromo] = useState<PartnerPromo | null>(null);
+  const [appleOfferPromo, setAppleOfferPromo] = useState<AppleOfferCodePromo | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Save partner attribution to database
   const savePartnerAttribution = async (partnerCodeId: string, userId: string) => {
@@ -59,6 +70,42 @@ export function OnboardingPaywallScreen({
       }
     } catch (err) {
       console.error('[ONBOARDING-PAYWALL] Error saving partner attribution:', err);
+    }
+  };
+
+  // Copy promo code to clipboard
+  const copyToClipboard = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCodeCopied(true);
+      toast.success('Code copied!');
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch (err) {
+      console.error('[ONBOARDING-PAYWALL] Failed to copy code:', err);
+      toast.error('Failed to copy code');
+    }
+  };
+
+  // Open Safari for Apple Offer Code redemption
+  const openSafariRedemption = async (promo: AppleOfferCodePromo) => {
+    try {
+      // Save attribution before redirecting
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await savePartnerAttribution(promo.partnerCodeId, user.id);
+      }
+      
+      console.log('[ONBOARDING-PAYWALL] Opening Safari for redemption:', promo.redemptionUrl);
+      
+      // Open Safari for Apple Offer Code redemption
+      await Browser.open({ url: promo.redemptionUrl });
+      
+      // Close paywall - user will complete in Safari
+      toast.success('Complete your subscription in Safari, then return to the app');
+      onDismiss();
+    } catch (err) {
+      console.error('[ONBOARDING-PAYWALL] Error opening Safari:', err);
+      toast.error('Failed to open App Store. Please try again.');
     }
   };
   
@@ -84,9 +131,29 @@ export function OnboardingPaywallScreen({
         return;
       }
 
-      // Handle Partner Code (uses native purchase flow)
+      // Handle Partner Code with Safari redirect flow (1 month free)
+      if (validateData.isPartnerCode && !validateData.useNativePurchase) {
+        console.log('[ONBOARDING-PAYWALL] Partner code detected - Safari redirect flow:', {
+          partnerName: validateData.partnerName,
+          partnerCodeId: validateData.partnerCodeId,
+          redemptionUrl: validateData.redemptionUrl
+        });
+        
+        // Store Apple Offer Code state for Safari redirect UI
+        setAppleOfferPromo({
+          code,
+          redemptionUrl: validateData.redemptionUrl,
+          partnerName: validateData.partnerName || 'Partner',
+          partnerCodeId: validateData.partnerCodeId
+        });
+        
+        setShowPromo(false);
+        return;
+      }
+
+      // Handle Partner Code with native purchase flow (legacy support)
       if (validateData.isPartnerCode && validateData.useNativePurchase) {
-        console.log('[ONBOARDING-PAYWALL] Partner code detected:', {
+        console.log('[ONBOARDING-PAYWALL] Partner code detected - native flow:', {
           partnerName: validateData.partnerName,
           partnerCodeId: validateData.partnerCodeId
         });
@@ -261,16 +328,66 @@ export function OnboardingPaywallScreen({
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 pb-4">
-        {/* VIP Partner Welcome Message */}
-        {partnerPromo && (
-          <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-8">
-            <p className="text-center text-sm font-medium text-primary">
-              Welcome from {partnerPromo.partnerName}! 🎉
+        {/* Apple Offer Code Safari Flow */}
+        {appleOfferPromo ? (
+          <div className="mt-8 space-y-4">
+            <div className="bg-primary/10 border border-primary/30 rounded-2xl p-5">
+              <p className="text-center text-xl font-bold text-primary mb-2">
+                🎉 1 Month FREE!
+              </p>
+              <p className="text-center text-sm text-[#666666]">
+                From {appleOfferPromo.partnerName}
+              </p>
+            </div>
+            
+            <p className="text-center text-sm text-[#666666]">
+              Copy your code, then complete signup in the App Store
+            </p>
+            
+            {/* Copy Code Button */}
+            <Button 
+              onClick={() => copyToClipboard(appleOfferPromo.code)}
+              variant="outline"
+              className="w-full h-14 text-lg font-mono border-2 border-dashed"
+            >
+              {codeCopied ? (
+                <>
+                  <Check className="mr-2 h-5 w-5 text-primary" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-2 h-5 w-5" />
+                  {appleOfferPromo.code}
+                </>
+              )}
+            </Button>
+            
+            {/* Continue to App Store Button */}
+            <Button 
+              onClick={() => openSafariRedemption(appleOfferPromo)}
+              className="w-full h-14 text-lg font-semibold"
+            >
+              <ExternalLink className="mr-2 h-5 w-5" />
+              Continue to App Store
+            </Button>
+            
+            <p className="text-center text-xs text-[#999999]">
+              You'll be redirected to the App Store to complete your subscription
             </p>
           </div>
-        )}
+        ) : (
+          <>
+            {/* VIP Partner Welcome Message */}
+            {partnerPromo && (
+              <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-8">
+                <p className="text-center text-sm font-medium text-primary">
+                  Welcome from {partnerPromo.partnerName}! 🎉
+                </p>
+              </div>
+            )}
 
-        {/* Headline */}
+            {/* Headline */}
         <div className="text-center pt-8 pb-6">
           <h1 className="text-2xl font-bold text-[#333333] mb-2">
             {headline}
@@ -406,9 +523,12 @@ export function OnboardingPaywallScreen({
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
 
-      {/* Fixed bottom CTA */}
+      {/* Fixed bottom CTA - only show when NOT in Apple Offer Code flow */}
+      {!appleOfferPromo && (
       <div className="px-6 pb-7 pt-3 bg-gradient-to-t from-[#FAF8F5] via-[#FAF8F5] to-transparent">
         <OnboardingButton onClick={handleStartTrial} loading={loading}>
           Start My 14-Day Free Trial
@@ -430,6 +550,7 @@ export function OnboardingPaywallScreen({
           <button className="text-xs text-[#999999] hover:text-[#666666]">Restore</button>
         </div>
       </div>
+      )}
     </div>
   );
 }
