@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { SubscriptionPaywall } from "../SubscriptionPaywall";
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
+// Note: Capacitor is now used for platform detection in handleManageSubscription
 
 export const SettingsSubscriptionSection = () => {
   const { 
@@ -58,11 +59,14 @@ export const SettingsSubscriptionSection = () => {
 
   const handleManageSubscription = async () => {
     try {
-      // For RevenueCat subscribers on iOS, direct to App Store subscription settings
+      // For RevenueCat subscribers on native platforms, direct to platform-specific subscription settings
       if (isNativePlatform && subscriptionProvider === 'revenuecat') {
-        // Open App Store subscription management
-        // Note: iOS will handle this automatically when user tries to manage
-        await Browser.open({ url: 'https://apps.apple.com/account/subscriptions' });
+        // Determine the correct URL based on platform
+        const isAndroid = Capacitor.getPlatform() === 'android';
+        const subscriptionUrl = isAndroid 
+          ? 'https://play.google.com/store/account/subscriptions'
+          : 'https://apps.apple.com/account/subscriptions';
+        await Browser.open({ url: subscriptionUrl });
         return;
       }
       

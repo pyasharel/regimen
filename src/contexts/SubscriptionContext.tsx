@@ -18,9 +18,17 @@ export interface PromotionalOfferParams {
 import { addDiagnosticsLog } from '@/components/subscription/SubscriptionDiagnostics';
 import { persistentStorage, CachedEntitlement, CACHED_ENTITLEMENT_MAX_AGE_MS } from '@/utils/persistentStorage';
 
-// RevenueCat configuration
-const REVENUECAT_API_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
+// RevenueCat configuration - platform-specific API keys
+const REVENUECAT_IOS_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
+const REVENUECAT_ANDROID_KEY = 'goog_YOUR_ANDROID_KEY_HERE'; // TODO: Replace with actual Android API key from RevenueCat
 const ENTITLEMENT_ID = 'Regimen Premium';
+
+// Helper to get platform-specific RevenueCat API key
+const getRevenueCatApiKey = () => {
+  return Capacitor.getPlatform() === 'android' 
+    ? REVENUECAT_ANDROID_KEY 
+    : REVENUECAT_IOS_KEY;
+};
 
 const isTrialPeriodType = (periodType?: string | null) => {
   const t = (periodType ?? '').toUpperCase();
@@ -621,9 +629,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      console.log('[RevenueCat] Initializing...');
+      const apiKey = getRevenueCatApiKey();
+      console.log('[RevenueCat] Initializing with platform:', Capacitor.getPlatform());
       await Purchases.setLogLevel({ level: LOG_LEVEL.WARN });
-      await Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+      await Purchases.configure({ apiKey });
       setRevenueCatConfigured(true);
       revenueCatConfiguredRef.current = true;
       console.log('[RevenueCat] Configuration complete');
