@@ -1,341 +1,403 @@
 
-# Complete Android Setup Guide - Step by Step
+# Comprehensive Analytics & User Profile Enhancement Plan
 
-This guide walks you through everything from scratch, assuming you have Android Studio downloaded but nothing else set up.
+## Executive Summary
 
----
-
-## Part 1: Set Up Your Local Project (15 minutes)
-
-### Step 1.1: Pull the Latest Code from Lovable
-
-Open Terminal on your Mac and navigate to your project folder:
-
-```bash
-cd /path/to/your/regimen-project
-git pull origin main
-```
-
-### Step 1.2: Install Dependencies
-
-```bash
-npm install
-```
-
-### Step 1.3: Build the Web App
-
-```bash
-npm run build
-```
-
-You should see a success message and a `dist/` folder will be created.
-
-### Step 1.4: Remove the Incomplete Android Folder
-
-The current android folder is incomplete. Remove it:
-
-```bash
-rm -rf android
-```
-
-### Step 1.5: Add Android Platform
-
-This generates the full Android project:
-
-```bash
-npx cap add android
-```
-
-### Step 1.6: Sync Web Assets to Android
-
-```bash
-npx cap sync android
-```
-
-**Checkpoint**: You should now have a complete `android/` folder with many subfolders.
+This plan creates a unified, cross-platform analytics system that gives you a complete picture of your users: who they are, where they come from, how they use the app, and why they might leave. It addresses the data discrepancies you're seeing between Google Analytics and RevenueCat while adding missing tracking capabilities.
 
 ---
 
-## Part 2: Set Up Android Studio (20 minutes)
+## Current State Analysis
 
-### Step 2.1: Open Android Studio
+### What's Working Well
+- UTM attribution captured on web and persisted to Supabase `profiles` table
+- RevenueCat receives display name, email, and UTM attributes for native users
+- GA4 tracks onboarding steps, feature usage, and subscription lifecycle events
+- Server-side GA4 tracking via RevenueCat webhook for subscription events
 
-1. Launch Android Studio from your Applications folder
-2. If this is your first time, it will ask you to complete initial setup
-3. Choose "Standard" installation when asked
-4. Wait for it to download SDK components (this can take 10-15 minutes)
+### Critical Gaps Identified
 
-### Step 2.2: Open Your Project in Android Studio
-
-Run this command in Terminal:
-
-```bash
-npx cap open android
-```
-
-This opens your Regimen project in Android Studio.
-
-### Step 2.3: Wait for Gradle Sync
-
-1. Android Studio will show a "Gradle sync" progress bar at the bottom
-2. Wait for it to complete (can take 2-5 minutes the first time)
-3. You may see warnings - that's normal as long as it says "BUILD SUCCESSFUL"
-
-### Step 2.4: Set Up Your Android Phone for Testing
-
-On your Android phone:
-
-1. Go to **Settings → About Phone**
-2. Find **Build Number** and tap it 7 times rapidly
-3. You'll see "You are now a developer!"
-4. Go back to **Settings → System → Developer Options**
-5. Enable **USB Debugging**
-6. Connect your phone to your Mac via USB cable
-7. When prompted on your phone, tap **Allow** to trust this computer
-
-### Step 2.5: Run the App on Your Phone
-
-1. In Android Studio, look at the top toolbar
-2. You should see your phone name in a dropdown (e.g., "Pixel 7" or "Samsung Galaxy")
-3. Click the green **Play** button (▶)
-4. Wait for the build to complete
-5. The app should launch on your phone!
-
-**Checkpoint**: If you see the Regimen app on your phone, basic setup is complete!
+| Issue | Impact |
+|-------|--------|
+| **App version hardcoded as "1.0.0"** | GA4 reports show incorrect version data; can't track upgrade adoption |
+| **Platform not set as persistent GA4 user property** | Can't segment users by iOS/Android/Web in reports |
+| **No app upgrade detection** | Can't see how quickly users adopt new versions |
+| **Country not captured in RevenueCat or Supabase** | Geographic data missing from user profiles |
+| **No platform in RevenueCat webhook events** | Can't correlate churn with platform in GA4 |
+| **Onboarding attribution not saved for Google Sign-in** | Missing attribution data for ~30% of signups |
+| **No centralized analytics initialization** | Platform detection happens too late |
 
 ---
 
-## Part 3: Generate App Icons (30 minutes)
+## Implementation Plan
 
-### Step 3.1: Use App Icon Generator
+### Phase 1: Fix Version & Platform Tracking (Core Foundation)
 
-1. Go to [https://www.appicon.co/](https://www.appicon.co/)
-2. Upload your 1024x1024 icon (the same one you used for iOS)
-   - File location: `src/assets/app-icon-1024.png`
-3. Check **Android** checkbox
-4. Click **Generate**
-5. Download the zip file
+#### 1.1 Sync App Version with Capacitor Config
 
-### Step 3.2: Copy Icons to Android Project
+**File:** `src/utils/analytics.ts`
 
-1. Extract the downloaded zip file
-2. You'll see folders like `mipmap-mdpi`, `mipmap-hdpi`, etc.
-3. Navigate to `android/app/src/main/res/` in Finder
-4. Replace the existing mipmap folders with the new ones
-
-### Step 3.3: Add Splash Screen Image
-
-1. Take your splash screen image (same as iOS, around 2732x2732px)
-2. Rename it to `splash.png`
-3. Copy it to `android/app/src/main/res/drawable/`
-
-### Step 3.4: Rebuild and Test
-
-```bash
-npm run build
-npx cap sync android
-```
-
-Then run the app again in Android Studio to see your new icons.
-
----
-
-## Part 4: Set Up RevenueCat for Android (45 minutes)
-
-### Step 4.1: Create Android App in RevenueCat
-
-1. Go to [https://app.revenuecat.com/](https://app.revenuecat.com/)
-2. Log in with your existing account
-3. Click on your **Regimen** project
-4. Go to **Project Settings** (gear icon) → **Apps**
-5. Click **+ New App**
-6. Select **Google Play Store**
-7. For now, just enter:
-   - **App name**: Regimen (Android)
-   - You can skip the service credentials for now
-8. Click **Create App**
-9. **Copy the Android API key** (starts with `goog_...`)
-
-### Step 4.2: Update the Code with Your Android Key
-
-1. In Lovable, open `src/contexts/SubscriptionContext.tsx`
-2. Find this line:
-   ```typescript
-   const REVENUECAT_ANDROID_KEY = 'goog_YOUR_ANDROID_KEY_HERE';
-   ```
-3. Replace `goog_YOUR_ANDROID_KEY_HERE` with your actual key from Step 4.1
-4. Let me know once you've done this and I'll make the update
-
----
-
-## Part 5: Set Up Google Sign-In (30 minutes)
-
-### Step 5.1: Get Your SHA-1 Fingerprint
-
-In Terminal, navigate to your android folder and run:
-
-```bash
-cd android
-./gradlew signingReport
-```
-
-Look for output like this:
 ```text
-Variant: debug
-Config: debug
-Store: /Users/yourname/.android/debug.keystore
-Alias: AndroidDebugKey
-SHA1: XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX
+Current (broken):
+  const APP_VERSION = '1.0.0';
+
+Fixed:
+  import { appVersion } from '../../capacitor.config';
+  const APP_VERSION = appVersion; // Currently '1.0.3'
 ```
 
-**Copy the SHA1 value** (the long string with colons).
+This ensures GA4 always reports the correct app version.
 
-### Step 5.2: Create Android OAuth Client in Google Cloud
+#### 1.2 Add Platform as Persistent GA4 User Property
 
-1. Go to [https://console.cloud.google.com/](https://console.cloud.google.com/)
-2. Make sure you're in the same project as your iOS app (check the dropdown at the top)
-3. Go to **APIs & Services → Credentials**
-4. Click **+ Create Credentials → OAuth client ID**
-5. Choose **Android** as the application type
-6. Fill in:
-   - **Name**: Regimen Android
-   - **Package name**: `com.regimen.app`
-   - **SHA-1 fingerprint**: Paste the SHA1 from Step 5.1
-7. Click **Create**
-8. **Copy the Client ID** (looks like `123456789-xxxx.apps.googleusercontent.com`)
+**File:** `src/utils/analytics.ts`
 
-### Step 5.3: Update Capacitor Config
+Add a new function to set platform as a sticky user property:
 
-Tell me the Android Client ID and I'll update `capacitor.config.ts` to include it.
+```typescript
+export const setPlatformUserProperty = () => {
+  const platform = Capacitor.isNativePlatform() 
+    ? Capacitor.getPlatform() // 'ios' | 'android'
+    : 'web';
+  
+  ReactGA.gtag('set', 'user_properties', {
+    user_platform: platform,
+  });
+  console.log('[Analytics] Platform user property set:', platform);
+};
+```
 
----
+Call this in `initGA()` after initialization.
 
-## Part 6: Create Google Play Developer Account (30 minutes)
+#### 1.3 Track App Version Upgrades
 
-### Step 6.1: Register as a Developer
+**File:** `src/utils/featureTracking.ts`
 
-1. Go to [https://play.google.com/console/](https://play.google.com/console/)
-2. Click **Create an Account** or sign in with your Google account
-3. You'll need to pay a **$25 one-time registration fee**
-4. Fill out your developer profile information
-5. Accept the Developer Distribution Agreement
+Add version tracking:
 
-### Step 6.2: Create Your App
+```typescript
+const LAST_VERSION_KEY = 'regimen_last_app_version';
 
-1. Click **Create app**
-2. Fill in:
-   - **App name**: Regimen
-   - **Default language**: English (United States)
-   - **App or game**: App
-   - **Free or paid**: Free
-3. Check all the declaration boxes
-4. Click **Create app**
-
-### Step 6.3: Set Up Store Listing
-
-Navigate to **Grow → Store presence → Main store listing**:
-
-1. **Short description** (80 chars max): Use your App Store subtitle
-2. **Full description**: Use your App Store description
-3. **App icon**: Upload your 512x512 icon
-4. **Feature graphic**: Create a 1024x500px banner image (required for Google Play)
-5. **Screenshots**: You can reuse your iOS screenshots or take Android-specific ones
+export const checkAndTrackVersionUpgrade = (currentVersion: string): void => {
+  const lastVersion = localStorage.getItem(LAST_VERSION_KEY);
+  
+  if (lastVersion && lastVersion !== currentVersion) {
+    // User upgraded!
+    ReactGA.event('app_upgraded', {
+      from_version: lastVersion,
+      to_version: currentVersion,
+      days_since_install: getDaysSinceInstall(),
+    });
+    console.log('[FeatureTracking] App upgraded:', lastVersion, '->', currentVersion);
+  }
+  
+  localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+};
+```
 
 ---
 
-## Part 7: Build & Upload to Google Play (45 minutes)
+### Phase 2: Enrich RevenueCat Customer Profiles
 
-### Step 7.1: Generate a Signed Release Build
+#### 2.1 Add Country Detection
 
-In Android Studio:
+**File:** `src/contexts/SubscriptionContext.tsx`
 
-1. Go to **Build → Generate Signed Bundle / APK**
-2. Select **Android App Bundle** (AAB)
-3. Click **Next**
-4. Click **Create new...** to create a signing key:
-   - **Key store path**: Choose a location to save it (e.g., `regimen-keystore.jks`)
-   - **Password**: Create a strong password (save this somewhere safe!)
-   - **Alias**: `regimen`
-   - **Alias password**: Can be same as keystore password
-   - Fill in your name/organization info
-5. Click **OK**, then **Next**
-6. Select **release** build variant
-7. Click **Create**
+When identifying a user with RevenueCat, also attempt to set their country:
 
-The AAB file will be saved to `android/app/release/app-release.aab`
+```typescript
+// In identifyRevenueCatUser function, after setting email:
 
-### Step 7.2: Upload to Google Play Console
+// Set country from browser locale (best effort)
+try {
+  const locale = navigator.language || 'en-US';
+  const country = locale.split('-')[1] || 'Unknown';
+  await Purchases.setAttributes({ 
+    $countryCode: country,
+    locale: locale,
+  });
+  console.log('[RevenueCat] Country/locale set:', country, locale);
+} catch (e) {
+  console.warn('[RevenueCat] Could not set country');
+}
+```
 
-1. In Google Play Console, go to your app
-2. Navigate to **Release → Production**
-3. Click **Create new release**
-4. Upload your AAB file
-5. Add release notes (same as your iOS "What's New")
-6. Click **Review release**
-7. Click **Start rollout to Production**
+#### 2.2 Add Platform to RevenueCat
 
----
+```typescript
+// In identifyRevenueCatUser:
+await Purchases.setAttributes({
+  platform: Capacitor.getPlatform(), // 'ios' | 'android'
+  app_version: appVersion,
+});
+```
 
-## Part 8: Connect RevenueCat to Google Play (30 minutes)
+#### 2.3 Add Platform to RevenueCat Webhook GA4 Events
 
-### Step 8.1: Create Service Account in Google Cloud
+**File:** `supabase/functions/revenuecat-webhook/index.ts`
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Go to **IAM & Admin → Service Accounts**
-3. Click **+ Create Service Account**
-4. Name it `revenuecat-service-account`
-5. Click **Create and Continue**
-6. Skip the optional steps, click **Done**
-7. Click on the new service account
-8. Go to **Keys → Add Key → Create new key → JSON**
-9. Download the JSON file
+Modify the `trackGA4Event` function to include platform from the webhook payload:
 
-### Step 8.2: Grant Access in Google Play Console
+```typescript
+// Extract platform from event
+const platform = event.store === 'APP_STORE' ? 'ios' 
+              : event.store === 'PLAY_STORE' ? 'android' 
+              : 'web';
 
-1. In Google Play Console, go to **Settings → API access**
-2. Click **Link** next to Google Cloud Project
-3. Go back to **Service accounts** section
-4. Find your service account and click **Grant access**
-5. Give it **Admin** permissions for your app
-
-### Step 8.3: Add Credentials to RevenueCat
-
-1. In RevenueCat, go to your Android app settings
-2. Upload the JSON key file from Step 8.1
-3. Save
+// Include in all GA4 events
+params.platform = platform;
+params.app_version = event.app_version || 'unknown';
+```
 
 ---
 
-## Estimated Total Time
+### Phase 3: Fix Attribution Gaps
 
-| Part | Time |
-|------|------|
-| Part 1: Local Project Setup | 15 min |
-| Part 2: Android Studio Setup | 20 min |
-| Part 3: App Icons | 30 min |
-| Part 4: RevenueCat Android | 45 min |
-| Part 5: Google Sign-In | 30 min |
-| Part 6: Play Developer Account | 30 min |
-| Part 7: Build & Upload | 45 min |
-| Part 8: Connect RevenueCat | 30 min |
-| **Total** | **~4 hours** |
+#### 3.1 Save Attribution for Google Sign-in Users
+
+**File:** `src/pages/Auth.tsx`
+
+The current code only saves attribution for email signups. Add the same logic after successful Google sign-in:
+
+```typescript
+// After Google sign-in success (around line 280):
+const attribution = getStoredAttribution();
+if (result.user && attribution && (attribution.utm_source || attribution.referrer)) {
+  await supabase.from('profiles').update({
+    utm_source: attribution.utm_source,
+    utm_medium: attribution.utm_medium,
+    utm_campaign: attribution.utm_campaign,
+    utm_content: attribution.utm_content,
+    referrer: attribution.referrer,
+    landing_page: attribution.landing_page,
+    attributed_at: new Date().toISOString(),
+  }).eq('user_id', result.user.id);
+  console.log('[Auth] Google Sign-in attribution persisted');
+}
+```
+
+#### 3.2 Save Attribution for Onboarding Signups
+
+**File:** `src/components/onboarding/screens/AccountCreationScreen.tsx`
+
+Add attribution persistence after account creation:
+
+```typescript
+import { getStoredAttribution } from '@/utils/attribution';
+
+// After successful signup, add:
+const attribution = getStoredAttribution();
+if (authData.user && attribution && (attribution.utm_source || attribution.referrer)) {
+  await supabase.from('profiles').update({
+    utm_source: attribution.utm_source,
+    utm_medium: attribution.utm_medium,
+    utm_campaign: attribution.utm_campaign,
+    utm_content: attribution.utm_content,
+    referrer: attribution.referrer,
+    landing_page: attribution.landing_page,
+    attributed_at: new Date().toISOString(),
+  }).eq('user_id', authData.user.id);
+}
+```
 
 ---
 
-## What to Do First
+### Phase 4: Add Country Tracking to Supabase
 
-Start with **Parts 1-3** to get the app running on your phone. This confirms everything works before spending money on the Play Console account.
+#### 4.1 Add Country Column to Profiles
 
-Once you verify the app runs correctly:
-- Do **Part 6** to create your Google Play account ($25 fee)
-- Then proceed with **Parts 4, 5, 7, 8** for subscriptions and full setup
+**Migration SQL:**
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS country_code TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS detected_locale TEXT;
+```
+
+#### 4.2 Capture Country on Signup
+
+Add to both Auth.tsx and AccountCreationScreen.tsx:
+
+```typescript
+const locale = navigator.language || 'en-US';
+const countryCode = locale.split('-')[1] || null;
+
+await supabase.from('profiles').update({
+  detected_locale: locale,
+  country_code: countryCode,
+}).eq('user_id', user.id);
+```
 
 ---
 
-## Information I Need From You
+### Phase 5: Enhanced Drop-off & Churn Tracking
 
-Once you complete certain steps, send me:
+#### 5.1 Add Screen Time Tracking
 
-1. **RevenueCat Android API key** (from Part 4) - I'll update the code
-2. **Android OAuth Client ID** (from Part 5) - I'll update capacitor.config.ts
-3. Any error messages you encounter - I'll help troubleshoot
+**File:** `src/hooks/useAnalytics.tsx`
+
+Track time spent on each screen to identify engagement patterns:
+
+```typescript
+const screenEntryTime = useRef<number>(Date.now());
+const lastScreen = useRef<string>('');
+
+useEffect(() => {
+  const screenName = SCREEN_MAP[location.pathname] || location.pathname;
+  
+  // Track time on previous screen
+  if (lastScreen.current) {
+    const timeSpent = Date.now() - screenEntryTime.current;
+    ReactGA.event('screen_time', {
+      screen_name: lastScreen.current,
+      time_ms: timeSpent,
+      time_seconds: Math.round(timeSpent / 1000),
+    });
+  }
+  
+  lastScreen.current = screenName;
+  screenEntryTime.current = Date.now();
+  
+  trackPageView(location.pathname, screenName);
+}, [location]);
+```
+
+#### 5.2 Track Paywall Outcomes
+
+**File:** `src/components/SubscriptionPaywall.tsx`
+
+Track which plan users select and if they complete purchase:
+
+```typescript
+// When user selects a plan:
+trackPaywallPlanSelected(planType: 'monthly' | 'annual', trigger: string);
+
+// When purchase completes:
+trackPaywallPurchaseComplete(planType, trigger, isPartnerPromo);
+
+// When user abandons at paywall:
+trackPaywallAbandoned(trigger, timeSpentMs);
+```
+
+---
+
+### Phase 6: Weekly Engagement Snapshots
+
+#### 6.1 Trigger Weekly Snapshots
+
+**File:** `src/hooks/useAppStateSync.tsx`
+
+Add logic to fire a weekly engagement snapshot for cohort analysis:
+
+```typescript
+const WEEKLY_SNAPSHOT_KEY = 'regimen_last_engagement_snapshot';
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// On app resume, check if it's been a week:
+const lastSnapshot = localStorage.getItem(WEEKLY_SNAPSHOT_KEY);
+const lastSnapshotTime = lastSnapshot ? parseInt(lastSnapshot) : 0;
+
+if (Date.now() - lastSnapshotTime > ONE_WEEK_MS) {
+  // Fetch user metrics and fire snapshot
+  const metrics = await fetchEngagementMetrics(userId);
+  trackWeeklyEngagementSnapshot({
+    compounds_count: metrics.compounds,
+    doses_last_30d: metrics.doses,
+    photos_count: metrics.photos,
+    current_streak: metrics.streak,
+    days_since_install: getDaysSinceInstall(),
+    subscription_status: subscriptionStatus,
+  });
+  localStorage.setItem(WEEKLY_SNAPSHOT_KEY, Date.now().toString());
+}
+```
+
+---
+
+## Data Flow Diagram
+
+```text
++-------------------+     +------------------+     +-------------------+
+|   User Opens App  | --> | Capture Platform | --> | Set GA4 User      |
+|                   |     | & Version        |     | Properties        |
++-------------------+     +------------------+     +-------------------+
+                                  |
+                                  v
++-------------------+     +------------------+     +-------------------+
+|   User Signs Up   | --> | Capture UTM &    | --> | Save to Supabase  |
+|   (any method)    |     | Country          |     | profiles table    |
++-------------------+     +------------------+     +-------------------+
+                                  |
+                                  v
++-------------------+     +------------------+     +-------------------+
+|   Native: Login   | --> | RevenueCat       | --> | Set Attributes:   |
+|   to RevenueCat   |     | Identify User    |     | email, name, UTM, |
++-------------------+     +------------------+     | country, platform |
+                                                   +-------------------+
+                                  |
+                                  v
++-------------------+     +------------------+     +-------------------+
+|   Subscription    | --> | RevenueCat       | --> | GA4 via Measure-  |
+|   Event           |     | Webhook          |     | ment Protocol     |
++-------------------+     +------------------+     +-------------------+
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/utils/analytics.ts` | Import version from capacitor.config, add platform user property, fix version tracking |
+| `src/utils/featureTracking.ts` | Add version upgrade detection |
+| `src/hooks/useAnalytics.tsx` | Initialize platform property, add screen time tracking |
+| `src/contexts/SubscriptionContext.tsx` | Add country/locale/platform to RevenueCat attributes |
+| `src/pages/Auth.tsx` | Add attribution persistence for Google sign-in |
+| `src/components/onboarding/screens/AccountCreationScreen.tsx` | Add attribution persistence for onboarding |
+| `supabase/functions/revenuecat-webhook/index.ts` | Add platform and version to GA4 events |
+| `src/hooks/useAppStateSync.tsx` | Add weekly engagement snapshot trigger |
+| `src/components/SubscriptionPaywall.tsx` | Add detailed paywall outcome tracking |
+
+**New Migration:**
+- Add `country_code` and `detected_locale` columns to `profiles` table
+
+---
+
+## GA4 Custom Dimensions to Create
+
+After implementation, create these custom dimensions in GA4 Admin:
+
+| Dimension Name | Scope | Parameter |
+|---------------|-------|-----------|
+| User Platform | User | user_platform |
+| App Version | User | app_version |
+| UTM Source | User | first_utm_source |
+| Subscription Status | Event | subscription_status |
+| Plan Type | Event | plan_type |
+
+---
+
+## Expected Outcomes
+
+After implementation, you'll be able to answer:
+
+1. **"How many users are on iOS vs Android vs Web?"** - Filter any report by `user_platform`
+2. **"How many users have upgraded to 1.0.3?"** - See `app_upgraded` events and version distribution
+3. **"Where are my users coming from?"** - Query `profiles.country_code` or RevenueCat's `$countryCode`
+4. **"Which traffic sources convert best?"** - Join `profiles.utm_source` with `subscription_status`
+5. **"Why is GA4 data different from RevenueCat?"** - Platform user property ensures consistent segmentation across both systems
+6. **"Where do users drop off in onboarding?"** - `onboarding_step` events with `step_number` and `funnel_position`
+7. **"What's the profile of a churning user?"** - `subscription_cancelled` events include compounds, doses, photos count
+
+---
+
+## Why Data Might Be Different Between GA4 and RevenueCat
+
+The discrepancy you're seeing (UK/France in GA4 vs US/Canada/Philippines in RevenueCat) is likely caused by:
+
+1. **RevenueCat only tracks paying users** - It shows where your *subscribers* are from
+2. **GA4 tracks all visitors** - Including people who visit but never sign up
+3. **Different data sources** - GA4 uses IP geolocation; RevenueCat uses App Store/Play Store billing address
+
+This plan harmonizes the data by:
+- Adding country to Supabase profiles (single source of truth)
+- Sending platform and country consistently to both GA4 and RevenueCat
+- Using the same user_id across all systems for accurate joining
