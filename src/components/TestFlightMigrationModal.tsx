@@ -14,7 +14,7 @@ const STORAGE_KEYS = {
 };
 
 // Promo code for beta testers
-const BETA_PROMO_CODE = 'BETATHANKS';
+const BETA_PROMO_CODE = 'TRYREGIMEN';
 
 // 7 days in milliseconds
 const REMIND_LATER_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
