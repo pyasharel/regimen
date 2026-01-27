@@ -273,6 +273,29 @@ export default function Auth() {
         if (error) throw error;
         console.log('Successfully signed in with Google');
         trackLogin('google');
+        
+        // Persist attribution for Google sign-in on native
+        if (data?.user) {
+          const attribution = getStoredAttribution();
+          const locale = navigator.language || 'en-US';
+          const countryCode = locale.split('-')[1] || null;
+          
+          if (attribution?.utm_source || attribution?.referrer || countryCode) {
+            await supabase.from('profiles').update({
+              utm_source: attribution?.utm_source || null,
+              utm_medium: attribution?.utm_medium || null,
+              utm_campaign: attribution?.utm_campaign || null,
+              utm_content: attribution?.utm_content || null,
+              referrer: attribution?.referrer || null,
+              landing_page: attribution?.landing_page || null,
+              attributed_at: attribution?.utm_source || attribution?.referrer ? new Date().toISOString() : null,
+              country_code: countryCode,
+              detected_locale: locale,
+            }).eq('user_id', data.user.id);
+            console.log('[Auth] Google Sign-in attribution and country persisted');
+          }
+          clearAttribution();
+        }
       } else {
         // Web: Use OAuth flow with forced account selection
         console.log('Starting web Google Sign-In with account picker');
@@ -349,19 +372,24 @@ export default function Auth() {
         // Welcome email will be sent in checkOnboardingStatus
         trackSignup('email');
         
-        // Persist attribution data to the user's profile
+        // Persist attribution data and country to the user's profile
         const attribution = getStoredAttribution();
-        if (signUpData?.user && attribution && (attribution.utm_source || attribution.referrer)) {
+        const locale = navigator.language || 'en-US';
+        const countryCode = locale.split('-')[1] || null;
+        
+        if (signUpData?.user) {
           await supabase.from('profiles').update({
-            utm_source: attribution.utm_source,
-            utm_medium: attribution.utm_medium,
-            utm_campaign: attribution.utm_campaign,
-            utm_content: attribution.utm_content,
-            referrer: attribution.referrer,
-            landing_page: attribution.landing_page,
-            attributed_at: new Date().toISOString(),
+            utm_source: attribution?.utm_source || null,
+            utm_medium: attribution?.utm_medium || null,
+            utm_campaign: attribution?.utm_campaign || null,
+            utm_content: attribution?.utm_content || null,
+            referrer: attribution?.referrer || null,
+            landing_page: attribution?.landing_page || null,
+            attributed_at: attribution?.utm_source || attribution?.referrer ? new Date().toISOString() : null,
+            country_code: countryCode,
+            detected_locale: locale,
           }).eq('user_id', signUpData.user.id);
-          console.log('[Auth] Attribution data persisted to profile');
+          console.log('[Auth] Attribution and country data persisted to profile');
         }
         // Clear attribution after successful signup
         clearAttribution();

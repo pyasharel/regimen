@@ -1,8 +1,31 @@
 import ReactGA from 'react-ga4';
+import { Capacitor } from '@capacitor/core';
 import { captureAttribution, getStoredAttribution } from './attribution';
+import { appVersion } from '../../capacitor.config';
 
-// App version - could be read from package.json in a real setup
-const APP_VERSION = '1.0.0';
+// App version synced from capacitor.config.ts
+const APP_VERSION = appVersion;
+
+/**
+ * Detects the current platform (ios, android, or web)
+ */
+export const getPlatform = (): 'ios' | 'android' | 'web' => {
+  if (!Capacitor.isNativePlatform()) return 'web';
+  return Capacitor.getPlatform() as 'ios' | 'android';
+};
+
+/**
+ * Sets platform as a persistent GA4 user property.
+ * This allows segmenting reports by iOS/Android/Web.
+ */
+export const setPlatformUserProperty = () => {
+  const platform = getPlatform();
+  ReactGA.gtag('set', 'user_properties', {
+    user_platform: platform,
+    app_version: APP_VERSION,
+  });
+  console.log('[Analytics] Platform user property set:', platform, 'version:', APP_VERSION);
+};
 
 // Initialize Google Analytics with content group and user properties
 export const initGA = (measurementId: string) => {
@@ -11,11 +34,8 @@ export const initGA = (measurementId: string) => {
   // Set content_group to identify this is the APP (not landing page)
   ReactGA.gtag('set', 'content_group', 'app');
   
-  // Set user properties for platform identification
-  ReactGA.gtag('set', 'user_properties', {
-    platform_type: 'app',
-    app_version: APP_VERSION,
-  });
+  // Set platform and version as persistent user properties
+  setPlatformUserProperty();
   
   // Capture and set attribution data
   const attribution = captureAttribution();
@@ -307,6 +327,33 @@ export const trackPaywallDismissed = (trigger: string) => {
     category: 'Paywall',
     action: 'Dismissed',
     label: trigger,
+  });
+};
+
+// Enhanced paywall tracking with detailed outcomes
+export const trackPaywallPlanSelected = (planType: 'monthly' | 'annual', trigger: string) => {
+  ReactGA.event('paywall_plan_selected', {
+    plan_type: planType,
+    trigger,
+    platform: getPlatform(),
+  });
+};
+
+export const trackPaywallPurchaseComplete = (planType: 'monthly' | 'annual', trigger: string, isPartnerPromo: boolean) => {
+  ReactGA.event('paywall_purchase_complete', {
+    plan_type: planType,
+    trigger,
+    is_partner_promo: isPartnerPromo,
+    platform: getPlatform(),
+  });
+};
+
+export const trackPaywallAbandoned = (trigger: string, timeSpentMs: number) => {
+  ReactGA.event('paywall_abandoned', {
+    trigger,
+    time_spent_ms: timeSpentMs,
+    time_spent_seconds: Math.round(timeSpentMs / 1000),
+    platform: getPlatform(),
   });
 };
 
