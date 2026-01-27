@@ -20,7 +20,7 @@ import { persistentStorage, CachedEntitlement, CACHED_ENTITLEMENT_MAX_AGE_MS } f
 
 // RevenueCat configuration - platform-specific API keys
 const REVENUECAT_IOS_KEY = 'appl_uddMVGVjstgaIPpqOpueAFpZWmJ';
-const REVENUECAT_ANDROID_KEY = 'goog_YOUR_ANDROID_KEY_HERE'; // TODO: Replace with actual Android API key from RevenueCat
+const REVENUECAT_ANDROID_KEY = 'goog_jLMtYIMmEzqQDnGVmsjMpRdwfot';
 const ENTITLEMENT_ID = 'Regimen Premium';
 
 // Helper to get platform-specific RevenueCat API key
