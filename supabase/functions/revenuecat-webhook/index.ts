@@ -286,7 +286,21 @@ serve(async (req) => {
     // Skip anonymous RevenueCat IDs - they won't have a profile
     if (!userId || userId.startsWith("$RCAnonymousID")) {
       console.log("[REVENUECAT-WEBHOOK] Skipping anonymous user:", userId);
-      return new Response(JSON.stringify({ success: true, skipped: true }), {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: 'anonymous_user' }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Skip sandbox events - they should not update production profiles
+    // TestFlight purchases are test-only and don't represent real payments
+    if (event.environment === 'SANDBOX') {
+      console.log("[REVENUECAT-WEBHOOK] Skipping sandbox event:", event.type, "for user:", userId);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        skipped: true, 
+        reason: 'sandbox_event' 
+      }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

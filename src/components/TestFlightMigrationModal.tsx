@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight } from 'lucide-react';
-import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
+import { AlertTriangle, Check } from 'lucide-react';
 import { persistentStorage } from '@/utils/persistentStorage';
 import logoIcon from '@/assets/logo-regimen-icon-final.png';
 
@@ -12,11 +10,6 @@ const STORAGE_KEYS = {
   DISMISS_COUNT: 'testflight_modal_dismiss_count',
   MIGRATED: 'testflight_modal_migrated',
 };
-
-// App Store ID for Regimen
-const APP_STORE_ID = '6753005449';
-const APP_STORE_URL_NATIVE = `itms-apps://apps.apple.com/app/id${APP_STORE_ID}`;
-const APP_STORE_URL_WEB = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
 // 7 days in milliseconds
 const REMIND_LATER_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -85,34 +78,15 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
     checkShouldShow();
   }, [isTestFlight]);
 
-  const handleGetApp = async () => {
-    // Close immediately to keep the tap gesture "fresh" for iOS URL opening
+  const handleGotIt = async () => {
     closeModal('migrate');
 
-    // Mark as migrated so we never show again (fire-and-forget; don't await before opening)
-    void persistentStorage.setBoolean(STORAGE_KEYS.MIGRATED, true);
-
+    // Mark as migrated so we never show again
     try {
-      if (Capacitor.isNativePlatform()) {
-        // Use native URL opener (works even with app-bound domain restrictions)
-        await Browser.open({ url: APP_STORE_URL_NATIVE });
-      } else {
-        // Web preview
-        await Browser.open({ url: APP_STORE_URL_WEB });
-      }
+      await persistentStorage.setBoolean(STORAGE_KEYS.MIGRATED, true);
+      console.log('[TestFlightModal] Marked as acknowledged');
     } catch (error) {
-      console.error('[TestFlightModal] Error opening App Store:', error);
-
-      // Fallback: open the HTTPS App Store URL
-      try {
-        if (Capacitor.isNativePlatform()) {
-          await Browser.open({ url: APP_STORE_URL_WEB });
-        } else {
-          await Browser.open({ url: APP_STORE_URL_WEB });
-        }
-      } catch (e) {
-        console.error('[TestFlightModal] Fallback also failed:', e);
-      }
+      console.error('[TestFlightModal] Error marking as acknowledged:', error);
     }
   };
 
@@ -154,7 +128,7 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
     >
       <DialogContent className="max-w-[340px] rounded-3xl border-border/50 bg-card p-6" hideClose>
         <DialogHeader className="space-y-4">
-          {/* Logo and sparkle icon */}
+          {/* Logo and warning icon */}
           <div className="flex justify-center">
             <div className="relative">
               <img 
@@ -162,37 +136,47 @@ export const TestFlightMigrationModal = ({ isTestFlight }: TestFlightMigrationMo
                 alt="Regimen" 
                 className="h-16 w-16 rounded-2xl"
               />
-              <div className="absolute -top-1 -right-1 bg-primary rounded-full p-1">
-                <Sparkles className="h-3 w-3 text-primary-foreground" />
+              <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-1">
+                <AlertTriangle className="h-3 w-3 text-white" />
               </div>
             </div>
           </div>
           
           <DialogTitle className="text-xl font-semibold text-center">
-            We're Live on the App Store! 🎉
+            Your TestFlight Version is Expiring
           </DialogTitle>
           
           <DialogDescription className="text-center text-muted-foreground text-sm leading-relaxed">
-            Regimen is now officially available. Download the App Store version for the best experience and automatic updates.
+            This test version will stop working soon. Please search <span className="font-semibold text-foreground">"Regimen"</span> in the App Store to download the official version with automatic updates.
           </DialogDescription>
         </DialogHeader>
         
-        {/* Reassurance message */}
-        <div className="mt-2 bg-muted/50 rounded-xl p-3 border border-border/30">
+        {/* Important notice about TestFlight purchases */}
+        <div className="mt-2 bg-amber-500/10 rounded-xl p-3 border border-amber-500/30">
           <p className="text-xs text-muted-foreground text-center">
-            <span className="font-medium text-foreground">Your data is safe.</span>
-            {' '}Sign in with the same account and all your compounds, doses, and progress will be there.
+            <span className="font-medium text-foreground">Important:</span>
+            {' '}Any previous purchases in TestFlight were for testing only — you were never charged. You'll need to subscribe in the App Store to unlock full access.
           </p>
+        </div>
+
+        {/* Data reassurance */}
+        <div className="mt-2 bg-muted/50 rounded-xl p-3 border border-border/30">
+          <div className="flex items-start gap-2">
+            <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Your data is safe.</span>
+              {' '}Sign in with the same account and all your compounds, doses, and progress will be there.
+            </p>
+          </div>
         </div>
 
         {/* Action buttons */}
         <div className="mt-4 space-y-2">
           <Button
-            onClick={handleGetApp}
+            onClick={handleGotIt}
             className="w-full h-12 text-base font-medium rounded-xl"
           >
-            Get the Official App
-            <ArrowRight className="ml-2 h-4 w-4" />
+            Got It
           </Button>
           
           <Button
