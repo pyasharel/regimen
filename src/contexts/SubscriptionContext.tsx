@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 import { getStoredAttribution } from '@/utils/attribution';
+import { appVersion } from '../../capacitor.config';
 
 // Partner promotional offer parameters (from signed offer generation)
 export interface PromotionalOfferParams {
@@ -707,6 +708,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
               utm_campaign: attribution.utm_campaign || '',
             });
             console.log('[RevenueCat] UTM attributes set');
+          }
+          
+          // Set platform and app version for cross-platform tracking
+          const platform = Capacitor.getPlatform();
+          await Purchases.setAttributes({
+            platform: platform,
+            app_version: appVersion,
+          });
+          console.log('[RevenueCat] Platform and app_version set:', platform, appVersion);
+          
+          // Set country/locale from browser for geo tracking
+          try {
+            const locale = navigator.language || 'en-US';
+            const countryCode = locale.split('-')[1] || 'Unknown';
+            await Purchases.setAttributes({
+              '$countryCode': countryCode,
+              locale: locale,
+            });
+            console.log('[RevenueCat] Country/locale set:', countryCode, locale);
+          } catch (localeError) {
+            console.warn('[RevenueCat] Could not set country/locale:', localeError);
           }
         } catch (enrichError) {
           console.warn('[RevenueCat] Failed to enrich user details:', enrichError);

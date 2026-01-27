@@ -305,9 +305,11 @@ export type Database = {
           avatar_url: string | null
           beta_access_end_date: string | null
           challenges: string[] | null
+          country_code: string | null
           created_at: string | null
           current_weight: number | null
           current_weight_unit: string | null
+          detected_locale: string | null
           experience_level: string | null
           full_name: string | null
           goal_weight: number | null
@@ -350,9 +352,11 @@ export type Database = {
           avatar_url?: string | null
           beta_access_end_date?: string | null
           challenges?: string[] | null
+          country_code?: string | null
           created_at?: string | null
           current_weight?: number | null
           current_weight_unit?: string | null
+          detected_locale?: string | null
           experience_level?: string | null
           full_name?: string | null
           goal_weight?: number | null
@@ -395,9 +399,11 @@ export type Database = {
           avatar_url?: string | null
           beta_access_end_date?: string | null
           challenges?: string[] | null
+          country_code?: string | null
           created_at?: string | null
           current_weight?: number | null
           current_weight_unit?: string | null
+          detected_locale?: string | null
           experience_level?: string | null
           full_name?: string | null
           goal_weight?: number | null

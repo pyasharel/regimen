@@ -4,6 +4,7 @@
  */
 
 import ReactGA from 'react-ga4';
+import { appVersion } from '../../capacitor.config';
 
 // Feature keys for tracking first-time usage
 export const FEATURE_KEYS = [
@@ -23,6 +24,7 @@ export type FeatureKey = typeof FEATURE_KEYS[number];
 
 const STORAGE_KEY = 'regimen_used_features';
 const INSTALL_DATE_KEY = 'regimen_install_date';
+const LAST_VERSION_KEY = 'regimen_last_app_version';
 
 /**
  * Gets the list of features the user has already used.
@@ -111,10 +113,40 @@ export const getDaysSinceInstall = (): number => {
 };
 
 /**
+ * Checks if the app was upgraded and fires an event if so.
+ * Call this on app initialization to track version adoption.
+ */
+export const checkAndTrackVersionUpgrade = (): void => {
+  const currentVersion = appVersion;
+  const lastVersion = localStorage.getItem(LAST_VERSION_KEY);
+  
+  if (lastVersion && lastVersion !== currentVersion) {
+    // User upgraded!
+    ReactGA.event('app_upgraded', {
+      from_version: lastVersion,
+      to_version: currentVersion,
+      days_since_install: getDaysSinceInstall(),
+    });
+    console.log('[FeatureTracking] App upgraded:', lastVersion, '->', currentVersion);
+  }
+  
+  // Always update the stored version
+  localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+};
+
+/**
+ * Gets the last recorded app version.
+ */
+export const getLastAppVersion = (): string | null => {
+  return localStorage.getItem(LAST_VERSION_KEY);
+};
+
+/**
  * Resets all feature tracking data.
  * Useful for development/testing.
  */
 export const resetFeatureTracking = (): void => {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(INSTALL_DATE_KEY);
+  localStorage.removeItem(LAST_VERSION_KEY);
 };

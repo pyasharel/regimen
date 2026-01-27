@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import { trackSignup } from '@/utils/analytics';
+import { getStoredAttribution, clearAttribution } from '@/utils/attribution';
 
 // Generate doses for onboarding compound
 function generateDosesForOnboarding(
@@ -145,7 +146,12 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
         throw new Error('No user returned from signup');
       }
 
-      // Save onboarding data to profile
+      // Get attribution and locale data
+      const attribution = getStoredAttribution();
+      const locale = navigator.language || 'en-US';
+      const countryCode = locale.split('-')[1] || null;
+
+      // Save onboarding data to profile with attribution and country
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -163,13 +169,32 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           height_unit: data.heightUnit,
           onboarding_completed: true,
           onboarding_completed_at: new Date().toISOString(),
+          // Attribution data
+          utm_source: attribution?.utm_source || null,
+          utm_medium: attribution?.utm_medium || null,
+          utm_campaign: attribution?.utm_campaign || null,
+          utm_content: attribution?.utm_content || null,
+          referrer: attribution?.referrer || null,
+          landing_page: attribution?.landing_page || null,
+          attributed_at: attribution?.utm_source || attribution?.referrer ? new Date().toISOString() : null,
+          // Country/locale tracking
+          country_code: countryCode,
+          detected_locale: locale,
         })
         .eq('user_id', authData.user.id);
 
       if (profileError) {
         console.error('[Onboarding] Profile update error:', profileError);
         // Don't fail the flow for profile update errors
+      } else {
+        console.log('[Onboarding] Profile updated with attribution and country:', { 
+          utm_source: attribution?.utm_source, 
+          country_code: countryCode 
+        });
       }
+      
+      // Clear attribution after successful signup
+      clearAttribution();
 
       // Create compound if medication was set up
       if (data.medication) {

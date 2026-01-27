@@ -22,13 +22,23 @@ const calculateNetRevenue = (priceInCents: number): number => {
 };
 
 /**
+ * Extracts platform from RevenueCat store identifier
+ */
+const getPlatformFromStore = (store: string | undefined): 'ios' | 'android' | 'web' => {
+  if (store === 'APP_STORE') return 'ios';
+  if (store === 'PLAY_STORE') return 'android';
+  return 'web';
+};
+
+/**
  * Sends server-side GA4 events using the Measurement Protocol.
  * This ensures subscription lifecycle events are tracked even when users are outside the app.
  */
 const trackGA4Event = async (
   userId: string, 
   eventName: string, 
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  store?: string
 ) => {
   const measurementId = Deno.env.get("GA4_MEASUREMENT_ID");
   const apiSecret = Deno.env.get("GA4_API_SECRET");
@@ -37,6 +47,15 @@ const trackGA4Event = async (
     console.log("[REVENUECAT-WEBHOOK] GA4 credentials not configured, skipping analytics");
     return;
   }
+  
+  // Add platform and app version to all events
+  const platform = getPlatformFromStore(store);
+  const enrichedParams = {
+    ...params,
+    platform,
+    source: "revenuecat_webhook",
+    engagement_time_msec: 1, // Required for GA4 MP
+  };
   
   try {
     const response = await fetch(
@@ -49,11 +68,7 @@ const trackGA4Event = async (
           user_id: userId,
           events: [{
             name: eventName,
-            params: {
-              ...params,
-              source: "revenuecat_webhook",
-              engagement_time_msec: 1, // Required for GA4 MP
-            }
+            params: enrichedParams
           }]
         })
       }
@@ -62,7 +77,7 @@ const trackGA4Event = async (
     if (!response.ok) {
       console.error("[REVENUECAT-WEBHOOK] GA4 tracking failed:", await response.text());
     } else {
-      console.log(`[REVENUECAT-WEBHOOK] GA4 event sent: ${eventName}`);
+      console.log(`[REVENUECAT-WEBHOOK] GA4 event sent: ${eventName} (platform: ${platform})`);
     }
   } catch (error) {
     console.error("[REVENUECAT-WEBHOOK] GA4 tracking error:", error);
@@ -301,13 +316,13 @@ serve(async (req) => {
           : null;
         console.log("[REVENUECAT-WEBHOOK] Setting active subscription:", { subscriptionType, subscriptionEndDate });
         
-        // Track subscription started in GA4
+        // Track subscription started in GA4 with platform
         await trackGA4Event(userId, "subscription_started", {
           plan_type: subscriptionType,
           is_trial: event.period_type === "TRIAL",
           price: event.price || 0,
           currency: event.currency || "USD",
-        });
+        }, event.store);
 
         // Update partner redemption with initial revenue
         await updatePartnerRedemptionRevenue(
@@ -330,11 +345,11 @@ serve(async (req) => {
           : null;
         console.log("[REVENUECAT-WEBHOOK] Subscription renewed:", { subscriptionType, subscriptionEndDate });
         
-        // Track renewal in GA4
+        // Track renewal in GA4 with platform
         await trackGA4Event(userId, "subscription_renewed", {
           plan_type: subscriptionType,
           renewal_count: event.renewal_number || 1,
-        });
+        }, event.store);
 
         // Update partner redemption with renewal revenue (only if within first year)
         await updatePartnerRedemptionRevenue(
@@ -370,7 +385,7 @@ serve(async (req) => {
         const engagementMetrics = await fetchUserEngagementMetrics(supabase, userId);
         const daysActive = calculateDaysActive(event.purchased_at_ms, Date.now());
         
-        // Track cancellation with engagement data in GA4
+        // Track cancellation with engagement data in GA4 including platform
         await trackGA4Event(userId, "subscription_cancelled", {
           plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
           cancel_reason: event.cancel_reason || "unknown",
@@ -379,7 +394,7 @@ serve(async (req) => {
           compounds_count: engagementMetrics.compounds_count,
           doses_last_30d: engagementMetrics.doses_last_30d,
           photos_count: engagementMetrics.photos_count,
-        });
+        }, event.store);
         break;
       }
 
@@ -392,7 +407,7 @@ serve(async (req) => {
         const engagementMetrics = await fetchUserEngagementMetrics(supabase, userId);
         const daysActive = calculateDaysActive(event.original_purchase_date_ms, Date.now());
         
-        // Track expiration in GA4
+        // Track expiration in GA4 with platform
         await trackGA4Event(userId, "subscription_expired", {
           plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
           was_trial: event.period_type === "TRIAL",
@@ -401,7 +416,7 @@ serve(async (req) => {
           compounds_count: engagementMetrics.compounds_count,
           doses_last_30d: engagementMetrics.doses_last_30d,
           photos_count: engagementMetrics.photos_count,
-        });
+        }, event.store);
         break;
       }
 
