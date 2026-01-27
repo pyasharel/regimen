@@ -5,7 +5,8 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
-// TestFlight migration modal removed - modal was not linking correctly to App Store
+import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
+import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +95,9 @@ export const TodayScreen = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
+  
+  // TestFlight migration modal state
+  const [isTestFlight, setIsTestFlight] = useState(false);
   
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
@@ -227,7 +231,18 @@ export const TodayScreen = () => {
     initializeEngagementNotifications();
   }, []);
 
-  // TestFlight migration modal removed - no longer needed
+  // Check if running on TestFlight for migration modal
+  useEffect(() => {
+    TestFlightDetector.isTestFlight()
+      .then(result => {
+        console.log('[TodayScreen] TestFlight detection result:', result.isTestFlight);
+        setIsTestFlight(result.isTestFlight);
+      })
+      .catch(error => {
+        console.log('[TodayScreen] TestFlight detection error:', error);
+        setIsTestFlight(false);
+      });
+  }, []);
 
   const loadUserName = async () => {
     try {
@@ -1556,6 +1571,8 @@ export const TodayScreen = () => {
         onDoseUpdated={loadDoses}
       />
 
+      {/* TestFlight Migration Modal */}
+      <TestFlightMigrationModal isTestFlight={isTestFlight} />
 
     </div>
   );
