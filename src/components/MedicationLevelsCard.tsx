@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Info } from "lucide-react";
+import { Activity, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 interface Compound {
   id: string;
   name: string;
@@ -39,6 +39,7 @@ interface MedicationLevelsCardProps {
 }
 
 const STORAGE_KEY = 'selectedLevelsCompound';
+const COLLAPSED_KEY = 'medicationLevelsCollapsed';
 
 // Y-axis formatting helpers (ported from CompoundDetailScreenV2)
 const formatYAxis = (value: number) => {
@@ -69,7 +70,19 @@ export const MedicationLevelsCard = ({
   const [selectedCompoundId, setSelectedCompoundId] = useState<string | null>(null);
   const [levelAnimating, setLevelAnimating] = useState(false);
   const [previousLevel, setPreviousLevel] = useState<number | null>(null);
-
+  
+  // Collapsible state with localStorage persistence
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem(COLLAPSED_KEY);
+    return saved === 'true';
+  });
+  
+  const toggleCollapsed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newValue = !isCollapsed;
+    setIsCollapsed(newValue);
+    localStorage.setItem(COLLAPSED_KEY, String(newValue));
+  };
   // Get compounds that have half-life data
   const compoundsWithHalfLife = useMemo(() => {
     return compounds.filter(c => c.is_active && getHalfLifeData(c.name));
@@ -252,215 +265,236 @@ export const MedicationLevelsCard = ({
   };
 
   return (
-    <div 
-      className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-      onClick={handleCardTap}
-    >
-      <div className="p-4">
-        {/* Compact header with compound selector, level, and Now label */}
-        <div className="flex items-center justify-between mb-2">
-          <div 
-            className="flex-shrink-0" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {compoundsWithHalfLife.length > 1 ? (
-              <Select 
-                value={selectedCompoundId || ''} 
-                onValueChange={handleCompoundChange}
-              >
-                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
-                  <div className="flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-primary" />
-                    <SelectValue placeholder="Select medication" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="bg-popover border border-border z-50">
-                  {compoundsWithHalfLife.map(compound => (
-                    <SelectItem key={compound.id} value={compound.id} className="text-sm">
-                      {compound.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : selectedCompound ? (
-              <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
-                <Activity className="w-3.5 h-3.5 text-primary" />
-                <span>{selectedCompound.name}</span>
-              </div>
-            ) : null}
-          </div>
-          
-          {/* Right: Now label + current level stacked vertically */}
-          <div className="flex flex-col items-end gap-0.5">
-            {/* Top row: Now label + info icon */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button 
-                    className="p-1 rounded-full hover:bg-muted transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent 
-                  side="top" 
-                  className="w-64 text-xs bg-popover border border-border p-3"
-                  onClick={(e) => e.stopPropagation()}
+    <Collapsible open={!isCollapsed}>
+      <div 
+        className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+        onClick={handleCardTap}
+      >
+        <div className="p-4 pb-2">
+          {/* Compact header with compound selector, level, chevron toggle */}
+          <div className="flex items-center justify-between">
+            <div 
+              className="flex-shrink-0" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              {compoundsWithHalfLife.length > 1 ? (
+                <Select 
+                  value={selectedCompoundId || ''} 
+                  onValueChange={handleCompoundChange}
                 >
-                  <p className="text-muted-foreground leading-relaxed">
-                    Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
-                  </p>
-                </PopoverContent>
-              </Popover>
+                  <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
+                    <div className="flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-primary" />
+                      <SelectValue placeholder="Select medication" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border border-border z-50">
+                    {compoundsWithHalfLife.map(compound => (
+                      <SelectItem key={compound.id} value={compound.id} className="text-sm">
+                        {compound.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : selectedCompound ? (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                  <span>{selectedCompound.name}</span>
+                </div>
+              ) : null}
             </div>
             
-            {/* Bottom row: Current level + half-life */}
-            {currentLevel && (
-              <span className="text-xs text-muted-foreground">
-                ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
-                {halfLifeData && (
-                  <span className="text-muted-foreground/70"> · t½ {formatHalfLife(halfLifeData.halfLifeHours)}</span>
+            {/* Right: Now label + current level + chevron toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-0.5">
+                {/* Top row: Now label + info icon */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button 
+                        className="p-1 rounded-full hover:bg-muted transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      side="top" 
+                      className="w-64 text-xs bg-popover border border-border p-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <p className="text-muted-foreground leading-relaxed">
+                        Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                {/* Bottom row: Current level + half-life */}
+                {currentLevel && (
+                  <span className="text-xs text-muted-foreground">
+                    ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+                    {halfLifeData && (
+                      <span className="text-muted-foreground/70"> · t½ {formatHalfLife(halfLifeData.halfLifeHours)}</span>
+                    )}
+                  </span>
                 )}
-              </span>
-            )}
+              </div>
+              
+              {/* Chevron toggle */}
+              <button
+                onClick={toggleCollapsed}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+              >
+                {isCollapsed ? (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Chart area */}
-        {currentLevel && takenDosesForCalc.length > 0 ? (
-          <div>
-            {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
-            {chartData.length > 0 && (
-              <div className="h-32 -mx-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                    <defs>
-                      {/* Exact gradients from CompoundDetailScreenV2 */}
-                      <linearGradient id="levelGradientPastCard" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
-                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="levelGradientFutureCard" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                        <stop offset="40%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
-                      </linearGradient>
-                      <linearGradient id="futureStrokeGradientCard" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
-                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                      </linearGradient>
-                      <filter id="currentPointGlowCard" x="-100%" y="-100%" width="300%" height="300%">
-                        <feGaussianBlur stdDeviation="4" result="coloredBlur">
-                          <animate attributeName="stdDeviation" values="3;6;3" dur="2s" repeatCount="indefinite" />
-                        </feGaussianBlur>
-                        <feMerge>
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
-                    </defs>
-                    <YAxis 
-                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
-                      tickLine={false}
-                      axisLine={false}
-                      domain={[0, yAxisMax]}
-                      tickFormatter={formatYAxis}
-                      width={28}
-                      tickCount={4}
-                    />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
-                      tickLine={false}
-                      axisLine={false}
-                      interval="preserveStartEnd"
-                      tickMargin={4}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-                              <p className="text-xs text-muted-foreground mb-0.5">
-                                {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
-                              </p>
-                              <p className="text-sm font-semibold text-primary">
-                                ~{data.absoluteLevelFormatted} {selectedCompound?.dose_unit}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {data.percentOfPeak}% of peak
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    {/* Past levels - solid line */}
-                    <Area
-                      type="monotone"
-                      dataKey="pastLevel"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      fill="url(#levelGradientPastCard)"
-                      isAnimationActive={false}
-                      connectNulls={false}
-                    />
-                    {/* Future levels - dotted line */}
-                    <Area
-                      type="monotone"
-                      dataKey="futureLevel"
-                      stroke="url(#futureStrokeGradientCard)"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 2"
-                      fill="url(#levelGradientFutureCard)"
-                      isAnimationActive={false}
-                      connectNulls={false}
-                    />
-                    {/* Hidden area for tooltip interaction */}
-                    <Area
-                      type="monotone"
-                      dataKey="level"
-                      stroke="transparent"
-                      strokeWidth={0}
-                      fill="transparent"
-                      isAnimationActive={false}
-                    />
-                    {/* Current point with animated glow */}
-                    {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
-                      <ReferenceDot
-                        x={chartData[nowIndex].date}
-                        y={chartData[nowIndex].level}
-                        r={6}
-                        fill="hsl(var(--primary))"
-                        stroke="hsl(var(--background))"
-                        strokeWidth={2}
-                        filter="url(#currentPointGlowCard)"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          values="1;0.7;1"
-                          dur="2s"
-                          repeatCount="indefinite"
+        {/* Collapsible Chart area */}
+        <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+          <div className="px-4 pb-4">
+            {currentLevel && takenDosesForCalc.length > 0 ? (
+              <div>
+                {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
+                {chartData.length > 0 && (
+                  <div className="h-32 -mx-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                        <defs>
+                          {/* Exact gradients from CompoundDetailScreenV2 */}
+                          <linearGradient id="levelGradientPastCard" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                            <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                          </linearGradient>
+                          <linearGradient id="levelGradientFutureCard" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                            <stop offset="40%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
+                          </linearGradient>
+                          <linearGradient id="futureStrokeGradientCard" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
+                            <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                          </linearGradient>
+                          <filter id="currentPointGlowCard" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="4" result="coloredBlur">
+                              <animate attributeName="stdDeviation" values="3;6;3" dur="2s" repeatCount="indefinite" />
+                            </feGaussianBlur>
+                            <feMerge>
+                              <feMergeNode in="coloredBlur"/>
+                              <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                          </filter>
+                        </defs>
+                        <YAxis 
+                          tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                          tickLine={false}
+                          axisLine={false}
+                          domain={[0, yAxisMax]}
+                          tickFormatter={formatYAxis}
+                          width={28}
+                          tickCount={4}
                         />
-                      </ReferenceDot>
-                    )}
-                  </AreaChart>
-                </ResponsiveContainer>
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                          tickLine={false}
+                          axisLine={false}
+                          interval="preserveStartEnd"
+                          tickMargin={4}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+                                  <p className="text-xs text-muted-foreground mb-0.5">
+                                    {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
+                                  </p>
+                                  <p className="text-sm font-semibold text-primary">
+                                    ~{data.absoluteLevelFormatted} {selectedCompound?.dose_unit}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {data.percentOfPeak}% of peak
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        {/* Past levels - solid line */}
+                        <Area
+                          type="monotone"
+                          dataKey="pastLevel"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={2}
+                          fill="url(#levelGradientPastCard)"
+                          isAnimationActive={false}
+                          connectNulls={false}
+                        />
+                        {/* Future levels - dotted line */}
+                        <Area
+                          type="monotone"
+                          dataKey="futureLevel"
+                          stroke="url(#futureStrokeGradientCard)"
+                          strokeWidth={1.5}
+                          strokeDasharray="4 2"
+                          fill="url(#levelGradientFutureCard)"
+                          isAnimationActive={false}
+                          connectNulls={false}
+                        />
+                        {/* Hidden area for tooltip interaction */}
+                        <Area
+                          type="monotone"
+                          dataKey="level"
+                          stroke="transparent"
+                          strokeWidth={0}
+                          fill="transparent"
+                          isAnimationActive={false}
+                        />
+                        {/* Current point with animated glow */}
+                        {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
+                          <ReferenceDot
+                            x={chartData[nowIndex].date}
+                            y={chartData[nowIndex].level}
+                            r={6}
+                            fill="hsl(var(--primary))"
+                            stroke="hsl(var(--background))"
+                            strokeWidth={2}
+                            filter="url(#currentPointGlowCard)"
+                          >
+                            <animate
+                              attributeName="opacity"
+                              values="1;0.7;1"
+                              dur="2s"
+                              repeatCount="indefinite"
+                            />
+                          </ReferenceDot>
+                        )}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                <p>Log doses to track levels</p>
               </div>
             )}
           </div>
-        ) : (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            <p>Log doses to track levels</p>
-          </div>
-        )}
+        </CollapsibleContent>
       </div>
-    </div>
+    </Collapsible>
   );
 };
