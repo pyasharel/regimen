@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scale, Check, Pencil, ListChecks } from "lucide-react";
-import { format, isToday } from "date-fns";
+import { Scale, Check, Pencil, ListChecks, CalendarClock } from "lucide-react";
+import { format, isToday, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
@@ -42,6 +42,11 @@ export const QuickStatsDashboard = ({
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [nextDose, setNextDose] = useState<{
+    compoundName: string;
+    daysUntil: number;
+    date: string;
+  } | null>(null);
 
   // Only show dashboard when viewing today
   const isViewingToday = isToday(selectedDate);
@@ -103,6 +108,48 @@ export const QuickStatsDashboard = ({
     loadUnit();
   }, []);
 
+  // Load next dose if no doses today
+  useEffect(() => {
+    if (isViewingToday && doses.length === 0) {
+      loadNextDose();
+    } else {
+      setNextDose(null);
+    }
+  }, [isViewingToday, doses.length]);
+
+  const loadNextDose = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      
+      const { data } = await supabase
+        .from('doses')
+        .select('scheduled_date, compound_id, compounds(name)')
+        .eq('user_id', user.id)
+        .eq('taken', false)
+        .eq('skipped', false)
+        .gt('scheduled_date', today)
+        .order('scheduled_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        const scheduledDate = new Date(data.scheduled_date + 'T00:00:00');
+        const daysUntil = differenceInDays(scheduledDate, new Date());
+        const compoundData = data.compounds as { name: string } | null;
+        setNextDose({
+          compoundName: compoundData?.name || 'Dose',
+          daysUntil: Math.max(1, daysUntil),
+          date: data.scheduled_date
+        });
+      }
+    } catch (error) {
+      console.error('Error loading next dose:', error);
+    }
+  };
+
   // Calculate doses remaining for today only
   const dosesRemaining = useMemo(() => {
     if (!isViewingToday) return 0;
@@ -128,7 +175,7 @@ export const QuickStatsDashboard = ({
   };
 
   // Only show dashboard when viewing today and there's something to show
-  if (!isViewingToday || (totalDoses === 0 && !currentWeight)) {
+  if (!isViewingToday || (totalDoses === 0 && !nextDose && !currentWeight)) {
     return null;
   }
 
@@ -136,11 +183,11 @@ export const QuickStatsDashboard = ({
     <>
       <div className="mx-4 mb-3">
         <div className="flex items-stretch gap-2">
-          {/* Doses for Today */}
-          {totalDoses > 0 && (
+          {/* Doses for Today or Next Dose */}
+          {totalDoses > 0 ? (
             <button
               onClick={onScrollToDoses}
-              className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
+              className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
             >
               {allDone ? (
                 <>
@@ -156,7 +203,7 @@ export const QuickStatsDashboard = ({
                 <>
                   <div className="flex items-center gap-1.5">
                     <ListChecks className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-lg font-bold text-foreground">{dosesRemaining}</span>
+                    <span className="text-base font-bold text-foreground">{dosesRemaining}</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                     doses today
@@ -164,12 +211,27 @@ export const QuickStatsDashboard = ({
                 </>
               )}
             </button>
-          )}
+          ) : nextDose ? (
+            <button
+              onClick={onScrollToDoses}
+              className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
+            >
+              <div className="flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground truncate max-w-[80px]">
+                  {nextDose.compoundName}
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                {nextDose.daysUntil === 1 ? 'tomorrow' : `in ${nextDose.daysUntil}d`}
+              </span>
+            </button>
+          ) : null}
 
           {/* Current Weight */}
           <button
             onClick={() => setShowWeightModal(true)}
-            className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
+            className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
           >
             {currentWeight ? (
               <>
