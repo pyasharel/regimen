@@ -1,243 +1,140 @@
 
 
-# Four-Card Ultra-Thin Dashboard Plan
+# Remove Dashboard & Fix Calendar Disconnect
 
 ## Summary
 
-This plan implements an ultra-compact four-card horizontal dashboard matching the MyStack screen's single-line button style (~36px height). The design prioritizes information density while maintaining elegance.
+This plan removes the `QuickStatsDashboard` component entirely and makes the `MedicationLevelsCard` only display when viewing "today". This fixes the calendar disconnect issue where changing dates didn't affect these components.
 
 ---
 
-## Design Decisions
+## Changes Overview
 
-### Card Selection & Reasoning
+### What Gets Removed
+- **QuickStatsDashboard component** - Delete the file and remove all references
+- The 4-card dashboard (Streak, Doses, Adherence, Weight) will no longer appear
 
-| Card | Value Proposition | Tap Action |
-|------|-------------------|------------|
-| **Streak** | Motivational - celebrates consistency, emotional hook | None (celebratory) |
-| **Doses** | Actionable - tells user what needs attention NOW | Scroll to doses |
-| **Adherence %** | Performance metric - "how am I doing this week?" | Navigate to Progress |
-| **Weight** | Health tracking - quick check-in | Open weight modal |
-
-### Why Include Both Streak AND Adherence?
-
-These measure **different things**:
-- **Streak** = consecutive days with at least one dose logged (binary per day)
-- **Adherence** = percentage of scheduled doses taken over 7 days (precision metric)
-
-Example: A user could have a 30-day streak but 85% adherence (missed a few doses on multi-dose days). Or 100% adherence with a 2-day streak (just started). Both metrics tell different stories.
-
-### Why Not a Dynamic 4th Card?
-
-While creative, a dynamic card (illustrations, goals) adds complexity without clear actionable value. The four metrics chosen are all **quantifiable** and **glanceable** - matching the dashboard's purpose. If goals were universal, it would work, but many users haven't set one.
-
----
-
-## Visual Design
-
-### Ultra-Thin Styling (from MyStack)
-
-```jsx
-// Single-line card: ~36px height
-<button className="rounded-lg bg-card border border-border/50 px-3 py-2 
-  hover:scale-[1.02] active:scale-[0.97] transition-transform">
-  <div className="flex items-center gap-1.5 justify-center">
-    <Icon className="w-3.5 h-3.5 text-primary" />
-    <span className="text-xs font-semibold">Value</span>
-  </div>
-</button>
-```
-
-### Layout
-
-```text
-+----------------------------------------------------------------+
-|  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐                        |
-|  │🔥 5  │  │📋 3  │  │92%   │  │158 lb│                        |
-|  └──────┘  └──────┘  └──────┘  └──────┘                        |
-+----------------------------------------------------------------+
-   Streak    Doses     Adh.     Weight
-   
-Height: ~36px (vs current ~56px = 35% reduction)
-```
-
-### Card States
-
-| Card | Normal State | Special State |
-|------|--------------|---------------|
-| Streak | "🔥 5" | "🔥 0" (still show, motivates restart) |
-| Doses | "3 today" | "✓ Done" (all complete) or "Next 2d" (no doses today) |
-| Adherence | "92%" | "—" if no data yet |
-| Weight | "158 lb" | "Log" (no weight recorded) |
+### What Gets Fixed
+- **MedicationLevelsCard** will only show when `selectedDate` is today
+- When users change the calendar date, both the dashboard and levels card will disappear, leaving only the doses list for that date
 
 ---
 
 ## Technical Implementation
 
-### File: `src/components/QuickStatsDashboard.tsx`
+### 1. Delete QuickStatsDashboard File
 
-**Props (add streak data):**
+Remove: `src/components/QuickStatsDashboard.tsx`
+
+### 2. Update TodayScreen.tsx
+
+**Remove imports:**
 ```typescript
-interface QuickStatsDashboardProps {
-  doses: Dose[];
-  compounds: Compound[];
-  selectedDate: Date;
-  onScrollToDoses: () => void;
-  onWeightUpdated: () => void;
-}
+// DELETE this line:
+import { QuickStatsDashboard } from "@/components/QuickStatsDashboard";
 ```
 
-**New Data Fetching:**
-
-1. **Streak** - Use existing `useStreaks` hook
-2. **Adherence** - Calculate from doses table (last 7 days)
-
-```typescript
-import { useStreaks } from "@/hooks/useStreaks";
-import { useNavigate } from "react-router-dom";
-
-// Inside component
-const { data: stats } = useStreaks();
-const currentStreak = stats?.current_streak || 0;
-
-// Calculate adherence
-const [adherenceRate, setAdherenceRate] = useState<number | null>(null);
-
-useEffect(() => {
-  loadAdherence();
-}, []);
-
-const loadAdherence = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
-
-  const { data: doses } = await supabase
-    .from('doses')
-    .select('taken')
-    .eq('user_id', user.id)
-    .gte('scheduled_date', sevenDaysAgoStr);
-
-  if (doses && doses.length > 0) {
-    const taken = doses.filter(d => d.taken).length;
-    setAdherenceRate(Math.round((taken / doses.length) * 100));
-  }
-};
-```
-
-**UI Structure (4 cards):**
-
+**Remove component usage (lines ~1106-1113):**
 ```jsx
-<div className="mx-4 mb-3">
-  <div className="grid grid-cols-4 gap-2">
-    {/* Streak */}
-    <div className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5">
-      <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
-      <span className="text-xs font-bold text-foreground">{currentStreak}</span>
-    </div>
+// DELETE this entire block:
+<QuickStatsDashboard
+  doses={doses}
+  compounds={compoundsForLevels}
+  selectedDate={selectedDate}
+  onScrollToDoses={scrollToDoses}
+  onWeightUpdated={loadLevelsData}
+/>
+```
 
-    {/* Doses */}
-    <button 
-      onClick={onScrollToDoses}
-      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
-    >
-      {dosesRemaining > 0 ? (
-        <>
-          <ListChecks className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-bold text-foreground">{dosesRemaining}</span>
-        </>
-      ) : totalDoses > 0 ? (
-        <>
-          <Check className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-semibold text-primary">Done</span>
-        </>
-      ) : nextDose ? (
-        <>
-          <CalendarClock className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-semibold text-foreground">{nextDose.daysUntil}d</span>
-        </>
-      ) : null}
-    </button>
+**Add date check for MedicationLevelsCard (line ~1116):**
+```jsx
+// BEFORE:
+<MedicationLevelsCard 
+  compounds={compoundsForLevels}
+  doses={dosesForLevels}
+/>
 
-    {/* Adherence */}
-    <button 
-      onClick={() => navigate('/progress')}
-      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
-    >
-      <TrendingUp className="w-3.5 h-3.5 text-primary" />
-      <span className="text-xs font-bold text-foreground">
-        {adherenceRate !== null ? `${adherenceRate}%` : '—'}
-      </span>
-    </button>
+// AFTER:
+{isToday(selectedDate) && (
+  <MedicationLevelsCard 
+    compounds={compoundsForLevels}
+    doses={dosesForLevels}
+  />
+)}
+```
 
-    {/* Weight */}
-    <button 
-      onClick={() => setShowWeightModal(true)}
-      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
-    >
-      <Scale className="w-3.5 h-3.5 text-primary" />
-      <span className="text-xs font-bold text-foreground">
-        {currentWeight ? `${Math.round(currentWeight)}` : 'Log'}
-      </span>
-    </button>
-  </div>
-</div>
+**Add import for isToday (if not already present):**
+```typescript
+import { isToday } from 'date-fns';
 ```
 
 ---
 
-## Streak Badge Behavior
+## Visual Flow After Changes
 
-**Keep the header streak badge** (`<StreakBadge />` in TodayScreen greeting). This provides:
-- Prominent celebration in the greeting
-- Dashboard streak is more compact/functional
+### When viewing TODAY:
+```text
+┌──────────────────────────────────┐
+│  Good morning, Mike    🔥 5     │  ← Streak badge stays in greeting
+├──────────────────────────────────┤
+│  [Calendar Week View]            │
+├──────────────────────────────────┤
+│  [Medication Levels Card]        │  ← Only shows for today
+├──────────────────────────────────┤
+│  Morning                         │
+│    ○ Tirzepatide 7.5mg          │
+│  Evening                         │
+│    ○ Vitamin D 5000 IU          │
+└──────────────────────────────────┘
+```
 
-The two serve different purposes:
-- **Header badge** = Celebratory, personal ("Hi Mike 🔥5")
-- **Dashboard streak** = Glanceable metric alongside other stats
+### When viewing PAST/FUTURE date:
+```text
+┌──────────────────────────────────┐
+│  Good morning, Mike    🔥 5     │
+├──────────────────────────────────┤
+│  [Calendar Week View]            │
+├──────────────────────────────────┤
+│  Morning                         │  ← Doses immediately visible
+│    ✓ Tirzepatide 7.5mg          │
+│  Evening                         │
+│    ✓ Vitamin D 5000 IU          │
+└──────────────────────────────────┘
+```
+
+---
+
+## What Remains for Quick Access
+
+| Feature | Location | Access Method |
+|---------|----------|---------------|
+| Streak | Greeting header | Always visible |
+| Weight logging | FAB "Log Today" drawer | Tap + button → Weight |
+| Progress/Adherence | Bottom navigation | "Progress" tab |
+| Doses | Main screen | Immediately visible |
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/QuickStatsDashboard.tsx` | Complete rewrite with 4-card grid, streak hook, adherence calc |
+| File | Action |
+|------|--------|
+| `src/components/QuickStatsDashboard.tsx` | **DELETE** |
+| `src/components/TodayScreen.tsx` | Remove import, remove component, add conditional for MedicationLevelsCard |
 
 ---
 
-## Height Comparison
+## Benefits
 
-| State | Before | After |
-|-------|--------|-------|
-| Dashboard height | ~56px | ~36px |
-| Reduction | - | **36%** |
-
----
-
-## Edge Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| No streak | Show "🔥 0" |
-| No doses today, future dose exists | Show "Next Xd" |
-| No doses at all | Hide doses card |
-| No adherence data | Show "—" |
-| No weight logged | Show "Log" |
-| Viewing past/future date | Hide entire dashboard |
+1. **Reduced cognitive load** - No unexplained numbers
+2. **Calendar consistency** - Everything updates when date changes
+3. **More space for doses** - Primary action now immediately visible
+4. **Cleaner UI** - Less visual noise
+5. **Streak preserved** - Still celebrated in the greeting header
 
 ---
 
-## Testing Checklist
+## Rollback Path
 
-1. Verify all 4 cards render in a single row on mobile
-2. Test streak number matches header badge
-3. Confirm adherence % calculates correctly
-4. Test tap actions: scroll to doses, open weight modal, navigate to progress
-5. Check "All Done" state shows correctly
-6. Test "Next Xd" when no doses today
-7. Verify ultra-thin height (~36px) is achieved
+If you want to bring back a dashboard later, the `MedicationLevelsCard` pattern (with date-aware conditional rendering) can be applied to any future engagement components.
 
