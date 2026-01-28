@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Capacitor } from '@capacitor/core';
 
 interface Compound {
   id: string;
@@ -223,12 +222,12 @@ export const MedicationLevelsCard = ({
 
   return (
     <div 
-      className="mx-4 mb-4 rounded-2xl bg-gradient-to-br from-primary/[0.08] via-primary/[0.04] to-transparent border border-primary/15 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+      className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
       onClick={handleCardTap}
     >
-      <div className="p-3">
+      <div className="p-4">
         {/* Header with compound selector and Today label */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <div 
             className="flex-1" 
             onClick={(e) => e.stopPropagation()}
@@ -238,9 +237,9 @@ export const MedicationLevelsCard = ({
                 value={selectedCompoundId || ''} 
                 onValueChange={handleCompoundChange}
               >
-                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-primary/10 transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
+                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
                   <div className="flex items-center gap-1.5">
-                    <Activity className="w-3 h-3 text-primary" />
+                    <Activity className="w-3.5 h-3.5 text-primary" />
                     <SelectValue placeholder="Select medication" />
                   </div>
                 </SelectTrigger>
@@ -254,18 +253,18 @@ export const MedicationLevelsCard = ({
               </Select>
             ) : selectedCompound ? (
               <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
-                <Activity className="w-3 h-3 text-primary" />
+                <Activity className="w-3.5 h-3.5 text-primary" />
                 <span>{selectedCompound.name}</span>
               </div>
             ) : null}
           </div>
           
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Today</span>
+            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
             <Popover>
               <PopoverTrigger asChild>
                 <button 
-                  className="p-1 rounded-full hover:bg-primary/10 transition-colors"
+                  className="p-1 rounded-full hover:bg-muted transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="w-3.5 h-3.5 text-muted-foreground" />
@@ -273,66 +272,67 @@ export const MedicationLevelsCard = ({
               </PopoverTrigger>
               <PopoverContent 
                 side="top" 
-                className="w-56 text-xs bg-popover border border-border p-3"
+                className="w-64 text-xs bg-popover border border-border p-3"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-muted-foreground">
-                  Estimated levels based on half-life. Tap for detailed charts.
+                <p className="text-muted-foreground leading-relaxed">
+                  Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
                 </p>
               </PopoverContent>
             </Popover>
           </div>
         </div>
 
-        {/* Level display - compact inline */}
+        {/* Level display and chart */}
         {currentLevel && takenDosesForCalc.length > 0 ? (
-          <div className="space-y-2">
-            {/* Inline stats row */}
-            <div className="flex items-baseline gap-2 flex-wrap">
+          <div className="space-y-3">
+            {/* Stats row */}
+            <div className="flex items-baseline gap-3">
               <span 
-                className={`text-2xl font-bold text-primary transition-all duration-300 ${
+                className={`text-3xl font-bold text-primary transition-all duration-300 ${
                   levelAnimating ? 'scale-105' : ''
                 }`}
               >
                 {Math.round(currentLevel.percentOfPeak)}%
               </span>
-              <span className="text-xs text-muted-foreground">
-                ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
-              </span>
-              {halfLifeData && (
-                <>
-                  <span className="text-muted-foreground/40">·</span>
-                  <span className="text-xs text-muted-foreground/70">
-                    t½ {formatHalfLife(halfLifeData.halfLifeHours)}
-                  </span>
-                </>
-              )}
+              <div className="flex items-baseline gap-2 text-xs text-muted-foreground">
+                <span>~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}</span>
+                {halfLifeData && (
+                  <>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className="text-muted-foreground/70">
+                      t½ {formatHalfLife(halfLifeData.halfLifeHours)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
             
-            {/* Enhanced chart with gradients matching CompoundDetailScreenV2 */}
+            {/* Chart - ported from CompoundDetailScreenV2 */}
             {chartData.length > 0 && (
-              <div className="h-16 -mx-1">
+              <div className="h-24 -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 12 }}>
+                  <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 16 }}>
                     <defs>
-                      <linearGradient id="levelGradientPastMini" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="levelGradientFutureMini" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.08} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
-                      </linearGradient>
-                      <linearGradient id="futureStrokeGradientMini" x1="0" y1="0" x2="1" y2="0">
+                      {/* Exact gradients from CompoundDetailScreenV2 */}
+                      <linearGradient id="levelGradientPastCard" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
                         <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="levelGradientFutureCard" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                        <stop offset="40%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
+                      </linearGradient>
+                      <linearGradient id="futureStrokeGradientCard" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.7} />
+                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
                       </linearGradient>
-                      <filter id="currentPointGlowMini" x="-100%" y="-100%" width="300%" height="300%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur">
-                          <animate attributeName="stdDeviation" values="2;4;2" dur="2s" repeatCount="indefinite" />
+                      <filter id="currentPointGlowCard" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="4" result="coloredBlur">
+                          <animate attributeName="stdDeviation" values="3;6;3" dur="2s" repeatCount="indefinite" />
                         </feGaussianBlur>
                         <feMerge>
                           <feMergeNode in="coloredBlur"/>
@@ -342,31 +342,34 @@ export const MedicationLevelsCard = ({
                     </defs>
                     <XAxis 
                       dataKey="date" 
-                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                       tickLine={false}
                       axisLine={false}
                       interval="preserveStartEnd"
-                      tickMargin={4}
+                      tickMargin={6}
                     />
+                    {/* Past levels - solid line */}
                     <Area
                       type="monotone"
                       dataKey="pastLevel"
                       stroke="hsl(var(--primary))"
-                      strokeWidth={1.5}
-                      fill="url(#levelGradientPastMini)"
+                      strokeWidth={2}
+                      fill="url(#levelGradientPastCard)"
                       isAnimationActive={false}
                       connectNulls={false}
                     />
+                    {/* Future levels - dotted line */}
                     <Area
                       type="monotone"
                       dataKey="futureLevel"
-                      stroke="url(#futureStrokeGradientMini)"
-                      strokeWidth={1}
-                      strokeDasharray="3 2"
-                      fill="url(#levelGradientFutureMini)"
+                      stroke="url(#futureStrokeGradientCard)"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 2"
+                      fill="url(#levelGradientFutureCard)"
                       isAnimationActive={false}
                       connectNulls={false}
                     />
+                    {/* Hidden area for tooltip interaction */}
                     <Area
                       type="monotone"
                       dataKey="level"
@@ -375,24 +378,44 @@ export const MedicationLevelsCard = ({
                       fill="transparent"
                       isAnimationActive={false}
                     />
+                    {/* Current point with animated glow */}
                     {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
                       <ReferenceDot
                         x={chartData[nowIndex].date}
                         y={chartData[nowIndex].level}
-                        r={4}
+                        r={6}
                         fill="hsl(var(--primary))"
                         stroke="hsl(var(--background))"
                         strokeWidth={2}
-                        filter="url(#currentPointGlowMini)"
-                      />
+                        filter="url(#currentPointGlowCard)"
+                      >
+                        <animate
+                          attributeName="opacity"
+                          values="1;0.7;1"
+                          dur="2s"
+                          repeatCount="indefinite"
+                        />
+                      </ReferenceDot>
                     )}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             )}
+            
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-primary rounded-full" />
+                <span>Current</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-primary/40 rounded-full" style={{ borderBottom: '1px dashed' }} />
+                <span>Projected</span>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="py-3 text-center text-xs text-muted-foreground">
+          <div className="py-6 text-center text-sm text-muted-foreground">
             <p>Log doses to track levels</p>
           </div>
         )}
