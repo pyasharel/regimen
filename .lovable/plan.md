@@ -1,140 +1,198 @@
 
 
-# Remove Dashboard & Fix Calendar Disconnect
+# Compact Medication Levels Card Layout
 
 ## Summary
 
-This plan removes the `QuickStatsDashboard` component entirely and makes the `MedicationLevelsCard` only display when viewing "today". This fixes the calendar disconnect issue where changing dates didn't affect these components.
+This plan makes the Medication Levels card more compact by reducing padding, repositioning the chevron tighter in the corner, and reorganizing the stats into a single column aligned to the right.
 
 ---
 
-## Changes Overview
+## Current vs Proposed Layout
 
-### What Gets Removed
-- **QuickStatsDashboard component** - Delete the file and remove all references
-- The 4-card dashboard (Streak, Doses, Adherence, Weight) will no longer appear
+### Current Layout (from screenshot)
+```text
+┌─────────────────────────────────────────────────────────┐
+│  p-4 padding                                            │
+│  ┌──────────────────────┐      NOW (i)       [▲]       │
+│  │ Activity Testosterone│      ~36 mg · t½ ~5d         │
+│  └──────────────────────┘                              │
+│  ┌────────────────────────────────────────────────┐    │
+│  │                                                │    │
+│  │              [CHART]                           │    │
+│  │                                                │    │
+│  └────────────────────────────────────────────────┘    │
+│  pb-4 padding                                          │
+└─────────────────────────────────────────────────────────┘
+```
 
-### What Gets Fixed
-- **MedicationLevelsCard** will only show when `selectedDate` is today
-- When users change the calendar date, both the dashboard and levels card will disappear, leaving only the doses list for that date
+### Proposed Layout (ultra-compact)
+```text
+┌─────────────────────────────────────────────────────────┐
+│ p-3 pt-2                                         [▲]   │ ← Chevron tighter (top-1.5 right-1.5)
+│ ┌──────────────────────┐              NOW (i)          │
+│ │ Activity Testosterone│              ~36 mg           │ ← Stacked vertically
+│ └──────────────────────┘              t½ ~5d           │
+│ ┌────────────────────────────────────────────────┐     │
+│ │              [CHART]                           │     │
+│ └────────────────────────────────────────────────┘     │
+│ pb-3 padding                                           │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Technical Implementation
+## Technical Changes
 
-### 1. Delete QuickStatsDashboard File
+### File: `src/components/MedicationLevelsCard.tsx`
 
-Remove: `src/components/QuickStatsDashboard.tsx`
+**1. Tighter chevron positioning (line ~274-284)**
 
-### 2. Update TodayScreen.tsx
-
-**Remove imports:**
-```typescript
-// DELETE this line:
-import { QuickStatsDashboard } from "@/components/QuickStatsDashboard";
-```
-
-**Remove component usage (lines ~1106-1113):**
-```jsx
-// DELETE this entire block:
-<QuickStatsDashboard
-  doses={doses}
-  compounds={compoundsForLevels}
-  selectedDate={selectedDate}
-  onScrollToDoses={scrollToDoses}
-  onWeightUpdated={loadLevelsData}
-/>
-```
-
-**Add date check for MedicationLevelsCard (line ~1116):**
 ```jsx
 // BEFORE:
-<MedicationLevelsCard 
-  compounds={compoundsForLevels}
-  doses={dosesForLevels}
-/>
+<button
+  onClick={toggleCollapsed}
+  className="absolute top-2 right-2 p-1.5 rounded-lg hover:bg-muted transition-colors z-10"
+  ...
+>
 
 // AFTER:
-{isToday(selectedDate) && (
-  <MedicationLevelsCard 
-    compounds={compoundsForLevels}
-    doses={dosesForLevels}
-  />
-)}
+<button
+  onClick={toggleCollapsed}
+  className="absolute top-1.5 right-1.5 p-1 rounded-lg hover:bg-muted transition-colors z-10"
+  ...
+>
 ```
 
-**Add import for isToday (if not already present):**
-```typescript
-import { isToday } from 'date-fns';
+**2. Reduce header padding (line ~286)**
+
+```jsx
+// BEFORE:
+<div className="p-4 pb-2 pr-10">
+
+// AFTER:
+<div className="p-3 pt-2 pb-2 pr-8">
+```
+
+**3. Reorganize right-side stats to vertical stack (lines ~321-357)**
+
+```jsx
+// BEFORE: Two-row layout with horizontal elements
+<div className="flex flex-col items-end gap-0.5">
+  {/* Top row: Now label + info icon */}
+  <div className="flex items-center gap-1.5">
+    <span className="text-[10px] ...">Now</span>
+    <Popover>...</Popover>
+  </div>
+  
+  {/* Bottom row: Current level + half-life on same line */}
+  {currentLevel && (
+    <span className="text-xs text-muted-foreground">
+      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+      {halfLifeData && (
+        <span className="text-muted-foreground/70"> · t½ {formatHalfLife(...)}</span>
+      )}
+    </span>
+  )}
+</div>
+
+// AFTER: Vertical stack, each on own line
+<div className="flex flex-col items-end gap-0">
+  {/* Row 1: Now label + info icon */}
+  <div className="flex items-center gap-1">
+    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button 
+          className="p-0.5 rounded-full hover:bg-muted transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Info className="w-3 h-3 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      ...
+    </Popover>
+  </div>
+  
+  {/* Row 2: Current level */}
+  {currentLevel && (
+    <span className="text-xs font-medium text-foreground">
+      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+    </span>
+  )}
+  
+  {/* Row 3: Half-life */}
+  {halfLifeData && (
+    <span className="text-[10px] text-muted-foreground">
+      t½ {formatHalfLife(halfLifeData.halfLifeHours)}
+    </span>
+  )}
+</div>
+```
+
+**4. Reduce chart area padding (line ~363)**
+
+```jsx
+// BEFORE:
+<div className="px-4 pb-4">
+
+// AFTER:
+<div className="px-3 pb-3">
+```
+
+**5. Reduce chart height slightly (line ~368)**
+
+```jsx
+// BEFORE:
+<div className="h-32 -mx-1">
+
+// AFTER:
+<div className="h-28 -mx-1">
 ```
 
 ---
 
-## Visual Flow After Changes
+## Visual Comparison
 
-### When viewing TODAY:
-```text
-┌──────────────────────────────────┐
-│  Good morning, Mike    🔥 5     │  ← Streak badge stays in greeting
-├──────────────────────────────────┤
-│  [Calendar Week View]            │
-├──────────────────────────────────┤
-│  [Medication Levels Card]        │  ← Only shows for today
-├──────────────────────────────────┤
-│  Morning                         │
-│    ○ Tirzepatide 7.5mg          │
-│  Evening                         │
-│    ○ Vitamin D 5000 IU          │
-└──────────────────────────────────┘
-```
+| Element | Before | After | Savings |
+|---------|--------|-------|---------|
+| Top padding | `p-4` (16px) | `pt-2` (8px) | 8px |
+| Bottom padding | `pb-4` (16px) | `pb-3` (12px) | 4px |
+| Chart height | 128px | 112px | 16px |
+| Chevron position | `top-2 right-2` | `top-1.5 right-1.5` | 2px each |
+| Info icon | `w-3.5 h-3.5` | `w-3 h-3` | Subtle |
 
-### When viewing PAST/FUTURE date:
-```text
-┌──────────────────────────────────┐
-│  Good morning, Mike    🔥 5     │
-├──────────────────────────────────┤
-│  [Calendar Week View]            │
-├──────────────────────────────────┤
-│  Morning                         │  ← Doses immediately visible
-│    ✓ Tirzepatide 7.5mg          │
-│  Evening                         │
-│    ✓ Vitamin D 5000 IU          │
-└──────────────────────────────────┘
-```
+**Estimated total height reduction: ~28-30px**
 
 ---
 
-## What Remains for Quick Access
+## Stats Display After Change
 
-| Feature | Location | Access Method |
-|---------|----------|---------------|
-| Streak | Greeting header | Always visible |
-| Weight logging | FAB "Log Today" drawer | Tap + button → Weight |
-| Progress/Adherence | Bottom navigation | "Progress" tab |
-| Doses | Main screen | Immediately visible |
+The right column will now show:
+```text
+NOW (i)      ← Label + info popover
+~36 mg       ← Current level (emphasized)
+t½ ~5d       ← Half-life (subtle)
+```
+
+This is cleaner than the current horizontal `~36 mg · t½ ~5d` which runs together.
 
 ---
 
 ## Files to Modify
 
-| File | Action |
-|------|--------|
-| `src/components/QuickStatsDashboard.tsx` | **DELETE** |
-| `src/components/TodayScreen.tsx` | Remove import, remove component, add conditional for MedicationLevelsCard |
+| File | Changes |
+|------|---------|
+| `src/components/MedicationLevelsCard.tsx` | Reduce padding, reposition chevron, vertical stats layout |
 
 ---
 
-## Benefits
+## Edge Cases
 
-1. **Reduced cognitive load** - No unexplained numbers
-2. **Calendar consistency** - Everything updates when date changes
-3. **More space for doses** - Primary action now immediately visible
-4. **Cleaner UI** - Less visual noise
-5. **Streak preserved** - Still celebrated in the greeting header
-
----
-
-## Rollback Path
-
-If you want to bring back a dashboard later, the `MedicationLevelsCard` pattern (with date-aware conditional rendering) can be applied to any future engagement components.
+| Scenario | Behavior |
+|----------|----------|
+| No current level data | Only show "Now (i)" label |
+| No half-life data | Skip t½ line entirely |
+| Long compound names | Truncate with ellipsis (existing behavior) |
+| Collapsed state | Header remains compact with stats visible |
 
