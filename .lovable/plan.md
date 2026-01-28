@@ -1,50 +1,41 @@
 
 
-## Add ANDROID90 Promo Code
+## Remove USE_EXACT_ALARM Permission
 
-A simple backend-only change to add the `ANDROID90` promo code that gives 90 days (3 months) of free premium access. This will help you track Android beta tester redemptions separately from other promo codes.
+A one-line fix to remove the restricted permission that Google Play Console is flagging.
 
-### Changes Required
+### What I'll Change
 
-**1. Update `validate-promo-code` edge function**
-- Add `'ANDROID90': { days: 90, description: '3 months free' }` to the `BACKEND_PROMO_CODES` object
+**File:** `android/app/src/main/AndroidManifest.xml`
 
-**2. Update `activate-beta-access` edge function**  
-- Add `"ANDROID90": { days: 90, description: "3 months beta access" }` to the `PROMO_CODES` object
+Remove this line:
+```xml
+<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+```
 
-### What This Enables
+Keep this line (it's the correct one for medication reminders):
+```xml
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+```
 
-- Testers enter `ANDROID90` in the app's promo code field
-- The code validates and grants 90 days of premium access
-- You can later query your database to see how many users redeemed `ANDROID90` specifically vs `BETATESTER` or other codes
+### Your Steps After I Make the Change
 
-### No App Update Required
+1. **Git pull** the updated code to your local project
+2. **Rebuild** from your project root:
+   ```bash
+   npm run build
+   npx cap sync android
+   ```
+3. **Open Android Studio** and do: Build → Clean Project
+4. **Generate new signed AAB**: Build → Generate Signed Bundle / APK
+5. **Upload new AAB** to Google Play Console (Closed Testing track)
 
-This is entirely a backend change. Once deployed (automatic), the code works immediately on all platforms - Android, iOS, and web.
+The new version will no longer trigger the "Exact alarms" permission request.
 
 ---
 
-### Technical Details
+### Technical Note
 
-Both edge functions will be updated to recognize the new code:
-
-```text
-validate-promo-code/index.ts (line 12-15):
-┌─────────────────────────────────────────────────────┐
-│ const BACKEND_PROMO_CODES = {                       │
-│   'BETATESTER': { days: 90, description: '...' },   │
-│   'REDDIT30': { days: 30, description: '...' },     │
-│ + 'ANDROID90': { days: 90, description: '...' },    │
-│ };                                                  │
-└─────────────────────────────────────────────────────┘
-
-activate-beta-access/index.ts (line 10-13):
-┌─────────────────────────────────────────────────────┐
-│ const PROMO_CODES = {                               │
-│   "BETATESTER": { days: 90, description: "..." },   │
-│   "REDDIT30": { days: 30, description: "..." },     │
-│ + "ANDROID90": { days: 90, description: "..." },    │
-│ };                                                  │
-└─────────────────────────────────────────────────────┘
-```
+- `USE_EXACT_ALARM` = Restricted, requires Google approval (alarm/timer apps only)
+- `SCHEDULE_EXACT_ALARM` = Standard permission for apps needing precise scheduling (medication reminders qualify)
 
