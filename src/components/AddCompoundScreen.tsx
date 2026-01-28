@@ -671,7 +671,7 @@ export const AddCompoundScreen = () => {
     
     return {
       mgPerInjection: Math.round(mgPerInjection), // Round to whole number
-      mlPerInjection: Math.round(mlPerInjection * 20) / 20, // Round to nearest 0.05
+      mlPerInjection: Math.round(mlPerInjection * 100) / 100, // Round to nearest 0.01 for insulin syringe precision
       injectionsPerWeek
     };
   };

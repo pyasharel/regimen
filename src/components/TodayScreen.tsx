@@ -3,6 +3,7 @@ import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, P
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
+import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
@@ -14,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { subDays } from 'date-fns';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 import { formatDose } from "@/utils/doseUtils";
@@ -98,6 +100,25 @@ export const TodayScreen = () => {
   
   // TestFlight migration modal state
   const [isTestFlight, setIsTestFlight] = useState(false);
+  
+  // Medication levels card state
+  interface CompoundForLevels {
+    id: string;
+    name: string;
+    is_active: boolean | null;
+    dose_unit: string;
+  }
+  interface DoseForLevels {
+    id: string;
+    compound_id: string | null;
+    dose_amount: number;
+    dose_unit: string;
+    taken: boolean | null;
+    taken_at: string | null;
+    scheduled_date: string;
+  }
+  const [compoundsForLevels, setCompoundsForLevels] = useState<CompoundForLevels[]>([]);
+  const [dosesForLevels, setDosesForLevels] = useState<DoseForLevels[]>([]);
   
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
@@ -226,6 +247,11 @@ export const TodayScreen = () => {
     loadUserName();
   }, [selectedDate]);
 
+  // Load levels data on mount and when doses change
+  useEffect(() => {
+    loadLevelsData();
+  }, []);
+
   // Initialize engagement notifications only once on mount
   useEffect(() => {
     initializeEngagementNotifications();
@@ -276,6 +302,40 @@ export const TodayScreen = () => {
       }
     } catch (error) {
       console.error('Error loading user name:', error);
+    }
+  };
+
+  // Load data for medication levels card
+  const loadLevelsData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch active compounds
+      const { data: compounds, error: compoundsError } = await supabase
+        .from('compounds')
+        .select('id, name, is_active, dose_unit')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (compoundsError) throw compoundsError;
+      setCompoundsForLevels(compounds || []);
+
+      // Fetch taken doses from last 30 days for levels calculation
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
+      const { data: recentDoses, error: dosesError } = await supabase
+        .from('doses')
+        .select('id, compound_id, dose_amount, dose_unit, taken, taken_at, scheduled_date')
+        .eq('user_id', user.id)
+        .eq('taken', true)
+        .not('taken_at', 'is', null)
+        .gte('scheduled_date', thirtyDaysAgo)
+        .order('taken_at', { ascending: false });
+
+      if (dosesError) throw dosesError;
+      setDosesForLevels(recentDoses || []);
+    } catch (error) {
+      console.error('Error loading levels data:', error);
     }
   };
 
@@ -540,6 +600,9 @@ export const TodayScreen = () => {
         
         // Check and schedule streak notifications
         await checkAndScheduleStreakNotifications();
+        
+        // Refresh levels data to show updated medication levels
+        loadLevelsData();
       }
 
       // Remove from animating set after animation completes
@@ -1032,6 +1095,12 @@ export const TodayScreen = () => {
 
       {/* Smart Banner */}
       <TodayBanner />
+
+      {/* Medication Levels Card */}
+      <MedicationLevelsCard 
+        compounds={compoundsForLevels}
+        doses={dosesForLevels}
+      />
 
       {/* Doses */}
       <div className="p-4 space-y-4 relative">
