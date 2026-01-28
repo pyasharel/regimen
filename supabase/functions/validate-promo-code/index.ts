@@ -12,6 +12,7 @@ const corsHeaders = {
 const BACKEND_PROMO_CODES: Record<string, { days: number; description: string }> = {
   'BETATESTER': { days: 90, description: '3 months free' },
   'REDDIT30': { days: 30, description: '1 month free' },
+  'ANDROID90': { days: 90, description: '3 months free' },
 };
 
 // Apple App ID for Regimen
