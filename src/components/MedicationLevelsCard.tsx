@@ -290,8 +290,33 @@ export const MedicationLevelsCard = ({
             ) : null}
           </div>
           
-          {/* Right: Level + half-life + Now + info */}
-          <div className="flex items-center gap-2">
+          {/* Right: Now label + current level stacked vertically */}
+          <div className="flex flex-col items-end gap-0.5">
+            {/* Top row: Now label + info icon */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button 
+                    className="p-1 rounded-full hover:bg-muted transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  side="top" 
+                  className="w-64 text-xs bg-popover border border-border p-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-muted-foreground leading-relaxed">
+                    Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {/* Bottom row: Current level + half-life */}
             {currentLevel && (
               <span className="text-xs text-muted-foreground">
                 ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
@@ -300,26 +325,6 @@ export const MedicationLevelsCard = ({
                 )}
               </span>
             )}
-            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button 
-                  className="p-1 rounded-full hover:bg-muted transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent 
-                side="top" 
-                className="w-64 text-xs bg-popover border border-border p-3"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p className="text-muted-foreground leading-relaxed">
-                  Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
-                </p>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
 
