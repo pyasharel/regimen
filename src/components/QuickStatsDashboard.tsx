@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scale, Pill, Clock, Check, Pencil } from "lucide-react";
-import { format, isToday, isFuture, differenceInHours, differenceInDays } from "date-fns";
+import { Scale, Check, Pencil, ListChecks } from "lucide-react";
+import { format, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
@@ -25,7 +25,6 @@ interface Compound {
 
 interface QuickStatsDashboardProps {
   doses: Dose[];
-  allDoses?: Dose[]; // All doses including future for "next dose" calculation
   compounds: Compound[];
   selectedDate: Date;
   onScrollToDoses: () => void;
@@ -34,7 +33,6 @@ interface QuickStatsDashboardProps {
 
 export const QuickStatsDashboard = ({
   doses,
-  allDoses,
   compounds,
   selectedDate,
   onScrollToDoses,
@@ -44,6 +42,9 @@ export const QuickStatsDashboard = ({
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [showWeightModal, setShowWeightModal] = useState(false);
+
+  // Only show dashboard when viewing today
+  const isViewingToday = isToday(selectedDate);
 
   // Load current weight from progress_entries or profile
   useEffect(() => {
@@ -102,41 +103,14 @@ export const QuickStatsDashboard = ({
     loadUnit();
   }, []);
 
-  // Calculate doses remaining for selected date
+  // Calculate doses remaining for today only
   const dosesRemaining = useMemo(() => {
+    if (!isViewingToday) return 0;
     return doses.filter(d => !d.taken && !d.skipped).length;
-  }, [doses]);
+  }, [doses, isViewingToday]);
 
   const totalDoses = doses.length;
   const allDone = totalDoses > 0 && dosesRemaining === 0;
-
-  // Calculate next dose (for today only, find next untaken)
-  const nextDose = useMemo(() => {
-    if (!isToday(selectedDate)) return null;
-
-    // Get untaken doses for today
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const untakenToday = doses.filter(d => 
-      !d.taken && 
-      !d.skipped && 
-      d.scheduled_date === todayStr
-    );
-
-    if (untakenToday.length > 0) {
-      // Return first untaken dose
-      const dose = untakenToday[0];
-      const compound = compounds.find(c => c.id === dose.compound_id);
-      return {
-        compound_id: dose.compound_id,
-        compound_name: compound?.name || dose.compound_name || 'Medication',
-        scheduled_time: dose.scheduled_time,
-        isToday: true,
-        timeLabel: dose.scheduled_time || 'Today'
-      };
-    }
-
-    return null;
-  }, [doses, compounds, selectedDate]);
 
   // Format weight for display
   const formatWeight = (weight: number, unit: "lbs" | "kg"): string => {
@@ -153,8 +127,8 @@ export const QuickStatsDashboard = ({
     onWeightUpdated();
   };
 
-  // Don't render if no data to show
-  if (totalDoses === 0 && !currentWeight && !nextDose) {
+  // Only show dashboard when viewing today and there's something to show
+  if (!isViewingToday || (totalDoses === 0 && !currentWeight)) {
     return null;
   }
 
@@ -162,7 +136,7 @@ export const QuickStatsDashboard = ({
     <>
       <div className="mx-4 mb-3">
         <div className="flex items-stretch gap-2">
-          {/* Doses Remaining */}
+          {/* Doses for Today */}
           {totalDoses > 0 && (
             <button
               onClick={onScrollToDoses}
@@ -172,43 +146,23 @@ export const QuickStatsDashboard = ({
                 <>
                   <div className="flex items-center gap-1.5">
                     <Check className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">Done</span>
+                    <span className="text-sm font-semibold text-primary">All Done</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-                    All logged
+                    for today
                   </span>
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-1.5">
-                    <Pill className="w-3.5 h-3.5 text-primary" />
+                    <ListChecks className="w-3.5 h-3.5 text-primary" />
                     <span className="text-lg font-bold text-foreground">{dosesRemaining}</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    remaining
+                    doses today
                   </span>
                 </>
               )}
-            </button>
-          )}
-
-          {/* Next Dose */}
-          {nextDose && (
-            <button
-              onClick={() => navigate(`/compound/${nextDose.compound_id}`)}
-              className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
-            >
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground truncate max-w-[80px]">
-                  {nextDose.compound_name.length > 10 
-                    ? nextDose.compound_name.substring(0, 10) + '…' 
-                    : nextDose.compound_name}
-                </span>
-              </div>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-                {nextDose.timeLabel}
-              </span>
             </button>
           )}
 
