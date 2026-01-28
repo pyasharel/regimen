@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, ChevronDown, ChevronUp } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 interface Compound {
   id: string;
@@ -260,7 +260,7 @@ export const MedicationLevelsCard = ({
   // Navigate to compound detail
   const handleCardTap = () => {
     if (selectedCompoundId) {
-      navigate(`/compound/${selectedCompoundId}`);
+      navigate(`/stack-v2/${selectedCompoundId}`);
     }
   };
 
@@ -322,29 +322,8 @@ export const MedicationLevelsCard = ({
           <div className="relative px-3 pb-1.5">
             {/* Stats overlay - positioned in top-right of chart area */}
             <div className="absolute top-0 right-4 z-10 flex flex-col items-end gap-0 bg-card/80 backdrop-blur-sm rounded pl-2 pb-1">
-              {/* Now label + info icon */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground font-medium">Now</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button 
-                      className="p-0.5 rounded-full hover:bg-muted transition-colors"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Info className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent 
-                    side="top" 
-                    className="w-64 text-xs bg-popover border border-border p-3"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <p className="text-muted-foreground leading-relaxed">
-                      Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
-                    </p>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              {/* Now label */}
+              <span className="text-[10px] text-muted-foreground font-medium">Now</span>
               
               {/* Current level (emphasized) */}
               {currentLevel && (
