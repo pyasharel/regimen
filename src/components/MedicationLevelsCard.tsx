@@ -267,25 +267,12 @@ export const MedicationLevelsCard = ({
   return (
     <Collapsible open={!isCollapsed}>
       <div 
-        className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform relative"
+        className="mx-4 mb-3 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
         onClick={handleCardTap}
       >
-        {/* Chevron toggle - absolute top-right */}
-        <button
-          onClick={toggleCollapsed}
-          className="absolute top-1.5 right-1.5 p-1 rounded-lg hover:bg-muted transition-colors z-10"
-          aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
-        >
-          {isCollapsed ? (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-          )}
-        </button>
-        
-        <div className="p-3 pt-2 pb-2 pr-8">
+        <div className="p-3 pt-1.5 pb-1.5">
           {/* Compact header with compound selector and level */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <div 
               className="flex-shrink-0" 
               onClick={(e) => e.stopPropagation()}
@@ -317,9 +304,9 @@ export const MedicationLevelsCard = ({
               ) : null}
             </div>
             
-            {/* Right: Now label + current level - vertical stack */}
+            {/* Right: Stats column with chevron on first row */}
             <div className="flex flex-col items-end gap-0">
-              {/* Row 1: Now label + info icon */}
+              {/* Row 1: Now label + info icon + chevron */}
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
                 <Popover>
@@ -341,6 +328,17 @@ export const MedicationLevelsCard = ({
                     </p>
                   </PopoverContent>
                 </Popover>
+                <button 
+                  onClick={toggleCollapsed}
+                  className="p-0.5 rounded hover:bg-muted transition-colors"
+                  aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+                >
+                  {isCollapsed ? (
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                  ) : (
+                    <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                </button>
               </div>
               
               {/* Row 2: Current level */}
@@ -362,7 +360,7 @@ export const MedicationLevelsCard = ({
 
         {/* Collapsible Chart area */}
         <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-          <div className="px-3 pb-3">
+          <div className="px-3 pb-2">
             {currentLevel && takenDosesForCalc.length > 0 ? (
               <div>
                 {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
@@ -411,7 +409,7 @@ export const MedicationLevelsCard = ({
                           tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                           tickLine={false}
                           axisLine={false}
-                          interval="preserveStartEnd"
+                          interval={Math.floor(chartData.length / 4)}
                           tickMargin={4}
                         />
                         <Tooltip
