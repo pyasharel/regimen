@@ -273,7 +273,7 @@ export const MedicationLevelsCard = ({
         {/* Chevron toggle - absolute top-right */}
         <button
           onClick={toggleCollapsed}
-          className="absolute top-2 right-2 p-1.5 rounded-lg hover:bg-muted transition-colors z-10"
+          className="absolute top-1.5 right-1.5 p-1 rounded-lg hover:bg-muted transition-colors z-10"
           aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
         >
           {isCollapsed ? (
@@ -283,7 +283,7 @@ export const MedicationLevelsCard = ({
           )}
         </button>
         
-        <div className="p-4 pb-2 pr-10">
+        <div className="p-3 pt-2 pb-2 pr-8">
           {/* Compact header with compound selector and level */}
           <div className="flex items-center justify-between">
             <div 
@@ -317,55 +317,57 @@ export const MedicationLevelsCard = ({
               ) : null}
             </div>
             
-            {/* Right: Now label + current level */}
-            <div className="flex items-center gap-2">
-              <div className="flex flex-col items-end gap-0.5">
-                {/* Top row: Now label + info icon */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button 
-                        className="p-1 rounded-full hover:bg-muted transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent 
-                      side="top" 
-                      className="w-64 text-xs bg-popover border border-border p-3"
+            {/* Right: Now label + current level - vertical stack */}
+            <div className="flex flex-col items-end gap-0">
+              {/* Row 1: Now label + info icon */}
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button 
+                      className="p-0.5 rounded-full hover:bg-muted transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <p className="text-muted-foreground leading-relaxed">
-                        Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                {/* Bottom row: Current level + half-life */}
-                {currentLevel && (
-                  <span className="text-xs text-muted-foreground">
-                    ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
-                    {halfLifeData && (
-                      <span className="text-muted-foreground/70"> · t½ {formatHalfLife(halfLifeData.halfLifeHours)}</span>
-                    )}
-                  </span>
-                )}
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent 
+                    side="top" 
+                    className="w-64 text-xs bg-popover border border-border p-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <p className="text-muted-foreground leading-relaxed">
+                      Estimated medication levels based on pharmacokinetic half-life data. Tap card for detailed charts and history.
+                    </p>
+                  </PopoverContent>
+                </Popover>
               </div>
+              
+              {/* Row 2: Current level */}
+              {currentLevel && (
+                <span className="text-xs font-medium text-foreground">
+                  ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+                </span>
+              )}
+              
+              {/* Row 3: Half-life */}
+              {halfLifeData && (
+                <span className="text-[10px] text-muted-foreground">
+                  t½ {formatHalfLife(halfLifeData.halfLifeHours)}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Collapsible Chart area */}
         <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-          <div className="px-4 pb-4">
+          <div className="px-3 pb-3">
             {currentLevel && takenDosesForCalc.length > 0 ? (
               <div>
                 {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
                 {chartData.length > 0 && (
-                  <div className="h-32 -mx-1">
+                  <div className="h-28 -mx-1">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                         <defs>
