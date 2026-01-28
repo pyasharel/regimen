@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Scale, Check, Pencil, ListChecks, CalendarClock } from "lucide-react";
+import { Scale, Check, ListChecks, CalendarClock, Flame, TrendingUp } from "lucide-react";
 import { format, isToday, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { MetricLogModal } from "@/components/progress/MetricLogModal";
+import { useStreaks } from "@/hooks/useStreaks";
 
 interface Dose {
   id: string;
@@ -42,11 +43,16 @@ export const QuickStatsDashboard = ({
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [showWeightModal, setShowWeightModal] = useState(false);
+  const [adherenceRate, setAdherenceRate] = useState<number | null>(null);
   const [nextDose, setNextDose] = useState<{
     compoundName: string;
     daysUntil: number;
     date: string;
   } | null>(null);
+
+  // Get streak data
+  const { data: stats } = useStreaks();
+  const currentStreak = stats?.current_streak || 0;
 
   // Only show dashboard when viewing today
   const isViewingToday = isToday(selectedDate);
@@ -54,6 +60,7 @@ export const QuickStatsDashboard = ({
   // Load current weight from progress_entries or profile
   useEffect(() => {
     loadWeight();
+    loadAdherence();
   }, []);
 
   const loadWeight = async () => {
@@ -94,6 +101,33 @@ export const QuickStatsDashboard = ({
       }
     } catch (error) {
       console.error('Error loading weight:', error);
+    }
+  };
+
+  const loadAdherence = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+      const { data: doseData } = await supabase
+        .from('doses')
+        .select('taken, skipped')
+        .eq('user_id', user.id)
+        .gte('scheduled_date', sevenDaysAgoStr)
+        .lte('scheduled_date', todayStr);
+
+      if (doseData && doseData.length > 0) {
+        // Count taken doses (not skipped) as completed
+        const completed = doseData.filter(d => d.taken || d.skipped).length;
+        setAdherenceRate(Math.round((completed / doseData.length) * 100));
+      }
+    } catch (error) {
+      console.error('Error loading adherence:', error);
     }
   };
 
@@ -159,14 +193,13 @@ export const QuickStatsDashboard = ({
   const totalDoses = doses.length;
   const allDone = totalDoses > 0 && dosesRemaining === 0;
 
-  // Format weight for display
-  const formatWeight = (weight: number, unit: "lbs" | "kg"): string => {
+  // Format weight for display (compact)
+  const formatWeightCompact = (weight: number, unit: "lbs" | "kg"): string => {
     if (unit === 'kg') {
-      // Convert from lbs (stored) to kg
       const kg = weight / 2.20462;
-      return `${kg.toFixed(1)} kg`;
+      return `${Math.round(kg)}`;
     }
-    return `${weight.toFixed(1)} lbs`;
+    return `${Math.round(weight)}`;
   };
 
   const handleWeightUpdated = () => {
@@ -174,91 +207,69 @@ export const QuickStatsDashboard = ({
     onWeightUpdated();
   };
 
-  // Only show dashboard when viewing today and there's something to show
-  if (!isViewingToday || (totalDoses === 0 && !nextDose && !currentWeight)) {
+  // Only show dashboard when viewing today
+  if (!isViewingToday) {
     return null;
   }
 
   return (
     <>
       <div className="mx-4 mb-3">
-        <div className="flex items-stretch gap-2">
-          {/* Doses for Today or Next Dose */}
-          {totalDoses > 0 ? (
-            <button
-              onClick={onScrollToDoses}
-              className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
-            >
-              {allDone ? (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">All Done</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-                    for today
-                  </span>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <ListChecks className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-base font-bold text-foreground">{dosesRemaining}</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    doses today
-                  </span>
-                </>
-              )}
-            </button>
-          ) : nextDose ? (
-            <button
-              onClick={onScrollToDoses}
-              className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
-            >
-              <div className="flex items-center gap-1.5">
-                <CalendarClock className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground truncate max-w-[80px]">
-                  {nextDose.compoundName}
-                </span>
-              </div>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {nextDose.daysUntil === 1 ? 'tomorrow' : `in ${nextDose.daysUntil}d`}
-              </span>
-            </button>
-          ) : null}
+        <div className="grid grid-cols-4 gap-2">
+          {/* Streak */}
+          <div className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5">
+            <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
+            <span className="text-xs font-bold text-foreground">{currentStreak}</span>
+          </div>
 
-          {/* Current Weight */}
+          {/* Doses */}
           <button
-            onClick={() => setShowWeightModal(true)}
-            className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all min-w-0"
+            onClick={onScrollToDoses}
+            className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
           >
-            {currentWeight ? (
+            {dosesRemaining > 0 ? (
               <>
-                <div className="flex items-center gap-1">
-                  <Scale className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">
-                    {formatWeight(currentWeight, weightUnit)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    Weight
-                  </span>
-                  <Pencil className="w-2.5 h-2.5 text-muted-foreground" />
-                </div>
+                <ListChecks className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-bold text-foreground">{dosesRemaining}</span>
+              </>
+            ) : totalDoses > 0 ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary">Done</span>
+              </>
+            ) : nextDose ? (
+              <>
+                <CalendarClock className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">{nextDose.daysUntil}d</span>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-1.5">
-                  <Scale className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-medium text-primary">Log</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">
-                  Weight
-                </span>
+                <ListChecks className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground">—</span>
               </>
             )}
+          </button>
+
+          {/* Adherence */}
+          <button
+            onClick={() => navigate('/progress')}
+            className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-bold text-foreground">
+              {adherenceRate !== null ? `${adherenceRate}%` : '—'}
+            </span>
+          </button>
+
+          {/* Weight */}
+          <button
+            onClick={() => setShowWeightModal(true)}
+            className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
+          >
+            <Scale className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-bold text-foreground">
+              {currentWeight ? formatWeightCompact(currentWeight, weightUnit) : 'Log'}
+            </span>
           </button>
         </div>
       </div>
