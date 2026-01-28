@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, Info } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
@@ -39,6 +39,26 @@ interface MedicationLevelsCardProps {
 }
 
 const STORAGE_KEY = 'selectedLevelsCompound';
+
+// Y-axis formatting helpers (ported from CompoundDetailScreenV2)
+const formatYAxis = (value: number) => {
+  if (value === 0) return '0';
+  if (Number.isInteger(value)) return value.toString();
+  if (value >= 10) return Math.round(value).toString();
+  if (value >= 1) return value.toFixed(1);
+  return value.toFixed(2);
+};
+
+const getAxisMax = (max: number) => {
+  if (max <= 0) return 1;
+  if (max < 1) return Math.ceil(max * 10) / 10;
+  if (max < 10) return Math.ceil(max);
+  if (max < 50) return Math.ceil(max / 5) * 5;
+  if (max < 100) return Math.ceil(max / 10) * 10;
+  if (max < 500) return Math.ceil(max / 25) * 25;
+  if (max < 1000) return Math.ceil(max / 50) * 50;
+  return Math.ceil(max / 100) * 100;
+};
 
 export const MedicationLevelsCard = ({ 
   compounds, 
@@ -169,7 +189,7 @@ export const MedicationLevelsCard = ({
       halfLifeData.halfLifeHours,
       startDate,
       endDate,
-      4, // 4 points per day for smooth curve
+      24, // 24 points per day for smooth curve (matching My Stack)
       true,
       getTmax(halfLifeData)
     );
@@ -183,6 +203,12 @@ export const MedicationLevelsCard = ({
       isFuture: point.isFuture
     }));
   }, [halfLifeData, takenDosesForCalc]);
+
+  // Calculate Y-axis max from chart data
+  const maxAbsoluteLevel = chartData.length > 0 
+    ? Math.max(...chartData.map(p => p.level)) 
+    : 0;
+  const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.1);
 
   // Find current point index for reference dot
   const nowIndex = useMemo(() => {
@@ -226,10 +252,10 @@ export const MedicationLevelsCard = ({
       onClick={handleCardTap}
     >
       <div className="p-4">
-        {/* Header with compound selector and Today label */}
-        <div className="flex items-center justify-between mb-3">
+        {/* Compact header with compound selector, level, and Now label */}
+        <div className="flex items-center justify-between mb-2">
           <div 
-            className="flex-1" 
+            className="flex-shrink-0" 
             onClick={(e) => e.stopPropagation()}
           >
             {compoundsWithHalfLife.length > 1 ? (
@@ -259,7 +285,16 @@ export const MedicationLevelsCard = ({
             ) : null}
           </div>
           
+          {/* Right: Level + half-life + Now + info */}
           <div className="flex items-center gap-2">
+            {currentLevel && (
+              <span className="text-xs text-muted-foreground">
+                ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+                {halfLifeData && (
+                  <span className="text-muted-foreground/70"> · t½ {formatHalfLife(halfLifeData.halfLifeHours)}</span>
+                )}
+              </span>
+            )}
             <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
             <Popover>
               <PopoverTrigger asChild>
@@ -283,36 +318,14 @@ export const MedicationLevelsCard = ({
           </div>
         </div>
 
-        {/* Level display and chart */}
+        {/* Chart area */}
         {currentLevel && takenDosesForCalc.length > 0 ? (
-          <div className="space-y-3">
-            {/* Stats row */}
-            <div className="flex items-baseline gap-3">
-              <span 
-                className={`text-3xl font-bold text-primary transition-all duration-300 ${
-                  levelAnimating ? 'scale-105' : ''
-                }`}
-              >
-                {Math.round(currentLevel.percentOfPeak)}%
-              </span>
-              <div className="flex items-baseline gap-2 text-xs text-muted-foreground">
-                <span>~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}</span>
-                {halfLifeData && (
-                  <>
-                    <span className="text-muted-foreground/40">·</span>
-                    <span className="text-muted-foreground/70">
-                      t½ {formatHalfLife(halfLifeData.halfLifeHours)}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            {/* Chart - ported from CompoundDetailScreenV2 */}
+          <div>
+            {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
             {chartData.length > 0 && (
-              <div className="h-24 -mx-1">
+              <div className="h-32 -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 16 }}>
+                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                     <defs>
                       {/* Exact gradients from CompoundDetailScreenV2 */}
                       <linearGradient id="levelGradientPastCard" x1="0" y1="0" x2="0" y2="1">
@@ -340,13 +353,22 @@ export const MedicationLevelsCard = ({
                         </feMerge>
                       </filter>
                     </defs>
+                    <YAxis 
+                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                      tickLine={false}
+                      axisLine={false}
+                      domain={[0, yAxisMax]}
+                      tickFormatter={formatYAxis}
+                      width={28}
+                      tickCount={4}
+                    />
                     <XAxis 
                       dataKey="date" 
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
                       tickLine={false}
                       axisLine={false}
                       interval="preserveStartEnd"
-                      tickMargin={6}
+                      tickMargin={4}
                     />
                     {/* Past levels - solid line */}
                     <Area
@@ -401,18 +423,6 @@ export const MedicationLevelsCard = ({
                 </ResponsiveContainer>
               </div>
             )}
-            
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-0.5 bg-primary rounded-full" />
-                <span>Current</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-0.5 bg-primary/40 rounded-full" style={{ borderBottom: '1px dashed' }} />
-                <span>Projected</span>
-              </div>
-            </div>
           </div>
         ) : (
           <div className="py-6 text-center text-sm text-muted-foreground">
