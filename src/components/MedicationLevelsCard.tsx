@@ -270,58 +270,61 @@ export const MedicationLevelsCard = ({
         className="mx-4 mb-2 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
         onClick={handleCardTap}
       >
-        <div className="p-3 pt-1.5 pb-1.5">
-          {/* Compact header with compound selector and level */}
-          <div className="flex items-start justify-between">
-            <div 
-              className="flex-shrink-0" 
-              onClick={(e) => e.stopPropagation()}
-            >
-              {compoundsWithHalfLife.length > 1 ? (
-                <Select 
-                  value={selectedCompoundId || ''} 
-                  onValueChange={handleCompoundChange}
-                >
-                  <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
-                    <div className="flex items-center gap-1.5">
-                      <Activity className="w-3.5 h-3.5 text-primary" />
-                      <SelectValue placeholder="Select medication" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border border-border z-50">
-                    {compoundsWithHalfLife.map(compound => (
-                      <SelectItem key={compound.id} value={compound.id} className="text-sm">
-                        {compound.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : selectedCompound ? (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
-                  <Activity className="w-3.5 h-3.5 text-primary" />
-                  <span>{selectedCompound.name}</span>
-                </div>
-              ) : null}
-            </div>
-            
-            {/* Right: Stats column - chevron at top, then vertical stack */}
-            <div className="flex flex-col items-end gap-0">
-              {/* Row 1: Chevron only */}
-              <button 
-                onClick={toggleCollapsed}
-                className="p-0.5 rounded hover:bg-muted transition-colors -mr-0.5"
-                aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+        {/* Single header row with compound selector and chevron */}
+        <div className="flex items-center justify-between px-3 pt-1.5 pb-0">
+          <div 
+            className="flex-shrink-0" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {compoundsWithHalfLife.length > 1 ? (
+              <Select 
+                value={selectedCompoundId || ''} 
+                onValueChange={handleCompoundChange}
               >
-                {isCollapsed ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                ) : (
-                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                )}
-              </button>
-              
-              {/* Row 2: Now label + info icon */}
+                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-primary" />
+                    <SelectValue placeholder="Select medication" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border z-50">
+                  {compoundsWithHalfLife.map(compound => (
+                    <SelectItem key={compound.id} value={compound.id} className="text-sm">
+                      {compound.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : selectedCompound ? (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+                <span>{selectedCompound.name}</span>
+              </div>
+            ) : null}
+          </div>
+          
+          {/* Chevron only in header */}
+          <button 
+            onClick={toggleCollapsed}
+            className="p-1 rounded hover:bg-muted transition-colors"
+            aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+            )}
+          </button>
+        </div>
+
+        {/* Collapsible Chart area with overlaid stats */}
+        <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+          <div className="relative px-3 pb-1.5">
+            {/* Stats overlay - positioned in top-right of chart area */}
+            <div className="absolute top-0 right-4 z-10 flex flex-col items-end gap-0 bg-card/80 backdrop-blur-sm rounded pl-2 pb-1">
+              {/* Now label + info icon */}
               <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+                <span className="text-[10px] text-muted-foreground font-medium">Now</span>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button 
@@ -343,26 +346,20 @@ export const MedicationLevelsCard = ({
                 </Popover>
               </div>
               
-              {/* Row 3: Current level (emphasized) */}
+              {/* Current level (emphasized) */}
               {currentLevel && (
                 <span className="text-xs font-medium text-foreground">
                   ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
                 </span>
               )}
               
-              {/* Row 4: Half-life (muted) */}
+              {/* Half-life (muted) */}
               {halfLifeData && (
                 <span className="text-[10px] text-muted-foreground">
                   t½ {formatHalfLife(halfLifeData.halfLifeHours)}
                 </span>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* Collapsible Chart area */}
-        <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-          <div className="px-3 pb-1.5">
             {currentLevel && takenDosesForCalc.length > 0 ? (
               <div>
                 {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
