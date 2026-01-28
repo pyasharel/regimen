@@ -267,7 +267,7 @@ export const MedicationLevelsCard = ({
   return (
     <Collapsible open={!isCollapsed}>
       <div 
-        className="mx-4 mb-3 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+        className="mx-4 mb-2 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
         onClick={handleCardTap}
       >
         <div className="p-3 pt-1.5 pb-1.5">
@@ -304,9 +304,22 @@ export const MedicationLevelsCard = ({
               ) : null}
             </div>
             
-            {/* Right: Stats column with chevron on first row */}
+            {/* Right: Stats column - chevron at top, then vertical stack */}
             <div className="flex flex-col items-end gap-0">
-              {/* Row 1: Now label + info icon + chevron */}
+              {/* Row 1: Chevron only */}
+              <button 
+                onClick={toggleCollapsed}
+                className="p-0.5 rounded hover:bg-muted transition-colors -mr-0.5"
+                aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+              >
+                {isCollapsed ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+              </button>
+              
+              {/* Row 2: Now label + info icon */}
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
                 <Popover>
@@ -328,27 +341,16 @@ export const MedicationLevelsCard = ({
                     </p>
                   </PopoverContent>
                 </Popover>
-                <button 
-                  onClick={toggleCollapsed}
-                  className="p-0.5 rounded hover:bg-muted transition-colors"
-                  aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
-                >
-                  {isCollapsed ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  ) : (
-                    <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-                  )}
-                </button>
               </div>
               
-              {/* Row 2: Current level */}
+              {/* Row 3: Current level (emphasized) */}
               {currentLevel && (
                 <span className="text-xs font-medium text-foreground">
                   ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
                 </span>
               )}
               
-              {/* Row 3: Half-life */}
+              {/* Row 4: Half-life (muted) */}
               {halfLifeData && (
                 <span className="text-[10px] text-muted-foreground">
                   t½ {formatHalfLife(halfLifeData.halfLifeHours)}
@@ -360,7 +362,7 @@ export const MedicationLevelsCard = ({
 
         {/* Collapsible Chart area */}
         <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-          <div className="px-3 pb-2">
+          <div className="px-3 pb-1.5">
             {currentLevel && takenDosesForCalc.length > 0 ? (
               <div>
                 {/* Chart with Y-axis - ported from CompoundDetailScreenV2 */}
