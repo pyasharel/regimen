@@ -1,182 +1,203 @@
 
 
-# Refined Quick Stats Dashboard Plan
+# Four-Card Ultra-Thin Dashboard Plan
 
-## Summary of Changes
+## Summary
 
-This plan addresses three refinements:
-1. Make cards thinner (less vertical space)
-2. Handle "no doses today" by showing next scheduled dose
-3. Keep streak in header only (not duplicated in dashboard)
+This plan implements an ultra-compact four-card horizontal dashboard matching the MyStack screen's single-line button style (~36px height). The design prioritizes information density while maintaining elegance.
 
 ---
 
 ## Design Decisions
 
-### Why NOT add streak to the dashboard?
+### Card Selection & Reasoning
 
-The streak is already displayed prominently in the greeting header alongside the user's name. Adding it to the dashboard would:
-- Duplicate information with no new value
-- Increase dashboard width, requiring smaller cards or a third row
-- Dilute focus from actionable items (doses, weight)
+| Card | Value Proposition | Tap Action |
+|------|-------------------|------------|
+| **Streak** | Motivational - celebrates consistency, emotional hook | None (celebratory) |
+| **Doses** | Actionable - tells user what needs attention NOW | Scroll to doses |
+| **Adherence %** | Performance metric - "how am I doing this week?" | Navigate to Progress |
+| **Weight** | Health tracking - quick check-in | Open weight modal |
 
-The current streak placement is ideal - it's a motivational "badge" that celebrates consistency without demanding action.
+### Why Include Both Streak AND Adherence?
 
-### Dashboard Philosophy
+These measure **different things**:
+- **Streak** = consecutive days with at least one dose logged (binary per day)
+- **Adherence** = percentage of scheduled doses taken over 7 days (precision metric)
 
-The dashboard should answer: **"What needs my attention today?"**
-- Doses = primary action
-- Weight = quick health check-in
-- Streak = celebration (belongs in header, not action area)
+Example: A user could have a 30-day streak but 85% adherence (missed a few doses on multi-dose days). Or 100% adherence with a 2-day streak (just started). Both metrics tell different stories.
+
+### Why Not a Dynamic 4th Card?
+
+While creative, a dynamic card (illustrations, goals) adds complexity without clear actionable value. The four metrics chosen are all **quantifiable** and **glanceable** - matching the dashboard's purpose. If goals were universal, it would work, but many users haven't set one.
 
 ---
 
-## Technical Changes
+## Visual Design
+
+### Ultra-Thin Styling (from MyStack)
+
+```jsx
+// Single-line card: ~36px height
+<button className="rounded-lg bg-card border border-border/50 px-3 py-2 
+  hover:scale-[1.02] active:scale-[0.97] transition-transform">
+  <div className="flex items-center gap-1.5 justify-center">
+    <Icon className="w-3.5 h-3.5 text-primary" />
+    <span className="text-xs font-semibold">Value</span>
+  </div>
+</button>
+```
+
+### Layout
+
+```text
++----------------------------------------------------------------+
+|  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐                        |
+|  │🔥 5  │  │📋 3  │  │92%   │  │158 lb│                        |
+|  └──────┘  └──────┘  └──────┘  └──────┘                        |
++----------------------------------------------------------------+
+   Streak    Doses     Adh.     Weight
+   
+Height: ~36px (vs current ~56px = 35% reduction)
+```
+
+### Card States
+
+| Card | Normal State | Special State |
+|------|--------------|---------------|
+| Streak | "🔥 5" | "🔥 0" (still show, motivates restart) |
+| Doses | "3 today" | "✓ Done" (all complete) or "Next 2d" (no doses today) |
+| Adherence | "92%" | "—" if no data yet |
+| Weight | "158 lb" | "Log" (no weight recorded) |
+
+---
+
+## Technical Implementation
 
 ### File: `src/components/QuickStatsDashboard.tsx`
 
-**1. Reduce card height**
-
-Change padding from `py-2.5` to `py-2`:
-```jsx
-// Before
-className="... py-2.5 px-2 ..."
-
-// After
-className="... py-2 px-2 ..."
+**Props (add streak data):**
+```typescript
+interface QuickStatsDashboardProps {
+  doses: Dose[];
+  compounds: Compound[];
+  selectedDate: Date;
+  onScrollToDoses: () => void;
+  onWeightUpdated: () => void;
+}
 ```
 
-Reduce number font size from `text-lg` to `text-base`:
-```jsx
-// Before
-<span className="text-lg font-bold text-foreground">{dosesRemaining}</span>
+**New Data Fetching:**
 
-// After
-<span className="text-base font-bold text-foreground">{dosesRemaining}</span>
-```
-
-**2. Handle "No doses today" scenario**
-
-When `totalDoses === 0`, instead of hiding the doses card, show the next upcoming dose:
+1. **Streak** - Use existing `useStreaks` hook
+2. **Adherence** - Calculate from doses table (last 7 days)
 
 ```typescript
-// Add new state and logic
-const [nextDose, setNextDose] = useState<{
-  compoundName: string;
-  daysUntil: number;
-  date: string;
-} | null>(null);
+import { useStreaks } from "@/hooks/useStreaks";
+import { useNavigate } from "react-router-dom";
 
-// Fetch next dose if no doses today
+// Inside component
+const { data: stats } = useStreaks();
+const currentStreak = stats?.current_streak || 0;
+
+// Calculate adherence
+const [adherenceRate, setAdherenceRate] = useState<number | null>(null);
+
 useEffect(() => {
-  if (isViewingToday && totalDoses === 0) {
-    loadNextDose();
-  }
-}, [isViewingToday, totalDoses]);
+  loadAdherence();
+}, []);
 
-const loadNextDose = async () => {
+const loadAdherence = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  
-  const { data } = await supabase
-    .from('doses')
-    .select('scheduled_date, compounds(name)')
-    .eq('user_id', user.id)
-    .eq('taken', false)
-    .gt('scheduled_date', today)
-    .order('scheduled_date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
 
-  if (data) {
-    const daysUntil = differenceInDays(
-      new Date(data.scheduled_date),
-      new Date()
-    );
-    setNextDose({
-      compoundName: data.compounds?.name || 'Dose',
-      daysUntil,
-      date: data.scheduled_date
-    });
+  const { data: doses } = await supabase
+    .from('doses')
+    .select('taken')
+    .eq('user_id', user.id)
+    .gte('scheduled_date', sevenDaysAgoStr);
+
+  if (doses && doses.length > 0) {
+    const taken = doses.filter(d => d.taken).length;
+    setAdherenceRate(Math.round((taken / doses.length) * 100));
   }
 };
 ```
 
-**3. Update the doses card UI to handle both states**
+**UI Structure (4 cards):**
 
 ```jsx
-{/* Doses for Today */}
-{totalDoses > 0 ? (
-  <button onClick={onScrollToDoses} className="...">
-    {/* existing doses remaining UI */}
-  </button>
-) : nextDose ? (
-  <button 
-    onClick={() => navigate('/today')} // or scroll to calendar
-    className="flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-xl bg-card border border-border/50"
-  >
-    <div className="flex items-center gap-1.5">
-      <CalendarClock className="w-3.5 h-3.5 text-primary" />
-      <span className="text-xs font-semibold text-foreground truncate max-w-[80px]">
-        {nextDose.compoundName}
-      </span>
+<div className="mx-4 mb-3">
+  <div className="grid grid-cols-4 gap-2">
+    {/* Streak */}
+    <div className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5">
+      <Flame className="w-3.5 h-3.5 text-orange-500" fill="currentColor" />
+      <span className="text-xs font-bold text-foreground">{currentStreak}</span>
     </div>
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-      {nextDose.daysUntil === 1 ? 'tomorrow' : `in ${nextDose.daysUntil}d`}
-    </span>
-  </button>
-) : null}
+
+    {/* Doses */}
+    <button 
+      onClick={onScrollToDoses}
+      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
+    >
+      {dosesRemaining > 0 ? (
+        <>
+          <ListChecks className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-bold text-foreground">{dosesRemaining}</span>
+        </>
+      ) : totalDoses > 0 ? (
+        <>
+          <Check className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-primary">Done</span>
+        </>
+      ) : nextDose ? (
+        <>
+          <CalendarClock className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-foreground">{nextDose.daysUntil}d</span>
+        </>
+      ) : null}
+    </button>
+
+    {/* Adherence */}
+    <button 
+      onClick={() => navigate('/progress')}
+      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
+    >
+      <TrendingUp className="w-3.5 h-3.5 text-primary" />
+      <span className="text-xs font-bold text-foreground">
+        {adherenceRate !== null ? `${adherenceRate}%` : '—'}
+      </span>
+    </button>
+
+    {/* Weight */}
+    <button 
+      onClick={() => setShowWeightModal(true)}
+      className="rounded-lg bg-card border border-border/50 px-2 py-2 flex items-center justify-center gap-1.5 hover:bg-muted/50 active:scale-[0.97] transition-all"
+    >
+      <Scale className="w-3.5 h-3.5 text-primary" />
+      <span className="text-xs font-bold text-foreground">
+        {currentWeight ? `${Math.round(currentWeight)}` : 'Log'}
+      </span>
+    </button>
+  </div>
+</div>
 ```
 
 ---
 
-## Visual Comparison
+## Streak Badge Behavior
 
-### Before (current)
-```
-+------------------------------------------+
-|  ┌─────────────┐   ┌─────────────┐      |
-|  │    4        │   │ 158.2 lbs   │      |
-|  │ doses today │   │   Weight ✎  │      |
-|  └─────────────┘   └─────────────┘      |
-+------------------------------------------+
-Height: ~56px
-```
+**Keep the header streak badge** (`<StreakBadge />` in TodayScreen greeting). This provides:
+- Prominent celebration in the greeting
+- Dashboard streak is more compact/functional
 
-### After (refined)
-```
-+------------------------------------------+
-|  ┌───────────┐   ┌───────────┐          |
-|  │   4       │   │ 158.2 lbs │          |
-|  │doses today│   │  Weight ✎ │          |
-|  └───────────┘   └───────────┘          |
-+------------------------------------------+
-Height: ~48px (-14% reduction)
-```
-
-### "No doses today" state
-```
-+------------------------------------------+
-|  ┌───────────┐   ┌───────────┐          |
-|  │Tirzepatide│   │ 158.2 lbs │          |
-|  │ in 2 days │   │  Weight ✎ │          |
-|  └───────────┘   └───────────┘          |
-+------------------------------------------+
-```
-
----
-
-## Edge Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| No doses today, no future doses | Hide doses card, show only weight |
-| No doses today, has future dose | Show "Next: [compound] in Xd" |
-| All doses complete | Show "All Done ✓ for today" |
-| No weight logged | Show "Log Weight" prompt |
-| Not viewing today | Hide entire dashboard |
+The two serve different purposes:
+- **Header badge** = Celebratory, personal ("Hi Mike 🔥5")
+- **Dashboard streak** = Glanceable metric alongside other stats
 
 ---
 
@@ -184,26 +205,39 @@ Height: ~48px (-14% reduction)
 
 | File | Changes |
 |------|---------|
-| `src/components/QuickStatsDashboard.tsx` | Thinner cards, next dose logic, updated UI |
+| `src/components/QuickStatsDashboard.tsx` | Complete rewrite with 4-card grid, streak hook, adherence calc |
 
 ---
 
-## Height Analysis
+## Height Comparison
 
 | State | Before | After |
 |-------|--------|-------|
-| Dashboard height | ~56px | ~48px |
-| Space saved | - | 8px |
+| Dashboard height | ~56px | ~36px |
+| Reduction | - | **36%** |
 
-While 8px seems small, combined with the collapsible Medication Levels Card, users now have full control over how much "engagement content" they see before the doses list.
+---
+
+## Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| No streak | Show "🔥 0" |
+| No doses today, future dose exists | Show "Next Xd" |
+| No doses at all | Hide doses card |
+| No adherence data | Show "—" |
+| No weight logged | Show "Log" |
+| Viewing past/future date | Hide entire dashboard |
 
 ---
 
 ## Testing Checklist
 
-1. Verify thinner cards look balanced on mobile
-2. Test "no doses today" showing next scheduled dose
-3. Confirm "All Done" state still works
-4. Check weight modal still opens correctly
-5. Verify dashboard hides when viewing past dates
+1. Verify all 4 cards render in a single row on mobile
+2. Test streak number matches header badge
+3. Confirm adherence % calculates correctly
+4. Test tap actions: scroll to doses, open weight modal, navigate to progress
+5. Check "All Done" state shows correctly
+6. Test "Next Xd" when no doses today
+7. Verify ultra-thin height (~36px) is achieved
 
