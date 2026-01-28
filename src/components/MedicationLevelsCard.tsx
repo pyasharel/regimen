@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, Info } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Tooltip } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
@@ -194,10 +194,15 @@ export const MedicationLevelsCard = ({
       getTmax(halfLifeData)
     );
     
+    // Calculate max level for percentage calculation
+    const maxLevel = Math.max(...levels.map(p => p.absoluteLevel), 0.001);
+    
     return levels.map(point => ({
       date: format(point.timestamp, 'MMM d'),
       timestamp: point.timestamp.getTime(),
       level: point.absoluteLevel,
+      absoluteLevelFormatted: formatLevel(point.absoluteLevel),
+      percentOfPeak: Math.round((point.absoluteLevel / maxLevel) * 100),
       pastLevel: !point.isFuture ? point.absoluteLevel : null,
       futureLevel: point.isFuture ? point.absoluteLevel : null,
       isFuture: point.isFuture
@@ -369,6 +374,27 @@ export const MedicationLevelsCard = ({
                       axisLine={false}
                       interval="preserveStartEnd"
                       tickMargin={4}
+                    />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+                              <p className="text-xs text-muted-foreground mb-0.5">
+                                {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
+                              </p>
+                              <p className="text-sm font-semibold text-primary">
+                                ~{data.absoluteLevelFormatted} {selectedCompound?.dose_unit}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {data.percentOfPeak}% of peak
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
                     />
                     {/* Past levels - solid line */}
                     <Area
