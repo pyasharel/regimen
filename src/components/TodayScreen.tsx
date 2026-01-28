@@ -4,7 +4,7 @@ import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
-import { QuickStatsDashboard } from "@/components/QuickStatsDashboard";
+
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { subDays } from 'date-fns';
+import { subDays, isToday } from 'date-fns';
 import bubblePopSound from "@/assets/light-bubble-pop-regimen.m4a";
 import { scheduleAllUpcomingDoses, cancelDoseNotification } from "@/utils/notificationScheduler";
 import { formatDose } from "@/utils/doseUtils";
@@ -1103,20 +1103,13 @@ export const TodayScreen = () => {
       {/* Smart Banner */}
       <TodayBanner />
 
-      {/* Quick Stats Dashboard */}
-      <QuickStatsDashboard
-        doses={doses}
-        compounds={compoundsForLevels}
-        selectedDate={selectedDate}
-        onScrollToDoses={scrollToDoses}
-        onWeightUpdated={loadLevelsData}
-      />
-
-      {/* Medication Levels Card */}
-      <MedicationLevelsCard 
-        compounds={compoundsForLevels}
-        doses={dosesForLevels}
-      />
+      {/* Medication Levels Card - only show when viewing today */}
+      {isToday(selectedDate) && (
+        <MedicationLevelsCard 
+          compounds={compoundsForLevels}
+          doses={dosesForLevels}
+        />
+      )}
 
       {/* Doses */}
       <div ref={dosesRef} className="p-4 space-y-4 relative">
