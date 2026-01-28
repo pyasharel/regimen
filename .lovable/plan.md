@@ -1,101 +1,90 @@
 
 
-# Enhancement Plan: Add Interactive Tooltip to Medication Levels Card
+# Refinement: Stack Current Level Under "Now" Label
 
-## Summary
+## Current Layout
 
-Add the same interactive hover/tap tooltip from My Stack to the Today screen Medication Levels Card. This lets users explore estimated levels at any point on the chart by hovering (desktop) or touch-dragging (mobile).
-
-## Changes
-
-### 1. Add Tooltip Import
-
-```typescript
-import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Tooltip } from 'recharts';
+```
+[Activity] Tirzepatide ▼    ~4 mg · t½ 5d    Now  [i]
 ```
 
-### 2. Update Chart Data to Include Required Fields
+Everything is horizontal, which crowds the right side and makes the medication name feel cramped.
 
-The tooltip needs `absoluteLevel` and `percentOfPeak` for display. Update the chartData mapping:
+## Proposed Layout
 
-```typescript
-return levels.map(point => ({
-  date: format(point.timestamp, 'MMM d'),
-  timestamp: point.timestamp.getTime(),
-  level: point.absoluteLevel,
-  absoluteLevel: formatLevel(point.absoluteLevel), // Formatted for display
-  percentOfPeak: Math.round((point.absoluteLevel / maxLevel) * 100),
-  pastLevel: !point.isFuture ? point.absoluteLevel : null,
-  futureLevel: point.isFuture ? point.absoluteLevel : null,
-  isFuture: point.isFuture
-}));
+```
+[Activity] Tirzepatide ▼                      Now  [i]
+                                        ~4 mg · t½ 5d
 ```
 
-### 3. Add Tooltip Component to AreaChart
+The "Now" label stays as a header with the info icon, and the actual level + half-life display directly below, right-aligned. This:
+- Gives the medication dropdown full breathing room on the left
+- Creates a clear vertical connection: "Now" → current estimated level
+- Keeps the card compact while improving readability
 
-Port the tooltip from CompoundDetailScreenV2 (lines 756-782):
+## Technical Changes
 
-```typescript
-<Tooltip
-  content={({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-          <p className="text-xs text-muted-foreground mb-0.5">
-            {data.date} {data.isFuture && <span className="text-primary/60">(projected)</span>}
-          </p>
-          <p className="text-sm font-semibold text-primary">
-            ~{data.absoluteLevel} {selectedCompound?.dose_unit}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {data.percentOfPeak}% of peak
-          </p>
-        </div>
-      );
-    }
-    return null;
-  }}
-/>
+**File:** `src/components/MedicationLevelsCard.tsx`
+
+### Restructure the right side from horizontal to vertical stack:
+
+**Current (lines 293-323):**
+```jsx
+<div className="flex items-center gap-2">
+  {currentLevel && (
+    <span className="text-xs text-muted-foreground">
+      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+      {halfLifeData && (
+        <span className="text-muted-foreground/70"> · t½ {formatHalfLife(...)}</span>
+      )}
+    </span>
+  )}
+  <span className="text-[10px] ... uppercase">Now</span>
+  <Popover>...</Popover>
+</div>
 ```
 
-## About Height Compactness
-
-The current height (`h-32` = 128px chart + padding = ~160-180px total) is recommended because:
-- Y-axis labels need breathing room
-- The decay curve needs vertical space to be meaningful
-- Going smaller would make it look cramped/cheap again
-
-If you want to trim slightly, we could:
-- Reduce padding from `p-4` to `p-3` (saves ~16px)
-- This is optional and I'd recommend keeping current padding
-
-## Mobile Touch Behavior
-
-Recharts automatically handles touch events:
-- **Desktop**: Hover shows tooltip
-- **Mobile**: Touch and drag along the chart shows tooltip at each point
-- Works the same as My Stack
-
-## File to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/MedicationLevelsCard.tsx` | Add Tooltip import, update chartData with display fields, add Tooltip component |
+**After:**
+```jsx
+<div className="flex flex-col items-end gap-0.5">
+  {/* Top row: Now label + info icon */}
+  <div className="flex items-center gap-1.5">
+    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+    <Popover>...</Popover>
+  </div>
+  
+  {/* Bottom row: Current level + half-life */}
+  {currentLevel && (
+    <span className="text-xs text-muted-foreground">
+      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+      {halfLifeData && (
+        <span className="text-muted-foreground/70"> · t½ {formatHalfLife(...)}</span>
+      )}
+    </span>
+  )}
+</div>
+```
 
 ## Visual Result
 
-When user hovers/taps on the chart, they'll see a tooltip bubble showing:
 ```
-Jan 24
-~338 mg
-98.5% of peak
++------------------------------------------------------------------+
+|  [Activity] Tirzepatide ▼                              Now  [i]  |
+|                                                     ~4 mg · t½ 5d |
+|                                                                   |
+|  [Y-Axis]  [═══════════════════════●░░░░░░░░░░]                  |
+|    4 -                                                            |
+|    2 -                                                            |
+|    0 -     Jan 21    Jan 24    Jan 27•     Jan 30                |
++------------------------------------------------------------------+
 ```
 
-For projected (future) points:
-```
-Jan 30 (projected)
-~180 mg
-52% of peak
-```
+## Benefits
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Medication name space | Cramped | Full breathing room |
+| "Now" visibility | Inline, easy to miss | Clear label header |
+| Level + half-life | Squeezed between elements | Clean display under "Now" |
+| Visual connection | Scattered | Clear vertical hierarchy |
 
