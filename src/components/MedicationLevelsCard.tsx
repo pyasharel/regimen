@@ -267,11 +267,24 @@ export const MedicationLevelsCard = ({
   return (
     <Collapsible open={!isCollapsed}>
       <div 
-        className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+        className="mx-4 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform relative"
         onClick={handleCardTap}
       >
-        <div className="p-4 pb-2">
-          {/* Compact header with compound selector, level, chevron toggle */}
+        {/* Chevron toggle - absolute top-right */}
+        <button
+          onClick={toggleCollapsed}
+          className="absolute top-2 right-2 p-1.5 rounded-lg hover:bg-muted transition-colors z-10"
+          aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
+        >
+          {isCollapsed ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+        
+        <div className="p-4 pb-2 pr-10">
+          {/* Compact header with compound selector and level */}
           <div className="flex items-center justify-between">
             <div 
               className="flex-shrink-0" 
@@ -304,7 +317,7 @@ export const MedicationLevelsCard = ({
               ) : null}
             </div>
             
-            {/* Right: Now label + current level + chevron toggle */}
+            {/* Right: Now label + current level */}
             <div className="flex items-center gap-2">
               <div className="flex flex-col items-end gap-0.5">
                 {/* Top row: Now label + info icon */}
@@ -341,19 +354,6 @@ export const MedicationLevelsCard = ({
                   </span>
                 )}
               </div>
-              
-              {/* Chevron toggle */}
-              <button
-                onClick={toggleCollapsed}
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-                aria-label={isCollapsed ? "Expand chart" : "Collapse chart"}
-              >
-                {isCollapsed ? (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                )}
-              </button>
             </div>
           </div>
         </div>
