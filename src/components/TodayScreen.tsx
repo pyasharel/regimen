@@ -4,6 +4,7 @@ import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
+import { QuickStatsDashboard } from "@/components/QuickStatsDashboard";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
@@ -81,6 +82,12 @@ export const TodayScreen = () => {
   const [showDayComplete, setShowDayComplete] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const lastHapticTime = useRef<number>(0); // For haptic rhythm timing
+  const dosesRef = useRef<HTMLDivElement>(null); // Scroll target for Quick Stats
+  
+  // Scroll to doses section
+  const scrollToDoses = () => {
+    dosesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   
   // Dose edit modal state
   const [editingDose, setEditingDose] = useState<Dose | null>(null);
@@ -1096,6 +1103,15 @@ export const TodayScreen = () => {
       {/* Smart Banner */}
       <TodayBanner />
 
+      {/* Quick Stats Dashboard */}
+      <QuickStatsDashboard
+        doses={doses}
+        compounds={compoundsForLevels}
+        selectedDate={selectedDate}
+        onScrollToDoses={scrollToDoses}
+        onWeightUpdated={loadLevelsData}
+      />
+
       {/* Medication Levels Card */}
       <MedicationLevelsCard 
         compounds={compoundsForLevels}
@@ -1103,7 +1119,7 @@ export const TodayScreen = () => {
       />
 
       {/* Doses */}
-      <div className="p-4 space-y-4 relative">
+      <div ref={dosesRef} className="p-4 space-y-4 relative">
         {/* Day Complete Celebration */}
         {showDayComplete && (
           <>
