@@ -1,93 +1,79 @@
 
-# Refinement Plan: Medication Levels Card
 
-## Issues Identified
+# Refinement Plan: Clone My Stack Chart Quality to Medication Levels Card
 
-### 1. Card is Too Tall/Bulky
-The current implementation has too much vertical padding and spacing:
-- `p-4` padding on the container
-- `mb-3` gap after header
-- `space-y-3` between content sections
-- `text-3xl` for percentage (too large)
-- Separate stats row taking extra vertical space
+## Problem Summary
 
-### 2. Chart Doesn't Match My Stack Quality
-Current sparkline is basic compared to CompoundDetailScreenV2:
-- No gradients for past vs. projected sections
-- No dotted line for future projection
-- Missing the polished gradient fills
-- No axes (intentional for sparkline, but loses context)
-- Chart height is only `h-10` (40px) - too small
+The Today screen Medication Levels Card looks "cheap" compared to the My Stack half-life chart because:
 
-### 3. Info Button Not Working on Web
-The Tooltip requires a hover action, but on web preview it's rendering inside a `TooltipProvider` without `delayDuration={0}`. Radix tooltips need the provider properly configured. The issue is the tooltip shows on hover, but web users might expect click behavior.
+| Feature | My Stack Chart | Today Card |
+|---------|---------------|------------|
+| Y-Axis | Yes (0, 2, 4, 6 mg) | No - chart looks flat |
+| Points/day | 24-48 (smooth) | 4 (choppy) |
+| Height | h-40 (160px) | h-24 (96px) |
+| Stats display | Clean, minimal | Bulky 100% takes space |
+| Time range | 1W/1M/3M/6M filters | Fixed 7+3 days |
 
-### 4. What "Peak" Actually Means
-You raised a great point. "100% of peak" is confusing because:
-- **Current logic**: Peak = highest level ever reached across all doses
-- **User expectation**: Peak might mean "right after injection" or "steady state"
-- If someone takes 4mg weekly and just took a dose, they'd be at 100% because that IS their peak moment
+## Solution: Direct Port from CompoundDetailScreenV2
 
-**Recommendation**: Change terminology from "of peak" to "of maximum" or show the absolute value more prominently and de-emphasize the percentage.
+### Changes to Make
 
-### 5. Calendar Date Confusion
-When user navigates to a past date, the levels card still shows TODAY's levels. This could be confusing.
+**1. Add Y-Axis with Dosage Scale (Critical for Premium Look)**
 
-**Solutions:**
-- Add a subtle "Now" or "Today" label near the level to clarify
-- Keep it always showing current levels (which makes sense - this is a "what's in your system right now" feature)
-- The calendar is for viewing dose SCHEDULES, not medication levels
+Port the exact Y-axis configuration from CompoundDetailScreenV2:
+- Add `YAxis` import from recharts
+- Add helper functions: `formatYAxis` and `getAxisMax`
+- Calculate `maxAbsoluteLevel` and `yAxisMax` from chart data
+- Configure: `width={28}`, `tickCount={4}`, `domain={[0, yAxisMax]}`
 
-### 6. Missing Timeline
-The My Stack chart has date axis labels; the Today screen sparkline doesn't. This loses context.
+**2. Remove the 100% Percentage Display**
 
----
-
-## Refined Design
-
-### Compact Layout (Target Height: ~100px)
-```text
-+----------------------------------------------------------+
-|  [Activity] Tirzepatide ▼                         Today  |
-|                                                          |
-|  72%  ~4.2 mg in system · Half-life ~5 days              |
-|                                                          |
-|  [═══════════════░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]        |
-|   Jan 20        Jan 24        Jan 27•       Jan 30       |
-+----------------------------------------------------------+
+Instead of:
+```
+100%
+~4 mg in system · t½ ~5 days
 ```
 
-### Key Changes
+Show only:
+```
+[Medication dropdown ▼]          ~4 mg · t½ 5d    Now [i]
+```
 
-1. **Reduce Vertical Spacing**
-   - Change `p-4` to `p-3`
-   - Change `mb-3` to `mb-2`
-   - Change `space-y-3` to `space-y-2`
-   - Combine percentage + stats into single row
+The absolute level (~4 mg) moves to the header row next to "Now", making it immediately clear what level they're at RIGHT NOW.
 
-2. **Inline Stats Row**
-   - Move "~4.2 mg in system" and "Half-life ~5 days" to same line as percentage
-   - Use smaller text: `text-2xl` for percentage instead of `text-3xl`
-   - Separator with `·` between values
+**3. Increase Point Density**
 
-3. **Add "Today" Label**
-   - Small label in top-right corner: "Today" or "Now"
-   - Clarifies that levels are current, not historical
+Change from 4 points per day to **24 points per day** for smooth curves matching My Stack.
 
-4. **Better Chart Matching CompoundDetailScreenV2**
-   - Port the exact gradient definitions from CompoundDetailScreenV2
-   - Add past vs. projected area distinction (solid vs. dashed/faded)
-   - Increase height from `h-10` to `h-16` (64px) for better visibility
-   - Add minimal X-axis with 3-4 date labels (like the My Stack version)
-   - Add the pulsing glow effect on "current" dot
+**4. Increase Chart Height**
 
-5. **Fix Info Button**
-   - Use Popover for both mobile AND web (consistent behavior)
-   - Click-to-show is more reliable than hover on touch-friendly web
+Change from `h-24` (96px) to `h-32` (128px) for better visibility while staying compact.
 
-6. **Simplify Terminology**
-   - Change "100% of peak" to "100%" with subtle "of max" or just show absolute prominently
-   - Or: Show "~4 mg" as the primary number, percentage secondary
+**5. Time Range Discussion**
+
+For the Today screen card, I recommend **1 week default without filters**:
+
+- **Why 1 week**: The Today screen is about "what's happening now" - 1 week provides immediate context without overwhelming
+- **Why no filters here**: Keep it simple - if users want deeper analysis, they tap to go to the full compound detail screen which has all the filters
+- **Projection**: Keep the 2-3 day dotted projection to show where levels are heading
+
+However, if you want filters, we can add a minimal version (just 1W | 1M toggle).
+
+**6. Layout Structure**
+
+New compact header:
+```
++------------------------------------------------------------------+
+|  [Activity] Tirzepatide ▼        ~4 mg · t½ 5d         Now  [i]  |
+|                                                                   |
+|  [Y-Axis]  [═══════════════════════●░░░░░░░░░░]                  |
+|    4 -                                                            |
+|    2 -                                                            |
+|    0 -     Jan 21    Jan 24    Jan 27•     Jan 30                |
++------------------------------------------------------------------+
+```
+
+**Total card height estimate**: ~140-150px (down from ~180px)
 
 ---
 
@@ -95,103 +81,146 @@ The My Stack chart has date axis labels; the Today screen sparkline doesn't. Thi
 
 ### File: `src/components/MedicationLevelsCard.tsx`
 
-**Changes:**
-
-1. **Layout Compacting** (lines 276-316)
-   - Reduce padding: `p-4` -> `p-3`
-   - Reduce header margin: `mb-3` -> `mb-2`
-   - Reduce content spacing: `space-y-3` -> `space-y-2`
-
-2. **Inline Stats Row** (lines 318-341)
-   - Combine percentage, absolute level, and half-life into one line
-   - Reduce percentage size: `text-3xl` -> `text-2xl`
-   - Add "Today" label in header
-
-3. **Chart Enhancements** (lines 343-374)
-   - Port gradient definitions from CompoundDetailScreenV2 (lines 714-738)
-   - Add separate Area components for past vs. future (like lines 800-826)
-   - Increase height: `h-10` -> `h-16`
-   - Add XAxis with minimal date labels
-   - Add animated glow effect on current dot
-
-4. **Info Button Fix** (lines 232-274)
-   - Use Popover for both platforms (remove Tooltip branch)
-
-5. **Add "Today" indicator** (header area)
-   - Small text label: "Today" or "Now" to clarify we're showing current levels
-
----
-
-## Chart Data Structure Update
-
-Current sparkline data maps:
+#### 1. Add YAxis Import
 ```typescript
-return levels.map(point => ({
-  timestamp: point.timestamp.getTime(),
-  level: point.absoluteLevel,
-  percentage: (point.absoluteLevel / maxLevel) * 100,
-  isFuture: point.isFuture
-}));
+import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis } from 'recharts';
 ```
 
-Updated to match CompoundDetailScreenV2:
+#### 2. Add Axis Formatting Functions (Copy from CompoundDetailScreenV2 lines 318-335)
 ```typescript
-return levels.map(point => ({
-  date: format(point.timestamp, 'MMM d'),
-  timestamp: point.timestamp.getTime(),
-  level: point.absoluteLevel,
-  pastLevel: !point.isFuture ? point.absoluteLevel : null,
-  futureLevel: point.isFuture ? point.absoluteLevel : null,
-  isFuture: point.isFuture
-}));
+const formatYAxis = (value: number) => {
+  if (value === 0) return '0';
+  if (Number.isInteger(value)) return value.toString();
+  if (value >= 10) return Math.round(value).toString();
+  if (value >= 1) return value.toFixed(1);
+  return value.toFixed(2);
+};
+
+const getAxisMax = (max: number) => {
+  if (max <= 0) return 1;
+  if (max < 1) return Math.ceil(max * 10) / 10;
+  if (max < 10) return Math.ceil(max);
+  if (max < 50) return Math.ceil(max / 5) * 5;
+  if (max < 100) return Math.ceil(max / 10) * 10;
+  if (max < 500) return Math.ceil(max / 25) * 25;
+  if (max < 1000) return Math.ceil(max / 50) * 50;
+  return Math.ceil(max / 100) * 100;
+};
+```
+
+#### 3. Calculate Y-Axis Maximum in chartData useMemo
+```typescript
+const maxAbsoluteLevel = chartData.length > 0 
+  ? Math.max(...chartData.map(p => p.level)) 
+  : 0;
+
+const yAxisMax = getAxisMax(maxAbsoluteLevel * 1.1);
+```
+
+#### 4. Increase Points Per Day
+```typescript
+// Change line 172 from:
+4, // 4 points per day
+// To:
+24, // 24 points per day for smooth curve
+```
+
+#### 5. Add YAxis Component to Chart
+```typescript
+<YAxis 
+  tick={{ fontSize: 9 }}
+  tickLine={false}
+  axisLine={false}
+  domain={[0, yAxisMax]}
+  tickFormatter={formatYAxis}
+  width={28}
+  tickCount={4}
+/>
+```
+
+#### 6. Restructure Header Layout
+
+Remove the stats row (lines 289-309) and integrate the level into the header:
+
+**Before:**
+```jsx
+{/* Header */}
+<div className="flex items-center justify-between mb-3">
+  {/* Dropdown */}
+  {/* Now label + info */}
+</div>
+
+{/* Stats row - REMOVE THIS */}
+<div className="flex items-baseline gap-3">
+  <span className="text-3xl font-bold">100%</span>
+  <span>~4 mg in system · t½ ~5 days</span>
+</div>
+```
+
+**After:**
+```jsx
+{/* Header with compound selector, level, and Now label */}
+<div className="flex items-center justify-between mb-2">
+  {/* Left: Dropdown */}
+  <div className="flex-1">...</div>
+  
+  {/* Right: Level + Now label + info */}
+  <div className="flex items-center gap-2">
+    <span className="text-xs text-muted-foreground">
+      ~{formatLevel(currentLevel.absoluteLevel)} {unit} · t½ {formatHalfLife(hours)}
+    </span>
+    <span className="text-[10px] font-medium uppercase">Now</span>
+    <PopoverButton />
+  </div>
+</div>
+```
+
+#### 7. Increase Chart Container Height
+```typescript
+// Change from h-24 to h-32
+<div className="h-32 -mx-1">
+```
+
+#### 8. Adjust Chart Margins for Y-Axis Space
+```typescript
+<AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
 ```
 
 ---
 
-## Visual Comparison
+## Summary of Changes
 
-### Before (Current)
-- Height: ~180px
-- Percentage: 100% (large)
-- Stats: Two separate lines
-- Chart: Basic sparkline, no axes
-- Info: Tooltip (hover) - broken on web
-
-### After (Refined)
-- Height: ~100px
-- Percentage: 72% (medium, inline)
-- Stats: Single line with separators
-- Chart: Full gradients, dotted projection, X-axis labels, glowing dot
-- Info: Popover (click) - works everywhere
-- "Today" label for clarity
+| Aspect | Before | After |
+|--------|--------|-------|
+| Y-Axis | None | Yes, 4 ticks with dosage scale |
+| Points/day | 4 | 24 |
+| Chart height | h-24 | h-32 |
+| 100% display | Big prominent | Removed |
+| Level display | Separate row | In header next to "Now" |
+| Half-life | Separate row | Inline with level |
+| Time range | 7d + 3d projection | Same (simple for Today) |
+| Card height | ~180px | ~140px |
 
 ---
 
-## Implementation Sequence
+## Medication Selection Memory
 
-1. Compact the layout (padding, margins, spacing)
-2. Combine stats into single inline row
-3. Add "Today" label to header
-4. Port chart gradients and styles from CompoundDetailScreenV2
-5. Add XAxis with date labels
-6. Switch to Popover for info button on all platforms
-7. Test on mobile preview to ensure proper sizing
+Already implemented at line 41 and 106:
+```typescript
+const STORAGE_KEY = 'selectedLevelsCompound';
+// ...
+localStorage.setItem(STORAGE_KEY, compoundId);
+```
 
----
-
-## Edge Case: Real-Time Update Animation
-
-When dose is logged:
-- Current: `scale-110` animation on percentage change
-- Keep this, but make it subtler: `scale-105` for 300ms
-- The chart will automatically re-render with updated data
+The dropdown already remembers the last selected medication.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/MedicationLevelsCard.tsx` | All layout, chart, and info button changes |
+| File | Action |
+|------|--------|
+| `src/components/MedicationLevelsCard.tsx` | Add Y-axis, remove 100%, restructure header, increase point density |
 
-No new files needed - this is a refinement of the existing component.
+This will make the Today screen chart look identical in quality to the My Stack version while being more compact.
+
