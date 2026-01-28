@@ -1,111 +1,50 @@
 
-# Increment Build Number & Generate Android AAB
 
-## Change Required
+## Add ANDROID90 Promo Code
 
-Update `capacitor.config.ts` line 6:
+A simple backend-only change to add the `ANDROID90` promo code that gives 90 days (3 months) of free premium access. This will help you track Android beta tester redemptions separately from other promo codes.
 
-```typescript
-// BEFORE
-export const appBuild = '14';
+### Changes Required
 
-// AFTER
-export const appBuild = '15';
-```
+**1. Update `validate-promo-code` edge function**
+- Add `'ANDROID90': { days: 90, description: '3 months free' }` to the `BACKEND_PROMO_CODES` object
 
----
+**2. Update `activate-beta-access` edge function**  
+- Add `"ANDROID90": { days: 90, description: "3 months beta access" }` to the `PROMO_CODES` object
 
-## After I Make This Change, Follow These Steps
+### What This Enables
 
-### Step 1: Pull the Updated Code
+- Testers enter `ANDROID90` in the app's promo code field
+- The code validates and grants 90 days of premium access
+- You can later query your database to see how many users redeemed `ANDROID90` specifically vs `BETATESTER` or other codes
 
-```bash
-cd ~/regimen-health-hub/regimen
-git pull
-```
+### No App Update Required
 
-### Step 2: Sync the Version to Android
-
-```bash
-./sync-version.sh
-```
-
-You should see output confirming:
-- Version: 1.0.3
-- Build: 15
-- "✅ Android project updated"
-
-### Step 3: Build and Sync
-
-```bash
-npm run build
-npx cap sync android
-```
-
-### Step 4: Open Android Studio
-
-```bash
-npx cap open android
-```
-
-This ensures you open the correct project at `~/regimen-health-hub/regimen/android`
-
-### Step 5: Generate Signed AAB
-
-1. Wait for Gradle sync to complete (bottom progress bar)
-2. Menu: **Build → Generate Signed Bundle / APK**
-3. Select **Android App Bundle** → Next
-4. **Keystore path**: `/Users/Zen/regimen-health-hub/regimen-keystore.jks`
-5. **Key alias**: `regimen`
-6. **Passwords**: Enter your keystore password
-7. Click **Next**
-8. Select **release** build variant
-9. Click **Create**
-
-### Step 6: Find Your AAB
-
-After build completes, check Android Studio's **Event Log** (bottom right) - it will show the exact path, typically:
-
-```
-android/app/release/app-release.aab
-```
-
-### Step 7: Upload to Play Console
-
-1. Go to [Google Play Console](https://play.google.com/console)
-2. Select **Regimen**
-3. Navigate to **Testing → Internal testing**
-4. Click **Create new release**
-5. Upload your `.aab` file
-6. Release notes: `Internal test build - v1.0.3 (Build 15)`
-7. **Review and roll out**
-
-### Step 8: Add Testers
-
-1. Go to **Testing → Internal testing → Testers**
-2. Create email list with your email + beta tester's email
-3. Share the opt-in link with testers
+This is entirely a backend change. Once deployed (automatic), the code works immediately on all platforms - Android, iOS, and web.
 
 ---
 
-## How to Check Build Number in Android Studio
+### Technical Details
 
-If you ever need to verify the version in Android Studio:
+Both edge functions will be updated to recognize the new code:
 
-1. Open **android/app/build.gradle** in the left file tree
-2. Look for these lines:
+```text
+validate-promo-code/index.ts (line 12-15):
+┌─────────────────────────────────────────────────────┐
+│ const BACKEND_PROMO_CODES = {                       │
+│   'BETATESTER': { days: 90, description: '...' },   │
+│   'REDDIT30': { days: 30, description: '...' },     │
+│ + 'ANDROID90': { days: 90, description: '...' },    │
+│ };                                                  │
+└─────────────────────────────────────────────────────┘
 
-```groovy
-versionCode 15
-versionName "1.0.3"
+activate-beta-access/index.ts (line 10-13):
+┌─────────────────────────────────────────────────────┐
+│ const PROMO_CODES = {                               │
+│   "BETATESTER": { days: 90, description: "..." },   │
+│   "REDDIT30": { days: 30, description: "..." },     │
+│ + "ANDROID90": { days: 90, description: "..." },    │
+│ };                                                  │
+└─────────────────────────────────────────────────────┘
 ```
 
-The `versionCode` is what Play Store uses to determine if a build is newer.
-
----
-
-## File to Modify
-
-| File | Change |
-|------|--------|
-| `capacitor.config.ts` | `appBuild = '14'` → `appBuild = '15'` |
