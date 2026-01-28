@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Activity, Info } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, ReferenceDot } from 'recharts';
+import { Activity, Info } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
@@ -13,12 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Capacitor } from '@capacitor/core';
 
@@ -56,7 +50,6 @@ export const MedicationLevelsCard = ({
   const [selectedCompoundId, setSelectedCompoundId] = useState<string | null>(null);
   const [levelAnimating, setLevelAnimating] = useState(false);
   const [previousLevel, setPreviousLevel] = useState<number | null>(null);
-  const isMobile = Capacitor.isNativePlatform();
 
   // Get compounds that have half-life data
   const compoundsWithHalfLife = useMemo(() => {
@@ -156,7 +149,7 @@ export const MedicationLevelsCard = ({
   useEffect(() => {
     if (currentLevel && previousLevel !== null && currentLevel.percentOfPeak !== previousLevel) {
       setLevelAnimating(true);
-      const timeout = setTimeout(() => setLevelAnimating(false), 600);
+      const timeout = setTimeout(() => setLevelAnimating(false), 300);
       return () => clearTimeout(timeout);
     }
     if (currentLevel) {
@@ -164,8 +157,8 @@ export const MedicationLevelsCard = ({
     }
   }, [currentLevel?.percentOfPeak]);
 
-  // Generate sparkline data (7 days back + 3 days projection)
-  const sparklineData = useMemo(() => {
+  // Generate chart data (7 days back + 3 days projection) with past/future split
+  const chartData = useMemo(() => {
     if (!halfLifeData || takenDosesForCalc.length === 0) return [];
     
     const now = new Date();
@@ -177,29 +170,28 @@ export const MedicationLevelsCard = ({
       halfLifeData.halfLifeHours,
       startDate,
       endDate,
-      6, // 6 points per day for smooth curve
+      4, // 4 points per day for smooth curve
       true,
       getTmax(halfLifeData)
     );
     
-    // Find max level for percentage calculation
-    const maxLevel = Math.max(...levels.map(l => l.absoluteLevel), 0.001);
-    
     return levels.map(point => ({
+      date: format(point.timestamp, 'MMM d'),
       timestamp: point.timestamp.getTime(),
       level: point.absoluteLevel,
-      percentage: (point.absoluteLevel / maxLevel) * 100,
+      pastLevel: !point.isFuture ? point.absoluteLevel : null,
+      futureLevel: point.isFuture ? point.absoluteLevel : null,
       isFuture: point.isFuture
     }));
   }, [halfLifeData, takenDosesForCalc]);
 
-  // Find current point in sparkline for reference dot
-  const currentPointIndex = useMemo(() => {
+  // Find current point index for reference dot
+  const nowIndex = useMemo(() => {
     const now = Date.now();
     let closestIndex = 0;
     let closestDiff = Infinity;
     
-    sparklineData.forEach((point, index) => {
+    chartData.forEach((point, index) => {
       const diff = Math.abs(point.timestamp - now);
       if (diff < closestDiff) {
         closestDiff = diff;
@@ -208,13 +200,13 @@ export const MedicationLevelsCard = ({
     });
     
     return closestIndex;
-  }, [sparklineData]);
+  }, [chartData]);
 
   // Format half-life for display
   const formatHalfLife = (hours: number): string => {
-    if (hours >= 168) return `~${Math.round(hours / 168)} week${hours >= 336 ? 's' : ''}`;
-    if (hours >= 24) return `~${Math.round(hours / 24)} day${hours >= 48 ? 's' : ''}`;
-    return `~${Math.round(hours)} hour${hours > 1 ? 's' : ''}`;
+    if (hours >= 168) return `~${Math.round(hours / 168)}w`;
+    if (hours >= 24) return `~${Math.round(hours / 24)}d`;
+    return `~${Math.round(hours)}h`;
   };
 
   // Don't render if no compounds with half-life data
@@ -229,58 +221,14 @@ export const MedicationLevelsCard = ({
     }
   };
 
-  const InfoButton = () => (
-    isMobile ? (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button 
-            className="p-1 rounded-full hover:bg-primary/10 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Info className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent 
-          side="top" 
-          className="w-64 text-sm bg-popover border border-border"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="text-muted-foreground">
-            Shows estimated medication levels based on half-life calculations. 
-            Tap for detailed charts and history.
-          </p>
-        </PopoverContent>
-      </Popover>
-    ) : (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button 
-              className="p-1 rounded-full hover:bg-primary/10 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Info className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
-            <p>
-              Shows estimated medication levels based on half-life calculations. 
-              Tap for detailed charts and history.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  );
-
   return (
     <div 
       className="mx-4 mb-4 rounded-2xl bg-gradient-to-br from-primary/[0.08] via-primary/[0.04] to-transparent border border-primary/15 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
       onClick={handleCardTap}
     >
-      <div className="p-4">
-        {/* Header with compound selector */}
-        <div className="flex items-center justify-between mb-3">
+      <div className="p-3">
+        {/* Header with compound selector and Today label */}
+        <div className="flex items-center justify-between mb-2">
           <div 
             className="flex-1" 
             onClick={(e) => e.stopPropagation()}
@@ -290,82 +238,152 @@ export const MedicationLevelsCard = ({
                 value={selectedCompoundId || ''} 
                 onValueChange={handleCompoundChange}
               >
-                <SelectTrigger className="w-auto h-8 px-3 py-1 text-sm font-medium bg-transparent border-none hover:bg-primary/10 transition-colors [&>svg]:ml-1">
+                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-primary/10 transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
                   <div className="flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-primary" />
+                    <Activity className="w-3 h-3 text-primary" />
                     <SelectValue placeholder="Select medication" />
                   </div>
                 </SelectTrigger>
                 <SelectContent className="bg-popover border border-border z-50">
                   {compoundsWithHalfLife.map(compound => (
-                    <SelectItem key={compound.id} value={compound.id}>
+                    <SelectItem key={compound.id} value={compound.id} className="text-sm">
                       {compound.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : selectedCompound ? (
-              <div className="flex items-center gap-1.5 px-3 py-1 text-sm font-medium">
-                <Activity className="w-3.5 h-3.5 text-primary" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                <Activity className="w-3 h-3 text-primary" />
                 <span>{selectedCompound.name}</span>
               </div>
             ) : null}
           </div>
           
-          <InfoButton />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Today</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button 
+                  className="p-1 rounded-full hover:bg-primary/10 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                side="top" 
+                className="w-56 text-xs bg-popover border border-border p-3"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-muted-foreground">
+                  Estimated levels based on half-life. Tap for detailed charts.
+                </p>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
-        {/* Level display */}
+        {/* Level display - compact inline */}
         {currentLevel && takenDosesForCalc.length > 0 ? (
-          <div className="space-y-3">
-            {/* Percentage and absolute level */}
-            <div className="flex items-baseline gap-3">
+          <div className="space-y-2">
+            {/* Inline stats row */}
+            <div className="flex items-baseline gap-2 flex-wrap">
               <span 
-                className={`text-3xl font-bold text-primary transition-all duration-300 ${
-                  levelAnimating ? 'scale-110 text-secondary' : ''
+                className={`text-2xl font-bold text-primary transition-all duration-300 ${
+                  levelAnimating ? 'scale-105' : ''
                 }`}
               >
                 {Math.round(currentLevel.percentOfPeak)}%
               </span>
-              <span className="text-sm text-muted-foreground">of peak</span>
-            </div>
-            
-            {/* Stats row */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit} in system</span>
+              <span className="text-xs text-muted-foreground">
+                ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+              </span>
               {halfLifeData && (
-                <span className="text-muted-foreground/70">
-                  Half-life: {formatHalfLife(halfLifeData.halfLifeHours)}
-                </span>
+                <>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-xs text-muted-foreground/70">
+                    t½ {formatHalfLife(halfLifeData.halfLifeHours)}
+                  </span>
+                </>
               )}
             </div>
             
-            {/* Mini sparkline chart */}
-            {sparklineData.length > 0 && (
-              <div className="h-10 -mx-1">
+            {/* Enhanced chart with gradients matching CompoundDetailScreenV2 */}
+            {chartData.length > 0 && (
+              <div className="h-16 -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sparklineData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                  <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 12 }}>
                     <defs>
-                      <linearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                      <linearGradient id="levelGradientPastMini" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
+                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
                       </linearGradient>
+                      <linearGradient id="levelGradientFutureMini" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.08} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.01} />
+                      </linearGradient>
+                      <linearGradient id="futureStrokeGradientMini" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                        <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                      </linearGradient>
+                      <filter id="currentPointGlowMini" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="3" result="coloredBlur">
+                          <animate attributeName="stdDeviation" values="2;4;2" dur="2s" repeatCount="indefinite" />
+                        </feGaussianBlur>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
                     </defs>
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      tickMargin={4}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="pastLevel"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={1.5}
+                      fill="url(#levelGradientPastMini)"
+                      isAnimationActive={false}
+                      connectNulls={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="futureLevel"
+                      stroke="url(#futureStrokeGradientMini)"
+                      strokeWidth={1}
+                      strokeDasharray="3 2"
+                      fill="url(#levelGradientFutureMini)"
+                      isAnimationActive={false}
+                      connectNulls={false}
+                    />
                     <Area
                       type="monotone"
                       dataKey="level"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={1.5}
-                      fill="url(#sparklineGradient)"
+                      stroke="transparent"
+                      strokeWidth={0}
+                      fill="transparent"
+                      isAnimationActive={false}
                     />
-                    {sparklineData[currentPointIndex] && (
+                    {nowIndex >= 0 && nowIndex < chartData.length && chartData[nowIndex] && (
                       <ReferenceDot
-                        x={sparklineData[currentPointIndex].timestamp}
-                        y={sparklineData[currentPointIndex].level}
+                        x={chartData[nowIndex].date}
+                        y={chartData[nowIndex].level}
                         r={4}
                         fill="hsl(var(--primary))"
                         stroke="hsl(var(--background))"
                         strokeWidth={2}
+                        filter="url(#currentPointGlowMini)"
                       />
                     )}
                   </AreaChart>
@@ -374,7 +392,7 @@ export const MedicationLevelsCard = ({
             )}
           </div>
         ) : (
-          <div className="py-4 text-center text-sm text-muted-foreground">
+          <div className="py-3 text-center text-xs text-muted-foreground">
             <p>Log doses to track levels</p>
           </div>
         )}
