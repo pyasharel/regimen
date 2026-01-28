@@ -1,92 +1,111 @@
 
+# Increment Build Number & Generate Android AAB
 
-# Fix Tap Navigation + Remove Info Icon
+## Change Required
 
-## Summary
+Update `capacitor.config.ts` line 6:
 
-Two simple changes: (1) fix the broken navigation route, (2) remove the info icon since the tap-through provides full details.
+```typescript
+// BEFORE
+export const appBuild = '14';
 
----
-
-## Current Issue
-
-The card navigates to `/compound/${selectedCompoundId}` which doesn't exist. The correct route is `/stack-v2/${selectedCompoundId}` which shows the full compound detail screen with:
-- Expandable time ranges (1W, 1M, 3M, 6M)
-- Complete dose history
-- Cycle status
-- Notes and vial info
-- Share functionality
-
----
-
-## Technical Changes
-
-### File: `src/components/MedicationLevelsCard.tsx`
-
-**1. Fix navigation route (line ~284)**
-
-```jsx
-// BEFORE:
-const handleCardTap = () => {
-  if (selectedCompoundId) {
-    navigate(`/compound/${selectedCompoundId}`);
-  }
-};
-
-// AFTER:
-const handleCardTap = () => {
-  if (selectedCompoundId) {
-    navigate(`/stack-v2/${selectedCompoundId}`);
-  }
-};
+// AFTER
+export const appBuild = '15';
 ```
 
-**2. Remove info icon from stats overlay**
+---
 
-Remove the Popover with info icon from the "Now" row, since tapping the card provides all the context users need.
+## After I Make This Change, Follow These Steps
 
-```jsx
-// BEFORE:
-<div className="flex items-center gap-1">
-  <span className="text-[10px] text-muted-foreground font-medium">Now</span>
-  <Popover>
-    <PopoverTrigger asChild>
-      <button 
-        className="p-0.5 rounded-full hover:bg-muted transition-colors"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Info className="w-3 h-3 text-muted-foreground" />
-      </button>
-    </PopoverTrigger>
-    <PopoverContent ...>...</PopoverContent>
-  </Popover>
-</div>
+### Step 1: Pull the Updated Code
 
-// AFTER:
-<span className="text-[10px] text-muted-foreground font-medium">Now</span>
+```bash
+cd ~/regimen-health-hub/regimen
+git pull
 ```
 
-**3. Clean up unused imports**
+### Step 2: Sync the Version to Android
 
-Remove `Info` from lucide-react imports and remove unused `Popover` components if no longer needed elsewhere.
+```bash
+./sync-version.sh
+```
+
+You should see output confirming:
+- Version: 1.0.3
+- Build: 15
+- "✅ Android project updated"
+
+### Step 3: Build and Sync
+
+```bash
+npm run build
+npx cap sync android
+```
+
+### Step 4: Open Android Studio
+
+```bash
+npx cap open android
+```
+
+This ensures you open the correct project at `~/regimen-health-hub/regimen/android`
+
+### Step 5: Generate Signed AAB
+
+1. Wait for Gradle sync to complete (bottom progress bar)
+2. Menu: **Build → Generate Signed Bundle / APK**
+3. Select **Android App Bundle** → Next
+4. **Keystore path**: `/Users/Zen/regimen-health-hub/regimen-keystore.jks`
+5. **Key alias**: `regimen`
+6. **Passwords**: Enter your keystore password
+7. Click **Next**
+8. Select **release** build variant
+9. Click **Create**
+
+### Step 6: Find Your AAB
+
+After build completes, check Android Studio's **Event Log** (bottom right) - it will show the exact path, typically:
+
+```
+android/app/release/app-release.aab
+```
+
+### Step 7: Upload to Play Console
+
+1. Go to [Google Play Console](https://play.google.com/console)
+2. Select **Regimen**
+3. Navigate to **Testing → Internal testing**
+4. Click **Create new release**
+5. Upload your `.aab` file
+6. Release notes: `Internal test build - v1.0.3 (Build 15)`
+7. **Review and roll out**
+
+### Step 8: Add Testers
+
+1. Go to **Testing → Internal testing → Testers**
+2. Create email list with your email + beta tester's email
+3. Share the opt-in link with testers
 
 ---
 
-## What Stays the Same
+## How to Check Build Number in Android Studio
 
-| Element | Status |
-|---------|--------|
-| Backdrop blur on stats | Keep - provides subtle readability without being noticeable |
-| Level styling (`font-medium`) | Keep - appropriate emphasis |
-| 4 X-axis date labels | Keep - good density |
-| Chart height (h-28) | Keep - balanced compactness |
-| 7-day + 3-day timeframe | Keep - optimal for weekly dosing |
+If you ever need to verify the version in Android Studio:
+
+1. Open **android/app/build.gradle** in the left file tree
+2. Look for these lines:
+
+```groovy
+versionCode 15
+versionName "1.0.3"
+```
+
+The `versionCode` is what Play Store uses to determine if a build is newer.
 
 ---
 
-## Files to Modify
+## File to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/MedicationLevelsCard.tsx` | Fix route path, remove info icon + Popover |
-
+| File | Change |
+|------|--------|
+| `capacitor.config.ts` | `appBuild = '14'` → `appBuild = '15'` |
