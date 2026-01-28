@@ -1,181 +1,167 @@
 
 
-# Compact Medication Levels Card Layout
+# Ultra-Compact Medication Levels Card - Final Refinements
 
 ## Summary
 
-This plan makes the Medication Levels card more compact by reducing padding, repositioning the chevron tighter in the corner, and reorganizing the stats into a single column aligned to the right.
+This plan addresses three refinements: (1) repositioning stats directly under the chevron for cleaner right-alignment, (2) reducing padding further for a tighter card, and (3) verifying the chart timeframe shows exactly 7 days back + 3 days forward.
 
 ---
 
-## Current vs Proposed Layout
+## Layout Changes
 
-### Current Layout (from screenshot)
+### Current Layout
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  p-4 padding                                            │
-│  ┌──────────────────────┐      NOW (i)       [▲]       │
-│  │ Activity Testosterone│      ~36 mg · t½ ~5d         │
-│  └──────────────────────┘                              │
-│  ┌────────────────────────────────────────────────┐    │
-│  │                                                │    │
-│  │              [CHART]                           │    │
-│  │                                                │    │
-│  └────────────────────────────────────────────────┘    │
-│  pb-4 padding                                          │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│ pt-2                                                 [▲]  │
+│ ┌──────────────────────┐               NOW (i)            │
+│ │ Activity Compound ▾  │               ~215 mg            │
+│ └──────────────────────┘               t½ ~5d             │
+│ pb-2                                                      │
+└───────────────────────────────────────────────────────────┘
 ```
 
-### Proposed Layout (ultra-compact)
+### Proposed Layout
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ p-3 pt-2                                         [▲]   │ ← Chevron tighter (top-1.5 right-1.5)
-│ ┌──────────────────────┐              NOW (i)          │
-│ │ Activity Testosterone│              ~36 mg           │ ← Stacked vertically
-│ └──────────────────────┘              t½ ~5d           │
-│ ┌────────────────────────────────────────────────┐     │
-│ │              [CHART]                           │     │
-│ └────────────────────────────────────────────────┘     │
-│ pb-3 padding                                           │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│ pt-1.5                                       NOW (i) [▲]  │ ← Stats + chevron same row
+│ ┌──────────────────────┐                     ~215 mg      │
+│ │ Activity Compound ▾  │                     t½ ~5d       │
+│ └──────────────────────┘                                  │
+│ pb-1.5                                                    │
+└───────────────────────────────────────────────────────────┘
 ```
+
+Key changes:
+- "Now (i)" moves to same line as chevron (top-right corner)
+- Stats stack underneath: level → half-life
+- Tighter vertical padding throughout
 
 ---
 
-## Technical Changes
+## Technical Implementation
 
 ### File: `src/components/MedicationLevelsCard.tsx`
 
-**1. Tighter chevron positioning (line ~274-284)**
+**1. Remove absolute chevron, integrate into header row**
+
+The chevron will move from absolute positioning into the right-side flex column, appearing on the same line as "Now (i)".
 
 ```jsx
-// BEFORE:
-<button
-  onClick={toggleCollapsed}
-  className="absolute top-2 right-2 p-1.5 rounded-lg hover:bg-muted transition-colors z-10"
-  ...
->
+// BEFORE: Separate absolute-positioned chevron
+<button className="absolute top-1.5 right-1.5 p-1 ...">
+  {isCollapsed ? <ChevronDown /> : <ChevronUp />}
+</button>
 
-// AFTER:
-<button
-  onClick={toggleCollapsed}
-  className="absolute top-1.5 right-1.5 p-1 rounded-lg hover:bg-muted transition-colors z-10"
-  ...
->
+// AFTER: Integrated into stats column
+// (Remove the absolute button entirely)
 ```
 
-**2. Reduce header padding (line ~286)**
+**2. Restructure header to single row with integrated chevron**
 
 ```jsx
-// BEFORE:
-<div className="p-4 pb-2 pr-10">
-
-// AFTER:
-<div className="p-3 pt-2 pb-2 pr-8">
-```
-
-**3. Reorganize right-side stats to vertical stack (lines ~321-357)**
-
-```jsx
-// BEFORE: Two-row layout with horizontal elements
-<div className="flex flex-col items-end gap-0.5">
-  {/* Top row: Now label + info icon */}
-  <div className="flex items-center gap-1.5">
-    <span className="text-[10px] ...">Now</span>
-    <Popover>...</Popover>
-  </div>
-  
-  {/* Bottom row: Current level + half-life on same line */}
-  {currentLevel && (
-    <span className="text-xs text-muted-foreground">
-      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
-      {halfLifeData && (
-        <span className="text-muted-foreground/70"> · t½ {formatHalfLife(...)}</span>
-      )}
-    </span>
-  )}
-</div>
-
-// AFTER: Vertical stack, each on own line
-<div className="flex flex-col items-end gap-0">
-  {/* Row 1: Now label + info icon */}
-  <div className="flex items-center gap-1">
-    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
-    <Popover>
-      <PopoverTrigger asChild>
+<div className="p-3 pt-1.5 pb-1.5">
+  <div className="flex items-start justify-between">
+    {/* Left: Compound selector */}
+    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+      {/* ... existing Select component ... */}
+    </div>
+    
+    {/* Right: Stats column with chevron on first row */}
+    <div className="flex flex-col items-end gap-0">
+      {/* Row 1: Now label + info icon + chevron */}
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Now</span>
+        <Popover>...</Popover>
         <button 
-          className="p-0.5 rounded-full hover:bg-muted transition-colors"
-          onClick={(e) => e.stopPropagation()}
+          onClick={toggleCollapsed}
+          className="p-0.5 rounded hover:bg-muted transition-colors"
         >
-          <Info className="w-3 h-3 text-muted-foreground" />
+          {isCollapsed ? (
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+          )}
         </button>
-      </PopoverTrigger>
-      ...
-    </Popover>
+      </div>
+      
+      {/* Row 2: Current level */}
+      {currentLevel && (
+        <span className="text-xs font-medium text-foreground">
+          ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
+        </span>
+      )}
+      
+      {/* Row 3: Half-life */}
+      {halfLifeData && (
+        <span className="text-[10px] text-muted-foreground">
+          t½ {formatHalfLife(halfLifeData.halfLifeHours)}
+        </span>
+      )}
+    </div>
   </div>
-  
-  {/* Row 2: Current level */}
-  {currentLevel && (
-    <span className="text-xs font-medium text-foreground">
-      ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound?.dose_unit}
-    </span>
-  )}
-  
-  {/* Row 3: Half-life */}
-  {halfLifeData && (
-    <span className="text-[10px] text-muted-foreground">
-      t½ {formatHalfLife(halfLifeData.halfLifeHours)}
-    </span>
-  )}
 </div>
 ```
 
-**4. Reduce chart area padding (line ~363)**
+**3. Reduce padding throughout**
 
-```jsx
-// BEFORE:
-<div className="px-4 pb-4">
+| Element | Before | After |
+|---------|--------|-------|
+| Header top | `pt-2` (8px) | `pt-1.5` (6px) |
+| Header bottom | `pb-2` (8px) | `pb-1.5` (6px) |
+| Header right | `pr-8` (32px) | `pr-3` (12px) - no longer needs space for absolute chevron |
+| Card margin | `mb-4` (16px) | `mb-3` (12px) |
+| Chart padding bottom | `pb-3` (12px) | `pb-2` (8px) |
 
-// AFTER:
-<div className="px-3 pb-3">
+**4. Chart timeframe verification**
+
+The code at lines 196-198 already specifies 7 days + 3 days:
+```javascript
+const startDate = subDays(now, 7);
+const endDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days ahead
 ```
 
-**5. Reduce chart height slightly (line ~368)**
+The issue is that the X-axis `interval="preserveStartEnd"` shows ALL data points, and with 24 points per day × 10 days = 240 points, it displays too many date labels. I'll update the interval to show fewer labels (every ~2-3 days) for clarity.
 
 ```jsx
 // BEFORE:
-<div className="h-32 -mx-1">
+<XAxis 
+  dataKey="date" 
+  interval="preserveStartEnd"
+  ...
+/>
 
-// AFTER:
-<div className="h-28 -mx-1">
+// AFTER: Show ~4 labels across the 10-day span
+<XAxis 
+  dataKey="date" 
+  interval={Math.floor(chartData.length / 4)}
+  ...
+/>
 ```
 
 ---
 
-## Visual Comparison
+## Height Savings
 
 | Element | Before | After | Savings |
 |---------|--------|-------|---------|
-| Top padding | `p-4` (16px) | `pt-2` (8px) | 8px |
-| Bottom padding | `pb-4` (16px) | `pb-3` (12px) | 4px |
-| Chart height | 128px | 112px | 16px |
-| Chevron position | `top-2 right-2` | `top-1.5 right-1.5` | 2px each |
-| Info icon | `w-3.5 h-3.5` | `w-3 h-3` | Subtle |
+| Top padding | 8px | 6px | 2px |
+| Bottom padding | 8px | 6px | 2px |
+| Right padding | 32px | 12px | (width only) |
+| Card margin | 16px | 12px | 4px |
+| Chart bottom padding | 12px | 8px | 4px |
 
-**Estimated total height reduction: ~28-30px**
+**Estimated additional savings: ~12px**
 
 ---
 
-## Stats Display After Change
+## Half-Life Data Rationale
 
-The right column will now show:
-```text
-NOW (i)      ← Label + info popover
-~36 mg       ← Current level (emphasized)
-t½ ~5d       ← Half-life (subtle)
-```
-
-This is cleaner than the current horizontal `~36 mg · t½ ~5d` which runs together.
+Keeping t½ data because:
+1. **Educational** - Users learn why levels decay at different rates
+2. **Compact** - Only ~4 characters (e.g., "t½ ~5d")
+3. **Differentiating** - Helps compare compounds at a glance
+4. **Scientific** - Reinforces the app's pharmacokinetic credibility
 
 ---
 
@@ -183,16 +169,5 @@ This is cleaner than the current horizontal `~36 mg · t½ ~5d` which runs toget
 
 | File | Changes |
 |------|---------|
-| `src/components/MedicationLevelsCard.tsx` | Reduce padding, reposition chevron, vertical stats layout |
-
----
-
-## Edge Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| No current level data | Only show "Now (i)" label |
-| No half-life data | Skip t½ line entirely |
-| Long compound names | Truncate with ellipsis (existing behavior) |
-| Collapsed state | Header remains compact with stats visible |
+| `src/components/MedicationLevelsCard.tsx` | Integrate chevron into stats row, reduce padding, fix X-axis labels |
 
