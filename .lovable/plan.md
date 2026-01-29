@@ -1,168 +1,125 @@
 
-# Final Fix: Auth Stability + Auto Notification Prompt + Duplicate Prevention
+## Summary of what’s happening (based on your screenshot + code)
+You’re hitting a “resume after ~30 minutes” iOS scenario where the webview is either:
+1) kept alive but “half-suspended,” or  
+2) silently reloaded by iOS (common), reopening directly to `/today` (not `/`),
 
-## Overview
-Three issues to fix in one cohesive update:
-1. **Auth sign-out bug** - Users getting kicked to sign-in on cold start
-2. **Notification prompt** - Should auto-trigger iOS prompt after reinstall, not show a card
-3. **Duplicate notifications** - Still seeing 2 notifications when tapping to open app
+…and then the app gets stuck in the **ProtectedRoute** hydration spinner (“Restoring your session…”) for far longer than our intended timeouts.
 
----
+This is why it feels like the core issue is still there: **Splash has a hard watchdog + recovery UI, but ProtectedRoute does not.** If iOS reopens directly to `/today`, the Splash protections are bypassed.
 
-## Part 1: Auto Notification Prompt (The Simple Fix)
+## Most likely root cause (holistic, based on current code)
+There are two compounding problems:
 
-### Current (broken) behavior
-After reinstall, user has to go to Settings or tap a banner to enable notifications.
+### A) A “never-time-out” path exists inside auth hydration
+`hydrateSessionOrNull()` does time out `getSession()` and the “cached tokens -> setSession” path.
 
-### Correct behavior (what you want restored)
-After reinstall + sign-in:
-- App detects: OS permission = `prompt` + user has active compounds
-- App immediately calls `LocalNotifications.requestPermissions()`
-- iOS system dialog appears automatically
-- No banner, no card, no extra taps
+But the mirror fallback path does **not** have a timeout:
+- `safeAuth.ts` calls `restoreSessionFromMirror()` with no timeout
+- `restoreSessionFromMirror()` calls:
+  - `persistentStorage.get()` (native Preferences) with no timeout
+  - `supabase.auth.setSession()` with no timeout
 
-### Changes
+If either Preferences access or `setSession()` hangs (very plausible on iOS resume), the promise can hang indefinitely, so **ProtectedRoute stays in loading forever**.
 
-**File: `src/hooks/useNotificationPermissionPrompt.ts`**
-- Remove `shouldShowPrompt` state entirely
-- When conditions are met (OS = prompt, has compounds, throttle OK), immediately call `requestPermissions()` and schedule notifications if granted
-- This happens automatically on mount, no user action required
+Also: `hasAnyAuthTokens()` calls `loadFromMirror()` with no timeout, so even after attempts are exhausted, it can hang before deciding “failed vs unauthenticated”.
 
-**File: `src/components/TodayScreen.tsx`**
-- Remove the `NotificationPromptBanner` component entirely
-- Just use the hook for its auto-trigger side effect
+### B) Multiple resume/startup systems can trigger auth calls that can deadlock
+Even with “staggered delays,” there are still scenarios where other parts of the app can kick off auth calls while ProtectedRoute is trying to hydrate. Notably:
+- `useSessionWarming` calls `supabase.auth.getSession()` on resume (fire-and-forget). If that call hangs and holds the auth lock, it can block later calls.
+- `SubscriptionContext.refreshSubscription()` uses `supabase.auth.getUser()` (no timeout). If that hangs, it can also block the auth pipeline.
 
-**File: `src/components/NotificationPromptBanner.tsx`**
-- Delete this file - we don't need the banner at all
+Net result: on iOS resume, one hung auth call can “poison” the whole auth subsystem until a hard close (which matches your observation that hard close now fixes it).
 
----
+## What we’ll do differently (concrete changes that change the failure mode)
+Instead of trying to “make auth always fast,” we’ll do two things:
+1) **Eliminate all “infinite wait” code paths in auth hydration** (mirror + token checks must be time-bounded).
+2) **Add a hard watchdog + recovery UI to ProtectedRoute** (same philosophy as Splash). Even if iOS does something weird, users won’t be stuck indefinitely.
 
-## Part 2: Auth Stability (Stop Forced Sign-Outs)
+## Implementation plan (code-level)
+### 1) Add strict timeouts to native mirror operations (primary fix)
+Update `src/utils/authTokenMirror.ts` and `src/utils/safeAuth.ts` so that:
+- `loadFromMirror()` is wrapped with a short timeout (e.g., 800–1200ms)
+- `restoreSessionFromMirror()` wraps BOTH:
+  - the mirror read
+  - `supabase.auth.setSession()`
+  with timeouts (e.g., 1500–2500ms)
 
-### Problem
-During cold start or when running Xcode builds, webview localStorage can be unavailable momentarily. The app concludes "no session" and routes to `/auth` even though user was signed in.
+If those time out, we fail fast and continue to the next fallback step (or return null).
 
-### Solution: Token Mirror + Safer Routing
+Key goal: **`hydrateSessionOrNull()` must always resolve within a bounded time** (e.g., < 8–10 seconds total), no matter what iOS does.
 
-**New file: `src/utils/authTokenMirror.ts`**
-- Listens to `supabase.auth.onAuthStateChange`
-- On SIGNED_IN/TOKEN_REFRESHED: saves session tokens to Capacitor Preferences (native storage that survives webview issues)
-- On SIGNED_OUT: clears the mirror
-- Provides `restoreSessionFromMirror()` that attempts `setSession()` using saved tokens
+### 2) Add a “ProtectedRoute watchdog” (user-facing fix)
+Update `src/components/ProtectedRoute.tsx` to include an absolute watchdog similar to `Splash.tsx`:
+- If hydrationState is still `loading` after ~10 seconds:
+  - switch to a recovery UI (like the “Connection issue” screen)
+  - display a support code + last known stage
+  - provide actions:
+    - Try Again
+    - Reload App (soft reload)
+    - Continue to Sign In
+    - Clear cache & retry (optional, already used elsewhere)
 
-**File: `src/utils/safeAuth.ts`**
-- Update `hydrateSessionOrNull()` to try mirror restoration if localStorage tokens missing
+This ensures users never stare at an infinite spinner.
 
-**File: `src/components/ProtectedRoute.tsx`**
-- If tokens exist (localStorage OR mirror) but hydration failed/timed out: show "Connection issue" retry UI
-- Only redirect to `/auth` when we're confident there are truly no tokens anywhere
+### 3) Prevent “resume warming” from poisoning auth (stability fix)
+Update `src/hooks/useSessionWarming.ts` so it won’t start a potentially-hanging auth call at the worst time.
+Options (we’ll implement one, based on what’s safest for iOS):
+- Add a delay on resume (e.g., 1200–2000ms) and only run if we’re not currently hydrating.
+- Or disable session warming on iOS entirely (keep it on Android), because iOS is the platform exhibiting lock/hang behavior.
 
-**File: `src/pages/Splash.tsx`**
-- Use the same safe hydration logic instead of raw `getSession()`
+This reduces the chance that a background “warm” request blocks critical hydration.
 
-**File: `src/App.tsx`**
-- Initialize the auth token mirror listener on mount
+### 4) Make subscription initialization not compete with first-paint auth
+Update `src/contexts/SubscriptionContext.tsx` to avoid blocking or competing during the very first auth restore:
+- Ensure any auth reads (`getUser`, `getSession`) used in subscription refresh are either:
+  - delayed slightly on initial mount, or
+  - gated behind “auth ready” (i.e., don’t call them until ProtectedRoute hydration has completed), and/or
+  - reworked to rely on cached user id first (you already have `getUserIdWithFallback`)
 
----
+This reduces lock contention during the highest-risk moment (iOS resume / webview restore).
 
-## Part 3: Eliminate Duplicate Notifications
+### 5) Add precise “where did it hang?” diagnostics (so we can stop guessing)
+Add lightweight stage markers:
+- In `hydrateSessionOrNull()`, before/after each step, write:
+  - `localStorage.setItem('regimen_auth_hydration_stage', 'step_X_...')`
+  - timestamps/durations
+- In ProtectedRoute recovery UI, show a short support code + last stage.
 
-### Problem
-You see 2 notifications: one fires, you tap it, immediately get another one.
+This makes future reports actionable without requiring Xcode logs every time.
 
-### Root causes
-1. Legacy notifications (from older versions) still pending with different IDs
-2. Resume/open can trigger reschedule that fires immediately if time is "now"
+## Test plan (what you and beta testers will do)
+### iPhone (critical)
+1) Open app → confirm it loads.
+2) Put app in background for 30–60 minutes (or lock screen with app backgrounded).
+3) Return to app.
+Expected:
+- Either it restores quickly, OR
+- within ~10 seconds you see recovery UI with “Try Again / Reload / Sign In” (no infinite spinner).
+4) Tap “Try Again” once.
+5) If still stuck, tap “Reload App” once.
+We should never be in a state where you wait 60+ seconds with only a spinner.
 
-### Solution
+### Android (regression check)
+- Ensure notifications still fire
+- Ensure no new splash loops
 
-**File: `src/utils/notificationScheduler.ts`**
+### Web (regression check)
+- Login and navigation unaffected
 
-1. **Legacy notification detection + cleanup**
-   - Identify legacy dose notifications by signature: title = "Regimen", body starts with "Time for"
-   - Cancel them during reconciliation (with near-fire guard)
+## Decision on “reverting to two days ago”
+I do not recommend reverting yet because:
+- the most likely cause is a specific, fixable “infinite wait” path + missing watchdog in ProtectedRoute
+- reverting loses valuable stability work and doesn’t guarantee removing the underlying iOS resume behavior
 
-2. **Strict future-only scheduling**
-   - Change: only schedule if `notificationDate > Date.now() + 5000` (5 seconds in future)
-   - Prevents "immediate fire" if anything tries to schedule at current/past time
+If, after implementing the above, we still see failures, then we’ll consider a more aggressive strategy:
+- force a controlled soft reload on iOS resume when the app is “too old” (e.g., last active > 20 minutes), with loop protection.
 
-3. **Keep existing safeguards**
-   - 5-second debounce between full reschedules
-   - 90-second near-fire guard (don't touch notifications about to fire)
+## Optional (if you want to capture logs)
+If you can reproduce once while connected to Xcode, it can confirm whether the iOS bridge or auth call is hanging. But the plan above is designed to fix this even without logs.
 
----
-
-## Technical Implementation Details
-
-### Auth Token Mirror Structure
-```text
-Key: 'authTokenMirror'
-Value: JSON {
-  access_token: string,
-  refresh_token: string,
-  expires_at: number,
-  user_id: string,
-  saved_at: number
-}
-```
-
-### Auto-Prompt Logic (simplified)
-```text
-On TodayScreen mount:
-  1. Check OS permission via checkPermissions()
-  2. If permission !== 'prompt' → done (already granted or denied)
-  3. Check if user has active compounds
-  4. Check throttle (don't prompt if asked in last 24h)
-  5. If all conditions met → requestPermissions() immediately
-  6. If granted → schedule notifications
-  7. Record that we prompted (for throttle)
-```
-
-### Legacy Notification Signature Matching
-```text
-A notification is "legacy dose" if:
-  - title === 'Regimen' (or starts with it)
-  - body matches /^Time for .+/
-  - extra.type !== 'dose' (not already tagged by new system)
-```
-
----
-
-## Files to Modify
-
-**Auth stability:**
-- Create `src/utils/authTokenMirror.ts`
-- Update `src/utils/safeAuth.ts`
-- Update `src/components/ProtectedRoute.tsx`
-- Update `src/pages/Splash.tsx`
-- Update `src/App.tsx`
-
-**Notification prompt:**
-- Rewrite `src/hooks/useNotificationPermissionPrompt.ts` (auto-trigger, no banner state)
-- Update `src/components/TodayScreen.tsx` (remove banner, just use hook)
-- Delete `src/components/NotificationPromptBanner.tsx`
-
-**Duplicate prevention:**
-- Update `src/utils/notificationScheduler.ts`
-
----
-
-## Testing Checklist
-
-1. **Auth stability**
-   - Open app after 30+ minutes background → should NOT go to sign-in
-   - Run `npx cap run ios` while app open → should NOT sign out
-
-2. **Auto notification prompt**
-   - Delete app → reinstall → sign in
-   - iOS notification permission dialog should appear automatically (no banner, no tap required)
-   - Grant permission → notifications should schedule immediately
-
-3. **No duplicate notifications**
-   - Set dose 2 minutes ahead
-   - Let it fire, tap notification to open app
-   - Should NOT get a second notification immediately
-
-4. **Throttle works**
-   - After dismissing iOS prompt, should not prompt again for 24 hours
-
+## Deliverable outcome
+After these changes:
+- Users will not get stuck on “Restoring your session…” indefinitely.
+- The app will recover via retry/reload UI within a strict time budget.
+- The underlying hang is much less likely because mirror + token checks won’t block forever, and resume warming won’t start risky auth calls at the wrong time.
