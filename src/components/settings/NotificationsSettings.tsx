@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Bell, Camera, Scale } from "lucide-react";
+import { ChevronLeft, Bell, Camera, Scale, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { toast } from "sonner";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from "@/integrations/supabase/client";
 import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 import { persistentStorage } from "@/utils/persistentStorage";
@@ -20,7 +21,7 @@ export const NotificationsSettings = () => {
   const { isSubscribed } = useSubscription();
   
   // Notification states
-  const [doseReminders, setDoseReminders] = useState(true);
+  const [doseReminders, setDoseReminders] = useState(false); // Default to false until loaded
   const [cycleReminders, setCycleReminders] = useState(true);
   const [photoReminders, setPhotoReminders] = useState(false);
   const [photoFrequency, setPhotoFrequency] = useState<"daily" | "weekly">("weekly");
@@ -30,10 +31,33 @@ export const NotificationsSettings = () => {
   const [weightFrequency, setWeightFrequency] = useState<"daily" | "weekly">("daily");
   const [weightTime, setWeightTime] = useState("07:00");
   const [weightDay, setWeightDay] = useState<string>("1"); // 1 = Monday
+  
+  // OS-level permission status
+  const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
+  const [testingNotification, setTestingNotification] = useState(false);
 
   useEffect(() => {
     // Load saved preferences from persistent storage
     const loadSettings = async () => {
+      // Check actual iOS permission status first
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const status = await LocalNotifications.checkPermissions();
+          setOsPermissionGranted(status.display === 'granted');
+          console.log('[NotificationsSettings] OS permission status:', status.display);
+        } catch (error) {
+          console.error('[NotificationsSettings] Error checking permissions:', error);
+          setOsPermissionGranted(null);
+        }
+      } else {
+        setOsPermissionGranted(true); // Web fallback
+      }
+      
+      // Load doseReminders from storage (was missing!)
+      const savedDoseReminders = await persistentStorage.getBoolean('doseReminders', true);
+      setDoseReminders(savedDoseReminders);
+      console.log('[NotificationsSettings] Loaded doseReminders:', savedDoseReminders);
+      
       const savedCycleReminders = await persistentStorage.get('cycleReminders');
       setCycleReminders(savedCycleReminders !== 'false');
       
@@ -58,6 +82,42 @@ export const NotificationsSettings = () => {
     
     loadSettings();
   }, []);
+
+  // Send a test notification to verify the pipeline works
+  const sendTestNotification = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      toast.info("Test notifications only work on iOS/Android");
+      return;
+    }
+    
+    setTestingNotification(true);
+    
+    try {
+      const status = await LocalNotifications.checkPermissions();
+      if (status.display !== 'granted') {
+        toast.error("Notifications are blocked at the system level. Open Settings → Regimen → Notifications to enable.");
+        setOsPermissionGranted(false);
+        return;
+      }
+      
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: 999999,
+          title: 'Regimen Test',
+          body: 'If you see this, notifications are working!',
+          schedule: { at: new Date(Date.now() + 3000) }, // 3 seconds from now
+        }],
+      });
+      
+      toast.success("Test notification sent - check in 3 seconds!");
+      console.log('[NotificationsSettings] Test notification scheduled for 3 seconds from now');
+    } catch (error) {
+      console.error('[NotificationsSettings] Error sending test notification:', error);
+      toast.error("Failed to send test notification");
+    } finally {
+      setTestingNotification(false);
+    }
+  };
 
   const triggerHaptic = async () => {
     try {
@@ -188,6 +248,26 @@ export const NotificationsSettings = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
+        {/* OS Permission Warning Banner */}
+        {osPermissionGranted === false && (
+          <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm border border-destructive/20">
+            <strong>⚠️ Notifications blocked</strong>
+            <p className="mt-1">Notifications are disabled at the system level. Open Settings → Regimen → Notifications to enable.</p>
+          </div>
+        )}
+        
+        {/* Test Notification Button */}
+        {Capacitor.isNativePlatform() && (
+          <Button 
+            variant="outline" 
+            onClick={sendTestNotification}
+            disabled={testingNotification}
+            className="w-full"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {testingNotification ? "Sending..." : "Send Test Notification"}
+          </Button>
+        )}
         {/* Dose Reminders */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-2">
