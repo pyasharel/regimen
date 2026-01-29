@@ -15,6 +15,8 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 interface DoseEditModalProps {
   isOpen: boolean;
@@ -35,8 +37,35 @@ interface DoseEditModalProps {
 
 export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEditModalProps) => {
   const { toast } = useToast();
+  const { isSubscribed } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [showScopeChoice, setShowScopeChoice] = useState(false);
+
+  // Helper to reschedule notifications after any dose edit
+  const rescheduleNotificationsAfterEdit = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: allDoses } = await supabase
+        .from('doses')
+        .select('*, compounds(name, is_active)')
+        .eq('user_id', user.id)
+        .eq('taken', false);
+        
+      if (allDoses) {
+        const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
+        const dosesWithName = activeDoses.map(d => ({
+          ...d,
+          compound_name: d.compounds?.name || 'Medication'
+        }));
+        await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+        console.log('[DoseEdit] Rescheduled notifications after edit');
+      }
+    } catch (error) {
+      console.error('[DoseEdit] Failed to reschedule notifications:', error);
+    }
+  };
   
   // Form state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
@@ -95,6 +124,10 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
       });
       
       onDoseUpdated();
+      
+      // Reschedule notifications to pick up the edited time
+      await rescheduleNotificationsAfterEdit();
+      
       onClose();
     } catch (error) {
       console.error('Error updating dose:', error);
@@ -176,6 +209,10 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
       });
       
       onDoseUpdated();
+      
+      // Reschedule notifications to pick up the edited schedule
+      await rescheduleNotificationsAfterEdit();
+      
       onClose();
     } catch (error) {
       console.error('Error updating schedule:', error);
