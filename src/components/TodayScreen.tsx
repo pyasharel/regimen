@@ -940,7 +940,10 @@ export const TodayScreen = () => {
     audio.play().catch(err => console.log('Sound play failed:', err));
   };
 
-  if (loading || subscriptionLoading) {
+  // IMPORTANT: Do not block the entire Today screen on subscription refresh.
+  // Subscription checks can hang on mobile (connection interrupted). The UI should still render
+  // and allow retries for data loads.
+  if (loading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
         <div className="flex-1 min-h-0 scroll-container pb-32">
