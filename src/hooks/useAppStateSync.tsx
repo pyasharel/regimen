@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,16 +9,29 @@ import { runFullCleanup } from '@/utils/doseCleanup';
 import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
 import { processPendingActions } from '@/utils/pendingDoseActions';
 
+// Debounce time to prevent rapid-fire sync during permission dialogs
+const SYNC_DEBOUNCE_MS = 2000;
+
 /**
  * Hook to sync notifications when app comes to foreground
  * This enables cross-platform sync - if you add medications on web,
  * opening the iPhone app will automatically schedule notifications
  */
 export const useAppStateSync = () => {
+  const lastSyncTime = useRef(0);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const syncNotifications = async () => {
+      // Debounce: prevent rapid execution during iOS permission dialogs
+      const now = Date.now();
+      if (now - lastSyncTime.current < SYNC_DEBOUNCE_MS) {
+        console.log('[AppStateSync] Debounced - too soon since last sync');
+        return;
+      }
+      lastSyncTime.current = now;
+
       // Skip if user is in onboarding flow - permissions will be asked at the right time
       if (window.location.pathname.includes('/onboarding')) {
         return;
