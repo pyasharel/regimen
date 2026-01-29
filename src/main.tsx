@@ -171,10 +171,15 @@ const bootstrapTheme = async (): Promise<void> => {
       }
       
       // Apply to document immediately (before React paints)
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(theme);
-      document.documentElement.classList.remove('design-classic', 'design-refined');
-      document.documentElement.classList.add(`design-${variant}`);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(theme);
+    document.documentElement.classList.remove('design-classic', 'design-refined');
+    document.documentElement.classList.add(`design-${variant}`);
+    
+    // Mark that we've bootstrapped the theme (prevents ThemeProvider from re-reading Capacitor)
+    try {
+      localStorage.setItem('theme_bootstrapped_session', 'true');
+    } catch { /* ignore */ }
       
       console.log('[ThemeBootstrap] Applied theme from Capacitor:', theme, 'variant:', variant);
     } else {
@@ -187,6 +192,11 @@ const bootstrapTheme = async (): Promise<void> => {
       document.documentElement.classList.add(theme);
       document.documentElement.classList.remove('design-classic', 'design-refined');
       document.documentElement.classList.add(`design-${variant}`);
+    
+    // Mark that we've bootstrapped the theme (prevents ThemeProvider from re-reading Capacitor)
+    try {
+      localStorage.setItem('theme_bootstrapped_session', 'true');
+    } catch { /* ignore */ }
       
       console.log('[ThemeBootstrap] Applied theme from localStorage:', theme, 'variant:', variant);
     }

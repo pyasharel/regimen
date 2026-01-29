@@ -104,47 +104,64 @@ export function ThemeProvider({
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Sync with Capacitor Preferences on mount (for native, ensure localStorage stays in sync)
+  // Skip if main.tsx already bootstrapped the theme to avoid redundant reads
   useEffect(() => {
     const syncWithCapacitor = async () => {
+      // Check if main.tsx already bootstrapped the theme (prevents double read on cold start)
+      const alreadyBootstrapped = localStorage.getItem('theme_bootstrapped_session');
+      if (alreadyBootstrapped) {
+        console.log('[ThemeProvider] Theme already bootstrapped by main.tsx, skipping Capacitor sync');
+        setIsLoaded(true);
+        return;
+      }
+
       try {
-        // Check Capacitor Preferences (source of truth on native)
-        const capacitorTheme = await getStoredTheme(storageKey);
+        // Add timeout to prevent unbounded Capacitor calls (match main.tsx pattern)
+        const SYNC_TIMEOUT_MS = 500;
         
-        if (capacitorTheme && capacitorTheme !== theme) {
-          // Capacitor has a different value, use it and sync localStorage
-          setThemeState(capacitorTheme);
+        const themeResult = await Promise.race([
+          getStoredTheme(storageKey),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), SYNC_TIMEOUT_MS))
+        ]);
+        
+        const variantKey = `${storageKey}-variant`;
+        const variantResult = await Promise.race([
+          getStoredVariant(variantKey),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), SYNC_TIMEOUT_MS))
+        ]);
+        
+        // Only use Capacitor values if we got them before timeout
+        if (themeResult && themeResult !== theme) {
+          setThemeState(themeResult);
           try {
-            localStorage.setItem(storageKey, capacitorTheme);
+            localStorage.setItem(storageKey, themeResult);
           } catch { /* ignore */ }
-        } else if (!capacitorTheme && theme) {
-          // No value in Capacitor, save current theme there
+        } else if (!themeResult && theme) {
+          // Timeout or no value in Capacitor, save current theme there
           await setStoredTheme(storageKey, theme);
         }
         
         // Sync design variant
-        const variantKey = `${storageKey}-variant`;
-        const capacitorVariant = await getStoredVariant(variantKey);
-        
-        if (capacitorVariant === 'refined' || capacitorVariant === 'classic') {
-          if (capacitorVariant !== designVariant) {
-            setDesignVariantState(capacitorVariant);
+        if (variantResult === 'refined' || variantResult === 'classic') {
+          if (variantResult !== designVariant) {
+            setDesignVariantState(variantResult);
             try {
-              localStorage.setItem(variantKey, capacitorVariant);
+              localStorage.setItem(variantKey, variantResult);
             } catch { /* ignore */ }
           }
-        } else if (capacitorVariant === 'soft' || capacitorVariant === 'refined-v2') {
+        } else if (variantResult === 'soft' || variantResult === 'refined-v2') {
           // Migrate old variants
           setDesignVariantState('refined');
           await setStoredVariant(variantKey, 'refined');
           try {
             localStorage.setItem(variantKey, 'refined');
           } catch { /* ignore */ }
-        } else if (!capacitorVariant) {
+        } else if (!variantResult) {
           // Save current variant to Capacitor
           await setStoredVariant(variantKey, designVariant);
         }
       } catch (error) {
-        console.error('Error syncing theme with Capacitor:', error);
+        console.error('[ThemeProvider] Error syncing theme with Capacitor:', error);
       } finally {
         setIsLoaded(true);
       }

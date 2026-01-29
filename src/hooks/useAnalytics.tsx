@@ -65,6 +65,9 @@ export const useAnalytics = () => {
   }, [location]);
 
   // Track app opens (native platforms)
+  // Delay analytics resume handling to let critical systems (auth, theme, subscription) settle first
+  const ANALYTICS_RESUME_DELAY_MS = 2000;
+  
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -75,17 +78,22 @@ export const useAnalytics = () => {
       if (!isMounted) return;
       
       if (isActive) {
-        const platform = Capacitor.getPlatform();
-        const daysSinceInstall = getDaysSinceInstall();
-        trackAppOpened(platform, daysSinceInstall);
-        
-        // Refresh platform property on each resume
-        setPlatformUserProperty();
-        
-        // Reset session timer when app becomes active
-        sessionStartTime.current = Date.now();
-        screenEntryTime.current = Date.now();
-        trackSessionStart();
+        // Stagger analytics to avoid competing with auth/subscription/theme on resume
+        setTimeout(() => {
+          if (!isMounted) return;
+          
+          const platform = Capacitor.getPlatform();
+          const daysSinceInstall = getDaysSinceInstall();
+          trackAppOpened(platform, daysSinceInstall);
+          
+          // Refresh platform property on each resume
+          setPlatformUserProperty();
+          
+          // Reset session timer when app becomes active
+          sessionStartTime.current = Date.now();
+          screenEntryTime.current = Date.now();
+          trackSessionStart();
+        }, ANALYTICS_RESUME_DELAY_MS);
       } else {
         // Track screen time for current screen before going to background
         if (lastScreen.current) {
