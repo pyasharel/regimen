@@ -1,24 +1,47 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAllAppData, generateSupportCode } from "@/utils/startupPreflight";
+import { getCachedSession } from "@/utils/authSessionCache";
 import logo from "@/assets/regimen-wordmark-transparent.png";
 
 type SplashState = 'loading' | 'timeout' | 'error';
 
-const TIMEOUT_MS = 5000; // 5 second watchdog
+const TIMEOUT_MS = 8000; // 8 second watchdog (increased from 5s as fallback buffer)
 
 export default function Splash() {
   const navigate = useNavigate();
   const [state, setState] = useState<SplashState>('loading');
   const [supportCode, setSupportCode] = useState<string>('');
+  const hasNavigated = useRef(false);
 
-  const checkSession = useCallback(async () => {
+  // Fast-path: Check localStorage cache synchronously first
+  const tryFastPath = useCallback((): boolean => {
+    console.log('[Splash] Attempting fast-path session check...');
+    localStorage.setItem('regimen_last_boot_stage', 'splash_fast_path');
+    
+    const cachedSession = getCachedSession();
+    
+    if (cachedSession) {
+      console.log('[Splash] Fast-path: Valid cached session found, navigating immediately');
+      localStorage.setItem('regimen_last_boot_stage', 'splash_fast_path_success');
+      hasNavigated.current = true;
+      navigate("/today", { replace: true });
+      return true;
+    }
+    
+    console.log('[Splash] Fast-path: No valid cached session, falling back to async check');
+    return false;
+  }, [navigate]);
+
+  // Slow-path: Async session check with timeout
+  const checkSessionAsync = useCallback(async () => {
+    if (hasNavigated.current) return;
+    
     setState('loading');
     
     try {
-      // Set boot stage marker
-      localStorage.setItem('regimen_last_boot_stage', 'splash_session_check');
+      localStorage.setItem('regimen_last_boot_stage', 'splash_async_session_check');
       
       // Race between session check and timeout
       const sessionPromise = supabase.auth.getSession();
@@ -28,21 +51,26 @@ export default function Splash() {
       
       const result = await Promise.race([sessionPromise, timeoutPromise]);
       
+      if (hasNavigated.current) return; // Check again after await
+      
       if (result && 'data' in result) {
         const { session } = result.data;
         
         localStorage.setItem('regimen_last_boot_stage', 'splash_navigating');
+        hasNavigated.current = true;
         
         if (session) {
-          console.log('[Splash] Session found, navigating to /today');
+          console.log('[Splash] Async: Session found, navigating to /today');
           navigate("/today", { replace: true });
         } else {
-          console.log('[Splash] No session, navigating to /onboarding');
+          console.log('[Splash] Async: No session, navigating to /onboarding');
           navigate("/onboarding", { replace: true });
         }
       }
     } catch (error) {
-      console.error('[Splash] Session check failed:', error);
+      if (hasNavigated.current) return;
+      
+      console.error('[Splash] Async session check failed:', error);
       localStorage.setItem('regimen_last_boot_stage', 'splash_error');
       
       // Check if it's a timeout
@@ -57,13 +85,26 @@ export default function Splash() {
   }, [navigate]);
 
   useEffect(() => {
-    console.log('[Splash] Checking session...');
-    checkSession();
-  }, [checkSession]);
+    console.log('[Splash] Starting session check...');
+    
+    // Step 1: Try fast-path first (synchronous localStorage check)
+    const fastPathSucceeded = tryFastPath();
+    
+    // Step 2: If fast-path failed, fall back to async check
+    if (!fastPathSucceeded) {
+      checkSessionAsync();
+    }
+  }, [tryFastPath, checkSessionAsync]);
 
   const handleRetry = () => {
     console.log('[Splash] Retrying session check...');
-    checkSession();
+    hasNavigated.current = false;
+    
+    // Try fast-path first, then async
+    const fastPathSucceeded = tryFastPath();
+    if (!fastPathSucceeded) {
+      checkSessionAsync();
+    }
   };
 
   const handleReset = () => {

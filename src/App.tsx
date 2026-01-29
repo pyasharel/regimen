@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
+import { useSessionWarming } from "@/hooks/useSessionWarming";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { PaywallProvider, usePaywall } from "@/contexts/PaywallContext";
@@ -199,6 +200,7 @@ const App = () => {
 const AnalyticsWrapper = () => {
   useAnalytics();
   useAppStateSync(); // Auto-sync notifications when app resumes
+  useSessionWarming(); // Proactively warm auth session on mount and resume
   const navigate = useNavigate();
   const { refreshSubscription } = useSubscription();
 
