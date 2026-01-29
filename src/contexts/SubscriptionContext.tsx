@@ -6,6 +6,7 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Purchases, LOG_LEVEL, CustomerInfo, PurchasesOfferings, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 import { getStoredAttribution } from '@/utils/attribution';
 import { appVersion } from '../../capacitor.config';
+import { getUserIdWithFallback } from '@/utils/safeAuth';
 
 // Partner promotional offer parameters (from signed offer generation)
 export interface PromotionalOfferParams {
@@ -1031,40 +1032,53 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   // Main initialization effect
   useEffect(() => {
     const initialize = async () => {
-      // On native: check persistent cache FIRST (survives webview reloads/screenshots)
-      if (isNativePlatform) {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          // 📦 Try to restore from persistent cache immediately
-          const cachedEntitlement = await loadEntitlementFromCache(user.id);
-          if (cachedEntitlement?.isPro) {
-            console.log('[SubscriptionContext] 🚀 Restoring subscription from persistent cache on init');
-            applyCachedEntitlement(cachedEntitlement, 'persistent_cache_init');
-            setIsLoading(false);
-            addDiagnosticsLog('persistent_cache_init', 'none', cachedEntitlement.isTrialing ? 'trialing' : 'active', 'Restored from persistent cache');
-            
-            // Continue to verify with RevenueCat in background (don't block UI)
-            (async () => {
-              await initRevenueCat();
-              if (revenueCatConfiguredRef.current) {
-                await identifyRevenueCatUser(user.id);
-              }
-            })();
-            return; // Skip full refresh, cache is trusted
+      try {
+        // On native, avoid awaiting a potentially hanging supabase.auth.getUser() during cold start.
+        // Use cached session first + a timed fallback.
+        const userId = isNativePlatform ? await getUserIdWithFallback(3000) : null;
+
+        // On native: check persistent cache FIRST (survives webview reloads/screenshots)
+        if (isNativePlatform) {
+          if (userId) {
+            // 📦 Try to restore from persistent cache immediately
+            const cachedEntitlement = await loadEntitlementFromCache(userId);
+            if (cachedEntitlement?.isPro) {
+              console.log('[SubscriptionContext] 🚀 Restoring subscription from persistent cache on init');
+              applyCachedEntitlement(cachedEntitlement, 'persistent_cache_init');
+              setIsLoading(false);
+              addDiagnosticsLog(
+                'persistent_cache_init',
+                'none',
+                cachedEntitlement.isTrialing ? 'trialing' : 'active',
+                'Restored from persistent cache'
+              );
+
+              // Continue to verify with RevenueCat in background (don't block UI)
+              (async () => {
+                await initRevenueCat();
+                if (revenueCatConfiguredRef.current) {
+                  await identifyRevenueCatUser(userId);
+                }
+              })();
+              return; // Skip full refresh, cache is trusted
+            }
+          }
+
+          // No valid cache, do normal init
+          await initRevenueCat();
+
+          if (userId && revenueCatConfiguredRef.current) {
+            await identifyRevenueCatUser(userId);
           }
         }
-        
-        // No valid cache, do normal init
-        await initRevenueCat();
-        
-        if (user && revenueCatConfiguredRef.current) {
-          await identifyRevenueCatUser(user.id);
-        }
-      }
 
-      // Only refresh after RevenueCat is ready (on native) so we don't skip the RC check
-      refreshSubscription('context_init');
+        // Only refresh after RevenueCat is ready (on native) so we don't skip the RC check
+        refreshSubscription('context_init');
+      } catch (err) {
+        console.error('[SubscriptionContext] Initialization failed:', err);
+        // Never block the app indefinitely on subscription init.
+        setIsLoading(false);
+      }
     };
 
     initialize();
@@ -1127,10 +1141,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         console.log('[SubscriptionContext] App resumed...');
         addDiagnosticsLog('app_resume', subscriptionStatusRef.current, '...', 'App resumed from background');
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+          const userId = await getUserIdWithFallback(3000);
+          if (userId) {
           // 📦 FIRST: Check persistent cache (survives webview reloads like screenshots)
-          const persistedCache = await loadEntitlementFromCache(user.id);
+            const persistedCache = await loadEntitlementFromCache(userId);
           if (persistedCache?.isPro) {
             console.log('[SubscriptionContext] 🛡️ App resumed - restoring from persistent cache');
             applyCachedEntitlement(persistedCache, 'app_resume_persistent_cache');
@@ -1143,7 +1157,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
                 await initRevenueCat();
               }
               if (revenueCatConfiguredRef.current) {
-                await identifyRevenueCatUser(user.id);
+                  await identifyRevenueCatUser(userId);
               }
             })();
             return;
@@ -1169,13 +1183,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
             const needsIdentify =
               !revenueCatIdentifiedRef.current ||
-              revenueCatAppUserIdRef.current !== user.id;
+                revenueCatAppUserIdRef.current !== userId;
 
             let isPro = false;
             let isTrialing = false;
 
             if (needsIdentify) {
-              const result = await identifyRevenueCatUser(user.id);
+                const result = await identifyRevenueCatUser(userId);
               isPro = result.isPro;
               isTrialing = result.isTrialing;
             } else {
