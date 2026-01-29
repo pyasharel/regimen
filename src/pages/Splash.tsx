@@ -131,16 +131,16 @@ export default function Splash() {
           </button>
         </div>
 
-        {/* Reset option - more subtle */}
+        {/* Clear cache option - more subtle and less alarming */}
         <div className="pt-4 border-t border-border">
           <button
             onClick={handleReset}
-            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Reset app data
+            Clear cache & retry
           </button>
           <p className="text-[10px] text-muted-foreground/60 mt-1">
-            This will sign you out and clear cached data
+            Signs you out temporarily to fix connection issues
           </p>
         </div>
 
