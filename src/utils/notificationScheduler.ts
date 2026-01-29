@@ -2,14 +2,18 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { enqueuePendingAction } from './pendingDoseActions';
 
-export const requestNotificationPermissions = async (): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform()) {
-    console.log('Notifications only available on native platforms');
-    return false;
-  }
+// Track if action types are registered
+let actionTypesRegistered = false;
+
+/**
+ * Register notification action types without requesting permissions
+ * Safe to call multiple times - will only register once
+ */
+export const ensureDoseActionTypesRegistered = async (): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) return;
+  if (actionTypesRegistered) return;
 
   try {
-    // Register action types for notification buttons
     await LocalNotifications.registerActionTypes({
       types: [
         {
@@ -36,6 +40,22 @@ export const requestNotificationPermissions = async (): Promise<boolean> => {
         },
       ],
     });
+    actionTypesRegistered = true;
+    console.log('[Notifications] Action types registered');
+  } catch (error) {
+    console.error('[Notifications] Error registering action types:', error);
+  }
+};
+
+export const requestNotificationPermissions = async (): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform()) {
+    console.log('Notifications only available on native platforms');
+    return false;
+  }
+
+  try {
+    // Register action types first
+    await ensureDoseActionTypesRegistered();
 
     const result = await LocalNotifications.requestPermissions();
     return result.display === 'granted';
@@ -299,6 +319,9 @@ export const setupNotificationActionHandlers = () => {
   
   handlersRegistered = true;
   console.log('[Notifications] Registering action handlers');
+
+  // Register action types at startup (safe, no permission prompt)
+  ensureDoseActionTypesRegistered();
 
   LocalNotifications.addListener('localNotificationActionPerformed', async (notification) => {
     const extra = notification.notification.extra || {};

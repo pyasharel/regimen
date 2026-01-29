@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 interface DoseEditModalProps {
   isOpen: boolean;
@@ -44,6 +45,13 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
   // Helper to reschedule notifications after any dose edit
   const rescheduleNotificationsAfterEdit = async () => {
     try {
+      // Check if user has dose reminders enabled
+      const doseRemindersEnabled = await persistentStorage.getBoolean('doseReminders', true);
+      if (!doseRemindersEnabled) {
+        console.log('[DoseEdit] Dose reminders disabled - skipping reschedule');
+        return;
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       

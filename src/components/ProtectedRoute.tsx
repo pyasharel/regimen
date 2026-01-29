@@ -7,6 +7,10 @@ import { RefreshCw } from "lucide-react";
 
 // How long to wait for full session hydration
 const HYDRATION_TIMEOUT_MS = 8000;
+// How long to wait before retrying on transient failure
+const TRANSIENT_RETRY_DELAY_MS = 600;
+// Maximum number of hydration attempts
+const MAX_HYDRATION_ATTEMPTS = 2;
 
 type HydrationState = 'loading' | 'hydrated' | 'failed' | 'unauthenticated';
 
@@ -14,16 +18,21 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [hydrationState, setHydrationState] = useState<HydrationState>('loading');
   const [retryCount, setRetryCount] = useState(0);
-  const hasAttemptedHydration = useRef(false);
+  const hydrationAttemptRef = useRef(0);
+  const isMountedRef = useRef(true);
 
-  const attemptHydration = useCallback(async () => {
+  const attemptHydration = useCallback(async (attemptNumber: number): Promise<void> => {
+    if (!isMountedRef.current) return;
+    
     const startTime = Date.now();
-    console.log('[ProtectedRoute] Starting session hydration attempt', retryCount + 1);
+    console.log('[ProtectedRoute] Starting session hydration attempt', attemptNumber);
     
     try {
       setHydrationState('loading');
       
       const hydratedSession = await hydrateSessionOrNull(HYDRATION_TIMEOUT_MS);
+      
+      if (!isMountedRef.current) return;
       
       const elapsed = Date.now() - startTime;
       console.log('[ProtectedRoute] Hydration completed in', elapsed, 'ms, session:', !!hydratedSession);
@@ -34,30 +43,62 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           timestamp: new Date().toISOString(),
           elapsed,
           success: !!hydratedSession,
-          retryCount,
+          attemptNumber,
         }));
       } catch { /* ignore */ }
       
       if (hydratedSession) {
         setSession(hydratedSession);
         setHydrationState('hydrated');
+        return;
+      }
+      
+      // No session on first attempt - try once more after a short delay
+      // This handles transient cases during rapid hard-close/reopen
+      if (attemptNumber < MAX_HYDRATION_ATTEMPTS) {
+        console.log('[ProtectedRoute] No session found, retrying after delay...');
+        await new Promise(resolve => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
+        
+        if (!isMountedRef.current) return;
+        
+        // Try again
+        await attemptHydration(attemptNumber + 1);
       } else {
-        // No session means user is not authenticated
+        // All attempts exhausted - user is not authenticated
+        console.log('[ProtectedRoute] All hydration attempts exhausted, redirecting to auth');
         setSession(null);
         setHydrationState('unauthenticated');
       }
     } catch (error) {
+      if (!isMountedRef.current) return;
+      
       console.error('[ProtectedRoute] Hydration failed with error:', error);
-      setHydrationState('failed');
+      
+      // On error, retry if we have attempts left
+      if (attemptNumber < MAX_HYDRATION_ATTEMPTS) {
+        console.log('[ProtectedRoute] Error on attempt', attemptNumber, '- retrying...');
+        await new Promise(resolve => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
+        
+        if (!isMountedRef.current) return;
+        await attemptHydration(attemptNumber + 1);
+      } else {
+        setHydrationState('failed');
+      }
     }
-  }, [retryCount]);
+  }, []);
 
   useEffect(() => {
-    // Only attempt hydration once per mount (unless retry is triggered)
-    if (hasAttemptedHydration.current && retryCount === 0) return;
-    hasAttemptedHydration.current = true;
+    isMountedRef.current = true;
     
-    attemptHydration();
+    // Only attempt hydration on initial mount or when retry is triggered
+    if (hydrationAttemptRef.current > 0 && retryCount === 0) return;
+    hydrationAttemptRef.current++;
+    
+    attemptHydration(1);
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [attemptHydration, retryCount]);
 
   // Loading state - show "Restoring your session..." UI
@@ -83,7 +124,10 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           </p>
           <div className="flex gap-3 mt-2">
             <Button 
-              onClick={() => setRetryCount(c => c + 1)}
+              onClick={() => {
+                hydrationAttemptRef.current = 0;
+                setRetryCount(c => c + 1);
+              }}
               className="gap-2"
             >
               <RefreshCw className="h-4 w-4" />
