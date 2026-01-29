@@ -1,166 +1,137 @@
 
-# Fix Notifications Not Triggering After Dose Edits
+Goals
+- Make notification permissions feel “normal” and user-friendly:
+  - No scary red “blocked” banner unless the user truly blocked notifications in iOS Settings.
+  - If iOS has never been asked (status = “prompt”), give a clear “Enable” CTA that triggers the iOS permission prompt.
+  - If the user previously enabled reminders but deleted/reinstalled the app (iOS resets permissions), prompt again in a clean way.
+- Ensure dose reminders actually schedule/deliver when the user expects them to.
+- Reduce the “Restoring your session…” → redirected to sign-in flakiness during rapid hard-close/reopen loops.
 
-## Problem Summary
+What your logs show (key facts)
+- iOS permission status is returning “prompt”:
+  - [NotificationsSettings] OS permission status: prompt
+  - [AppStateSync] checkPermissions → prompt → “skipping scheduling”
+- “prompt” does not mean “blocked.” It means iOS has not shown the permission dialog yet for this install, so the app must call requestPermissions at an intentional moment (usually via a user action) to show the iOS prompt.
+- Right now Settings never requests permission when you toggle Dose Reminders on. It only saves the preference. So you can end up with “Dose Reminders ON” in the UI but no OS permission → no notifications.
 
-You're editing dose times but not receiving notifications because:
-1. Editing a dose only updates the database - **it doesn't reschedule notifications**
-2. The Settings UI shows "Enabled" even if iOS permissions were never actually granted
-3. The `doseReminders` preference isn't being loaded/saved properly
+Plan A (recommended): Permission states + clean CTA + prompt on demand
+1) Replace the boolean permission state in NotificationsSettings with a tri-state
+   - File: src/components/settings/NotificationsSettings.tsx
+   - Change from:
+     - osPermissionGranted: boolean | null
+   - To something like:
+     - osPermissionStatus: 'granted' | 'prompt' | 'denied' | 'unknown'
+   - Map LocalNotifications.checkPermissions().display:
+     - 'granted' → granted
+     - 'prompt' → prompt
+     - 'denied' → denied
+     - any error → unknown
 
-## Root Causes Found
+2) Update the Notifications settings UI so it matches real iOS behavior (and feels less alarming)
+   - File: src/components/settings/NotificationsSettings.tsx
+   - UX rules:
+     - If status = granted:
+       - Show no warning banner.
+     - If status = prompt:
+       - Do NOT show “Notifications blocked.”
+       - Show a neutral “Enable notifications” card (not red) with a button:
+         - Button label: “Enable Notifications”
+         - On press: call LocalNotifications.requestPermissions()
+         - If granted: immediately schedule (dose + cycle, and allow test notification)
+         - If denied: show a gentle “Not enabled” message with instructions.
+     - If status = denied:
+       - Show a small, non-alarming inline hint (not a red error banner):
+         - “Notifications are off in iOS Settings for Regimen.”
+         - Provide an “Open iOS Settings” button if feasible (see step 3).
+       - Important: iOS will not show the system prompt again once denied; only the user can re-enable in Settings.
 
-### Issue 1: DoseEditModal Doesn't Reschedule Notifications
-When you edit a dose in `DoseEditModal.tsx`, it calls `onDoseUpdated()` which triggers `loadDoses()` in TodayScreen. This only refreshes the UI display - **it never calls `scheduleAllUpcomingDoses()`** to update the iOS notification system.
+3) Add an “Open iOS Settings” button (optional but improves UX)
+   - File: src/components/settings/NotificationsSettings.tsx
+   - Implement using Capacitor App API:
+     - import { App } from '@capacitor/app'
+     - App.openUrl({ url: 'app-settings:' })
+   - Fallback if Apple blocks this deep link:
+     - Keep the on-screen instructions: Settings → Regimen → Notifications
 
-### Issue 2: Settings UI Doesn't Reflect iOS Permission Status
-`NotificationsSettings.tsx` initializes `doseReminders` to `true` by default and never checks iOS's actual permission status. Even if you denied notifications, the switch shows "enabled".
+4) Make “Dose Reminders” toggle behave correctly when OS permission is not granted
+   - File: src/components/settings/NotificationsSettings.tsx
+   - Behavior:
+     - When user toggles Dose Reminders ON:
+       - If osPermissionStatus === 'prompt':
+         - Trigger the permission prompt (requestPermissions)
+         - If user denies: revert the toggle back OFF (or keep it ON but show “Needs iOS permission” subtext; I recommend revert OFF to avoid lying).
+       - If osPermissionStatus === 'denied':
+         - Don’t pretend it’s enabled; show a toast telling them to enable in iOS Settings and keep toggle OFF (or show disabled state).
+     - When user toggles OFF:
+       - Persist preference and cancel scheduled dose notifications.
 
-### Issue 3: doseReminders Not Loaded From Storage
-In NotificationsSettings, the `doseReminders` state defaults to `true` but is never loaded from `persistentStorage` (unlike photo/weight reminders which ARE loaded).
+5) Fix the “Send Test Notification” button so it can actually prompt when needed
+   - File: src/components/settings/NotificationsSettings.tsx
+   - Behavior:
+     - If permission = prompt → requestPermissions → then schedule test notification.
+     - If permission = denied → show “Open Settings” CTA.
 
-## The Fix
+Scheduling correctness: respect the user’s “Dose Reminders” preference
+6) Ensure the background sync does not schedule dose notifications when the user turned dose reminders off
+   - File: src/hooks/useAppStateSync.tsx
+   - Before calling scheduleAllUpcomingDoses:
+     - Read persistentStorage.getBoolean('doseReminders', true)
+     - If false:
+       - Cancel dose notifications and skip scheduling dose notifications.
+   - Do the same for cycle reminders if you want full consistency:
+     - If cycleReminders is false, skip rescheduleAllCycleReminders
 
-### Part 1: Trigger Notification Reschedule After Dose Edit
-**File: `src/components/DoseEditModal.tsx`**
+7) Ensure DoseEditModal rescheduling respects the preference and OS permission state
+   - File: src/components/DoseEditModal.tsx
+   - Right now it always attempts to schedule after edits.
+   - Update it to:
+     - Check doseReminders preference first; if off, skip scheduling.
+     - If on, proceed (scheduleAllUpcomingDoses already checks permission; but this prevents unnecessary work and aligns UX).
 
-After saving a dose (both `saveDoseOnly` and `saveAndUpdateSchedule`), call a helper function to reschedule all notifications:
+Notification actions reliability (prevents subtle issues with premium actions)
+8) Register notification action types at app start without requesting permission
+   - File: src/utils/notificationScheduler.ts
+   - Problem: registerActionTypes is currently only called inside requestNotificationPermissions(). If permissions are granted elsewhere, action buttons might not be registered.
+   - Solution:
+     - Add an exported ensureDoseActionTypesRegistered() that calls LocalNotifications.registerActionTypes
+     - Call it from setupNotificationActionHandlers() (safe, no permission prompt)
+   - This does not fix “no notifications” on its own, but prevents action-button weirdness later.
 
-```typescript
-import { scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
-import { useSubscription } from "@/contexts/SubscriptionContext";
+Session restoration flakiness during rapid reopen
+9) Add a “transient auth retry” in ProtectedRoute before redirecting to /auth
+   - File: src/components/ProtectedRoute.tsx
+   - The failure mode you described (“rapid hard-close/open” → sometimes redirected to sign-in, then next relaunch works) is consistent with a transient moment where localStorage/session isn’t available quickly enough.
+   - Approach:
+     - If hydrateSessionOrNull() returns null on the first attempt:
+       - Wait ~400–800ms and try hydrateSessionOrNull() one more time before declaring unauthenticated.
+     - Only redirect to /auth after:
+       - 2 attempts fail, or
+       - a max elapsed time cap (so we never hang forever).
+   - This keeps your “no fake sessions” safety, while preventing spurious sign-in redirects.
 
-// Inside the component:
-const { isSubscribed } = useSubscription();
+Testing plan (what you should validate on device)
+A) Clean reinstall scenario (your current case)
+1. Install fresh build.
+2. Sign in to an existing account.
+3. Go to Settings → Notifications:
+   - If permission is prompt: you should see “Enable Notifications” CTA (not red).
+4. Tap “Enable Notifications” and accept the iOS prompt.
+5. Edit a dose to 1 minute in the future.
+6. Background the app (or lock the phone) and wait.
+   - You should receive the notification.
 
-// After successful save in saveDoseOnly() and saveAndUpdateSchedule():
-// ...after onDoseUpdated()...
-// Reschedule notifications to pick up the edited time
-await rescheduleNotificationsAfterEdit();
-```
+B) Denied scenario
+1. Deny the iOS prompt once.
+2. Confirm Settings shows a gentle “Enable in iOS Settings” hint and provides “Open Settings”.
+3. Confirm toggling “Dose Reminders” ON doesn’t claim success; it should guide to Settings.
 
-Create a helper that fetches doses and reschedules:
-```typescript
-const rescheduleNotificationsAfterEdit = async () => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const { data: allDoses } = await supabase
-      .from('doses')
-      .select('*, compounds(name, is_active)')
-      .eq('user_id', user.id)
-      .eq('taken', false);
-      
-    if (allDoses) {
-      const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
-      const dosesWithName = activeDoses.map(d => ({
-        ...d,
-        compound_name: d.compounds?.name || 'Medication'
-      }));
-      await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
-      console.log('[DoseEdit] Rescheduled notifications after edit');
-    }
-  } catch (error) {
-    console.error('[DoseEdit] Failed to reschedule notifications:', error);
-  }
-};
-```
+C) Rapid reopen auth
+1. While signed in, do quick hard-close/open repeatedly.
+2. Confirm you do not get bounced to /auth; at worst you briefly see “Restoring your session…” and then proceed.
 
-### Part 2: Settings UI Should Reflect Actual iOS Permission Status
-**File: `src/components/settings/NotificationsSettings.tsx`**
-
-Add a check for iOS notification permissions and load `doseReminders` from storage:
-
-```typescript
-import { LocalNotifications } from '@capacitor/local-notifications';
-
-// Add state for actual OS permission
-const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
-
-useEffect(() => {
-  const loadSettings = async () => {
-    // Check actual iOS permission status
-    if (Capacitor.isNativePlatform()) {
-      const status = await LocalNotifications.checkPermissions();
-      setOsPermissionGranted(status.display === 'granted');
-    } else {
-      setOsPermissionGranted(true); // Web fallback
-    }
-    
-    // Load doseReminders from storage (was missing!)
-    const savedDoseReminders = await persistentStorage.getBoolean('doseReminders', true);
-    setDoseReminders(savedDoseReminders);
-    
-    // ...rest of existing loading...
-  };
-  loadSettings();
-}, []);
-```
-
-Show a warning banner if OS permission is denied:
-```tsx
-{osPermissionGranted === false && (
-  <div className="bg-warning/10 text-warning p-3 rounded-lg text-sm">
-    Notifications are blocked at the system level. 
-    Open Settings → Regimen → Notifications to enable.
-  </div>
-)}
-```
-
-### Part 3: Add a "Test Notification" Button for Debugging
-In NotificationsSettings, add a button to send an immediate test notification:
-
-```typescript
-const sendTestNotification = async () => {
-  if (!Capacitor.isNativePlatform()) return;
-  
-  const status = await LocalNotifications.checkPermissions();
-  if (status.display !== 'granted') {
-    toast.error("Notifications not permitted by iOS");
-    return;
-  }
-  
-  await LocalNotifications.schedule({
-    notifications: [{
-      id: 999999,
-      title: 'Regimen Test',
-      body: 'If you see this, notifications are working!',
-      schedule: { at: new Date(Date.now() + 3000) }, // 3 seconds from now
-    }],
-  });
-  toast.success("Test notification sent - check in 3 seconds");
-};
-```
-
-## Files to Modify
-
-1. **`src/components/DoseEditModal.tsx`**
-   - Import `scheduleAllUpcomingDoses` and `useSubscription`
-   - Add `rescheduleNotificationsAfterEdit()` helper
-   - Call it after both `saveDoseOnly()` and `saveAndUpdateSchedule()`
-
-2. **`src/components/settings/NotificationsSettings.tsx`**
-   - Import `LocalNotifications`
-   - Add `osPermissionGranted` state
-   - Load `doseReminders` from `persistentStorage` 
-   - Add warning banner for denied permissions
-   - Add "Test Notification" button
-
-## Testing Steps
-
-After implementing:
-1. Build and deploy to your iPhone
-2. Go to Settings → Notifications and tap "Test Notification"
-3. You should receive a notification within 3 seconds
-4. Edit a dose to be 1 minute in the future
-5. Background the app and wait - you should receive the notification
-
-## Expected Console Logs
-
-When editing a dose:
-```
-[DoseEdit] Rescheduled notifications after edit
-📅 Scheduling X notifications from Y total doses
-✅ Scheduled: [MedName] at [time] (ID: XXXXX)
-```
+Files expected to change
+- src/components/settings/NotificationsSettings.tsx
+- src/hooks/useAppStateSync.tsx
+- src/components/DoseEditModal.tsx
+- src/utils/notificationScheduler.ts
+- src/components/ProtectedRoute.tsx
