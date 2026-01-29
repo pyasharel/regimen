@@ -61,6 +61,43 @@ const getAxisMax = (max: number) => {
   return Math.ceil(max / 100) * 100;
 };
 
+/**
+ * Safely parse a database timestamp into a Date object
+ * Handles both ISO format (with T) and Postgres format (with space)
+ * Returns null if parsing fails or results in invalid date
+ */
+const parseTakenAt = (takenAt: string | null): Date | null => {
+  if (!takenAt) return null;
+  
+  try {
+    let dateStr = takenAt;
+    
+    // Postgres timestamps may come as "YYYY-MM-DD HH:mm:ss" (space instead of T)
+    // iOS WebKit is strict and only reliably parses ISO 8601
+    if (!dateStr.includes('T') && dateStr.includes(' ')) {
+      dateStr = dateStr.replace(' ', 'T');
+    }
+    
+    // Ensure timezone suffix exists
+    if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+      dateStr = dateStr + 'Z';
+    }
+    
+    const date = new Date(dateStr);
+    
+    // Validate the parsed date
+    if (isNaN(date.getTime()) || !Number.isFinite(date.getTime())) {
+      console.warn('[MedicationLevelsCard] Invalid date parsed:', takenAt);
+      return null;
+    }
+    
+    return date;
+  } catch (error) {
+    console.warn('[MedicationLevelsCard] Failed to parse date:', takenAt, error);
+    return null;
+  }
+};
+
 export const MedicationLevelsCard = ({ 
   compounds, 
   doses,
@@ -157,14 +194,28 @@ export const MedicationLevelsCard = ({
     );
   }, [doses, selectedCompoundId]);
 
-  // Convert to TakenDose format for calculations
+  // Convert to TakenDose format for calculations with robust date parsing
   const takenDosesForCalc: TakenDose[] = useMemo(() => {
-    return compoundDoses.map(d => ({
-      id: d.id,
-      takenAt: new Date(d.taken_at! + 'Z'),
-      amount: d.dose_amount,
-      unit: d.dose_unit
-    }));
+    const validDoses: TakenDose[] = [];
+    
+    for (const d of compoundDoses) {
+      const parsedDate = parseTakenAt(d.taken_at);
+      
+      // Skip doses with invalid dates
+      if (!parsedDate) {
+        console.warn('[MedicationLevelsCard] Skipping dose with invalid taken_at:', d.id, d.taken_at);
+        continue;
+      }
+      
+      validDoses.push({
+        id: d.id,
+        takenAt: parsedDate,
+        amount: d.dose_amount,
+        unit: d.dose_unit
+      });
+    }
+    
+    return validDoses;
   }, [compoundDoses]);
 
   // Calculate current level

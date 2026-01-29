@@ -43,6 +43,10 @@ const calculateDoseLevel = (
   tMaxHours: number,
   hoursElapsed: number
 ): number => {
+  // Guard against invalid inputs that could produce NaN
+  if (!Number.isFinite(hoursElapsed) || !Number.isFinite(initialAmount)) {
+    return 0;
+  }
   if (hoursElapsed < 0) return 0; // Dose hasn't been taken yet
   if (hoursElapsed === 0) return 0; // At dose time, level is 0 (not yet absorbed)
   
@@ -93,12 +97,26 @@ const calculateLevelAtTime = (
   timestamp: Date
 ): number => {
   let totalLevel = 0;
+  
   for (const dose of doses) {
     const hoursElapsed = (timestamp.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
+    
+    // Skip if hoursElapsed is not a valid number
+    if (!Number.isFinite(hoursElapsed)) {
+      console.warn('[halfLifeCalculator] Invalid hoursElapsed for dose:', dose.id);
+      continue;
+    }
+    
     if (hoursElapsed >= 0) {
-      totalLevel += calculateDoseLevel(dose.amount, halfLifeHours, tMaxHours, hoursElapsed);
+      const level = calculateDoseLevel(dose.amount, halfLifeHours, tMaxHours, hoursElapsed);
+      
+      // Only add if the result is a valid number
+      if (Number.isFinite(level)) {
+        totalLevel += level;
+      }
     }
   }
+  
   return totalLevel;
 };
 
@@ -219,8 +237,20 @@ export const calculateCurrentLevel = (
   
   for (const dose of doses) {
     const hoursElapsed = (now.getTime() - dose.takenAt.getTime()) / (1000 * 60 * 60);
+    
+    // Skip if hoursElapsed is not a valid number
+    if (!Number.isFinite(hoursElapsed)) {
+      console.warn('[halfLifeCalculator] Invalid hoursElapsed in currentLevel for dose:', dose.id);
+      continue;
+    }
+    
     if (hoursElapsed >= 0) {
-      totalLevel += calculateDoseLevel(dose.amount, halfLifeHours, effectiveTmax, hoursElapsed);
+      const level = calculateDoseLevel(dose.amount, halfLifeHours, effectiveTmax, hoursElapsed);
+      
+      // Only add if the result is a valid number
+      if (Number.isFinite(level)) {
+        totalLevel += level;
+      }
     }
   }
   

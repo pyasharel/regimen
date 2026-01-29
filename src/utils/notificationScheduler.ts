@@ -1,7 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { enqueuePendingAction } from './pendingDoseActions';
 
 export const requestNotificationPermissions = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) {
@@ -125,6 +124,12 @@ export const scheduleDoseNotification = async (
           actionTypeId: isPremium ? 'DOSE_ACTIONS' : undefined,
           extra: {
             doseId: dose.id,
+            // Store metadata so action handlers don't need to query DB
+            compoundName: dose.compound_name,
+            doseAmount: dose.dose_amount,
+            doseUnit: dose.dose_unit,
+            scheduledDate: dose.scheduled_date,
+            scheduledTime: dose.scheduled_time,
           },
         },
       ],
@@ -262,80 +267,109 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   }
 };
 
-// Handle notification action responses (Premium feature)
+// Track if handlers are already registered (prevent double-registration)
+let handlersRegistered = false;
+
+/**
+ * Handle notification action responses (Premium feature)
+ * 
+ * IMPORTANT: This handler is intentionally minimal and does NOT:
+ * - Call supabase.auth.getUser()
+ * - Make database queries
+ * - Show toasts or UI updates
+ * 
+ * This prevents crashes/hangs when the app is resuming or not fully initialized.
+ * Actions that need backend work are queued and processed later by useAppStateSync.
+ */
 export const setupNotificationActionHandlers = () => {
   if (!Capacitor.isNativePlatform()) return;
+  if (handlersRegistered) {
+    console.log('[Notifications] Handlers already registered, skipping');
+    return;
+  }
+  
+  handlersRegistered = true;
+  console.log('[Notifications] Registering action handlers');
 
   LocalNotifications.addListener('localNotificationActionPerformed', async (notification) => {
-    const doseId = notification.notification.extra?.doseId;
+    const extra = notification.notification.extra || {};
+    const doseId = extra.doseId;
     const actionId = notification.actionId;
 
-    if (!doseId) return;
+    if (!doseId) {
+      console.log('[Notifications] No doseId in notification, ignoring action');
+      return;
+    }
 
-    console.log('🔔 Notification action:', actionId, 'for dose:', doseId);
+    console.log('[Notifications] Action performed:', actionId, 'for dose:', doseId);
+
+    // Extract metadata from notification (no DB query needed)
+    const compoundName = extra.compoundName || 'Medication';
+    const doseAmount = extra.doseAmount || 0;
+    const doseUnit = extra.doseUnit || '';
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       switch (actionId) {
         case 'take-now':
-          // Mark dose as taken
-          await supabase
-            .from('doses')
-            .update({ taken: true, taken_at: new Date().toISOString() })
-            .eq('id', doseId);
-          
-          toast({
-            title: "Dose logged! 💊",
-            description: "Great job staying on track!",
+          // Queue the action for processing when app is fully ready
+          await enqueuePendingAction(doseId, 'take-now', {
+            compoundName,
+            doseAmount,
+            doseUnit,
           });
+          console.log('[Notifications] Queued take-now action for dose:', doseId);
           break;
 
         case 'remind-15':
-          // Reschedule for 15 minutes from now
-          await rescheduleDose(doseId, 15);
-          toast({
-            title: "Reminder set ⏰",
-            description: "We'll remind you in 15 minutes",
+          // Schedule new notification directly (no DB needed)
+          await rescheduleNotificationLocally(doseId, 15, {
+            compoundName,
+            doseAmount,
+            doseUnit,
           });
+          console.log('[Notifications] Rescheduled reminder for 15 minutes');
           break;
 
         case 'remind-60':
-          // Reschedule for 1 hour from now
-          await rescheduleDose(doseId, 60);
-          toast({
-            title: "Reminder set ⏰",
-            description: "We'll remind you in 1 hour",
+          // Schedule new notification directly (no DB needed)
+          await rescheduleNotificationLocally(doseId, 60, {
+            compoundName,
+            doseAmount,
+            doseUnit,
           });
+          console.log('[Notifications] Rescheduled reminder for 1 hour');
           break;
 
         case 'skip':
-          // Mark as skipped (you could add a 'skipped' field to the database)
-          toast({
-            title: "Dose skipped",
-            description: "No worries, we'll remind you for the next one",
+          // Queue the action for processing when app is fully ready
+          await enqueuePendingAction(doseId, 'skip', {
+            compoundName,
+            doseAmount,
+            doseUnit,
           });
+          console.log('[Notifications] Queued skip action for dose:', doseId);
           break;
+
+        default:
+          console.log('[Notifications] Unknown action:', actionId);
       }
     } catch (error) {
-      console.error('Error handling notification action:', error);
+      console.error('[Notifications] Error handling action:', error);
+      // Don't throw - we never want to crash in the notification handler
     }
   });
 };
 
-// Helper function to reschedule a dose
-const rescheduleDose = async (doseId: string, minutesFromNow: number) => {
+/**
+ * Reschedule a notification locally without querying the database
+ * Uses metadata stored in the notification's extra field
+ */
+const rescheduleNotificationLocally = async (
+  doseId: string,
+  minutesFromNow: number,
+  metadata: { compoundName: string; doseAmount: number; doseUnit: string }
+) => {
   try {
-    // Get dose details
-    const { data: dose } = await supabase
-      .from('doses')
-      .select('*, compounds(name)')
-      .eq('id', doseId)
-      .single();
-
-    if (!dose) return;
-
     // Cancel existing notification
     await cancelDoseNotification(doseId);
 
@@ -343,21 +377,21 @@ const rescheduleDose = async (doseId: string, minutesFromNow: number) => {
     const newTime = new Date();
     newTime.setMinutes(newTime.getMinutes() + minutesFromNow);
 
-    // Schedule new notification
+    // Schedule new notification using stored metadata
     const doseWithName = {
-      id: dose.id,
-      compound_name: dose.compounds?.name || 'Medication',
-      dose_amount: dose.dose_amount,
-      dose_unit: dose.dose_unit,
+      id: doseId,
+      compound_name: metadata.compoundName,
+      dose_amount: metadata.doseAmount,
+      dose_unit: metadata.doseUnit,
       scheduled_date: newTime.toISOString().split('T')[0],
       scheduled_time: `${newTime.getHours()}:${newTime.getMinutes().toString().padStart(2, '0')}`,
     };
 
-    // Check premium status from localStorage
+    // Check premium status from localStorage (sync access, no await)
     const isPremium = localStorage.getItem('testPremiumMode') === 'true';
 
     await scheduleDoseNotification(doseWithName, isPremium);
   } catch (error) {
-    console.error('Error rescheduling dose:', error);
+    console.error('[Notifications] Error rescheduling notification:', error);
   }
 };
