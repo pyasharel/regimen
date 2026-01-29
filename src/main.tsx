@@ -136,35 +136,65 @@ if (GA_MEASUREMENT_ID) {
 // ========================================
 // Read theme from Capacitor Preferences BEFORE React renders
 // This prevents theme "flash" or reversion to dark mode on cold starts
+// Theme bootstrap with timeout to prevent blocking app startup on cold boot
+// If Capacitor Preferences is slow (common on iOS cold start after theme change),
+// we fall back to localStorage values to avoid delays
+const THEME_BOOTSTRAP_TIMEOUT_MS = 500;
+
 const bootstrapTheme = async (): Promise<void> => {
   if (!Capacitor.isNativePlatform()) return;
   
   try {
-    const [themeResult, variantResult] = await Promise.all([
-      Preferences.get({ key: 'vite-ui-theme' }),
-      Preferences.get({ key: 'vite-ui-theme-variant' }),
+    // Race against timeout to prevent slow Capacitor reads from blocking boot
+    const result = await Promise.race([
+      Promise.all([
+        Preferences.get({ key: 'vite-ui-theme' }),
+        Preferences.get({ key: 'vite-ui-theme-variant' }),
+      ]),
+      new Promise<null>((resolve) => 
+        setTimeout(() => resolve(null), THEME_BOOTSTRAP_TIMEOUT_MS)
+      )
     ]);
     
-    const theme = themeResult.value || 'dark';
-    const variant = variantResult.value || 'refined';
-    
-    // Sync to localStorage so ThemeProvider picks it up immediately
-    try {
-      localStorage.setItem('vite-ui-theme', theme);
-      localStorage.setItem('vite-ui-theme-variant', variant);
-    } catch {
-      // Ignore storage errors
+    // If we got results from Capacitor Preferences
+    if (result && Array.isArray(result)) {
+      const [themeResult, variantResult] = result;
+      const theme = themeResult.value || 'dark';
+      const variant = variantResult.value || 'refined';
+      
+      // Sync to localStorage so ThemeProvider picks it up immediately
+      try {
+        localStorage.setItem('vite-ui-theme', theme);
+        localStorage.setItem('vite-ui-theme-variant', variant);
+      } catch {
+        // Ignore storage errors
+      }
+      
+      // Apply to document immediately (before React paints)
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(theme);
+      document.documentElement.classList.remove('design-classic', 'design-refined');
+      document.documentElement.classList.add(`design-${variant}`);
+      
+      console.log('[ThemeBootstrap] Applied theme from Capacitor:', theme, 'variant:', variant);
+    } else {
+      // Timeout reached - use localStorage values (already set by ThemeProvider on last run)
+      console.log('[ThemeBootstrap] Capacitor timed out, using localStorage fallback');
+      const theme = localStorage.getItem('vite-ui-theme') || 'dark';
+      const variant = localStorage.getItem('vite-ui-theme-variant') || 'refined';
+      
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(theme);
+      document.documentElement.classList.remove('design-classic', 'design-refined');
+      document.documentElement.classList.add(`design-${variant}`);
+      
+      console.log('[ThemeBootstrap] Applied theme from localStorage:', theme, 'variant:', variant);
     }
-    
-    // Apply to document immediately (before React paints)
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
-    document.documentElement.classList.remove('design-classic', 'design-refined');
-    document.documentElement.classList.add(`design-${variant}`);
-    
-    console.log('[ThemeBootstrap] Applied theme:', theme, 'variant:', variant);
   } catch (e) {
     console.warn('[ThemeBootstrap] Failed:', e);
+    // Apply default dark theme on error
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add('dark');
   }
 };
 
