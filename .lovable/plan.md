@@ -1,187 +1,163 @@
 
+## What’s actually happening (root cause)
 
-# Root Cause Analysis: App Loading Issues After Theme Change
+This is not “just slow network.” The behavior you described (sometimes everything loads, sometimes you see “first‑time user” empty data after a hard close, then a second hard close magically fixes it) matches a very specific failure mode in this codebase:
 
-## Executive Summary
+### Root cause A — We sometimes enter the app without a real authenticated session
+`ProtectedRoute.tsx` has a “cache fallback” path:
 
-The app is experiencing loading failures, "slow connection" errors, and theme persistence issues due to **multiple competing async operations that race against each other during app resume**. The current fixes (timeouts, caches) are mitigations, not solutions.
+- It races `supabase.auth.getSession()` against a 3s timeout.
+- If that times out, it **creates a fake “Session-like” object** from localStorage cache (only `user: cached.user`) and allows the app to render protected screens.
 
-## Root Cause 1: Competing `appStateChange` Listeners
+This means: the UI thinks you’re logged in, but the underlying client may still be effectively anonymous for DB requests (no access token attached yet).
 
-Five separate systems all respond to the iOS `appStateChange` event simultaneously:
+Because your database is protected by row-level security (RLS), **anonymous queries return empty arrays** (often with HTTP 200), not obvious errors. That makes the app look like a brand-new user: no doses, no compounds, etc.
 
-```text
-+-------------------+     +------------------+     +--------------------+
-|     App.tsx       |     | useAppStateSync  |     | useSessionWarming  |
-| SplashScreen.hide |     | DB cleanup       |     | auth.getSession()  |
-| 3s empty root     |     | Dose regen       |     +--------------------+
-| reload check      |     | Notifications    |              |
-+-------------------+     +------------------+              |
-         |                        |                         |
-         +------------------------+-------------------------+
-                                  |
-                      ALL FIRE SIMULTANEOUSLY
-                                  |
-         +------------------------+-------------------------+
-         |                        |                         |
-+-------------------+     +------------------+     +--------------------+
-|  useAnalytics     |     | Subscription     |     |    ThemeProvider   |
-|  GA4 tracking     |     |   Context        |     |  Capacitor sync    |
-|  Session events   |     | RevenueCat init  |     +--------------------+
-+-------------------+     | Customer info    |
-                          | Cache loading    |
-                          +------------------+
-```
+### Root cause B — Some core data queries run immediately and are not gated on auth readiness
+Example: `TodayScreen.loadDoses()` runs on mount and queries `doses` by `scheduled_date` **without first obtaining a userId/session**, so it can easily execute while auth is still “hydrating.”
 
-When these all run on a cold start after a hard close:
-- Native bridge is still initializing (iOS slow start)
-- Multiple network requests compete for bandwidth
-- Auth session might not be ready yet
-- Race conditions cause inconsistent state
+Same for `MyStackScreen.loadCompounds()` (it queries `compounds` without user gating).
 
-## Root Cause 2: Double Theme Read Pattern
+When those execute during the “fake session” window, they come back empty, and the UI treats that as valid data.
 
-**Sequence on cold boot:**
+### Root cause C — Startup/resume background work creates contention and can trigger iOS permission-dialog side effects
+`useAppStateSync()` currently runs a heavy sync not only on resume, but also on **initial mount after 300ms**, including:
 
-1. `main.tsx:bootstrapTheme()` reads Capacitor Preferences (with 500ms timeout)
-2. Timeout fires → falls back to localStorage
-3. React renders → `ThemeProvider` mounts
-4. `ThemeProvider.syncWithCapacitor()` reads Capacitor Preferences AGAIN (no timeout)
-5. If this second read returns different value → theme can flip
+- profile fetch
+- cleanup/regeneration
+- fetching doses
+- scheduling notifications
 
-The 500ms timeout in `main.tsx` helps, but `ThemeProvider` still makes an unbounded async call.
+And `scheduleAllUpcomingDoses()` currently calls `LocalNotifications.requestPermissions()` (via `requestNotificationPermissions`) which can introduce iOS permission dialog timing + appStateChange churn, and native bridge contention.
 
-## Root Cause 3: Timeout Cascade Mismatch
+This doesn’t “cause” the empty-data bug by itself, but it makes the auth hydration timeout more likely, which then triggers Root cause A.
 
-Current timeout values create conflicts:
+### Bonus issue that makes debugging harder — Two QueryClients exist
+`main.tsx` wraps the app in a `QueryClientProvider` (using `src/lib/queryClient.ts`), but `App.tsx` **creates another QueryClientProvider** with a different client.
 
-| Component | Timeout | Purpose |
-|-----------|---------|---------|
-| main.tsx boot fallback | 6000ms | Show recovery UI |
-| Splash.tsx watchdog | 8000ms | Session check timeout |
-| ProtectedRoute | 3000ms | Session check timeout |
-| Theme bootstrap | 500ms | Capacitor read |
-| useAppStateSync debounce | 2000ms | Prevent rapid sync |
-| useAppStateSync resume delay | 600ms | Let network stabilize |
-| getUserIdWithFallback | 3000ms | Auth fallback |
-| Individual query timeouts | 5000ms | Database operations |
+This can prevent retries/invalidation patterns from behaving consistently (and makes “tap to retry”/refetch behavior less reliable in screens that use React Query, like Progress).
 
-A slow Capacitor Preferences read that takes 4 seconds:
-- Passes the 500ms theme timeout (uses fallback)
-- But blocks the React render
-- App.tsx 6s timeout might fire before React mounts
-- Creates confusing state
+## Hotfix goal
+Make it impossible for the UI to render “logged in” screens until the app has a real, hydrated authenticated session (or we definitively know the user is logged out). Also reduce startup contention so the session hydration succeeds reliably.
 
-## Root Cause 4: No Coordinated Boot Sequence
+## Implementation plan (surgical, aimed at shipping ASAP)
 
-The app lacks a **single boot coordinator** that ensures:
-1. Native bridge is ready
-2. Auth session is verified
-3. Theme is applied
-4. THEN start background sync operations
+### 1) Replace “fake session from cache” with “hydrate session from cache”
+**File: `src/components/ProtectedRoute.tsx`**
 
-Currently, everything starts simultaneously.
+- Create/introduce a helper (either in this file or in `src/utils/safeAuth.ts`) like:
 
-## The Fix Strategy
+  - `hydrateSessionOrNull({ timeoutMs })`
+    - Try `supabase.auth.getSession()` with a reasonable timeout (e.g. 6–8s, because this is foundational).
+    - If it times out:
+      - Read the full cached session from `getCachedSession()` (which includes `access_token`, `refresh_token`).
+      - Call `supabase.auth.setSession({ access_token, refresh_token })` with a short timeout (e.g. 1500–2000ms).
+      - Then call `getSession()` again (short timeout) to confirm hydration.
+    - Return a real session or null.
 
-### Phase 1: Immediate Stabilization (Hotfix)
+- ProtectedRoute behavior changes:
+  - While hydrating: show a “Restoring your session…” loading UI (not the app screens).
+  - If hydration succeeds: render children.
+  - If hydration fails: send user to `/auth` (or show a recovery UI with “Try again” + “Sign in again”).
 
-1. **Add timeout to ThemeProvider's Capacitor sync** (match main.tsx pattern)
-2. **Reduce appStateChange listener count** - defer non-critical listeners
-3. **Add staggered delays** to prevent all systems hitting network at once
+This prevents the “logged-in UI but anonymous DB requests” split-brain state.
 
-### Phase 2: Architectural Fix (Post-Hotfix)
+### 2) Gate Today/MyStack data loads behind auth readiness
+Even with (1), we should still harden the screens so they never treat anonymous empty results as “real empty user.”
 
-1. **Create boot coordinator** that sequences initialization
-2. **Consolidate appStateChange handling** into single orchestrator
-3. **Implement proper readiness signals** before triggering background work
+**Files:**
+- `src/components/TodayScreen.tsx`
+- `src/components/MyStackScreen.tsx`
 
-## Immediate Fixes for Hotfix
+Changes:
+- Ensure every “load X” function first confirms auth is ready (via the same helper used by ProtectedRoute, or at least `supabase.auth.getSession()`).
+- Update critical queries to explicitly scope by user:
+  - TodayScreen:
+    - `loadDoses-main`: add `.eq('user_id', userId)` (after you have userId)
+    - `loadDoses-asNeeded`: add `.eq('user_id', userId)`
+    - `checkCompounds`: add `.eq('user_id', userId)` (right now it can incorrectly show “no compounds”)
+  - MyStackScreen:
+    - `loadCompounds`: require userId and add `.eq('user_id', userId)`
+- If userId/session isn’t available, keep `loading=true` and do not set “empty state” UI; instead show “Restoring session…” and/or a retry button.
 
-### Fix 1: ThemeProvider Timeout
+This directly addresses the “looks like first-time user” symptom.
 
-Add the same timeout pattern used in `main.tsx` to `ThemeProvider.tsx`:
+### 3) Remove initial-mount heavy sync (only run on resume)
+**File: `src/hooks/useAppStateSync.tsx`**
 
-```typescript
-// In syncWithCapacitor():
-const result = await Promise.race([
-  getStoredTheme(storageKey),
-  new Promise<null>(r => setTimeout(() => r(null), 500))
-]);
-// Use result only if not null
-```
+- Delete/disable the “Also sync on initial mount (with small delay)” block:
+  - The `setTimeout(..., 300)` that calls `syncNotifications()` should be removed for the hotfix.
+- Keep resume-based syncing only (and it’s already delayed to 1500ms).
 
-### Fix 2: Staggered Resume Delays
+This reduces cold-start contention at the exact moment auth/session hydration is happening.
 
-Increase delay offsets so systems don't all fire together:
+### 4) Stop requesting notification permission automatically during sync/scheduling
+**File: `src/utils/notificationScheduler.ts`**
 
-| System | Current Delay | New Delay |
-|--------|--------------|-----------|
-| useSessionWarming | 0ms | 0ms (first) |
-| useAppStateSync | 600ms | 1500ms |
-| SubscriptionContext resume | 0ms | 800ms |
-| useAnalytics | 0ms | 2000ms |
+- Change `scheduleAllUpcomingDoses()` to:
+  - call `LocalNotifications.checkPermissions()` first
+  - if not granted, return without scheduling
+  - do not call `LocalNotifications.requestPermissions()` from this path
 
-### Fix 3: Guard Against Double Theme Sync
+This ensures notification code cannot trigger a permission prompt (or native bridge work) during boot/resume, which is a known destabilizer on iOS.
 
-In `ThemeProvider`, skip Capacitor sync if `main.tsx` already applied theme:
+We will still keep permission requests in explicit user flows (onboarding/settings) later.
 
-```typescript
-// Check if main.tsx already bootstrapped
-const alreadyBootstrapped = localStorage.getItem('theme_bootstrapped');
-if (alreadyBootstrapped) {
-  setIsLoaded(true);
-  return;
-}
-```
+### 5) Unify to a single QueryClientProvider (stability + consistent refetch)
+**File: `src/App.tsx`**
 
-## Technical Implementation
+- Remove the inner `QueryClientProvider` and `new QueryClient()` from App.tsx.
+- Rely solely on the QueryClientProvider in `main.tsx` (which uses the configured `src/lib/queryClient.ts`).
 
-### Files to Modify
+This reduces non-deterministic caching behavior and makes future “invalidate/refetch on auth change” reliable.
 
-1. **`src/components/ThemeProvider.tsx`**
-   - Add 500ms timeout to `syncWithCapacitor()`
-   - Add "already bootstrapped" guard
+### 6) Add targeted diagnostics so we can prove the fix and catch regressions
+Add lightweight instrumentation (console + localStorage markers), for example:
+- In ProtectedRoute:
+  - record whether hydration used cache setSession, how long it took, and whether it succeeded
+- In TodayScreen/MyStack:
+  - log when loads begin, whether a real session exists at that moment
 
-2. **`src/main.tsx`**
-   - Set `localStorage.setItem('theme_bootstrapped', 'true')` after bootstrap
-   - Clear on theme change
+This will let us verify on-device (Xcode logs) exactly where it previously failed.
 
-3. **`src/hooks/useAppStateSync.tsx`**
-   - Increase RESUME_DELAY_MS from 600ms to 1500ms
+## Testing protocol (what we’ll verify before calling it a hotfix)
+On iOS/TestFlight build:
 
-4. **`src/contexts/SubscriptionContext.tsx`**
-   - Add 800ms delay before resume handling
+1. Launch app, confirm data loads.
+2. Hard close (swipe away), wait 10 seconds, reopen.
+3. Repeat 5 times:
+   - Expectation: no “first-time user” empty state
+   - Expectation: no “slow connection” loop where retry does nothing
+   - If session hydration is slow: you may see “Restoring your session…” briefly, but it should resolve to your real data.
+4. Toggle airplane mode on/off and repeat once:
+   - Expectation: “Restoring session / offline” behavior is understandable, and retry works once network returns.
+5. (Optional) Tap a notification to open the app:
+   - Expectation: app still loads data; no permission prompt is triggered automatically.
 
-5. **`src/hooks/useAnalytics.tsx`**
-   - Add 2000ms delay before resume tracking
+## Why I think you do not need another AI platform (but you can)
+You can absolutely ask for a second opinion, but at this point we have a concrete, code-backed root cause:
+- A cached-session fallback allows navigation without hydrating auth tokens
+- Ungated DB queries execute during that window and return empty due to RLS
+- Startup sync/notification permission calls increase the chance of that window happening
 
-6. **Create `.storage/memory/architecture/boot-coordination-strategy.md`**
-   - Document the staggered timing strategy
+This is a fixable engineering issue, not a mystery.
 
-## Testing Protocol
+## Summary of what we’ve already done (for sharing if you want)
+- Added startup preflight to prevent corrupted localStorage “black screen” boots.
+- Added boot timeout fallback UI if React doesn’t mount within 6s.
+- Added Splash fast-path session check + 8s session check watchdog UI.
+- Added theme bootstrap timeout + ThemeProvider guard to reduce cold-start hangs.
+- Added staggered resume delays (subscription, sync, analytics) to reduce contention.
+- Updated Medication Levels Card data fetch to use “latest N doses” to pick most-recent compound.
 
-After implementing:
+Despite those, the core issue persists because the app can still render authenticated routes without a hydrated auth token, and some screens still query immediately.
 
-1. Change theme to light mode
-2. Hard close app (swipe away)
-3. Wait 10+ seconds
-4. Reopen app
-5. **Expected**: Theme persists, data loads without "slow connection"
-
-6. Repeat steps 1-5 three times to verify consistency
-
-7. Test notification tap cold start
-8. **Expected**: App opens, navigates to Today, data loads
-
-## Why Previous Fixes Were Insufficient
-
-The 500ms timeout in `main.tsx` helped but:
-- `ThemeProvider` still has unbounded Capacitor calls
-- All resume handlers still fire simultaneously
-- No coordination between competing async operations
-
-The cached session fast-path helped but:
-- Doesn't prevent race conditions in data loading
-- SubscriptionContext can still fall back to 'none' during races
+## Files expected to change in this hotfix
+- `src/components/ProtectedRoute.tsx`
+- `src/components/TodayScreen.tsx`
+- `src/components/MyStackScreen.tsx`
+- `src/hooks/useAppStateSync.tsx`
+- `src/utils/notificationScheduler.ts`
+- `src/App.tsx`
+- (optional) `src/utils/safeAuth.ts` (if we place the shared hydration helper there)
 
