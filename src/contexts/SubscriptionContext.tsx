@@ -1136,12 +1136,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     });
 
     // Listen for app resume to refresh subscription (important for returning from purchases)
+    // Add 800ms delay to stagger with other resume handlers and let auth/theme settle first
+    const SUBSCRIPTION_RESUME_DELAY_MS = 800;
     let appStateListener: { remove: () => void } | undefined;
     if (isNativePlatform) {
       CapacitorApp.addListener('appStateChange', async ({ isActive }) => {
         if (!isActive) return;
 
-        console.log('[SubscriptionContext] App resumed...');
+        // Staggered delay to prevent race conditions with auth, theme, and other resume handlers
+        await new Promise(resolve => setTimeout(resolve, SUBSCRIPTION_RESUME_DELAY_MS));
+
+        console.log('[SubscriptionContext] App resumed (after delay)...');
         addDiagnosticsLog('app_resume', subscriptionStatusRef.current, '...', 'App resumed from background');
 
           const userId = await getUserIdWithFallback(3000);

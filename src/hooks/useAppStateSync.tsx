@@ -14,7 +14,8 @@ import { withQueryTimeout, TimeoutError } from '@/utils/withTimeout';
 // Debounce time to prevent rapid-fire sync during permission dialogs
 const SYNC_DEBOUNCE_MS = 2000;
 // Delay before starting heavy sync work on resume (lets webview/network stabilize)
-const RESUME_DELAY_MS = 600;
+// Increased to 1500ms to allow auth, theme, and subscription systems to settle first
+const RESUME_DELAY_MS = 1500;
 // Timeout for the entire sync operation
 const SYNC_TIMEOUT_MS = 15000;
 
