@@ -2,10 +2,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
 import { hydrateSessionOrNull, hasAnyAuthTokens, getLastHydrationStage } from "@/utils/safeAuth";
+import { getCachedSessionAsSupabaseSession } from "@/utils/authSessionCache";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, LogIn, RotateCcw } from "lucide-react";
 
-// How long to wait for full session hydration
+// How long to wait for full session hydration (only used if cache fast-path fails)
 const HYDRATION_TIMEOUT_MS = 8000;
 // How long to wait before retrying on transient failure
 const TRANSIENT_RETRY_DELAY_MS = 600;
@@ -43,17 +44,53 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  // NEW: Fast-path using localStorage cache - avoids auth lock contention
+  const tryFastPath = useCallback((): Session | null => {
+    console.log('[ProtectedRoute] Checking cache fast-path...');
+    const cached = getCachedSessionAsSupabaseSession();
+    
+    if (cached) {
+      console.log('[ProtectedRoute] ✅ Fast-path: Using cached session, skipping auth calls');
+      // Cast to Session - the cached data has all required fields
+      return cached as unknown as Session;
+    }
+    
+    console.log('[ProtectedRoute] Fast-path miss, will try async hydration');
+    return null;
+  }, []);
+
   const attemptHydration = useCallback(async (attemptNumber: number): Promise<void> => {
     if (!isMountedRef.current) return;
     
     const startTime = Date.now();
     console.log('[ProtectedRoute] Starting session hydration attempt', attemptNumber);
     
+    // FAST PATH: Try cache first - avoids auth lock contention entirely
+    if (attemptNumber === 1) {
+      const fastPathSession = tryFastPath();
+      if (fastPathSession) {
+        clearWatchdog();
+        setSession(fastPathSession);
+        setHydrationState('hydrated');
+        // Record success
+        try {
+          localStorage.setItem('regimen_last_hydration', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            elapsed: Date.now() - startTime,
+            success: true,
+            attemptNumber,
+            method: 'fast-path',
+          }));
+        } catch { /* ignore */ }
+        return;
+      }
+    }
+    
+    // SLOW PATH: Fall back to Supabase auth calls (only if cache unavailable)
     try {
       setHydrationState('loading');
       
       const hydratedSession = await hydrateSessionOrNull(HYDRATION_TIMEOUT_MS);
-      
       if (!isMountedRef.current) return;
       
       const elapsed = Date.now() - startTime;
@@ -66,6 +103,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           elapsed,
           success: !!hydratedSession,
           attemptNumber,
+          method: 'slow-path',
         }));
       } catch { /* ignore */ }
       
@@ -128,7 +166,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         setHydrationState(hasTokens ? 'failed' : 'unauthenticated');
       }
     }
-  }, [clearWatchdog]);
+  }, [clearWatchdog, tryFastPath]);
 
   // Start watchdog on mount
   useEffect(() => {
