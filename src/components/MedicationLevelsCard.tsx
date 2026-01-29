@@ -136,13 +136,8 @@ export const MedicationLevelsCard = ({
       }
     }
     
-    // 2. First active compound with half-life data (alphabetically)
-    if (compoundsWithHalfLife.length > 0) {
-      const sorted = [...compoundsWithHalfLife].sort((a, b) => a.name.localeCompare(b.name));
-      return sorted[0].id;
-    }
-    
-    // 3. Most recently taken dose's compound (if it has half-life data)
+    // 2. Most recently taken dose's compound (if it has half-life data)
+    // This ensures users see a compound with actual logged data first
     const takenDoses = doses.filter(d => d.taken && d.taken_at);
     if (takenDoses.length > 0) {
       const sorted = [...takenDoses].sort((a, b) => 
@@ -155,6 +150,12 @@ export const MedicationLevelsCard = ({
           return recentCompoundId;
         }
       }
+    }
+    
+    // 3. First active compound with half-life data (alphabetical fallback)
+    if (compoundsWithHalfLife.length > 0) {
+      const sorted = [...compoundsWithHalfLife].sort((a, b) => a.name.localeCompare(b.name));
+      return sorted[0].id;
     }
     
     return null;
