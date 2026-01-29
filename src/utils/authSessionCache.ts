@@ -68,3 +68,34 @@ export const getCachedSession = (): CachedSession | null => {
 export const hasCachedSession = (): boolean => {
   return getCachedSession() !== null;
 };
+
+/**
+ * Returns cached session tokens for hydration attempts.
+ * Does NOT check access_token expiry - we rely on setSession() to refresh.
+ * Only returns null if there's genuinely no cached data.
+ */
+export const getCachedSessionForHydration = (): CachedSession | null => {
+  try {
+    const key = `sb-${SUPABASE_PROJECT_ID}-auth-token`;
+    const cached = localStorage.getItem(key);
+    
+    if (!cached) {
+      console.log('[AuthCache] No cached session found for hydration');
+      return null;
+    }
+    
+    const parsed = JSON.parse(cached);
+    
+    // Only require refresh_token - that's what setSession needs
+    if (!parsed.refresh_token) {
+      console.log('[AuthCache] No refresh token in cache');
+      return null;
+    }
+    
+    console.log('[AuthCache] Found cached tokens for hydration');
+    return parsed as CachedSession;
+  } catch (error) {
+    console.warn('[AuthCache] Error reading cached session:', error);
+    return null;
+  }
+};
