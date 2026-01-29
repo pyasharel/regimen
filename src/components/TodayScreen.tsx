@@ -5,6 +5,7 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
 import { ComponentErrorBoundary } from "@/components/ui/ComponentErrorBoundary";
+import { NotificationPromptBanner } from "@/components/NotificationPromptBanner";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -34,6 +35,7 @@ import { DoseEditModal } from "@/components/DoseEditModal";
 import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
 import { trackDoseLogged, trackDoseSkipped, trackPaywallShown } from "@/utils/analytics";
 import { useTheme } from "@/components/ThemeProvider";
+import { useNotificationPermissionPrompt } from "@/hooks/useNotificationPermissionPrompt";
 import {
   Drawer,
   DrawerContent,
@@ -111,6 +113,13 @@ export const TodayScreen = () => {
   // TestFlight migration modal state
   const [isTestFlight, setIsTestFlight] = useState(false);
   
+  // Notification permission prompt for existing users after reinstall
+  const {
+    shouldShowPrompt: showNotificationPrompt,
+    handleEnableNotifications,
+    handleDismissPrompt: dismissNotificationPrompt,
+  } = useNotificationPermissionPrompt(hasCompounds, isSubscribed);
+
   // Medication levels card state
   interface CompoundForLevels {
     id: string;
@@ -1076,7 +1085,13 @@ export const TodayScreen = () => {
         {/* Header */}
         <MainHeader title="Today" />
 
-        {/* Greeting */}
+        {/* Notification Permission Prompt for existing users after reinstall */}
+        {showNotificationPrompt && (
+          <NotificationPromptBanner
+            onEnable={handleEnableNotifications}
+            onDismiss={dismissNotificationPrompt}
+          />
+        )}
         <div className="px-4 pt-4 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
