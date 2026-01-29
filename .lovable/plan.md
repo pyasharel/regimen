@@ -1,120 +1,203 @@
 
-## Root Cause Analysis: iOS App Hang After 30 Minutes
 
-### The Definitive Answer to "Why is this happening?"
+# Fix: Auth Deadlock Causing Blank Screen / "Restoring your session..." Loop
 
-I've identified **two separate issues** that together explain the behavior you're seeing:
+## Summary
+Multiple users (iOS and Android) are stuck on "Restoring your session..." because the Supabase auth system is deadlocked. The fix is to make ProtectedRoute trust the cached session that Splash already validated, avoiding concurrent auth calls.
 
----
+## Root Cause (from your Xcode logs)
 
-## Issue 1: Stripe SDK Version Mismatch (The Backend Problem)
-
-**What changed yesterday:**
-The `check-subscription` and `create-portal-session` edge functions were updated to use:
-- **Stripe SDK v18.5.0** with `apiVersion: "2025-08-27.basil"`
-
-While other functions (create-checkout, stripe-webhooks, validate-promo-code) still use:
-- **Stripe SDK v14.21.0** with `apiVersion: "2023-10-16"`
-
-**The Problem:**
-Stripe SDK v18.5.0 with the `2025-08-27.basil` API version is a **beta/future API version**. This can cause:
-1. **Slow responses** - Stripe may be doing extra processing for the beta API
-2. **Unexpected response formats** - The subscription objects returned may have different structures
-3. **Connection issues** - The beta API endpoints may have different latency characteristics
-
-**Why this affects the App Store build:**
-Edge functions are server-side - when you deploy them, they affect ALL app versions immediately. Build 14 in the App Store calls the same edge functions as your development version.
-
-**Evidence:**
-Previous analytics showed `check-subscription` taking up to 8.7 seconds in some cases. This is far too slow for an on-resume subscription check.
-
----
-
-## Issue 2: Cascading Auth Deadlocks (The Frontend Timing Problem)
-
-Even though the frontend code (build 14) wasn't changed, the **slow edge function response** creates a cascade:
+The logs show this exact sequence:
 
 ```text
-App Resume on iOS
-       │
-       ▼
-┌─────────────────────────────┐
-│ SubscriptionContext calls   │
-│ check-subscription (8+ sec) │
-└─────────────────────────────┘
-       │
-       ▼ (holds auth lock)
-┌─────────────────────────────┐
-│ ProtectedRoute tries        │
-│ getSession() - BLOCKED      │
-└─────────────────────────────┘
-       │
-       ▼
-┌─────────────────────────────┐
-│ Spinner shows indefinitely  │
-│ "Restoring your session..." │
-└─────────────────────────────┘
+✅ [Splash] Fast-path: Valid cached session found, navigating immediately
+✅ [SubscriptionContext] Auth event: SIGNED_IN  
+✅ [AuthMirror] Auth state change: SIGNED_IN
+↓
+🔄 [ProtectedRoute] Starting session hydration attempt 1
+🔄 [SafeAuth] Attempting getSession...
+↓
+⏰ [SafeAuth] getSession timed out (8 seconds)
+⏰ [SafeAuth] setSession timed out (2 seconds)  
+⏰ [ProtectedRoute] Watchdog triggered after 12000 ms
 ```
 
-The App Store build (1.0.3 build 14) has the same SubscriptionContext that calls `check-subscription` on resume. When that edge function takes 8+ seconds, it blocks other auth operations.
+**What's happening:**
+1. Splash validates the session (works fine)
+2. Navigation to `/today` triggers SubscriptionContext mount
+3. SubscriptionContext calls `supabase.auth.getUser()` internally
+4. ProtectedRoute mounts and calls `supabase.auth.getSession()`
+5. Both calls compete for Supabase's **global auth lock**
+6. One call blocks the other → **deadlock** → all auth calls time out
+
+## The Fix
+
+### Strategy: Trust the Cache, Skip the Lock
+
+Since Splash already validated the session using the localStorage cache, ProtectedRoute should check that cache first and only call Supabase auth methods if the cache is empty or invalid.
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                     CURRENT (Deadlocks)                          │
+├──────────────────────────────────────────────────────────────────┤
+│  Splash validates cache → navigates                             │
+│  ProtectedRoute calls getSession() ← blocks on auth lock        │
+│  SubscriptionContext calls getUser() ← holds auth lock          │
+│  = Deadlock                                                      │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│                     FIXED (No Deadlock)                          │
+├──────────────────────────────────────────────────────────────────┤
+│  Splash validates cache → navigates                             │
+│  ProtectedRoute checks cache first:                             │
+│    - Cache valid? → Use cached session, skip auth calls         │
+│    - Cache empty? → Call getSession() (only when necessary)     │
+│  = No contention                                                 │
+└──────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## The Fix: Two-Part Solution
+## Technical Changes
 
-### Part A: Fix the Stripe SDK Version (Critical - Backend)
-Downgrade `check-subscription` and `create-portal-session` back to stable Stripe versions:
-- From: `stripe@18.5.0` with `apiVersion: "2025-08-27.basil"`  
-- To: `stripe@14.21.0` with `apiVersion: "2023-10-16"`
+### File 1: `src/components/ProtectedRoute.tsx`
 
-This will immediately improve response times for all app versions (including App Store).
+**Add fast-path that trusts the localStorage cache:**
 
-### Part B: Keep the Timeout/Watchdog Improvements (Already Done)
-The watchdog and timeout improvements we added earlier are still valuable as defensive measures. They ensure that even if edge functions are slow in the future, the app will recover gracefully.
+- Before calling any async Supabase auth methods, check if we have a valid cached session
+- If the cache is valid (not expired, has user ID), construct a Session object from it
+- Only fall back to `hydrateSessionOrNull()` if the cache is missing or invalid
 
----
+### File 2: `src/utils/authSessionCache.ts`
 
-## Technical Details
+**Add a helper to construct a usable Session from cache:**
 
-### Files to modify:
+- Create `getCachedSessionAsSupabaseSession()` that returns a properly typed Session object
+- This avoids calling Supabase auth methods entirely when we have valid cache
 
-**supabase/functions/check-subscription/index.ts**
-- Line 2: Change `stripe@18.5.0` → `stripe@14.21.0`
-- Line 46: Change `apiVersion: "2025-08-27.basil"` → `apiVersion: "2023-10-16"`
+### File 3: `src/utils/safeAuth.ts`
 
-**supabase/functions/create-portal-session/index.ts**
-- Line 2: Change `stripe@18.5.0` → `stripe@14.21.0`  
-- Line 44: Change `apiVersion: "2025-08-27.basil"` → `apiVersion: "2023-10-16"`
+**Add a fast-path check:**
 
-### Expected Outcome:
-1. Edge function response times should drop from 8+ seconds to under 1 second
-2. App Store users (build 14) will immediately see improvement without needing an update
-3. The defensive timeouts and watchdogs will remain as insurance for future issues
+- Create `getSessionFromCacheOrHydrate()` that checks cache first
+- Only calls `hydrateSessionOrNull()` if cache is unavailable
 
 ---
 
-## Why This Wasn't Obvious
+## Code Changes
 
-1. **Edge functions deploy independently** - You didn't release a new App Store build, but deploying edge function changes affected all users
-2. **The basil API version looks legitimate** - It's actually the format Stripe uses for beta APIs (basil = beta codename)
-3. **Timing was coincidental** - The Stripe version upgrade happened alongside other work
+### ProtectedRoute.tsx - Add Cache Fast-Path
+
+```typescript
+// NEW: Fast-path check using localStorage cache
+const tryFastPath = useCallback((): Session | null => {
+  console.log('[ProtectedRoute] Checking cache fast-path...');
+  const cached = getCachedSessionAsSupabaseSession();
+  
+  if (cached) {
+    console.log('[ProtectedRoute] ✅ Fast-path: Using cached session, skipping auth calls');
+    return cached;
+  }
+  
+  return null;
+}, []);
+
+// In attemptHydration:
+const attemptHydration = useCallback(async (): Promise<void> => {
+  // TRY CACHE FIRST - avoids auth lock contention
+  const fastPathSession = tryFastPath();
+  if (fastPathSession) {
+    setSession(fastPathSession);
+    setHydrationState('hydrated');
+    clearWatchdog();
+    return;
+  }
+  
+  // Only call Supabase auth if cache is unavailable
+  const hydratedSession = await hydrateSessionOrNull(HYDRATION_TIMEOUT_MS);
+  // ... rest of existing logic
+}, []);
+```
+
+### authSessionCache.ts - Add Session Constructor
+
+```typescript
+/**
+ * Constructs a Supabase-compatible Session object from the localStorage cache.
+ * Returns null if cache is missing, invalid, or expired.
+ * 
+ * Use this to avoid calling supabase.auth.getSession() which can deadlock.
+ */
+export const getCachedSessionAsSupabaseSession = (): Session | null => {
+  const cached = getCachedSession(); // Existing function with expiry check
+  
+  if (!cached) {
+    return null;
+  }
+  
+  // Construct a Session object that matches Supabase's type
+  return {
+    access_token: cached.access_token,
+    refresh_token: cached.refresh_token,
+    expires_at: cached.expires_at,
+    expires_in: cached.expires_at - Math.floor(Date.now() / 1000),
+    token_type: 'bearer',
+    user: {
+      id: cached.user.id,
+      email: cached.user.email,
+      // ... minimal required fields
+    } as User,
+  };
+};
+```
+
+---
+
+## Why This Works
+
+1. **No auth lock contention:** ProtectedRoute reads from localStorage (synchronous, instant) instead of calling `getSession()`
+2. **Splash already validated:** If Splash's fast-path succeeded, the cache is definitely valid
+3. **Fallback preserved:** If cache is missing (new user), we still call `hydrateSessionOrNull()` 
+4. **Works on both platforms:** localStorage is available on iOS and Android
+
+---
+
+## Edge Cases Handled
+
+| Scenario | Behavior |
+|----------|----------|
+| Valid cache exists | Use immediately, skip Supabase calls |
+| Cache expired | Fall back to `hydrateSessionOrNull()` |
+| No cache (new user) | Fall back to `hydrateSessionOrNull()` |
+| Token about to expire | Supabase auto-refreshes on next API call |
+| Session was invalidated | RLS will fail, user gets redirected to auth |
+
+---
+
+## Deployment
+
+This is a **frontend-only change** that requires a new TestFlight/Play Store build. The server-side Stripe fix we already deployed remains in place and helps with overall performance.
+
+---
+
+## Immediate Workaround for Current Users
+
+While waiting for the new build:
+1. **Force-close the app, wait 30+ seconds, then reopen** - sometimes the auth lock releases
+2. **Delete and reinstall the app** - guaranteed to work
+3. **Clear app data** (Android: Settings → Apps → Regimen → Clear Data)
 
 ---
 
 ## Verification Steps
 
-After deploying the fix:
-1. Test on your iPhone (App Store build 14) - should load quickly on resume
-2. Monitor edge function logs - response times should be under 1 second
-3. Check with beta testers - they should see immediate improvement
+After deploying the new build:
+1. Install the update
+2. Log in normally
+3. Force-close the app
+4. Reopen immediately
+5. App should load instantly (no "Restoring your session..." spinner)
 
----
+The key indicator of success: the logs should show `[ProtectedRoute] ✅ Fast-path: Using cached session` instead of `[SafeAuth] Attempting getSession...`
 
-## Terminal Command After Fix is Deployed
-
-Once we deploy the edge function fix, you can sync your local project:
-```bash
-cd /Users/Zen/regimen-health-hub && git pull && npm install && npm run build && npx cap sync
-```
-
-However, **the fix for App Store users doesn't require any client-side update** - it's purely server-side.
