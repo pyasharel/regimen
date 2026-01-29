@@ -4,6 +4,7 @@ import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
+import { ComponentErrorBoundary } from "@/components/ui/ComponentErrorBoundary";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -1105,10 +1106,19 @@ export const TodayScreen = () => {
 
       {/* Medication Levels Card - only show when viewing today */}
       {isToday(selectedDate) && (
-        <MedicationLevelsCard 
-          compounds={compoundsForLevels}
-          doses={dosesForLevels}
-        />
+        <ComponentErrorBoundary 
+          name="MedicationLevels"
+          fallback={
+            <div className="text-muted-foreground text-sm p-4 text-center">
+              Unable to load medication levels
+            </div>
+          }
+        >
+          <MedicationLevelsCard 
+            compounds={compoundsForLevels}
+            doses={dosesForLevels}
+          />
+        </ComponentErrorBoundary>
       )}
 
       {/* Doses */}

@@ -117,6 +117,14 @@ const App = () => {
   const splashHidden = useRef(false);
   const hideAttempts = useRef(0);
 
+  // Clear boot timeout - we rendered successfully
+  useEffect(() => {
+    if (window.__bootTimeoutId) {
+      clearTimeout(window.__bootTimeoutId);
+      delete window.__bootTimeoutId;
+    }
+  }, []);
+
   // Hide native splash screen with retry strategy
   // This prevents the app from staying stuck on the black native splash
   useEffect(() => {
@@ -136,12 +144,22 @@ const App = () => {
     setTimeout(attemptHide, 1200);
     setTimeout(attemptHide, 2500);
     
-    // Also attempt to hide on app resume (handles edge cases)
+    // Handle app resume with safety check
     let resumeListener: any;
     import('@capacitor/app').then(({ App: CapacitorApp }) => {
       CapacitorApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
           attemptHide();
+          
+          // Safety check: if root is empty after 3 seconds, something went wrong
+          setTimeout(() => {
+            const root = document.getElementById('root');
+            const hasContent = root && root.children.length > 0 && root.innerHTML.length > 100;
+            if (!hasContent) {
+              console.error('[RECOVERY] App appears stuck after resume, reloading');
+              window.location.reload();
+            }
+          }, 3000);
         }
       }).then(handle => {
         resumeListener = handle;

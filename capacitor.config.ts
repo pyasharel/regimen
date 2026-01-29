@@ -11,9 +11,9 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   plugins: {
     SplashScreen: {
-      // Set to 0 - we hide programmatically after React is ready
-      // This ensures onboarding animations are visible
-      launchShowDuration: 0,
+      // Set to 400 - fixes iOS edge case where launchShowDuration: 0 + launchAutoHide: false
+      // causes the native splash to get stuck. We still hide programmatically in JS.
+      launchShowDuration: 400,
       launchAutoHide: false,
       backgroundColor: "#000000",
       showSpinner: false,
