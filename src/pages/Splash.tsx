@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { clearAllAppData, generateSupportCode } from "@/utils/startupPreflight";
 import { getCachedSession } from "@/utils/authSessionCache";
+import { hydrateSessionOrNull, hasAnyAuthTokens } from "@/utils/safeAuth";
 import logo from "@/assets/regimen-wordmark-transparent.png";
 
 type SplashState = 'loading' | 'timeout' | 'error';
@@ -34,7 +34,7 @@ export default function Splash() {
     return false;
   }, [navigate]);
 
-  // Slow-path: Async session check with timeout
+  // Slow-path: Async session check using safe hydration (includes token mirror fallback)
   const checkSessionAsync = useCallback(async () => {
     if (hasNavigated.current) return;
     
@@ -43,29 +43,20 @@ export default function Splash() {
     try {
       localStorage.setItem('regimen_last_boot_stage', 'splash_async_session_check');
       
-      // Race between session check and timeout
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise<null>((_, reject) => 
-        setTimeout(() => reject(new Error('Session check timeout')), TIMEOUT_MS)
-      );
-      
-      const result = await Promise.race([sessionPromise, timeoutPromise]);
+      // Use safe hydration which tries localStorage, then mirror, with timeouts
+      const session = await hydrateSessionOrNull(TIMEOUT_MS);
       
       if (hasNavigated.current) return; // Check again after await
       
-      if (result && 'data' in result) {
-        const { session } = result.data;
-        
-        localStorage.setItem('regimen_last_boot_stage', 'splash_navigating');
-        hasNavigated.current = true;
-        
-        if (session) {
-          console.log('[Splash] Async: Session found, navigating to /today');
-          navigate("/today", { replace: true });
-        } else {
-          console.log('[Splash] Async: No session, navigating to /onboarding');
-          navigate("/onboarding", { replace: true });
-        }
+      localStorage.setItem('regimen_last_boot_stage', 'splash_navigating');
+      hasNavigated.current = true;
+      
+      if (session) {
+        console.log('[Splash] Async: Session found, navigating to /today');
+        navigate("/today", { replace: true });
+      } else {
+        console.log('[Splash] Async: No session, navigating to /onboarding');
+        navigate("/onboarding", { replace: true });
       }
     } catch (error) {
       if (hasNavigated.current) return;
@@ -73,7 +64,7 @@ export default function Splash() {
       console.error('[Splash] Async session check failed:', error);
       localStorage.setItem('regimen_last_boot_stage', 'splash_error');
       
-      // Check if it's a timeout
+      // Check if it's a timeout - show appropriate UI
       if (error instanceof Error && error.message.includes('timeout')) {
         setState('timeout');
       } else {

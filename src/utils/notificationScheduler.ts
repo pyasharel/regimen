@@ -143,11 +143,12 @@ export const scheduleDoseNotification = async (
     const [year, month, day] = dose.scheduled_date.split('-').map(Number);
     const notificationDate = new Date(year, month - 1, day, time.hour, time.minute, 0, 0);
 
-    // Only schedule if in the future (with 30 second buffer)
+    // STRICT FUTURE-ONLY: Only schedule if at least 5 seconds in the future
+    // This prevents "immediate fire" if anything tries to schedule at current/past time
     const now = Date.now();
-    const bufferMs = 30 * 1000; // 30 second buffer
-    if (notificationDate.getTime() <= now - bufferMs) {
-      console.log(`⏭️ Skipping past notification: ${dose.compound_name} at ${notificationDate.toLocaleString()}`);
+    const STRICT_FUTURE_BUFFER_MS = 5000; // 5 seconds
+    if (notificationDate.getTime() <= now + STRICT_FUTURE_BUFFER_MS) {
+      console.log(`⏭️ Skipping past/immediate notification: ${dose.compound_name} at ${notificationDate.toLocaleString()}`);
       return;
     }
 
@@ -315,18 +316,39 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   }
 
   // Build map of pending dose notifications: id -> { scheduledAt, extra }
-  const pendingDoseNotifications = new Map<number, { scheduledAt: Date; extra: any }>();
+  // This includes both tagged notifications (extra.type === 'dose') AND legacy ones
+  const pendingDoseNotifications = new Map<number, { scheduledAt: Date; extra: any; isLegacy: boolean }>();
+  const legacyNotificationsToCancel: number[] = [];
+  
   for (const notif of pendingNotifications) {
-    // Only track dose notifications (tagged with type: 'dose')
+    const scheduledAt = notif.schedule?.at ? new Date(notif.schedule.at) : null;
+    if (!scheduledAt) continue;
+    
+    // Check if this is a tagged dose notification (new system)
     if (notif.extra?.type === 'dose' || notif.extra?.doseId) {
-      const scheduledAt = notif.schedule?.at ? new Date(notif.schedule.at) : null;
-      if (scheduledAt) {
-        pendingDoseNotifications.set(notif.id, { scheduledAt, extra: notif.extra });
+      pendingDoseNotifications.set(notif.id, { scheduledAt, extra: notif.extra, isLegacy: false });
+    }
+    // Check for legacy dose notifications by signature:
+    // title = "Regimen" AND body starts with "Time for"
+    else if (
+      (notif.title === 'Regimen' || notif.title?.startsWith('Regimen')) &&
+      notif.body?.startsWith('Time for ')
+    ) {
+      // This is a legacy dose notification
+      console.log(`🔍 Found legacy notification ID ${notif.id}: "${notif.body}" at ${scheduledAt.toLocaleString()}`);
+      
+      // Apply near-fire guard: don't cancel if it's about to fire
+      const msUntilFire = scheduledAt.getTime() - nowMs;
+      if (msUntilFire < NEAR_FIRE_GUARD_MS && msUntilFire > 0) {
+        console.log(`⏰ Near-fire guard: keeping legacy notification (fires in ${Math.round(msUntilFire / 1000)}s)`);
+      } else {
+        // Queue for cancellation
+        legacyNotificationsToCancel.push(notif.id);
       }
     }
   }
 
-  console.log(`📋 Pending DOSE notifications: ${pendingDoseNotifications.size}`);
+  console.log(`📋 Pending DOSE notifications: ${pendingDoseNotifications.size}, Legacy to cancel: ${legacyNotificationsToCancel.length}`);
 
   // === Step 3: Reconcile ===
   const toCancel: number[] = [];
@@ -368,16 +390,17 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
     toSchedule.push(desired);
   }
 
-  console.log(`📊 Reconciliation: keep=${keptCount}, cancel=${toCancel.length}, schedule=${toSchedule.length}`);
+  console.log(`📊 Reconciliation: keep=${keptCount}, cancel=${toCancel.length}, schedule=${toSchedule.length}, legacy_cleanup=${legacyNotificationsToCancel.length}`);
 
   // === Step 4: Execute changes ===
-  // Cancel unwanted notifications
-  if (toCancel.length > 0) {
+  // Cancel unwanted notifications (including legacy cleanup)
+  const allToCancel = [...toCancel, ...legacyNotificationsToCancel];
+  if (allToCancel.length > 0) {
     try {
       await LocalNotifications.cancel({
-        notifications: toCancel.map(id => ({ id }))
+        notifications: allToCancel.map(id => ({ id }))
       });
-      console.log(`🗑️ Canceled ${toCancel.length} notifications`);
+      console.log(`🗑️ Canceled ${allToCancel.length} notifications (${toCancel.length} stale + ${legacyNotificationsToCancel.length} legacy)`);
     } catch (error) {
       console.error('Error canceling notifications:', error);
     }

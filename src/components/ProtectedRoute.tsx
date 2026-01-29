@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
-import { hydrateSessionOrNull } from "@/utils/safeAuth";
+import { hydrateSessionOrNull, hasAnyAuthTokens } from "@/utils/safeAuth";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -64,10 +64,23 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         // Try again
         await attemptHydration(attemptNumber + 1);
       } else {
-        // All attempts exhausted - user is not authenticated
-        console.log('[ProtectedRoute] All hydration attempts exhausted, redirecting to auth');
-        setSession(null);
-        setHydrationState('unauthenticated');
+        // All attempts exhausted - check if we have tokens anywhere
+        // If yes, show "failed" (connection issue), if no, redirect to auth
+        console.log('[ProtectedRoute] All hydration attempts exhausted, checking for tokens...');
+        
+        const hasTokens = await hasAnyAuthTokens();
+        
+        if (hasTokens) {
+          // Tokens exist but hydration failed - likely a network/connection issue
+          console.log('[ProtectedRoute] Tokens exist but hydration failed, showing retry UI');
+          setSession(null);
+          setHydrationState('failed');
+        } else {
+          // No tokens anywhere - user is genuinely not authenticated
+          console.log('[ProtectedRoute] No tokens found anywhere, redirecting to auth');
+          setSession(null);
+          setHydrationState('unauthenticated');
+        }
       }
     } catch (error) {
       if (!isMountedRef.current) return;
@@ -82,7 +95,9 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         if (!isMountedRef.current) return;
         await attemptHydration(attemptNumber + 1);
       } else {
-        setHydrationState('failed');
+        // Check if we have tokens before deciding what to show
+        const hasTokens = await hasAnyAuthTokens();
+        setHydrationState(hasTokens ? 'failed' : 'unauthenticated');
       }
     }
   }, []);
@@ -113,14 +128,14 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Failed state - show retry UI
+  // Failed state - show retry UI (tokens exist but hydration failed)
   if (hydrationState === 'failed') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4 max-w-xs text-center">
-          <p className="text-foreground font-medium">Couldn't load your session</p>
+          <p className="text-foreground font-medium">Connection issue</p>
           <p className="text-muted-foreground text-sm">
-            This is usually temporary. Please try again.
+            We're having trouble connecting. This is usually temporary.
           </p>
           <div className="flex gap-3 mt-2">
             <Button 
