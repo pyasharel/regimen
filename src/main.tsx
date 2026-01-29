@@ -109,6 +109,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { initGA } from './utils/analytics';
 import { captureAttribution } from './utils/attribution';
 import { setInstallDate } from './utils/featureTracking';
+import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
 
 // Mark that imports completed successfully
 try {
@@ -129,12 +131,53 @@ if (GA_MEASUREMENT_ID) {
   initGA(GA_MEASUREMENT_ID);
 }
 
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <App />
-      </ThemeProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+// ========================================
+// THEME BOOTSTRAP (NATIVE PLATFORMS)
+// ========================================
+// Read theme from Capacitor Preferences BEFORE React renders
+// This prevents theme "flash" or reversion to dark mode on cold starts
+const bootstrapTheme = async (): Promise<void> => {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  try {
+    const [themeResult, variantResult] = await Promise.all([
+      Preferences.get({ key: 'vite-ui-theme' }),
+      Preferences.get({ key: 'vite-ui-theme-variant' }),
+    ]);
+    
+    const theme = themeResult.value || 'dark';
+    const variant = variantResult.value || 'refined';
+    
+    // Sync to localStorage so ThemeProvider picks it up immediately
+    try {
+      localStorage.setItem('vite-ui-theme', theme);
+      localStorage.setItem('vite-ui-theme-variant', variant);
+    } catch {
+      // Ignore storage errors
+    }
+    
+    // Apply to document immediately (before React paints)
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(theme);
+    document.documentElement.classList.remove('design-classic', 'design-refined');
+    document.documentElement.classList.add(`design-${variant}`);
+    
+    console.log('[ThemeBootstrap] Applied theme:', theme, 'variant:', variant);
+  } catch (e) {
+    console.warn('[ThemeBootstrap] Failed:', e);
+  }
+};
+
+// Bootstrap theme, then render React app
+// Use .finally() to ensure app renders even if bootstrap fails
+bootstrapTheme().finally(() => {
+  createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <App />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+});

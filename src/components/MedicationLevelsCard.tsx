@@ -318,7 +318,7 @@ export const MedicationLevelsCard = ({
   return (
     <Collapsible open={!isCollapsed}>
       <div 
-        className="mx-4 mt-2 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+        className="mx-4 mt-3 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
         onClick={handleCardTap}
       >
         {/* Single header row with compound selector and chevron */}

@@ -199,7 +199,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   // Watchdog timer ID
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Maximum time to allow refresh to run before forcing isLoading=false
-  const REFRESH_WATCHDOG_MS = 8000;
+  // Reduced from 8s to 5s for faster recovery on cold starts
+  const REFRESH_WATCHDOG_MS = 5000;
 
   const refreshSubscription = async (trigger: string = 'unknown') => {
     // Prevent concurrent calls
@@ -739,11 +740,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           console.log('[RevenueCat] Platform and app_version set:', platform, appVersion);
           
           // Set country/locale from browser for geo tracking
+          // IMPORTANT: Use 'country_code' NOT '$countryCode' - the $ prefix is reserved by RevenueCat
+          // and causes BackendError that blocks initialization on cold starts
           try {
             const locale = navigator.language || 'en-US';
             const countryCode = locale.split('-')[1] || 'Unknown';
             await Purchases.setAttributes({
-              '$countryCode': countryCode,
+              country_code: countryCode,
               locale: locale,
             });
             console.log('[RevenueCat] Country/locale set:', countryCode, locale);
