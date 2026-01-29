@@ -192,13 +192,22 @@ export const useAppStateSync = () => {
     };
 
     // Sync when app comes to foreground
-    let listener: any;
+    let isMounted = true;
+    let listener: { remove: () => void } | null = null;
+    
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
+      if (isActive && isMounted) {
         syncNotifications();
       }
-    }).then(handle => {
-      listener = handle;
+    }).then((handle) => {
+      if (isMounted) {
+        listener = handle;
+      } else {
+        // Already unmounted, clean up immediately
+        handle.remove();
+      }
+    }).catch(() => {
+      // Not on native platform, ignore
     });
 
     // Also sync on initial mount
@@ -208,6 +217,7 @@ export const useAppStateSync = () => {
     setupNotificationActionHandlers();
 
     return () => {
+      isMounted = false;
       listener?.remove();
     };
   }, []);
