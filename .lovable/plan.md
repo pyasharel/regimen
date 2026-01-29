@@ -1,183 +1,156 @@
 
-Goal
-- Get your iOS build unblocked by fixing the persistent CocoaPods error:
-  “The sandbox is not in sync with the Podfile.lock…”
-- Ensure the build number shows 18 in Xcode.
-- Then outline exactly how to deploy to Android and how to capture the right logs on both phones to diagnose the “notification tap → black screen” issue.
+# Fix Session Restoration Timeout During Notification Cold Starts
 
-What that CocoaPods error means (in plain English)
-- iOS keeps two “lock” files that must match:
-  - ios/App/Podfile.lock (your project’s “expected” pod versions)
-  - ios/App/Pods/Manifest.lock (what CocoaPods actually installed)
-- Xcode runs a build step that compares them. If they differ, the build stops with that error.
+## Problem Summary
+When users tap a notification to open the app after a force-close, the app shows "Taking longer than expected" instead of loading the Today screen. This happens because the Supabase session check in `Splash.tsx` times out (5 seconds) before completing.
 
-Most common reason it keeps coming back
-- The command order is wrong:
-  - If you run `pod install`, then later run `npx cap sync ios`, Capacitor may update iOS plugin pod settings and change what Podfile.lock expects; now the installed Pods no longer match.
-- Or you’re building the wrong file in Xcode:
-  - Opening `App.xcodeproj` instead of `App.xcworkspace` can lead to confusion and stale state (the workspace is the correct entrypoint for a CocoaPods project).
+## Root Cause Analysis
+The current flow during a notification-triggered cold start:
 
-Part 1 — Fix the CocoaPods “sandbox not in sync” error (repeatable recipe)
-1) Fully quit Xcode
-- Xcode → Quit Xcode (not just close window)
+```text
+User taps notification
+        ↓
+    App cold starts
+        ↓
+  main.tsx preflight runs
+        ↓
+  React mounts → Router → Splash.tsx
+        ↓
+  supabase.auth.getSession() called
+        ↓
+  [HANGS HERE - network/token refresh slow]
+        ↓
+  5 second timeout triggers
+        ↓
+  "Taking longer than expected" shown
+```
 
-2) Confirm you’re in the project root
-- In Terminal, go to the folder that contains:
-  - package.json
-  - capacitor.config.ts
-- This avoids running commands from the wrong directory.
+The problem is that `getSession()` during cold starts can be slow because:
+- WebView is still initializing
+- Supabase client needs to warm up
+- Token refresh may be in progress
+- Network requests are queued behind other startup tasks
 
-3) Run the commands in the correct order (important)
-From the project root:
-- `npm run build`
-- `npx cap sync ios`
+## Solution Overview
+Implement a **fast-path session check** that reads cached auth data from localStorage first, then validates in the background. This provides instant navigation while still ensuring security.
 
-Then install pods (this must be inside ios/App):
-- `cd ios/App`
-- `pod install`
-- `cd ../..`
+## Technical Changes
 
-4) Open the correct Xcode file
-- Use:
-  - `npx cap open ios`
-- Or manually open:
-  - ios/App/App.xcworkspace  (NOT App.xcodeproj)
+### 1. Create Auth Session Cache Utility
+**New file: `src/utils/authSessionCache.ts`**
 
-5) Clean + Build
-- In Xcode:
-  - Product → Clean Build Folder (hold Option if needed to show the deeper clean)
-  - Then build/run again
+```typescript
+// Fast, synchronous check for cached session data
+// Supabase stores session in localStorage under a predictable key
 
-Part 2 — If you STILL get the same error after doing Part 1
-This “nuclear but safe” reset forces Pods + locks to regenerate cleanly.
+export const getCachedSession = () => {
+  // Supabase stores auth state here
+  const key = `sb-${projectId}-auth-token`;
+  const cached = localStorage.getItem(key);
+  
+  if (!cached) return null;
+  
+  try {
+    const parsed = JSON.parse(cached);
+    // Check if token is expired (with 5 min buffer)
+    if (parsed.expires_at && parsed.expires_at * 1000 > Date.now() + 300000) {
+      return parsed;
+    }
+    return null; // Expired
+  } catch {
+    return null;
+  }
+};
+```
 
-1) Quit Xcode again
+### 2. Update Splash.tsx with Fast-Path Logic
+**Modify: `src/pages/Splash.tsx`**
 
-2) Reset Pods state (in ios/App)
-In Terminal:
-- `cd ios/App`
-- `rm -rf Pods`
-- `rm -f Podfile.lock`
-- (optional but often helpful) `pod deintegrate`
+New strategy:
+1. **First (instant)**: Check localStorage for cached session
+2. **If cached session exists and not expired**: Navigate immediately to `/today`
+3. **Background**: Trigger async session refresh (Supabase handles token refresh automatically)
+4. **If no cached session**: Fall back to current `getSession()` flow with timeout
 
-Then reinstall:
-- `pod install --repo-update`
-- `cd ../..`
+```text
+Notification tap → Cold start
+        ↓
+    Check localStorage cache (instant, <1ms)
+        ↓
+  Session found? ─────────────────→ Navigate to /today immediately
+        │                                    ↓
+        │                           Background: getSession() validates
+        │                           (ProtectedRoute handles any issues)
+        ↓
+  No cached session
+        ↓
+  Fall back to getSession() with timeout
+        ↓
+  Navigate to /onboarding or show error
+```
 
-3) Delete Xcode Derived Data (clears stale build cache)
-- Terminal:
-  - `rm -rf ~/Library/Developer/Xcode/DerivedData`
+### 3. Leverage ProtectedRoute as Safety Net
+`ProtectedRoute.tsx` already:
+- Calls `getSession()` on mount
+- Listens to `onAuthStateChange`
+- Redirects to `/auth` if session is invalid
 
-4) Re-open the workspace and build
-- `npx cap open ios`
-- Build again
+This means the fast-path is safe: if the cached session is stale, `ProtectedRoute` will catch it and redirect appropriately.
 
-If this still fails:
-- It strongly suggests CocoaPods itself is broken or not properly linked on your Mac.
-- Use the “CocoaPods Dependency Issues” section in your TROUBLESHOOTING_IOS.md:
-  - `brew cleanup`
-  - `brew link --overwrite cocoapods`
-  - then `cd ios/App && pod install`
+### 4. Add Session Warming Hook
+**New file: `src/hooks/useSessionWarming.ts`**
 
-Part 3 — Why Xcode still shows Build 17 (and how to make it 18)
-Changing `appBuild` in capacitor.config.ts sets what the web app displays, but the iOS native build number updates only after you run the sync script.
+On app resume and initial load, proactively warm the Supabase session in the background:
 
-Do this from the project root:
-- `./sync-version.sh`
+```typescript
+export const useSessionWarming = () => {
+  useEffect(() => {
+    // Warm session on mount (non-blocking)
+    supabase.auth.getSession().catch(() => {});
+    
+    // Warm session on app resume
+    const listener = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        supabase.auth.getSession().catch(() => {});
+      }
+    });
+    
+    return () => listener.remove();
+  }, []);
+};
+```
 
-Then re-open iOS:
-- `npx cap open ios`
+### 5. Increase Timeout as Fallback
+Increase the Splash timeout from 5s to 8s as an additional buffer, since the fast-path should handle most cases anyway.
 
-Verify in Xcode:
-- Target “App” → General → Identity → Build should show 18
-(If it still shows 17, you can manually set it there, but the goal is to have the script keep it consistent.)
+## File Changes Summary
 
-Part 4 — Get the latest Android build onto your Android phone (Android Studio)
-Prereqs
-- USB cable
-- On Android phone:
-  - Enable Developer Options
-  - Enable USB Debugging
-  - Allow the computer when prompted
+| File | Change |
+|------|--------|
+| `src/utils/authSessionCache.ts` | New file - fast localStorage session check |
+| `src/pages/Splash.tsx` | Use fast-path first, fallback to async check |
+| `src/hooks/useSessionWarming.ts` | New file - background session warming |
+| `src/App.tsx` | Add `useSessionWarming()` hook |
 
-Steps
-1) From project root:
-- `npm run build`
-- `npx cap sync android`
+## Testing Plan
+After implementing, test on physical iPhone:
 
-2) Open Android Studio:
-- `npx cap open android`
+1. **Force close app** (swipe up from app switcher)
+2. **Trigger a notification** (schedule one for 1 minute out)
+3. **Tap the notification**
+4. **Expected**: App opens directly to Today screen without showing "Taking longer than expected"
 
-3) In Android Studio:
-- Wait for Gradle sync to finish (bottom status bar)
-- Top device dropdown: select your connected phone
-- Click the Run button (green play triangle)
+Repeat 10 times to confirm reliability.
 
-4) If it installs but you’re not sure it’s the newest build:
-- Open the app → Settings → Help
-- Confirm:
-  - Build: 18
-  - Bundle timestamp is recent (this is the most trustworthy signal for “new web bundle is running”)
+## Why This Works
+- **Speed**: localStorage read is synchronous and takes <1ms
+- **Safety**: ProtectedRoute validates the session in the background
+- **Fallback**: If cache is empty/expired, the existing flow still works
+- **No user impact**: Users with valid sessions see instant loading; users without sessions still get proper auth flow
 
-Part 5 — Debugging the “notification tap → black screen” on both phones (what to capture)
-Key idea: we want logs from the moment you tap the notification through the moment the screen goes black.
-
-A) Android (best signal)
-1) Open Android Studio → Logcat
-2) Select:
-- Device: your phone
-- App/process: your app (or “No Filters” if it disappears)
-3) Set filters/search terms (one at a time if needed):
-- `FATAL EXCEPTION`
-- `AndroidRuntime`
-- `chromium`
-- `WebView`
-- `Capacitor`
-- `ActivityManager`
-4) Reproduce:
-- Force close app
-- Trigger a dose notification
-- Tap notification
-- If it goes black, immediately stop and copy/export the Logcat output around that time window
-
-What we’re looking for:
-- A crash (Java/Kotlin stack trace)
-- A WebView renderer crash
-- An Activity lifecycle issue (resume/restore)
-- A resource/permission error after notification tap
-
-B) iPhone (two layers of logs)
-1) Native logs (Xcode)
-- Xcode → Window → Devices and Simulators
-- Select your iPhone → Open Console
-- Reproduce the notification tap → capture logs
-
-2) WebView logs (Safari Web Inspector)
-- On iPhone: Settings → Safari → Advanced → Web Inspector (ON)
-- On Mac: Safari → Develop → [Your iPhone] → select the app’s WebView
-- Watch Console for JS errors during the notification tap/open flow
-
-C) Confirm whether the “boot recovery” triggers
-Your app includes:
-- A startup preflight to prevent corrupted storage from causing black screens
-- A 6-second “boot timeout” that should show a recovery UI if the app never renders
-When the black screen happens, note:
-- Does anything appear after ~6 seconds (a recovery screen with “Reset & Retry”)?
-  - If yes: we likely have a storage/JS boot failure path.
-  - If no: we likely have a native splash/WebView-level hang/crash (different fix path).
-
-Part 6 — Preventing the Pods error from returning (simple rule)
-When updating native builds, always do:
-1) `npm run build`
-2) `npx cap sync ios`
-3) `cd ios/App && pod install && cd ../..`
-4) open workspace + build
-
-Avoid running `npx cap sync ios` after `pod install` unless you plan to run `pod install` again.
-
-What I need from you (so we can move fast)
-- Tell me which step you’re stuck on:
-  1) Does `pod install` succeed (no errors) when run inside `ios/App`?
-  2) Are you opening `ios/App/App.xcworkspace` (not `.xcodeproj`)?
-  3) After doing Part 2 (nuclear reset), does the error change or stay identical?
-- For the black screen: once you can install on Android, paste the Logcat snippet around the failure (especially any “FATAL EXCEPTION” / WebView crash lines). That will tell us whether we need a native-level fix or another JS-level hardening tweak.
+## Risks and Mitigations
+| Risk | Mitigation |
+|------|------------|
+| Stale session cached | ProtectedRoute validates and redirects if needed |
+| localStorage unavailable | Falls back to async getSession() |
+| Race condition with auth | onAuthStateChange listener handles changes |
