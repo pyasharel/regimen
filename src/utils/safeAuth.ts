@@ -3,7 +3,7 @@
  * app resume or cold starts. Uses cached session data when available.
  */
 
-import { getCachedSession } from './authSessionCache';
+import { getCachedSession, getCachedSessionForHydration } from './authSessionCache';
 import { supabase } from '@/integrations/supabase/client';
 import { withTimeout } from './withTimeout';
 import type { Session } from '@supabase/supabase-js';
@@ -63,12 +63,12 @@ export const hydrateSessionOrNull = async (
     console.warn('[SafeAuth] getSession timed out or failed:', e);
   }
   
-  // Step 2: Try to hydrate from cached tokens
+  // Step 2: Try to hydrate from cached tokens (doesn't check expiry - relies on refresh)
   console.log('[SafeAuth] Falling back to cache hydration...');
-  const cached = getCachedSession();
+  const cached = getCachedSessionForHydration();
   
-  if (!cached?.access_token || !cached?.refresh_token) {
-    console.log('[SafeAuth] No cached tokens available, user is not authenticated');
+  if (!cached?.refresh_token) {
+    console.log('[SafeAuth] No refresh token available, user is not authenticated');
     return null;
   }
   
