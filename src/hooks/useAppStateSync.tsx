@@ -294,12 +294,10 @@ export const useAppStateSync = () => {
       // Not on native platform, ignore
     });
 
-    // Also sync on initial mount (with small delay)
-    setTimeout(() => {
-      if (isMounted) {
-        syncNotifications();
-      }
-    }, 300);
+    // REMOVED: Initial mount sync was causing contention with auth hydration
+    // Sync will now only happen on app resume, not on cold start
+    // This prevents queries from running before auth is fully hydrated
+    // Reference: Boot coordination hotfix for "first-time user" empty state bug
 
     // Set up notification action handlers
     setupNotificationActionHandlers();

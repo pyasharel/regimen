@@ -368,10 +368,18 @@ export const TodayScreen = () => {
 
   const checkCompounds = async () => {
     try {
+      // Require userId to prevent anonymous queries returning wrong results
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) {
+        console.log('[TodayScreen] checkCompounds: No userId, skipping');
+        return;
+      }
+      
       const { data, error } = await withQueryTimeout(
         supabase
           .from('compounds')
           .select('id')
+          .eq('user_id', userId)
           .limit(1),
         'checkCompounds'
       );
@@ -399,6 +407,17 @@ export const TodayScreen = () => {
   const loadDoses = async () => {
     const startTime = Date.now();
     console.log('[TodayScreen] 🚀 Starting loadDoses...');
+    
+    // Require userId to prevent anonymous queries returning empty results (RLS)
+    const userId = await getUserIdWithFallback(3000);
+    if (!userId) {
+      console.log('[TodayScreen] loadDoses: No userId, keeping loading state');
+      // Don't set loading=false or doses=[] - keep showing "loading" 
+      // This prevents "first-time user" empty state when auth is still hydrating
+      return;
+    }
+    console.log('[TodayScreen] loadDoses: Got userId:', userId.slice(0, 8) + '...');
+    
     try {
       // Format date in local timezone to avoid UTC conversion issues
       const year = selectedDate.getFullYear();
@@ -406,7 +425,7 @@ export const TodayScreen = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      // Get regular scheduled doses for the selected date (only from active compounds)
+      // Get regular scheduled doses for the selected date - explicitly filter by user_id
       const { data: dosesData, error: dosesError } = await withQueryTimeout(
         supabase
           .from('doses')
@@ -414,6 +433,7 @@ export const TodayScreen = () => {
             *,
             compounds (name, schedule_type, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)
           `)
+          .eq('user_id', userId)
           .eq('scheduled_date', dateStr),
         'loadDoses-main'
       );
@@ -421,11 +441,12 @@ export const TodayScreen = () => {
 
       if (dosesError) throw dosesError;
 
-      // Get "As Needed" compounds for this user
+      // Get "As Needed" compounds for this user - explicitly filter by user_id
       const { data: asNeededCompounds, error: compoundsError } = await withQueryTimeout(
         supabase
           .from('compounds')
           .select('*')
+          .eq('user_id', userId)
           .eq('schedule_type', 'As Needed')
           .eq('is_active', true),
         'loadDoses-asNeeded'

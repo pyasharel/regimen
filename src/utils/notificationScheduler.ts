@@ -174,13 +174,22 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
     return;
   }
 
-  console.log('🔔 Checking notification permissions...');
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) {
-    console.error('❌ Notification permissions NOT granted!');
+  // CHECK permissions instead of REQUESTING during sync/resume
+  // This prevents iOS permission dialogs from appearing during boot
+  // and causing native bridge contention
+  console.log('🔔 Checking notification permissions (without prompting)...');
+  try {
+    const permissionStatus = await LocalNotifications.checkPermissions();
+    if (permissionStatus.display !== 'granted') {
+      console.log('⚠️ Notification permissions not granted - skipping scheduling');
+      console.log('   (Permission will be requested during onboarding or settings)');
+      return;
+    }
+  } catch (error) {
+    console.error('❌ Error checking notification permissions:', error);
     return;
   }
-  console.log('✅ Notification permissions granted');
+  console.log('✅ Notification permissions already granted');
 
   // Cancel all existing notifications first
   await cancelAllNotifications();
