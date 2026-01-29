@@ -12,12 +12,17 @@ export const WeeklyDigestSettings = () => {
   const [time, setTime] = useState("19:00");
 
   useEffect(() => {
-    const settings = localStorage.getItem("weeklyDigestSettings");
-    if (settings) {
-      const parsed = JSON.parse(settings);
-      setEnabled(parsed.enabled || false);
-      setDay(parsed.day || "sunday");
-      setTime(parsed.time || "19:00");
+    try {
+      const settings = localStorage.getItem("weeklyDigestSettings");
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        setEnabled(parsed.enabled || false);
+        setDay(parsed.day || "sunday");
+        setTime(parsed.time || "19:00");
+      }
+    } catch (e) {
+      console.error('[WeeklyDigestSettings] Failed to parse settings, using defaults:', e);
+      localStorage.removeItem("weeklyDigestSettings");
     }
   }, []);
 

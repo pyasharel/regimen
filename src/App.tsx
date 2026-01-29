@@ -11,6 +11,7 @@ import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionCo
 import { PaywallProvider, usePaywall } from "@/contexts/PaywallContext";
 import { SubscriptionBanners } from "@/components/subscription/SubscriptionBanners";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useState, useEffect, useRef } from "react";
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
@@ -134,15 +135,17 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SubscriptionProvider>
-        <PaywallProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </PaywallProvider>
-      </SubscriptionProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <SubscriptionProvider>
+          <PaywallProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </PaywallProvider>
+        </SubscriptionProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

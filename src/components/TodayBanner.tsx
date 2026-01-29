@@ -25,8 +25,20 @@ export const TodayBanner = () => {
   const [dismissed, setDismissed] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load dismissed banners from localStorage
-    const dismissedBanners = JSON.parse(localStorage.getItem('dismissedBanners') || '[]');
+    // Load dismissed banners from localStorage with safe parsing
+    let dismissedBanners: string[] = [];
+    try {
+      const stored = localStorage.getItem('dismissedBanners');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          dismissedBanners = parsed;
+        }
+      }
+    } catch (e) {
+      console.error('[TodayBanner] Failed to parse dismissedBanners, resetting:', e);
+      localStorage.removeItem('dismissedBanners');
+    }
     setDismissed(dismissedBanners);
 
     // Check various conditions to determine which banner to show
