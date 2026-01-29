@@ -1,81 +1,187 @@
 
-# Fix Plan: Medication Levels Card Default Selection
 
-## Problem Analysis
+# Root Cause Analysis: App Loading Issues After Theme Change
 
-Based on your testing and the codebase analysis, I identified the **root cause** of why the Levels Card shows alphabetically (BPC-157) instead of your most recently logged medication:
+## Executive Summary
 
-### Why This Happens
+The app is experiencing loading failures, "slow connection" errors, and theme persistence issues due to **multiple competing async operations that race against each other during app resume**. The current fixes (timeouts, caches) are mitigations, not solutions.
 
-The `TodayScreen.tsx` loads doses using `loadLevelsData()` which **only fetches doses from the last 30 days**:
+## Root Cause 1: Competing `appStateChange` Listeners
+
+Five separate systems all respond to the iOS `appStateChange` event simultaneously:
 
 ```text
-Lines 344-356 in TodayScreen.tsx:
-- Fetches taken doses where scheduled_date >= 30 days ago
-- If you haven't logged a specific medication in 30 days, it's excluded
-- MedicationLevelsCard receives an incomplete picture
-- Falls back to alphabetical order when your "recent" medication has no doses in the data
++-------------------+     +------------------+     +--------------------+
+|     App.tsx       |     | useAppStateSync  |     | useSessionWarming  |
+| SplashScreen.hide |     | DB cleanup       |     | auth.getSession()  |
+| 3s empty root     |     | Dose regen       |     +--------------------+
+| reload check      |     | Notifications    |              |
++-------------------+     +------------------+              |
+         |                        |                         |
+         +------------------------+-------------------------+
+                                  |
+                      ALL FIRE SIMULTANEOUSLY
+                                  |
+         +------------------------+-------------------------+
+         |                        |                         |
++-------------------+     +------------------+     +--------------------+
+|  useAnalytics     |     | Subscription     |     |    ThemeProvider   |
+|  GA4 tracking     |     |   Context        |     |  Capacitor sync    |
+|  Session events   |     | RevenueCat init  |     +--------------------+
++-------------------+     | Customer info    |
+                          | Cache loading    |
+                          +------------------+
 ```
 
-Your answer confirms: you want **most recently taken** (regardless of how long ago) with **no date filter** (just fetch latest N doses).
+When these all run on a cold start after a hard close:
+- Native bridge is still initializing (iOS slow start)
+- Multiple network requests compete for bandwidth
+- Auth session might not be ready yet
+- Race conditions cause inconsistent state
 
-## Solution
+## Root Cause 2: Double Theme Read Pattern
 
-### Part 1: Update Data Fetching (TodayScreen.tsx)
+**Sequence on cold boot:**
 
-Change the dose query from "last 30 days" to "latest 500 taken doses" (ordered by taken_at descending):
+1. `main.tsx:bootstrapTheme()` reads Capacitor Preferences (with 500ms timeout)
+2. Timeout fires → falls back to localStorage
+3. React renders → `ThemeProvider` mounts
+4. `ThemeProvider.syncWithCapacitor()` reads Capacitor Preferences AGAIN (no timeout)
+5. If this second read returns different value → theme can flip
 
-**Current:**
+The 500ms timeout in `main.tsx` helps, but `ThemeProvider` still makes an unbounded async call.
+
+## Root Cause 3: Timeout Cascade Mismatch
+
+Current timeout values create conflicts:
+
+| Component | Timeout | Purpose |
+|-----------|---------|---------|
+| main.tsx boot fallback | 6000ms | Show recovery UI |
+| Splash.tsx watchdog | 8000ms | Session check timeout |
+| ProtectedRoute | 3000ms | Session check timeout |
+| Theme bootstrap | 500ms | Capacitor read |
+| useAppStateSync debounce | 2000ms | Prevent rapid sync |
+| useAppStateSync resume delay | 600ms | Let network stabilize |
+| getUserIdWithFallback | 3000ms | Auth fallback |
+| Individual query timeouts | 5000ms | Database operations |
+
+A slow Capacitor Preferences read that takes 4 seconds:
+- Passes the 500ms theme timeout (uses fallback)
+- But blocks the React render
+- App.tsx 6s timeout might fire before React mounts
+- Creates confusing state
+
+## Root Cause 4: No Coordinated Boot Sequence
+
+The app lacks a **single boot coordinator** that ensures:
+1. Native bridge is ready
+2. Auth session is verified
+3. Theme is applied
+4. THEN start background sync operations
+
+Currently, everything starts simultaneously.
+
+## The Fix Strategy
+
+### Phase 1: Immediate Stabilization (Hotfix)
+
+1. **Add timeout to ThemeProvider's Capacitor sync** (match main.tsx pattern)
+2. **Reduce appStateChange listener count** - defer non-critical listeners
+3. **Add staggered delays** to prevent all systems hitting network at once
+
+### Phase 2: Architectural Fix (Post-Hotfix)
+
+1. **Create boot coordinator** that sequences initialization
+2. **Consolidate appStateChange handling** into single orchestrator
+3. **Implement proper readiness signals** before triggering background work
+
+## Immediate Fixes for Hotfix
+
+### Fix 1: ThemeProvider Timeout
+
+Add the same timeout pattern used in `main.tsx` to `ThemeProvider.tsx`:
+
 ```typescript
-.gte('scheduled_date', thirtyDaysAgo)
-.order('taken_at', { ascending: false })
+// In syncWithCapacitor():
+const result = await Promise.race([
+  getStoredTheme(storageKey),
+  new Promise<null>(r => setTimeout(() => r(null), 500))
+]);
+// Use result only if not null
 ```
 
-**New:**
+### Fix 2: Staggered Resume Delays
+
+Increase delay offsets so systems don't all fire together:
+
+| System | Current Delay | New Delay |
+|--------|--------------|-----------|
+| useSessionWarming | 0ms | 0ms (first) |
+| useAppStateSync | 600ms | 1500ms |
+| SubscriptionContext resume | 0ms | 800ms |
+| useAnalytics | 0ms | 2000ms |
+
+### Fix 3: Guard Against Double Theme Sync
+
+In `ThemeProvider`, skip Capacitor sync if `main.tsx` already applied theme:
+
 ```typescript
-.order('taken_at', { ascending: false })
-.limit(500)
+// Check if main.tsx already bootstrapped
+const alreadyBootstrapped = localStorage.getItem('theme_bootstrapped');
+if (alreadyBootstrapped) {
+  setIsLoaded(true);
+  return;
+}
 ```
 
-This ensures we always have the user's most recent activity regardless of date.
+## Technical Implementation
 
-### Part 2: Improve Default Selection Logic (MedicationLevelsCard.tsx)
+### Files to Modify
 
-The `getDefaultCompound()` function already has the correct priority:
-1. Saved preference (if it has doses)
-2. Most recently taken dose's compound
-3. Alphabetical fallback
+1. **`src/components/ThemeProvider.tsx`**
+   - Add 500ms timeout to `syncWithCapacitor()`
+   - Add "already bootstrapped" guard
 
-But with the 30-day filter, step 2 was failing because recent doses weren't in the data. With the "latest N" approach, this will work correctly.
+2. **`src/main.tsx`**
+   - Set `localStorage.setItem('theme_bootstrapped', 'true')` after bootstrap
+   - Clear on theme change
 
-### Part 3: Update Memory Documentation
+3. **`src/hooks/useAppStateSync.tsx`**
+   - Increase RESUME_DELAY_MS from 600ms to 1500ms
 
-Document this behavior for future reference:
-- Default selection prioritizes the most recently logged dose
-- No date filter on the levels data query (fetch latest N)
-- Saved preferences are honored only if that compound has logged data
+4. **`src/contexts/SubscriptionContext.tsx`**
+   - Add 800ms delay before resume handling
 
-## Technical Changes
+5. **`src/hooks/useAnalytics.tsx`**
+   - Add 2000ms delay before resume tracking
 
-| File | Change |
-|------|--------|
-| `src/components/TodayScreen.tsx` | Remove `.gte('scheduled_date', thirtyDaysAgo)`, add `.limit(500)` |
-| `.storage/memory/features/medication-levels-default-compound-logic.md` | Update documentation |
+6. **Create `.storage/memory/architecture/boot-coordination-strategy.md`**
+   - Document the staggered timing strategy
 
-## Why The Data Loading Issue Resolved
+## Testing Protocol
 
-The "Slow connection / Preview mode" error you saw after switching themes was likely a **transient network timeout**. The app has an 8-second watchdog that shows this banner when queries take too long. After a hard close, the session was re-established cleanly.
+After implementing:
 
-This is not directly related to the Levels Card logic - it's the existing cold-start resilience working as designed (showing a retry option rather than hanging).
+1. Change theme to light mode
+2. Hard close app (swipe away)
+3. Wait 10+ seconds
+4. Reopen app
+5. **Expected**: Theme persists, data loads without "slow connection"
 
-## Android Icon Note
+6. Repeat steps 1-5 three times to verify consistency
 
-The Android `res/mipmap-*` folders are generated locally on your machine when you run `npx cap add android`. They're not stored in the Lovable codebase. The fix is manual on your machine using Android Studio's Image Asset Studio (as previously discussed).
+7. Test notification tap cold start
+8. **Expected**: App opens, navigates to Today, data loads
 
-## Testing After Fix
+## Why Previous Fixes Were Insufficient
 
-1. Pull the update: `git pull && npm install && npm run build && npx cap sync ios`
-2. Launch app
-3. Verify the Levels Card shows your most recently logged medication (not alphabetical)
-4. Switch to a different compound manually
-5. Hard close and reopen - verify your selection persists
+The 500ms timeout in `main.tsx` helped but:
+- `ThemeProvider` still has unbounded Capacitor calls
+- All resume handlers still fire simultaneously
+- No coordination between competing async operations
+
+The cached session fast-path helped but:
+- Doesn't prevent race conditions in data loading
+- SubscriptionContext can still fall back to 'none' during races
+
