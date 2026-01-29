@@ -1,125 +1,85 @@
 
-# Fix: Intermittent Loading Spinner on Cold Start
+# Fix: Duplicate Notification Firing
 
-## The Problem
+## Problem Identified
+When you edit a dose and return to the app quickly, multiple notification sync operations overlap, causing the same dose to fire 2-3 times. This happens because:
 
-When you open the app after ~30+ minutes away, it sometimes gets stuck on "Starting..." forever. This is happening because:
+1. `DoseEditModal` calls `rescheduleNotificationsAfterEdit()` immediately after save
+2. App resume triggers `syncNotifications()` after 1.5 seconds
+3. Cold-start sync (3-second timer) may still be running
+4. The 2-minute "lenient window" allows recently-scheduled doses to be re-scheduled
 
-1. **Multiple auth calls compete on startup** - Splash.tsx, useSessionWarming, and SubscriptionContext all call `supabase.auth.getSession()` simultaneously
-2. **Supabase auth uses a global lock** - Only one auth operation can run at a time; others queue
-3. **If the first call hangs (slow network, token refresh), everything hangs** - The 8-second timeout doesn't help because the Promise never resolves OR rejects while the lock is held
-4. **The 5-minute expiry buffer in getCachedSession() is too aggressive** - If your token expires in 4 minutes, it's rejected as "invalid", forcing the slow network path
+## Solution
 
-## The Fix (3 targeted changes)
+### Change 1: Add sync lock that spans resume/edit operations
+**File: `src/utils/notificationScheduler.ts`**
 
-### Change 1: Remove the Aggressive Expiry Buffer in Auth Cache
-
-**File: `src/utils/authSessionCache.ts`**
-
-The current code rejects tokens that expire within 5 minutes. But Supabase will auto-refresh tokens that are about to expire - we should trust it. Change the buffer from 5 minutes to 0 for the fast-path check.
+Add a module-level lock with a longer debounce window to prevent overlapping `scheduleAllUpcomingDoses` calls:
 
 ```typescript
-// BEFORE (line 46-49):
-const bufferMs = 5 * 60 * 1000; // 5 minutes
-const isExpired = expiresAtMs < Date.now() + bufferMs;
+// Track last scheduling time to prevent duplicate fires
+let lastScheduleTime = 0;
+const SCHEDULE_DEBOUNCE_MS = 5000; // 5 seconds between full reschedules
+
+export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false) => {
+  // Debounce rapid scheduling calls
+  const now = Date.now();
+  if (now - lastScheduleTime < SCHEDULE_DEBOUNCE_MS) {
+    console.log('⏭️ Skipping duplicate schedule call (debounced)');
+    return;
+  }
+  lastScheduleTime = now;
+  
+  // ... rest of function
+};
+```
+
+### Change 2: Remove the 2-minute "lenient window" for past doses
+**File: `src/utils/notificationScheduler.ts`**
+
+The current filter includes doses from 2 minutes ago, which causes issues when the same dose is rescheduled multiple times. Change to only schedule strictly future doses:
+
+```typescript
+// BEFORE:
+const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+return doseDateTime > twoMinutesAgo && doseDateTime <= sevenDaysFromNow;
 
 // AFTER:
-const bufferMs = 30 * 1000; // 30 seconds - trust Supabase to refresh
-const isExpired = expiresAtMs < Date.now() + bufferMs;
+return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
 ```
 
-This lets users with tokens expiring in 1-4 minutes take the fast path instead of hitting the network.
+### Change 3: Skip DoseEditModal reschedule if within resume window
+**File: `src/components/DoseEditModal.tsx`**
 
-### Change 2: Disable Competing Auth Calls During Cold Start
-
-**File: `src/hooks/useSessionWarming.ts`**
-
-This hook calls `getSession()` on mount AND on resume, but Splash.tsx and ProtectedRoute already do this. The duplicate call can acquire the auth lock first, blocking the critical Splash path.
-
-Add a flag to skip the initial mount call (resume is fine):
+Check if a sync is already scheduled to avoid redundant calls:
 
 ```typescript
-// Add at the top of the effect:
-// SKIP initial mount - Splash.tsx handles cold start auth
-// Only warm on resume events
-let isInitialMount = true;
-
-// Warm session on mount - DISABLED to prevent lock contention with Splash
-// Splash.tsx already calls getSession() on cold start
-if (!isInitialMount) {
-  console.log('[SessionWarming] Warming session on mount...');
-  supabase.auth.getSession()...
-}
-isInitialMount = false;
+const rescheduleNotificationsAfterEdit = async () => {
+  // Note: useAppStateSync will also reschedule on next resume
+  // This call ensures immediate update for UX
+  // ... existing code
+};
 ```
 
-Actually, simpler approach - just remove the mount call entirely:
+Actually, simpler: let `scheduleAllUpcomingDoses`'s debounce handle it.
 
-```typescript
-useEffect(() => {
-  let isMounted = true;
-  let listener: { remove: () => void } | null = null;
-  
-  // NOTE: Removed initial getSession() call on mount
-  // Splash.tsx and ProtectedRoute handle cold start auth
-  // This hook only warms session on app RESUME
-  
-  // Warm session on app resume
-  CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-    if (isActive && isMounted) {
-      console.log('[SessionWarming] App resumed, warming session...');
-      supabase.auth.getSession().catch(() => {});
-    }
-  })...
-```
-
-### Change 3: Add an Absolute Boot Watchdog to Splash.tsx
-
-**File: `src/pages/Splash.tsx`**
-
-Even with the above fixes, we need a safety net. If the app is STILL stuck after 10 seconds, auto-navigate to recovery:
-
-```typescript
-// Add a hard watchdog that fires regardless of Promise.race state
-useEffect(() => {
-  const watchdog = setTimeout(() => {
-    if (!hasNavigated.current) {
-      console.error('[Splash] Watchdog triggered - forcing recovery UI');
-      setState('timeout');
-      setSupportCode(generateSupportCode());
-    }
-  }, 10000); // 10 second absolute max
-  
-  return () => clearTimeout(watchdog);
-}, []);
-```
-
-This ensures users ALWAYS see recovery options instead of infinite spinner.
-
-## Why These Changes Work
-
-1. **Reduced expiry buffer** → More cold starts take the instant localStorage path
-2. **Removed competing getSession() call** → No lock contention on critical path  
-3. **Absolute watchdog** → Even if auth hangs, user sees "Try Again" after 10s
+## Expected Behavior After Fix
+- Edit a dose → notification schedules immediately
+- Return to app within 5 seconds → debounced, no duplicate scheduling
+- Each dose fires exactly once at its scheduled time
 
 ## Files to Modify
+1. `src/utils/notificationScheduler.ts` - Add debounce, remove lenient window
 
-1. `src/utils/authSessionCache.ts` - Reduce expiry buffer from 5 min to 30 sec
-2. `src/hooks/useSessionWarming.ts` - Remove initial mount getSession() call
-3. `src/pages/Splash.tsx` - Add absolute 10-second watchdog
+## Release Recommendation
 
-## Testing
+**Push the current loading fix to TestFlight/App Store now.** The auth deadlock fixes (reduced expiry buffer, removed competing getSession calls, 10s watchdog) are critical for user experience.
 
-After deploying:
-1. Use the app normally, then close it
-2. Wait 30+ minutes (or manually clear session cache)
-3. Open the app - should never hang more than 10 seconds
-4. If it does show recovery UI, "Try Again" should work
+The notification duplicate issue is annoying but not blocking - users still get their reminders. You can push a follow-up build with the notification fix after testing the loading fix in the wild.
 
-## What This Doesn't Change
-
-- ProtectedRoute retry logic (still good)
-- Notification permission handling (already fixed)
-- Session hydration strategy (still uses cache-first)
-
-This is a minimal, surgical fix targeting the exact root cause.
+**Testing plan for new version:**
+1. Delete app, reinstall, sign in with existing account
+2. Go to Settings → Notifications → Enable → Accept iOS prompt
+3. Edit a dose time to 2 minutes in future
+4. Stay in app → should get exactly 1 notification at the scheduled time
+5. Hard close/reopen rapidly → should not show "Loading" spinner for more than ~2 seconds
