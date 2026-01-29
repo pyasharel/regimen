@@ -127,12 +127,21 @@ export const MedicationLevelsCard = ({
 
   // Get default compound using tiered logic
   const getDefaultCompound = (): string | null => {
-    // 1. User's saved preference (if compound still exists and has half-life data)
+    // 1. User's saved preference - but ONLY if that compound has logged doses
+    // This prevents showing a saved compound with no data (flat line)
     const savedId = localStorage.getItem(STORAGE_KEY);
     if (savedId) {
       const savedCompound = compoundsWithHalfLife.find(c => c.id === savedId);
       if (savedCompound) {
-        return savedCompound.id;
+        // Check if this saved compound has any taken doses
+        const hasDoses = doses.some(d => 
+          d.compound_id === savedId && d.taken && d.taken_at
+        );
+        if (hasDoses) {
+          return savedCompound.id;
+        }
+        // If no doses, clear the stale preference and fall through
+        localStorage.removeItem(STORAGE_KEY);
       }
     }
     
