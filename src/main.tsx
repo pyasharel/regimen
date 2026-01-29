@@ -8,6 +8,69 @@ import { runStartupPreflight } from './utils/startupPreflight';
 // Run preflight immediately, before any other imports execute their side effects
 const preflightReport = runStartupPreflight();
 
+// ========================================
+// BOOT TIMEOUT FALLBACK
+// ========================================
+// If the app doesn't render within 6 seconds, show recovery UI
+const BOOT_TIMEOUT_MS = 6000;
+
+declare global {
+  interface Window {
+    __bootTimeoutId?: ReturnType<typeof setTimeout>;
+  }
+}
+
+window.__bootTimeoutId = setTimeout(() => {
+  console.error('[BOOT] Timeout reached, showing recovery UI');
+  
+  // Try to hide native splash
+  import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+    SplashScreen.hide().catch(() => {});
+  }).catch(() => {});
+  
+  const root = document.getElementById('root');
+  if (root && root.children.length === 0) {
+    root.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        padding: 24px;
+        text-align: center;
+      ">
+        <h1 style="font-size: 20px; margin-bottom: 12px;">Unable to Load</h1>
+        <p style="font-size: 14px; opacity: 0.7; margin-bottom: 24px;">
+          The app couldn't start properly. This usually fixes itself with a reset.
+        </p>
+        <button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="
+          background: #8B5CF6;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          cursor: pointer;
+          margin-bottom: 12px;
+        ">Reset &amp; Retry</button>
+        <button onclick="window.location.reload();" style="
+          background: transparent;
+          color: #8B5CF6;
+          border: 1px solid #8B5CF6;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 16px;
+          cursor: pointer;
+        ">Try Again</button>
+      </div>
+    `;
+  }
+}, BOOT_TIMEOUT_MS);
+
 // Set up global error handlers early to catch catastrophic failures
 window.addEventListener('error', (event) => {
   console.error('[GlobalError]', event.error);
