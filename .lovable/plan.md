@@ -1,156 +1,161 @@
 
-# Fix Session Restoration Timeout During Notification Cold Starts
+# Fix Loading Screen Hang After Notification Permission Request
 
 ## Problem Summary
-When users tap a notification to open the app after a force-close, the app shows "Taking longer than expected" instead of loading the Today screen. This happens because the Supabase session check in `Splash.tsx` times out (5 seconds) before completing.
+After enabling notifications in onboarding, returning to the app causes it to get stuck on "Loading..." indefinitely. The "Loading..." screen is from `ProtectedRoute.tsx`, indicating that `supabase.auth.getSession()` is hanging and never resolving.
 
-## Root Cause Analysis
-The current flow during a notification-triggered cold start:
-
-```text
-User taps notification
-        ↓
-    App cold starts
-        ↓
-  main.tsx preflight runs
-        ↓
-  React mounts → Router → Splash.tsx
-        ↓
-  supabase.auth.getSession() called
-        ↓
-  [HANGS HERE - network/token refresh slow]
-        ↓
-  5 second timeout triggers
-        ↓
-  "Taking longer than expected" shown
-```
-
-The problem is that `getSession()` during cold starts can be slow because:
-- WebView is still initializing
-- Supabase client needs to warm up
-- Token refresh may be in progress
-- Network requests are queued behind other startup tasks
+## Root Cause
+When the user taps "Enable Reminders", iOS shows a system permission dialog. This triggers multiple rapid `appStateChange` events with `isActive: false` (visible in Xcode logs). When the user returns, the Supabase auth session check in `ProtectedRoute` hangs, likely due to:
+1. Race conditions from rapid background/foreground cycling during the permission prompt
+2. The Supabase client's internal state becoming confused
+3. `onAuthStateChange` not firing as expected
 
 ## Solution Overview
-Implement a **fast-path session check** that reads cached auth data from localStorage first, then validates in the background. This provides instant navigation while still ensuring security.
+Implement a **timeout-protected session check with fast-path fallback** in `ProtectedRoute.tsx`. If the Supabase session check hangs for more than 3 seconds, fall back to checking localStorage for a cached session (similar to what we did in `Splash.tsx`).
 
 ## Technical Changes
 
-### 1. Create Auth Session Cache Utility
-**New file: `src/utils/authSessionCache.ts`**
+### 1. Update ProtectedRoute with Timeout Protection
+**File: `src/components/ProtectedRoute.tsx`**
 
-```typescript
-// Fast, synchronous check for cached session data
-// Supabase stores session in localStorage under a predictable key
-
-export const getCachedSession = () => {
-  // Supabase stores auth state here
-  const key = `sb-${projectId}-auth-token`;
-  const cached = localStorage.getItem(key);
-  
-  if (!cached) return null;
-  
-  try {
-    const parsed = JSON.parse(cached);
-    // Check if token is expired (with 5 min buffer)
-    if (parsed.expires_at && parsed.expires_at * 1000 > Date.now() + 300000) {
-      return parsed;
-    }
-    return null; // Expired
-  } catch {
-    return null;
-  }
-};
-```
-
-### 2. Update Splash.tsx with Fast-Path Logic
-**Modify: `src/pages/Splash.tsx`**
-
-New strategy:
-1. **First (instant)**: Check localStorage for cached session
-2. **If cached session exists and not expired**: Navigate immediately to `/today`
-3. **Background**: Trigger async session refresh (Supabase handles token refresh automatically)
-4. **If no cached session**: Fall back to current `getSession()` flow with timeout
+Add a timeout wrapper around `getSession()` and use the cached session as a fast fallback:
 
 ```text
-Notification tap → Cold start
-        ↓
-    Check localStorage cache (instant, <1ms)
-        ↓
-  Session found? ─────────────────→ Navigate to /today immediately
-        │                                    ↓
-        │                           Background: getSession() validates
-        │                           (ProtectedRoute handles any issues)
-        ↓
-  No cached session
-        ↓
-  Fall back to getSession() with timeout
-        ↓
-  Navigate to /onboarding or show error
+Current Flow (Broken):
+  ProtectedRoute mounts
+         ↓
+  supabase.auth.getSession() called
+         ↓
+  [HANGS FOREVER after permission dialog]
+         ↓
+  loading: true stays forever
+         ↓
+  User sees "Loading..." forever
+
+New Flow (Resilient):
+  ProtectedRoute mounts
+         ↓
+  Start 3-second timeout race
+         ↓
+  supabase.auth.getSession() called
+         ↓
+  If hangs → timeout fires → check localStorage cache
+         ↓
+  If cache valid → use cached session → render children
+  If cache invalid → redirect to /auth
 ```
 
-### 3. Leverage ProtectedRoute as Safety Net
-`ProtectedRoute.tsx` already:
-- Calls `getSession()` on mount
-- Listens to `onAuthStateChange`
-- Redirects to `/auth` if session is invalid
+Key changes:
+- Import `getCachedSession` from the auth cache utility
+- Race `getSession()` against a 3-second timeout
+- If timeout wins, check localStorage for cached session
+- If cached session exists and not expired, use it
+- If no cached session, redirect to auth
 
-This means the fast-path is safe: if the cached session is stale, `ProtectedRoute` will catch it and redirect appropriately.
+### 2. Add Resilience to Auth State Change Handling
+Ensure that even if `onAuthStateChange` fires with stale data during background transitions, we don't reset the session incorrectly.
 
-### 4. Add Session Warming Hook
-**New file: `src/hooks/useSessionWarming.ts`**
-
-On app resume and initial load, proactively warm the Supabase session in the background:
-
-```typescript
-export const useSessionWarming = () => {
-  useEffect(() => {
-    // Warm session on mount (non-blocking)
-    supabase.auth.getSession().catch(() => {});
-    
-    // Warm session on app resume
-    const listener = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
-        supabase.auth.getSession().catch(() => {});
-      }
-    });
-    
-    return () => listener.remove();
-  }, []);
-};
-```
-
-### 5. Increase Timeout as Fallback
-Increase the Splash timeout from 5s to 8s as an additional buffer, since the fast-path should handle most cases anyway.
+### 3. Add Debounce Protection in useAppStateSync
+The `useAppStateSync` hook runs heavy operations on every `appStateChange`. During permission dialogs, this can trigger multiple times in quick succession. Add a debounce to prevent rapid-fire execution.
 
 ## File Changes Summary
 
 | File | Change |
 |------|--------|
-| `src/utils/authSessionCache.ts` | New file - fast localStorage session check |
-| `src/pages/Splash.tsx` | Use fast-path first, fallback to async check |
-| `src/hooks/useSessionWarming.ts` | New file - background session warming |
-| `src/App.tsx` | Add `useSessionWarming()` hook |
+| `src/components/ProtectedRoute.tsx` | Add timeout-protected session check with localStorage fallback |
+| `src/hooks/useAppStateSync.tsx` | Add debounce to prevent rapid-fire execution during permission dialogs |
+
+## Implementation Details
+
+### ProtectedRoute.tsx Changes
+```typescript
+// Pseudocode for the new flow
+const TIMEOUT_MS = 3000;
+
+useEffect(() => {
+  let isMounted = true;
+  
+  const checkSession = async () => {
+    try {
+      // Race getSession against timeout
+      const result = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+        )
+      ]);
+      
+      if (isMounted) {
+        setSession(result.data.session);
+        setLoading(false);
+      }
+    } catch (error) {
+      // Timeout or error - fall back to cached session
+      console.warn('[ProtectedRoute] Session check timed out, checking cache');
+      const cached = getCachedSession();
+      
+      if (isMounted) {
+        if (cached) {
+          // Create a minimal session object from cache
+          setSession(cached as Session);
+        }
+        setLoading(false);
+      }
+    }
+  };
+  
+  checkSession();
+  
+  // Auth state listener remains unchanged
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(...);
+  
+  return () => {
+    isMounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
+```
+
+### useAppStateSync.tsx Debounce
+```typescript
+// Add debounce to prevent rapid execution during permission dialogs
+const lastSyncTime = useRef(0);
+const DEBOUNCE_MS = 2000;
+
+const syncNotifications = async () => {
+  const now = Date.now();
+  if (now - lastSyncTime.current < DEBOUNCE_MS) {
+    console.log('[AppStateSync] Debounced - too soon since last sync');
+    return;
+  }
+  lastSyncTime.current = now;
+  
+  // ... rest of sync logic
+};
+```
+
+## Why This Fixes the Issue
+1. **Timeout Protection**: If `getSession()` hangs (as it does after permission dialogs), we don't wait forever
+2. **Fast Fallback**: Cached session from localStorage provides immediate recovery
+3. **Debounce**: Prevents `useAppStateSync` from running multiple times during rapid background/foreground cycling from the permission dialog
+4. **Safety Net**: `onAuthStateChange` will eventually fire with the correct session, updating state as needed
 
 ## Testing Plan
-After implementing, test on physical iPhone:
+1. Build and deploy to iPhone
+2. Delete app and fresh install
+3. Go through onboarding to the notification permission screen
+4. Tap "Enable Reminders"
+5. Grant or deny permission in the iOS dialog
+6. Continue onboarding to completion
+7. Exit the app
+8. Re-enter the app
+9. **Expected**: App loads the Today screen without getting stuck on "Loading..."
 
-1. **Force close app** (swipe up from app switcher)
-2. **Trigger a notification** (schedule one for 1 minute out)
-3. **Tap the notification**
-4. **Expected**: App opens directly to Today screen without showing "Taking longer than expected"
-
-Repeat 10 times to confirm reliability.
-
-## Why This Works
-- **Speed**: localStorage read is synchronous and takes <1ms
-- **Safety**: ProtectedRoute validates the session in the background
-- **Fallback**: If cache is empty/expired, the existing flow still works
-- **No user impact**: Users with valid sessions see instant loading; users without sessions still get proper auth flow
+Repeat with both "Enable" and "Skip" options to verify both paths work.
 
 ## Risks and Mitigations
 | Risk | Mitigation |
 |------|------------|
-| Stale session cached | ProtectedRoute validates and redirects if needed |
-| localStorage unavailable | Falls back to async getSession() |
-| Race condition with auth | onAuthStateChange listener handles changes |
+| Stale cached session | `onAuthStateChange` will correct it; ProtectedRoute redirects if truly invalid |
+| Timeout too short | 3 seconds is generous; can increase if needed |
+| Cache format mismatch | getCachedSession already handles parsing errors gracefully |
