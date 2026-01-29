@@ -100,3 +100,57 @@ export const getCachedSessionForHydration = (): CachedSession | null => {
     return null;
   }
 };
+
+/**
+ * Constructs a Supabase-compatible Session object from the localStorage cache.
+ * Returns null if cache is missing, invalid, or expired.
+ * 
+ * Use this to avoid calling supabase.auth.getSession() which can deadlock
+ * when other auth calls are in progress (global auth lock contention).
+ * 
+ * This is the PRIMARY method for ProtectedRoute to use after Splash has
+ * already validated the session via the fast-path.
+ */
+export const getCachedSessionAsSupabaseSession = (): {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  expires_in: number;
+  token_type: string;
+  user: {
+    id: string;
+    email?: string;
+    aud: string;
+    role?: string;
+    app_metadata: Record<string, unknown>;
+    user_metadata: Record<string, unknown>;
+    created_at: string;
+  };
+} | null => {
+  const cached = getCachedSession(); // Uses existing expiry check with 30s buffer
+  
+  if (!cached) {
+    console.log('[AuthCache] No valid cached session for Session construction');
+    return null;
+  }
+  
+  console.log('[AuthCache] ✅ Constructing Session from cache, skipping auth calls');
+  
+  // Construct a Session-compatible object
+  return {
+    access_token: cached.access_token,
+    refresh_token: cached.refresh_token,
+    expires_at: cached.expires_at,
+    expires_in: cached.expires_at - Math.floor(Date.now() / 1000),
+    token_type: 'bearer',
+    user: {
+      id: cached.user.id,
+      email: cached.user.email,
+      aud: 'authenticated',
+      role: 'authenticated',
+      app_metadata: {},
+      user_metadata: {},
+      created_at: new Date().toISOString(), // Placeholder - not used by our app
+    },
+  };
+};
