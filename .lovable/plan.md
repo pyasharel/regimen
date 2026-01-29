@@ -1,85 +1,122 @@
 
-# Fix: Duplicate Notification Firing
+## What I found (verified in code)
 
-## Problem Identified
-When you edit a dose and return to the app quickly, multiple notification sync operations overlap, causing the same dose to fire 2-3 times. This happens because:
+### 1) New-user onboarding prompt still exists
+- `src/components/onboarding/OnboardingFlow.tsx` still includes the `notifications` step.
+- `src/components/onboarding/screens/NotificationsScreen.tsx` still calls `LocalNotifications.requestPermissions()` when the user taps **Enable Reminders**.
+So: the onboarding behavior for brand new users has not been removed.
 
-1. `DoseEditModal` calls `rescheduleNotificationsAfterEdit()` immediately after save
-2. App resume triggers `syncNotifications()` after 1.5 seconds
-3. Cold-start sync (3-second timer) may still be running
-4. The 2-minute "lenient window" allows recently-scheduled doses to be re-scheduled
+### 2) Why you don’t get prompted after deleting/reinstalling (existing user)
+This is expected with the current logic and explains exactly what you’re seeing:
 
-## Solution
+- After you reinstall, iOS resets notification permission back to **prompt** (because it’s a “new install” to iOS).
+- But your backend profile has a persistent flag: `profiles.notification_permission_asked`.
+- `src/components/AddCompoundScreen.tsx` treats `notification_permission_asked=true` as “we already asked this user”, and it won’t show the permission dialog again.
+- Also: existing users who already completed onboarding will never see onboarding again (`OnboardingFlow` redirects them to `/today`), so they won’t get a second chance there either.
+- Result: after reinstall, you can end up with OS permission = prompt, but the app does not proactively ask again unless you go to Settings → Notifications.
 
-### Change 1: Add sync lock that spans resume/edit operations
-**File: `src/utils/notificationScheduler.ts`**
+### 3) Why you can still see “two notifications”
+Even after the 5s debounce + “future-only” filtering, there are still two realistic pathways to “double fire”:
 
-Add a module-level lock with a longer debounce window to prevent overlapping `scheduleAllUpcomingDoses` calls:
+**A) Rescheduling near the fire-time (iOS race)**
+- We currently do “wipe all pending notifications” (`cancelAllNotifications`) and then reschedule them.
+- If this happens close to a notification’s scheduled time (or during repeated app-resume cycles), iOS can deliver the old one and the newly scheduled one (rare, but very real in practice). This matches your “I tapped it / came into app / got another immediately” symptom.
 
-```typescript
-// Track last scheduling time to prevent duplicate fires
-let lastScheduleTime = 0;
-const SCHEDULE_DEBOUNCE_MS = 5000; // 5 seconds between full reschedules
+**B) Two different dose rows that resolve to the same clock time**
+- Example edge case: one dose stored as `"Morning"` and another stored as `"08:00"`; both resolve to 8:00 AM.
+- They are not considered duplicates by the current DB cleanup function because the `scheduled_time` strings differ, but the scheduler maps both to the same time and will schedule both.
+- This can happen during schedule edits, migrations, or earlier “stale dose” situations.
 
-export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false) => {
-  // Debounce rapid scheduling calls
-  const now = Date.now();
-  if (now - lastScheduleTime < SCHEDULE_DEBOUNCE_MS) {
-    console.log('⏭️ Skipping duplicate schedule call (debounced)');
-    return;
-  }
-  lastScheduleTime = now;
-  
-  // ... rest of function
-};
-```
+## Goal behavior (what should happen)
+### Permission prompting (good UX, stable)
+1) **New users**: still prompted in onboarding (keep as-is).
+2) **Existing users after reinstall**: on first meaningful entry into the app (Today screen), if OS permission is `prompt`, show an in-app “Enable notifications” banner/dialog. One tap triggers the iOS system prompt.
+3) **If they deny**: do not nag; show a “Notifications are Off” card with “Open Settings”.
+4) **If they accept**: immediately schedule dose reminders and confirm success.
 
-### Change 2: Remove the 2-minute "lenient window" for past doses
-**File: `src/utils/notificationScheduler.ts`**
+### Dose reminders (no duplicates)
+- A dose reminder should fire **once** per dose.
+- Tapping a notification to open the app should **never** cause another notification to fire “immediately” as a side effect.
+- Reschedules should be **idempotent** (reconciling what’s scheduled vs. desired), not “wipe and rebuild” every time.
 
-The current filter includes doses from 2 minutes ago, which causes issues when the same dose is rescheduled multiple times. Change to only schedule strictly future doses:
+## Implementation plan (elegant + robust)
 
-```typescript
-// BEFORE:
-const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
-return doseDateTime > twoMinutesAgo && doseDateTime <= sevenDaysFromNow;
+### Phase 1 — Fix “reinstall prompt” correctly (without breaking onboarding)
+1) **Add a Today-screen permission banner/dialog (for existing users too)**
+   - In `TodayScreen.tsx` (and optionally also `MyStackScreen`), on mount:
+     - Check OS permission via `LocalNotifications.checkPermissions()`
+     - Check whether user has dose reminders “desired” (from `persistentStorage.getBoolean('doseReminders', true)`)
+     - If permission is `prompt` and the user has at least 1 upcoming dose/active compound:
+       - show a lightweight in-app prompt (banner or `NotificationPermissionDialog` reused)
+       - throttle it so it doesn’t show repeatedly (store `notificationPermissionPromptLastShownAt` in `persistentStorage`)
+   - When user taps “Enable”:
+     - call `LocalNotifications.requestPermissions()`
+     - if granted: schedule dose notifications immediately (same way `NotificationsSettings` does)
+     - if denied: set state to denied + show “Open Settings”
 
-// AFTER:
-return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
-```
+2) **Update the backend “asked” flag semantics**
+   - Keep `profiles.notification_permission_asked` but do not let it block prompting when OS permission is `prompt`.
+   - New rule: OS permission is the source of truth for whether prompting is needed.
+   - Backend flag becomes “user has been shown our explanation UX at least once,” not “don’t ever ask again.”
 
-### Change 3: Skip DoseEditModal reschedule if within resume window
-**File: `src/components/DoseEditModal.tsx`**
+3) **Make Settings UI less confusing**
+   - In `NotificationsSettings.tsx`, if OS permission is `prompt`, don’t let the screen look like “Dose Reminders are enabled” while the OS is blocking delivery.
+   - Either:
+     - show the toggle as off until permission is granted, or
+     - keep toggle as “desired” but add a clear “Needs permission” status and make the top CTA unavoidable.
+   - This is strictly UX clarity; it prevents “it says enabled but I’m not getting notifications” confusion.
 
-Check if a sync is already scheduled to avoid redundant calls:
+### Phase 2 — Eliminate doubles by making scheduling idempotent
+Refactor `scheduleAllUpcomingDoses` in `src/utils/notificationScheduler.ts`:
 
-```typescript
-const rescheduleNotificationsAfterEdit = async () => {
-  // Note: useAppStateSync will also reschedule on next resume
-  // This call ensures immediate update for UX
-  // ... existing code
-};
-```
+1) **Tag dose notifications**
+   - When scheduling a dose, include `extra.type = 'dose'` (and keep `extra.doseId`).
+   - This lets us distinguish “dose reminders” from cycle reminders, engagement, test notifications, etc.
 
-Actually, simpler: let `scheduleAllUpcomingDoses`'s debounce handle it.
+2) **Replace “cancel-all then schedule-all” with “reconcile”**
+   - Read currently pending notifications: `LocalNotifications.getPending()`
+   - Build a desired map: `doseNotificationId -> desiredDateTime`
+   - For each existing pending DOSE notification:
+     - If it’s not in desired set anymore (dose taken/deleted/off-cycle): cancel it.
+     - If it exists but scheduled time differs meaningfully: cancel + re-add.
+     - If it matches: leave it alone.
+   - For each desired ID that doesn’t exist pending: schedule it.
 
-## Expected Behavior After Fix
-- Edit a dose → notification schedules immediately
-- Return to app within 5 seconds → debounced, no duplicate scheduling
-- Each dose fires exactly once at its scheduled time
+3) **Add a near-fire safety guard**
+   - If a dose is within ~90 seconds of firing, avoid rescheduling it (to eliminate iOS race conditions where cancel+reschedule around delivery can double-fire).
+   - With reconcile logic, this becomes easy: if it’s already pending and close to firing, keep it.
 
-## Files to Modify
-1. `src/utils/notificationScheduler.ts` - Add debounce, remove lenient window
+4) **Scheduler-level “same-compound same-time” dedupe**
+   - Before building the desired map, dedupe doses by:
+     - `compound_id + scheduled_date + resolvedHour:resolvedMinute`
+   - Keep only one dose record for that time slot (prefer earliest `created_at` if available, else stable by ID).
+   - Log when this happens so we can detect if the DB is generating these anomalies.
 
-## Release Recommendation
+### Phase 3 — Testing matrix (must pass before App Store)
+1) **Fresh install, brand new user**
+   - Go through onboarding → tap Enable Reminders → iOS prompt appears → accept
+   - Confirm: scheduled dose fires once.
 
-**Push the current loading fix to TestFlight/App Store now.** The auth deadlock fixes (reduced expiry buffer, removed competing getSession calls, 10s watchdog) are critical for user experience.
+2) **Existing user reinstall**
+   - Delete app → reinstall → sign in
+   - Confirm: Today screen shows prompt/banner (without hunting in Settings)
+   - Accept → schedule immediately → confirm single fire
 
-The notification duplicate issue is annoying but not blocking - users still get their reminders. You can push a follow-up build with the notification fix after testing the loading fix in the wild.
+3) **Duplicate stress test**
+   - Set a dose to 2 minutes from now
+   - Background/foreground a few times
+   - Tap the notification to open the app
+   - Confirm: still only one alert total
 
-**Testing plan for new version:**
-1. Delete app, reinstall, sign in with existing account
-2. Go to Settings → Notifications → Enable → Accept iOS prompt
-3. Edit a dose time to 2 minutes in future
-4. Stay in app → should get exactly 1 notification at the scheduled time
-5. Hard close/reopen rapidly → should not show "Loading" spinner for more than ~2 seconds
+4) **Denied path**
+   - Deny permission on the iOS prompt
+   - Confirm: app doesn’t spam prompts; Settings shows “Open Settings” path.
+
+## Release recommendation
+- Do not ship to the App Store until Phase 2 (reconcile scheduling + near-fire guard) is in; it’s the cleanest way to stop the “second notification immediately on open” symptom.
+- Phase 1 can be shipped together (recommended) because it fixes your reinstall/testing flow and prevents real customers from silently missing reminders if iOS permission resets.
+
+## If you want to ask another AI platform
+You can share this concise root-cause summary:
+- “Reinstall resets iOS notification permission to prompt, but app blocks re-prompting because it persists `profiles.notification_permission_asked` and existing users skip onboarding. Also, duplicate fires can happen because scheduler currently ‘cancels all and reschedules all’, which can race iOS near the delivery time; fix is to reconcile pending vs desired schedule per-notification-id and avoid rescheduling near fire-time.”
+
