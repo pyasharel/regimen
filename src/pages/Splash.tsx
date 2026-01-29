@@ -84,6 +84,20 @@ export default function Splash() {
     }
   }, [navigate]);
 
+  // Absolute watchdog - forces recovery UI if stuck for 10 seconds
+  // This fires regardless of Promise.race state to handle auth lock deadlocks
+  useEffect(() => {
+    const watchdog = setTimeout(() => {
+      if (!hasNavigated.current) {
+        console.error('[Splash] Watchdog triggered after 10s - forcing recovery UI');
+        setState('timeout');
+        setSupportCode(generateSupportCode());
+      }
+    }, 10000); // 10 second absolute max
+    
+    return () => clearTimeout(watchdog);
+  }, []);
+
   useEffect(() => {
     console.log('[Splash] Starting session check...');
     
