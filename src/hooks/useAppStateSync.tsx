@@ -7,6 +7,7 @@ import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 import { runFullCleanup } from '@/utils/doseCleanup';
 import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
+import { processPendingActions } from '@/utils/pendingDoseActions';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -26,6 +27,16 @@ export const useAppStateSync = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+        // =====================================================
+        // PROCESS PENDING NOTIFICATION ACTIONS FIRST
+        // These were queued by the notification action handler
+        // when the app wasn't fully ready
+        // =====================================================
+        const pendingResult = await processPendingActions(user.id);
+        if (pendingResult.processed > 0) {
+          console.log(`📱 Processed ${pendingResult.processed} pending notification actions`);
+        }
 
         // Check subscription status to enable notification actions
         const { data: profile } = await supabase

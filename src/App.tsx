@@ -115,18 +115,46 @@ const AppContent = () => {
 
 const App = () => {
   const splashHidden = useRef(false);
+  const hideAttempts = useRef(0);
 
-  // Hide native splash screen once React is ready
+  // Hide native splash screen with retry strategy
+  // This prevents the app from staying stuck on the black native splash
   useEffect(() => {
     if (splashHidden.current) return;
     splashHidden.current = true;
     
-    // Small delay to ensure first paint, then hide native splash
-    requestAnimationFrame(() => {
+    const attemptHide = () => {
+      hideAttempts.current++;
       SplashScreen.hide().catch(() => {
         // Ignore errors on web where SplashScreen isn't available
       });
+    };
+    
+    // Retry strategy: immediate, 400ms, 1200ms, 2500ms
+    requestAnimationFrame(attemptHide);
+    setTimeout(attemptHide, 400);
+    setTimeout(attemptHide, 1200);
+    setTimeout(attemptHide, 2500);
+    
+    // Also attempt to hide on app resume (handles edge cases)
+    let resumeListener: any;
+    import('@capacitor/app').then(({ App: CapacitorApp }) => {
+      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          attemptHide();
+        }
+      }).then(handle => {
+        resumeListener = handle;
+      }).catch(() => {
+        // Not on native platform
+      });
+    }).catch(() => {
+      // Capacitor not available
     });
+    
+    return () => {
+      resumeListener?.remove();
+    };
   }, []);
 
   // Migrate localStorage to Capacitor Preferences on app start
