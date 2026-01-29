@@ -10,6 +10,9 @@ let actionTypesRegistered = false;
 let lastScheduleTime = 0;
 const SCHEDULE_DEBOUNCE_MS = 5000; // 5 seconds between full reschedules
 
+// Safety guard: don't reschedule notifications within this window of their fire time
+const NEAR_FIRE_GUARD_MS = 90 * 1000; // 90 seconds
+
 /**
  * Register notification action types without requesting permissions
  * Safe to call multiple times - will only register once
@@ -86,6 +89,40 @@ const generateNotificationId = (doseId: string): number => {
   return Math.abs(hash % 2147483647) + 1; // Keep under max 32-bit signed int
 };
 
+/**
+ * Resolve scheduled_time to hour:minute
+ * Handles both preset times (Morning/Afternoon/Evening) and custom HH:MM format
+ */
+const resolveTimeToMinutes = (scheduledTime: string): { hour: number; minute: number } => {
+  // Try custom time in HH:MM format first
+  const customTimeMatch = scheduledTime.match(/^(\d{1,2}):(\d{2})$/);
+  if (customTimeMatch) {
+    return {
+      hour: parseInt(customTimeMatch[1]),
+      minute: parseInt(customTimeMatch[2])
+    };
+  }
+  
+  // Preset time mapping
+  const timeMap: { [key: string]: { hour: number; minute: number } } = {
+    'Morning': { hour: 8, minute: 0 },
+    'Afternoon': { hour: 14, minute: 0 },
+    'Evening': { hour: 18, minute: 0 },
+  };
+  
+  return timeMap[scheduledTime] || { hour: 8, minute: 0 };
+};
+
+/**
+ * Create a deduplication key for a dose based on compound + date + resolved time
+ */
+const createDedupeKey = (dose: any): string => {
+  const time = resolveTimeToMinutes(dose.scheduled_time);
+  const hourStr = time.hour.toString().padStart(2, '0');
+  const minStr = time.minute.toString().padStart(2, '0');
+  return `${dose.compound_id}|${dose.scheduled_date}|${hourStr}:${minStr}`;
+};
+
 export const scheduleDoseNotification = async (
   dose: {
     id: string;
@@ -100,26 +137,7 @@ export const scheduleDoseNotification = async (
   if (!Capacitor.isNativePlatform()) return;
 
   try {
-    // Parse the scheduled time - try HH:MM format first (custom times)
-    const customTimeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
-    let time: { hour: number; minute: number };
-    
-    if (customTimeMatch) {
-      // Custom time in HH:MM format
-      time = {
-        hour: parseInt(customTimeMatch[1]),
-        minute: parseInt(customTimeMatch[2])
-      };
-    } else {
-      // Preset time (Morning/Afternoon/Evening)
-      const timeMap: { [key: string]: { hour: number; minute: number } } = {
-        'Morning': { hour: 8, minute: 0 },
-        'Afternoon': { hour: 14, minute: 0 },
-        'Evening': { hour: 18, minute: 0 },
-      };
-      
-      time = timeMap[dose.scheduled_time] || { hour: 8, minute: 0 };
-    }
+    const time = resolveTimeToMinutes(dose.scheduled_time);
     
     // Create notification date - parse the date properly to avoid timezone issues
     const [year, month, day] = dose.scheduled_date.split('-').map(Number);
@@ -148,6 +166,7 @@ export const scheduleDoseNotification = async (
           iconColor: '#FF6F61',
           actionTypeId: isPremium ? 'DOSE_ACTIONS' : undefined,
           extra: {
+            type: 'dose', // Tag to identify dose notifications
             doseId: dose.id,
             // Store metadata so action handlers don't need to query DB
             compoundName: dose.compound_name,
@@ -193,6 +212,10 @@ export const cancelAllNotifications = async () => {
   }
 };
 
+/**
+ * Idempotent notification scheduler - reconciles pending vs desired instead of wipe-and-rebuild
+ * This prevents duplicate notifications when rescheduling near the fire time
+ */
 export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false) => {
   if (!Capacitor.isNativePlatform()) {
     console.log('⚠️ Not on native platform - notifications disabled');
@@ -200,7 +223,6 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   }
 
   // Debounce rapid scheduling calls to prevent duplicate notifications
-  // This prevents overlap between DoseEditModal reschedule and app resume sync
   const debounceNow = Date.now();
   if (debounceNow - lastScheduleTime < SCHEDULE_DEBOUNCE_MS) {
     console.log('⏭️ Skipping duplicate schedule call (debounced - last call was', 
@@ -210,14 +232,11 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   lastScheduleTime = debounceNow;
 
   // CHECK permissions instead of REQUESTING during sync/resume
-  // This prevents iOS permission dialogs from appearing during boot
-  // and causing native bridge contention
   console.log('🔔 Checking notification permissions (without prompting)...');
   try {
     const permissionStatus = await LocalNotifications.checkPermissions();
     if (permissionStatus.display !== 'granted') {
       console.log('⚠️ Notification permissions not granted - skipping scheduling');
-      console.log('   (Permission will be requested during onboarding or settings)');
       return;
     }
   } catch (error) {
@@ -226,89 +245,157 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   }
   console.log('✅ Notification permissions already granted');
 
-  // Cancel all existing notifications first
-  await cancelAllNotifications();
-  console.log('🗑️ Cleared all existing notifications');
-
-  // Schedule notifications for upcoming doses (next 7 days)
   const now = new Date();
   now.setSeconds(0, 0); // Normalize to start of minute
+  const nowMs = now.getTime();
   
   const sevenDaysFromNow = new Date(now);
   sevenDaysFromNow.setDate(now.getDate() + 7);
 
-  // Filter to only future doses
+  // === Step 1: Build desired notifications map ===
+  // First, dedupe doses by compound + date + resolved time
+  const seenDedupeKeys = new Map<string, any>();
+  
   const upcomingDoses = doses.filter(dose => {
     if (dose.taken || dose.skipped) return false;
     
     // Parse the dose date and time
     const [year, month, day] = dose.scheduled_date.split('-').map(Number);
-    const timeMatch = dose.scheduled_time.match(/^(\d{1,2}):(\d{2})$/);
+    const time = resolveTimeToMinutes(dose.scheduled_time);
+    const doseDateTime = new Date(year, month - 1, day, time.hour, time.minute);
     
-    let doseDateTime: Date;
-    if (timeMatch) {
-      doseDateTime = new Date(year, month - 1, day, parseInt(timeMatch[1]), parseInt(timeMatch[2]));
-    } else {
-      // Handle preset times
-      const timeMap: { [key: string]: number } = { 'Morning': 8, 'Afternoon': 14, 'Evening': 18 };
-      const hour = timeMap[dose.scheduled_time] || 8;
-      doseDateTime = new Date(year, month - 1, day, hour, 0);
+    // Only schedule strictly future doses
+    if (doseDateTime <= now || doseDateTime > sevenDaysFromNow) return false;
+    
+    // Dedupe by compound + date + resolved time
+    const dedupeKey = createDedupeKey(dose);
+    if (seenDedupeKeys.has(dedupeKey)) {
+      console.log(`⚠️ Duplicate dose detected: ${dose.compound_name || dose.compounds?.name} at ${dose.scheduled_date} ${dose.scheduled_time}`);
+      return false; // Skip this duplicate
     }
+    seenDedupeKeys.set(dedupeKey, dose);
     
-    // Only schedule strictly future doses to prevent duplicates
-    // The debounce above handles "just edited" doses without needing a lenient window
-    return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
+    return true;
   });
 
-  console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
+  // Build map of desired notification ID -> { dose, dateTime }
+  const desiredNotifications = new Map<number, { dose: any; dateTime: Date }>();
+  
+  for (const dose of upcomingDoses) {
+    const doseWithName = {
+      ...dose,
+      compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
+    };
+    
+    const [year, month, day] = dose.scheduled_date.split('-').map(Number);
+    const time = resolveTimeToMinutes(dose.scheduled_time);
+    const dateTime = new Date(year, month - 1, day, time.hour, time.minute);
+    
+    const notificationId = generateNotificationId(dose.id);
+    desiredNotifications.set(notificationId, { dose: doseWithName, dateTime });
+  }
+
+  console.log(`📅 Desired notifications: ${desiredNotifications.size} from ${doses.length} total doses`);
   console.log(`💎 Premium status: ${isPremium ? 'Yes (actions enabled)' : 'No'}`);
 
-  // Track scheduled IDs to detect collisions
-  const scheduledIds = new Map<number, string>();
-  let successCount = 0;
-  let collisionCount = 0;
+  // === Step 2: Get currently pending notifications ===
+  let pendingNotifications: any[] = [];
+  try {
+    const pending = await LocalNotifications.getPending();
+    pendingNotifications = pending.notifications || [];
+    console.log(`📋 Currently pending notifications: ${pendingNotifications.length}`);
+  } catch (error) {
+    console.error('Error getting pending notifications:', error);
+    // Fall back to cancel-all approach if we can't read pending
+    await cancelAllNotifications();
+    for (const [, { dose }] of desiredNotifications) {
+      await scheduleDoseNotification(dose, isPremium);
+    }
+    return;
+  }
 
-  for (const dose of upcomingDoses) {
-    try {
-      const doseWithName = {
-        ...dose,
-        compound_name: dose.compound_name || dose.compounds?.name || 'Medication'
-      };
-      
-      // Check for ID collision before scheduling
-      const notificationId = generateNotificationId(dose.id);
-      if (scheduledIds.has(notificationId)) {
-        console.warn(`⚠️ ID collision detected: ${notificationId} for ${doseWithName.compound_name} (already used by ${scheduledIds.get(notificationId)})`);
-        collisionCount++;
-        // Still schedule - iOS/Android will just update the existing notification
+  // Build map of pending dose notifications: id -> { scheduledAt, extra }
+  const pendingDoseNotifications = new Map<number, { scheduledAt: Date; extra: any }>();
+  for (const notif of pendingNotifications) {
+    // Only track dose notifications (tagged with type: 'dose')
+    if (notif.extra?.type === 'dose' || notif.extra?.doseId) {
+      const scheduledAt = notif.schedule?.at ? new Date(notif.schedule.at) : null;
+      if (scheduledAt) {
+        pendingDoseNotifications.set(notif.id, { scheduledAt, extra: notif.extra });
       }
-      scheduledIds.set(notificationId, doseWithName.compound_name);
+    }
+  }
+
+  console.log(`📋 Pending DOSE notifications: ${pendingDoseNotifications.size}`);
+
+  // === Step 3: Reconcile ===
+  const toCancel: number[] = [];
+  const toSchedule: { dose: any; dateTime: Date }[] = [];
+  let keptCount = 0;
+
+  // Check each pending dose notification
+  for (const [id, { scheduledAt }] of pendingDoseNotifications) {
+    if (!desiredNotifications.has(id)) {
+      // This notification is no longer desired (dose taken/deleted/off-cycle)
+      toCancel.push(id);
+    } else {
+      // Check if the scheduled time matches
+      const desired = desiredNotifications.get(id)!;
+      const timeDiff = Math.abs(desired.dateTime.getTime() - scheduledAt.getTime());
       
-      await scheduleDoseNotification(doseWithName, isPremium);
+      if (timeDiff > 60 * 1000) { // More than 1 minute difference
+        // Time differs - need to reschedule
+        // But apply near-fire guard: don't reschedule if close to firing
+        if (scheduledAt.getTime() - nowMs < NEAR_FIRE_GUARD_MS) {
+          console.log(`⏰ Near-fire guard: keeping notification for ${desired.dose.compound_name} (fires in ${Math.round((scheduledAt.getTime() - nowMs) / 1000)}s)`);
+          keptCount++;
+        } else {
+          toCancel.push(id);
+          toSchedule.push(desired);
+        }
+      } else {
+        // Time matches, keep it
+        keptCount++;
+      }
+      
+      // Remove from desired so we don't schedule it again
+      desiredNotifications.delete(id);
+    }
+  }
+
+  // Any remaining desired notifications need to be scheduled (they weren't pending)
+  for (const [, desired] of desiredNotifications) {
+    toSchedule.push(desired);
+  }
+
+  console.log(`📊 Reconciliation: keep=${keptCount}, cancel=${toCancel.length}, schedule=${toSchedule.length}`);
+
+  // === Step 4: Execute changes ===
+  // Cancel unwanted notifications
+  if (toCancel.length > 0) {
+    try {
+      await LocalNotifications.cancel({
+        notifications: toCancel.map(id => ({ id }))
+      });
+      console.log(`🗑️ Canceled ${toCancel.length} notifications`);
+    } catch (error) {
+      console.error('Error canceling notifications:', error);
+    }
+  }
+
+  // Schedule new/updated notifications
+  let successCount = 0;
+  for (const { dose } of toSchedule) {
+    try {
+      await scheduleDoseNotification(dose, isPremium);
       successCount++;
     } catch (error) {
       console.error('❌ Failed to schedule notification for dose:', dose.id, error);
     }
   }
 
-  console.log(`✅ Scheduled ${successCount}/${upcomingDoses.length} notifications`);
-  if (collisionCount > 0) {
-    console.warn(`⚠️ ${collisionCount} ID collisions detected - some notifications may have been overwritten`);
-  }
-  
-  // Log all pending notifications for verification
-  try {
-    const pending = await LocalNotifications.getPending();
-    console.log(`📋 Total pending notifications: ${pending.notifications.length}`);
-    pending.notifications.slice(0, 10).forEach(notif => {
-      console.log(`   - ID ${notif.id}: scheduled for ${notif.schedule?.at}`);
-    });
-    if (pending.notifications.length > 10) {
-      console.log(`   ... and ${pending.notifications.length - 10} more`);
-    }
-  } catch (error) {
-    console.error('Error checking pending notifications:', error);
-  }
+  console.log(`✅ Scheduled ${successCount}/${toSchedule.length} new notifications`);
+  console.log(`📋 Final state: ${keptCount + successCount} total dose notifications`);
 };
 
 // Track if handlers are already registered (prevent double-registration)
