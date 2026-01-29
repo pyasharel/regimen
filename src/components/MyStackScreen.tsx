@@ -84,10 +84,21 @@ export const MyStackScreen = () => {
 
   const loadCompounds = async () => {
     try {
+      // Require userId to prevent anonymous queries returning empty results (RLS)
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) {
+        console.log('[MyStackScreen] loadCompounds: No userId, keeping loading state');
+        // Don't set loading=false - keep showing skeleton
+        // This prevents "first-time user" empty state when auth is still hydrating
+        return;
+      }
+      console.log('[MyStackScreen] loadCompounds: Got userId:', userId.slice(0, 8) + '...');
+      
       const { data, error } = await withQueryTimeout(
         supabase
           .from('compounds')
           .select('*')
+          .eq('user_id', userId)
           .order('created_at', { ascending: false }),
         'loadCompounds'
       );

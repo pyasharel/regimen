@@ -1,7 +1,6 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -49,7 +48,8 @@ import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
 import PartnerLanding from "./pages/PartnerLanding";
 
-const queryClient = new QueryClient();
+// REMOVED: Duplicate QueryClient - using the one from main.tsx via queryClient.ts
+// This ensures consistent caching/retry behavior across the app
 
 // AppContent component - must be rendered inside SubscriptionProvider AND PaywallProvider
 // This component uses hooks that depend on the provider context
@@ -183,15 +183,13 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <SubscriptionProvider>
-          <PaywallProvider>
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </PaywallProvider>
-        </SubscriptionProvider>
-      </QueryClientProvider>
+      <SubscriptionProvider>
+        <PaywallProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </PaywallProvider>
+      </SubscriptionProvider>
     </ErrorBoundary>
   );
 };
