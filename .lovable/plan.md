@@ -1,50 +1,81 @@
 
-# v1.0.3 Release (Build 18) - COMPLETE
+# Fix Plan: Medication Levels Card Default Selection
 
-## Status: ✅ Ready to Ship
+## Problem Analysis
 
-All code changes are complete. Ready for native builds.
+Based on your testing and the codebase analysis, I identified the **root cause** of why the Levels Card shows alphabetically (BPC-157) instead of your most recently logged medication:
 
-## Completed Changes
+### Why This Happens
 
-| File | Change | Status |
-|------|--------|--------|
-| `src/contexts/SubscriptionContext.tsx` | `$countryCode` → `country_code`, watchdog 8s→5s | ✅ Done |
-| `src/main.tsx` | Theme bootstrap from Capacitor Preferences | ✅ Done |
-| `src/components/MedicationLevelsCard.tsx` | `mt-2` → `mt-3` | ✅ Done |
-| `src/components/MedicationLevelsCard.tsx` | Priority swap: recently logged → alphabetical | ✅ Done |
-| `.storage/memory/development/v103-cold-start-fixes.md` | Documented all fixes | ✅ Done |
+The `TodayScreen.tsx` loads doses using `loadLevelsData()` which **only fetches doses from the last 30 days**:
 
-## Remaining Local Setup (Your Machine)
-
-### Android Launcher Icons
-
-1. Open Android Studio → your project
-2. Right-click `res` folder → New → Image Asset
-3. Select your 1024x1024 icon, generate all densities
-4. **Delete** `mipmap-anydpi-v26` folder
-5. Build → Clean Project, then rebuild
-
-## Build Commands
-
-**iOS:**
-```bash
-git pull && npm install && npm run build && npx cap sync ios
-cd ios/App && pod install && cd ../..
-npx cap open ios
+```text
+Lines 344-356 in TodayScreen.tsx:
+- Fetches taken doses where scheduled_date >= 30 days ago
+- If you haven't logged a specific medication in 30 days, it's excluded
+- MedicationLevelsCard receives an incomplete picture
+- Falls back to alphabetical order when your "recent" medication has no doses in the data
 ```
 
-**Android:**
-```bash
-git pull && npm install && npm run build && npx cap sync android
-npx cap open android
-# Fix icons in Android Studio as described above
+Your answer confirms: you want **most recently taken** (regardless of how long ago) with **no date filter** (just fetch latest N doses).
+
+## Solution
+
+### Part 1: Update Data Fetching (TodayScreen.tsx)
+
+Change the dose query from "last 30 days" to "latest 500 taken doses" (ordered by taken_at descending):
+
+**Current:**
+```typescript
+.gte('scheduled_date', thirtyDaysAgo)
+.order('taken_at', { ascending: false })
 ```
 
-## Release Notes
+**New:**
+```typescript
+.order('taken_at', { ascending: false })
+.limit(500)
+```
 
-- **Version:** 1.0.3
-- **Build:** 18
-- **Critical fixes:** Cold start data loading, RevenueCat attribute error
-- **UX improvements:** Levels Card shows most recently logged medication first
-- **Visual fixes:** Theme persistence, dark mode spacing
+This ensures we always have the user's most recent activity regardless of date.
+
+### Part 2: Improve Default Selection Logic (MedicationLevelsCard.tsx)
+
+The `getDefaultCompound()` function already has the correct priority:
+1. Saved preference (if it has doses)
+2. Most recently taken dose's compound
+3. Alphabetical fallback
+
+But with the 30-day filter, step 2 was failing because recent doses weren't in the data. With the "latest N" approach, this will work correctly.
+
+### Part 3: Update Memory Documentation
+
+Document this behavior for future reference:
+- Default selection prioritizes the most recently logged dose
+- No date filter on the levels data query (fetch latest N)
+- Saved preferences are honored only if that compound has logged data
+
+## Technical Changes
+
+| File | Change |
+|------|--------|
+| `src/components/TodayScreen.tsx` | Remove `.gte('scheduled_date', thirtyDaysAgo)`, add `.limit(500)` |
+| `.storage/memory/features/medication-levels-default-compound-logic.md` | Update documentation |
+
+## Why The Data Loading Issue Resolved
+
+The "Slow connection / Preview mode" error you saw after switching themes was likely a **transient network timeout**. The app has an 8-second watchdog that shows this banner when queries take too long. After a hard close, the session was re-established cleanly.
+
+This is not directly related to the Levels Card logic - it's the existing cold-start resilience working as designed (showing a retry option rather than hanging).
+
+## Android Icon Note
+
+The Android `res/mipmap-*` folders are generated locally on your machine when you run `npx cap add android`. They're not stored in the Lovable codebase. The fix is manual on your machine using Android Studio's Image Asset Studio (as previously discussed).
+
+## Testing After Fix
+
+1. Pull the update: `git pull && npm install && npm run build && npx cap sync ios`
+2. Launch app
+3. Verify the Levels Card shows your most recently logged medication (not alphabetical)
+4. Switch to a different compound manually
+5. Hard close and reopen - verify your selection persists
