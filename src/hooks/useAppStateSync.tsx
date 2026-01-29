@@ -294,10 +294,15 @@ export const useAppStateSync = () => {
       // Not on native platform, ignore
     });
 
-    // REMOVED: Initial mount sync was causing contention with auth hydration
-    // Sync will now only happen on app resume, not on cold start
-    // This prevents queries from running before auth is fully hydrated
-    // Reference: Boot coordination hotfix for "first-time user" empty state bug
+    // Run initial sync after a longer delay to ensure auth is fully hydrated
+    // This was previously removed but is needed to schedule notifications on cold start
+    // The 3-second delay ensures ProtectedRoute has finished hydrating the session
+    const initialSyncTimer = setTimeout(() => {
+      if (isMounted) {
+        console.log('[AppStateSync] Running initial cold-start sync');
+        syncNotifications();
+      }
+    }, 3000);
 
     // Set up notification action handlers
     setupNotificationActionHandlers();
@@ -305,6 +310,7 @@ export const useAppStateSync = () => {
     return () => {
       isMounted = false;
       listener?.remove();
+      clearTimeout(initialSyncTimer);
     };
   }, []);
 };
