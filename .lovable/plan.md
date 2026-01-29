@@ -1,110 +1,166 @@
 
+# Fix Notifications Not Triggering After Dose Edits
 
-# Quick Fix: Stop Rejecting Sessions That Can Be Refreshed
+## Problem Summary
 
-## The Bug (Confirmed)
+You're editing dose times but not receiving notifications because:
+1. Editing a dose only updates the database - **it doesn't reschedule notifications**
+2. The Settings UI shows "Enabled" even if iOS permissions were never actually granted
+3. The `doseReminders` preference isn't being loaded/saved properly
 
-In `authSessionCache.ts`, line 46-54:
-```typescript
-// Check if token is expired (with 5 minute buffer for safety)
-const expiresAtMs = parsed.expires_at * 1000;
-const bufferMs = 5 * 60 * 1000; // 5 minutes
-const isExpired = expiresAtMs < Date.now() + bufferMs;
+## Root Causes Found
 
-if (isExpired) {
-  console.log('[AuthCache] Cached session expired or expiring soon');
-  return null;  // ← THIS IS THE PROBLEM
-}
-```
+### Issue 1: DoseEditModal Doesn't Reschedule Notifications
+When you edit a dose in `DoseEditModal.tsx`, it calls `onDoseUpdated()` which triggers `loadDoses()` in TodayScreen. This only refreshes the UI display - **it never calls `scheduleAllUpcomingDoses()`** to update the iOS notification system.
 
-Access tokens typically expire in 1 hour. If the user opens the app 55+ minutes after their last session refresh, the 5-minute buffer kicks in, cache returns `null`, and the app thinks there's no session → redirect to `/auth`.
+### Issue 2: Settings UI Doesn't Reflect iOS Permission Status
+`NotificationsSettings.tsx` initializes `doseReminders` to `true` by default and never checks iOS's actual permission status. Even if you denied notifications, the switch shows "enabled".
 
-But the **refresh_token is still valid** and can get a new access token. We're not using it.
+### Issue 3: doseReminders Not Loaded From Storage
+In NotificationsSettings, the `doseReminders` state defaults to `true` but is never loaded from `persistentStorage` (unlike photo/weight reminders which ARE loaded).
 
 ## The Fix
 
-**File: `src/utils/authSessionCache.ts`**
+### Part 1: Trigger Notification Reschedule After Dose Edit
+**File: `src/components/DoseEditModal.tsx`**
 
-Create a new function that returns cached tokens even if the access token is expired (as long as refresh_token exists), and rename the strict check:
+After saving a dose (both `saveDoseOnly` and `saveAndUpdateSchedule`), call a helper function to reschedule all notifications:
 
 ```typescript
-/**
- * Returns cached session tokens for hydration attempts.
- * Does NOT check access_token expiry - we rely on setSession() to refresh.
- * Only returns null if there's genuinely no cached data.
- */
-export const getCachedSessionForHydration = (): CachedSession | null => {
+import { scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+
+// Inside the component:
+const { isSubscribed } = useSubscription();
+
+// After successful save in saveDoseOnly() and saveAndUpdateSchedule():
+// ...after onDoseUpdated()...
+// Reschedule notifications to pick up the edited time
+await rescheduleNotificationsAfterEdit();
+```
+
+Create a helper that fetches doses and reschedules:
+```typescript
+const rescheduleNotificationsAfterEdit = async () => {
   try {
-    const key = `sb-${SUPABASE_PROJECT_ID}-auth-token`;
-    const cached = localStorage.getItem(key);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     
-    if (!cached) {
-      console.log('[AuthCache] No cached session found');
-      return null;
+    const { data: allDoses } = await supabase
+      .from('doses')
+      .select('*, compounds(name, is_active)')
+      .eq('user_id', user.id)
+      .eq('taken', false);
+      
+    if (allDoses) {
+      const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
+      const dosesWithName = activeDoses.map(d => ({
+        ...d,
+        compound_name: d.compounds?.name || 'Medication'
+      }));
+      await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+      console.log('[DoseEdit] Rescheduled notifications after edit');
     }
-    
-    const parsed = JSON.parse(cached);
-    
-    // Only require refresh_token - that's what setSession needs
-    if (!parsed.refresh_token) {
-      console.log('[AuthCache] No refresh token in cache');
-      return null;
-    }
-    
-    console.log('[AuthCache] Found cached tokens for hydration');
-    return parsed as CachedSession;
   } catch (error) {
-    console.warn('[AuthCache] Error reading cached session:', error);
-    return null;
+    console.error('[DoseEdit] Failed to reschedule notifications:', error);
   }
 };
 ```
 
-**File: `src/utils/safeAuth.ts`**
+### Part 2: Settings UI Should Reflect Actual iOS Permission Status
+**File: `src/components/settings/NotificationsSettings.tsx`**
 
-Update line 68 to use the new function:
+Add a check for iOS notification permissions and load `doseReminders` from storage:
+
 ```typescript
-// Step 2: Try to hydrate from cached tokens
-console.log('[SafeAuth] Falling back to cache hydration...');
-const cached = getCachedSessionForHydration(); // ← Use new function
+import { LocalNotifications } from '@capacitor/local-notifications';
 
-if (!cached?.refresh_token) {
-  console.log('[SafeAuth] No refresh token available, user is not authenticated');
-  return null;
-}
+// Add state for actual OS permission
+const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
+
+useEffect(() => {
+  const loadSettings = async () => {
+    // Check actual iOS permission status
+    if (Capacitor.isNativePlatform()) {
+      const status = await LocalNotifications.checkPermissions();
+      setOsPermissionGranted(status.display === 'granted');
+    } else {
+      setOsPermissionGranted(true); // Web fallback
+    }
+    
+    // Load doseReminders from storage (was missing!)
+    const savedDoseReminders = await persistentStorage.getBoolean('doseReminders', true);
+    setDoseReminders(savedDoseReminders);
+    
+    // ...rest of existing loading...
+  };
+  loadSettings();
+}, []);
 ```
 
-## Why This Works
-
-- `supabase.auth.setSession({ access_token, refresh_token })` will automatically refresh an expired access token using the refresh token
-- Refresh tokens are valid for much longer (typically 7+ days by default)
-- We only need to check that we HAVE tokens, not that they're unexpired
-
-## Files to Change
-
-1. `src/utils/authSessionCache.ts` - Add `getCachedSessionForHydration()` that skips expiry check
-2. `src/utils/safeAuth.ts` - Use new function in `hydrateSessionOrNull()`
-
-## What the Logs Will Show After Fix
-
-When access token is expired but refresh token is valid:
-```
-[AuthCache] Found cached tokens for hydration
-[SafeAuth] Calling setSession with cached tokens...
-[SafeAuth] Cache hydration succeeded in 200 ms
+Show a warning banner if OS permission is denied:
+```tsx
+{osPermissionGranted === false && (
+  <div className="bg-warning/10 text-warning p-3 rounded-lg text-sm">
+    Notifications are blocked at the system level. 
+    Open Settings → Regimen → Notifications to enable.
+  </div>
+)}
 ```
 
-Instead of current behavior:
+### Part 3: Add a "Test Notification" Button for Debugging
+In NotificationsSettings, add a button to send an immediate test notification:
+
+```typescript
+const sendTestNotification = async () => {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  const status = await LocalNotifications.checkPermissions();
+  if (status.display !== 'granted') {
+    toast.error("Notifications not permitted by iOS");
+    return;
+  }
+  
+  await LocalNotifications.schedule({
+    notifications: [{
+      id: 999999,
+      title: 'Regimen Test',
+      body: 'If you see this, notifications are working!',
+      schedule: { at: new Date(Date.now() + 3000) }, // 3 seconds from now
+    }],
+  });
+  toast.success("Test notification sent - check in 3 seconds");
+};
 ```
-[AuthCache] Cached session expired or expiring soon
-[SafeAuth] No cached tokens available, user is not authenticated
-→ Redirect to /auth
+
+## Files to Modify
+
+1. **`src/components/DoseEditModal.tsx`**
+   - Import `scheduleAllUpcomingDoses` and `useSubscription`
+   - Add `rescheduleNotificationsAfterEdit()` helper
+   - Call it after both `saveDoseOnly()` and `saveAndUpdateSchedule()`
+
+2. **`src/components/settings/NotificationsSettings.tsx`**
+   - Import `LocalNotifications`
+   - Add `osPermissionGranted` state
+   - Load `doseReminders` from `persistentStorage` 
+   - Add warning banner for denied permissions
+   - Add "Test Notification" button
+
+## Testing Steps
+
+After implementing:
+1. Build and deploy to your iPhone
+2. Go to Settings → Notifications and tap "Test Notification"
+3. You should receive a notification within 3 seconds
+4. Edit a dose to be 1 minute in the future
+5. Background the app and wait - you should receive the notification
+
+## Expected Console Logs
+
+When editing a dose:
 ```
-
-## Testing
-
-1. Build and run on device
-2. Wait 55+ minutes (or manually advance device clock)
-3. Hard close and reopen
-4. Should see "Restoring session" briefly, then load data - NOT redirect to login
-
+[DoseEdit] Rescheduled notifications after edit
+📅 Scheduling X notifications from Y total doses
+✅ Scheduled: [MedName] at [time] (ID: XXXXX)
+```
