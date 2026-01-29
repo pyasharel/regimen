@@ -43,9 +43,10 @@ export const getCachedSession = (): CachedSession | null => {
       return null;
     }
     
-    // Check if token is expired (with 5 minute buffer for safety)
+    // Check if token is expired (with 30 second buffer)
+    // Trust Supabase to auto-refresh tokens that are about to expire
     const expiresAtMs = parsed.expires_at * 1000;
-    const bufferMs = 5 * 60 * 1000; // 5 minutes
+    const bufferMs = 30 * 1000; // 30 seconds - reduced from 5 min to allow more fast-path loads
     const isExpired = expiresAtMs < Date.now() + bufferMs;
     
     if (isExpired) {

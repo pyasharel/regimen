@@ -17,20 +17,10 @@ export const useSessionWarming = () => {
     let isMounted = true;
     let listener: { remove: () => void } | null = null;
     
-    // Warm session on mount (non-blocking)
-    console.log('[SessionWarming] Warming session on mount...');
-    supabase.auth.getSession()
-      .then(({ data }) => {
-        if (!isMounted) return; // Skip if unmounted
-        if (data.session) {
-          console.log('[SessionWarming] Session warmed successfully');
-        } else {
-          console.log('[SessionWarming] No active session');
-        }
-      })
-      .catch((error) => {
-        console.warn('[SessionWarming] Failed to warm session:', error);
-      });
+    // NOTE: Removed initial getSession() call on mount
+    // Splash.tsx and ProtectedRoute handle cold start auth
+    // This hook only warms session on app RESUME to prevent
+    // lock contention with the critical Splash path
     
     // Warm session on app resume
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
