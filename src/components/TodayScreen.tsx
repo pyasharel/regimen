@@ -5,7 +5,6 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
 import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
 import { ComponentErrorBoundary } from "@/components/ui/ComponentErrorBoundary";
-import { NotificationPromptBanner } from "@/components/NotificationPromptBanner";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
@@ -113,12 +112,9 @@ export const TodayScreen = () => {
   // TestFlight migration modal state
   const [isTestFlight, setIsTestFlight] = useState(false);
   
-  // Notification permission prompt for existing users after reinstall
-  const {
-    shouldShowPrompt: showNotificationPrompt,
-    handleEnableNotifications,
-    handleDismissPrompt: dismissNotificationPrompt,
-  } = useNotificationPermissionPrompt(hasCompounds, isSubscribed);
+  // Auto-trigger notification permission prompt for existing users after reinstall
+  // (no banner - just triggers iOS system dialog automatically when conditions met)
+  useNotificationPermissionPrompt(hasCompounds, isSubscribed);
 
   // Medication levels card state
   interface CompoundForLevels {
@@ -1085,13 +1081,6 @@ export const TodayScreen = () => {
         {/* Header */}
         <MainHeader title="Today" />
 
-        {/* Notification Permission Prompt for existing users after reinstall */}
-        {showNotificationPrompt && (
-          <NotificationPromptBanner
-            onEnable={handleEnableNotifications}
-            onDismiss={dismissNotificationPrompt}
-          />
-        )}
         <div className="px-4 pt-4 pb-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

@@ -18,6 +18,7 @@ import { Browser } from '@capacitor/browser';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { toast } from "sonner";
 import { persistentStorage, PERSISTENT_STORAGE_KEYS } from "@/utils/persistentStorage";
+import { initAuthTokenMirror } from "@/utils/authTokenMirror";
 import { Onboarding } from "./components/Onboarding";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { TodayScreen } from "./components/TodayScreen";
@@ -179,6 +180,11 @@ const App = () => {
   // Migrate localStorage to Capacitor Preferences on app start
   useEffect(() => {
     persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
+  }, []);
+
+  // Initialize auth token mirror to keep native storage in sync with auth state
+  useEffect(() => {
+    initAuthTokenMirror();
   }, []);
 
   return (

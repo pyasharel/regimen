@@ -1,160 +1,120 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
 import { scheduleAllUpcomingDoses, ensureDoseActionTypesRegistered } from '@/utils/notificationScheduler';
 import { supabase } from '@/integrations/supabase/client';
 
-type PermissionStatus = 'granted' | 'prompt' | 'denied' | 'unknown';
-
 const PROMPT_THROTTLE_KEY = 'notificationPermissionPromptLastShownAt';
 const PROMPT_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours between prompts
 
-interface UseNotificationPermissionPromptResult {
-  shouldShowPrompt: boolean;
-  osPermissionStatus: PermissionStatus;
-  isLoading: boolean;
-  handleEnableNotifications: () => Promise<boolean>;
-  handleDismissPrompt: () => void;
-}
-
 /**
- * Hook to manage notification permission prompting for existing users
- * Shows a prompt on Today screen when:
- * - User has dose reminders desired (default true)
+ * Hook that auto-triggers iOS notification permission prompt when conditions are met.
+ * 
+ * Automatically calls requestPermissions() (no banner, no user tap required) when:
  * - OS permission is 'prompt' (never asked or reset after reinstall)
+ * - User has dose reminders preference enabled (default true)
  * - User has at least one active compound
- * - Haven't shown prompt in last 24 hours
+ * - Haven't prompted in last 24 hours
+ * 
+ * After granting permission, immediately schedules all upcoming dose notifications.
  */
 export function useNotificationPermissionPrompt(
   hasActiveCompounds: boolean,
   isSubscribed: boolean
-): UseNotificationPermissionPromptResult {
-  const [osPermissionStatus, setOsPermissionStatus] = useState<PermissionStatus>('unknown');
-  const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+): void {
+  const hasTriggeredRef = useRef(false);
 
-  // Check OS permission and determine if we should prompt
   useEffect(() => {
-    const checkAndDecide = async () => {
-      if (!Capacitor.isNativePlatform()) {
-        setIsLoading(false);
-        return;
-      }
+    // Prevent double-triggering
+    if (hasTriggeredRef.current) return;
+    
+    const autoTriggerPermission = async () => {
+      if (!Capacitor.isNativePlatform()) return;
 
       try {
-        // Check OS permission status
+        // Step 1: Check OS permission status
         const status = await LocalNotifications.checkPermissions();
-        const permissionStatus: PermissionStatus = 
-          status.display === 'granted' ? 'granted' :
-          status.display === 'denied' ? 'denied' : 'prompt';
+        const permissionStatus = status.display;
         
-        setOsPermissionStatus(permissionStatus);
-        console.log('[useNotificationPermissionPrompt] OS status:', permissionStatus);
+        console.log('[AutoNotificationPrompt] OS permission:', permissionStatus);
 
-        // Only show prompt if permission is 'prompt'
+        // Only proceed if permission is 'prompt' (not granted, not denied)
         if (permissionStatus !== 'prompt') {
-          setShouldShowPrompt(false);
-          setIsLoading(false);
+          console.log('[AutoNotificationPrompt] Permission already', permissionStatus, '- no action needed');
           return;
         }
 
-        // Check if user wants dose reminders (default true)
+        // Step 2: Check if user wants dose reminders (default true)
         const doseRemindersDesired = await persistentStorage.getBoolean('doseReminders', true);
         if (!doseRemindersDesired) {
-          console.log('[useNotificationPermissionPrompt] User has disabled dose reminders in settings');
-          setShouldShowPrompt(false);
-          setIsLoading(false);
+          console.log('[AutoNotificationPrompt] User has disabled dose reminders in settings');
           return;
         }
 
-        // Check throttle - don't show if we showed recently
-        const lastShownAt = await persistentStorage.get(PROMPT_THROTTLE_KEY);
-        if (lastShownAt) {
-          const elapsed = Date.now() - parseInt(lastShownAt, 10);
+        // Step 3: Check throttle - don't prompt if we prompted recently
+        const lastPromptedAt = await persistentStorage.get(PROMPT_THROTTLE_KEY);
+        if (lastPromptedAt) {
+          const elapsed = Date.now() - parseInt(lastPromptedAt, 10);
           if (elapsed < PROMPT_THROTTLE_MS) {
-            console.log('[useNotificationPermissionPrompt] Throttled - shown', Math.round(elapsed / 1000 / 60), 'minutes ago');
-            setShouldShowPrompt(false);
-            setIsLoading(false);
+            console.log('[AutoNotificationPrompt] Throttled - prompted', Math.round(elapsed / 1000 / 60), 'minutes ago');
             return;
           }
         }
 
-        // Show prompt if user has active compounds
-        if (hasActiveCompounds) {
-          console.log('[useNotificationPermissionPrompt] Will show prompt');
-          setShouldShowPrompt(true);
+        // Step 4: Check if user has active compounds
+        if (!hasActiveCompounds) {
+          console.log('[AutoNotificationPrompt] No active compounds - skipping prompt');
+          return;
+        }
+
+        // All conditions met - auto-trigger the iOS permission dialog
+        hasTriggeredRef.current = true;
+        console.log('[AutoNotificationPrompt] Auto-triggering permission request...');
+
+        // Register action types first
+        await ensureDoseActionTypesRegistered();
+
+        // Request permission (this shows the iOS system dialog)
+        const result = await LocalNotifications.requestPermissions();
+        const granted = result.display === 'granted';
+
+        console.log('[AutoNotificationPrompt] Permission result:', granted ? 'granted' : 'denied');
+
+        // Record that we prompted (regardless of outcome) for throttle
+        await persistentStorage.set(PROMPT_THROTTLE_KEY, Date.now().toString());
+
+        if (granted) {
+          // Schedule notifications immediately after grant
+          console.log('[AutoNotificationPrompt] Scheduling notifications after grant...');
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: allDoses } = await supabase
+              .from('doses')
+              .select('*, compounds(name, is_active)')
+              .eq('user_id', user.id)
+              .eq('taken', false);
+
+            if (allDoses) {
+              const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
+              const dosesWithName = activeDoses.map(d => ({
+                ...d,
+                compound_name: d.compounds?.name || 'Medication'
+              }));
+              await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+              console.log('[AutoNotificationPrompt] Scheduled', dosesWithName.length, 'notifications');
+            }
+          }
         }
       } catch (error) {
-        console.error('[useNotificationPermissionPrompt] Error:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('[AutoNotificationPrompt] Error:', error);
       }
     };
 
-    checkAndDecide();
-  }, [hasActiveCompounds]);
-
-  // Handle user tapping "Enable Notifications"
-  const handleEnableNotifications = useCallback(async (): Promise<boolean> => {
-    if (!Capacitor.isNativePlatform()) return true;
-
-    try {
-      // Register action types first
-      await ensureDoseActionTypesRegistered();
-
-      // Request permission
-      const result = await LocalNotifications.requestPermissions();
-      const granted = result.display === 'granted';
-
-      setOsPermissionStatus(granted ? 'granted' : 'denied');
-      setShouldShowPrompt(false);
-
-      if (granted) {
-        // Schedule notifications immediately
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: allDoses } = await supabase
-            .from('doses')
-            .select('*, compounds(name, is_active)')
-            .eq('user_id', user.id)
-            .eq('taken', false);
-
-          if (allDoses) {
-            const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
-            const dosesWithName = activeDoses.map(d => ({
-              ...d,
-              compound_name: d.compounds?.name || 'Medication'
-            }));
-            await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
-            console.log('[useNotificationPermissionPrompt] Scheduled notifications after grant');
-          }
-        }
-      }
-
-      // Record that we showed the prompt (regardless of outcome)
-      await persistentStorage.set(PROMPT_THROTTLE_KEY, Date.now().toString());
-
-      return granted;
-    } catch (error) {
-      console.error('[useNotificationPermissionPrompt] Error enabling:', error);
-      return false;
-    }
-  }, [isSubscribed]);
-
-  // Handle user dismissing the prompt
-  const handleDismissPrompt = useCallback(async () => {
-    setShouldShowPrompt(false);
-    // Record dismissal time so we don't prompt again for 24 hours
-    await persistentStorage.set(PROMPT_THROTTLE_KEY, Date.now().toString());
-    console.log('[useNotificationPermissionPrompt] User dismissed, throttling for 24h');
-  }, []);
-
-  return {
-    shouldShowPrompt,
-    osPermissionStatus,
-    isLoading,
-    handleEnableNotifications,
-    handleDismissPrompt,
-  };
+    // Small delay to let the screen finish rendering before showing system dialog
+    const timeoutId = setTimeout(autoTriggerPermission, 1500);
+    
+    return () => clearTimeout(timeoutId);
+  }, [hasActiveCompounds, isSubscribed]);
 }
