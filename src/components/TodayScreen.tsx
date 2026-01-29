@@ -341,8 +341,8 @@ export const TodayScreen = () => {
       if (compoundsError) throw compoundsError;
       setCompoundsForLevels(compounds || []);
 
-      // Fetch taken doses from last 30 days for levels calculation
-      const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
+      // Fetch latest 500 taken doses for levels calculation (no date filter)
+      // This ensures the "most recently taken" medication is always available
       const { data: recentDoses, error: dosesError } = await withQueryTimeout(
         supabase
           .from('doses')
@@ -350,8 +350,8 @@ export const TodayScreen = () => {
           .eq('user_id', userId)
           .eq('taken', true)
           .not('taken_at', 'is', null)
-          .gte('scheduled_date', thirtyDaysAgo)
-          .order('taken_at', { ascending: false }),
+          .order('taken_at', { ascending: false })
+          .limit(500),
         'loadLevelsData-doses'
       );
 
