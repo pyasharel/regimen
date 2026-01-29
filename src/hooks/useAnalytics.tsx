@@ -68,7 +68,12 @@ export const useAnalytics = () => {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    let isMounted = true;
+    let listener: { remove: () => void } | null = null;
+
     const handleAppStateChange = ({ isActive }: { isActive: boolean }) => {
+      if (!isMounted) return;
+      
       if (isActive) {
         const platform = Capacitor.getPlatform();
         const daysSinceInstall = getDaysSinceInstall();
@@ -108,10 +113,22 @@ export const useAnalytics = () => {
       trackAppOpened(platform, daysSinceInstall);
     }
 
-    const listener = CapacitorApp.addListener('appStateChange', handleAppStateChange);
+    CapacitorApp.addListener('appStateChange', handleAppStateChange)
+      .then((handle) => {
+        if (isMounted) {
+          listener = handle;
+        } else {
+          // Already unmounted, clean up immediately
+          handle.remove();
+        }
+      })
+      .catch(() => {
+        // Not on native platform, ignore
+      });
     
     return () => {
-      listener.then(l => l.remove());
+      isMounted = false;
+      listener?.remove();
     };
   }, []);
 

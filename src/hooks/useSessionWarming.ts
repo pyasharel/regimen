@@ -14,10 +14,14 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const useSessionWarming = () => {
   useEffect(() => {
+    let isMounted = true;
+    let listener: { remove: () => void } | null = null;
+    
     // Warm session on mount (non-blocking)
     console.log('[SessionWarming] Warming session on mount...');
     supabase.auth.getSession()
       .then(({ data }) => {
+        if (!isMounted) return; // Skip if unmounted
         if (data.session) {
           console.log('[SessionWarming] Session warmed successfully');
         } else {
@@ -29,22 +33,26 @@ export const useSessionWarming = () => {
       });
     
     // Warm session on app resume
-    let listener: { remove: () => void } | null = null;
-    
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive) {
+      if (isActive && isMounted) {
         console.log('[SessionWarming] App resumed, warming session...');
         supabase.auth.getSession().catch(() => {
           // Ignore errors - this is just a background warm-up
         });
       }
     }).then((handle) => {
-      listener = handle;
+      if (isMounted) {
+        listener = handle;
+      } else {
+        // Already unmounted, clean up immediately
+        handle.remove();
+      }
     }).catch(() => {
       // Not on native platform, ignore
     });
     
     return () => {
+      isMounted = false;
       listener?.remove();
     };
   }, []);
