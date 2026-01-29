@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon, Camera as CameraIcon, Plus, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -177,62 +179,99 @@ export const ProgressScreen = () => {
   const { data: entries = [], isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
     queryKey: ['progress-entries'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return [];
       
-      const { data, error } = await supabase
-        .from('progress_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('entry_date', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching progress entries:', error);
+      try {
+        const { data, error } = await withQueryTimeout(
+          supabase
+            .from('progress_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .order('entry_date', { ascending: true }),
+          'progress-entries',
+          8000
+        );
+        
+        if (error) {
+          console.error('Error fetching progress entries:', error);
+          return [];
+        }
+        return data as ProgressEntry[];
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          console.warn('[ProgressScreen] progress-entries query timed out');
+          toast.error("Slow connection - tap to retry");
+        }
         return [];
       }
-      return data as ProgressEntry[];
     },
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 
   // Fetch compounds
   const { data: compounds = [], isLoading: compoundsLoading } = useQuery({
     queryKey: ['compounds-progress'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return [];
       
-      const { data, error } = await supabase
-        .from('compounds')
-        .select('id, name, start_date, end_date, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, schedule_type, created_at')
-        .eq('user_id', user.id)
-        .order('start_date', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching compounds:', error);
+      try {
+        const { data, error } = await withQueryTimeout(
+          supabase
+            .from('compounds')
+            .select('id, name, start_date, end_date, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, schedule_type, created_at')
+            .eq('user_id', userId)
+            .order('start_date', { ascending: false }),
+          'compounds-progress',
+          8000
+        );
+        
+        if (error) {
+          console.error('Error fetching compounds:', error);
+          return [];
+        }
+        return data as Compound[];
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          console.warn('[ProgressScreen] compounds-progress query timed out');
+        }
         return [];
       }
-      return data as Compound[];
     },
+    retry: 1,
   });
 
   // Fetch doses for medication correlation
   const { data: doses = [], isLoading: dosesLoading } = useQuery({
     queryKey: ['doses-progress'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return [];
       
-      const { data, error } = await supabase
-        .from('doses')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('taken', true)
-        .order('scheduled_date', { ascending: true });
-      
-      if (error) return [];
-      return data || [];
+      try {
+        const { data, error } = await withQueryTimeout(
+          supabase
+            .from('doses')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('taken', true)
+            .order('scheduled_date', { ascending: true }),
+          'doses-progress',
+          8000
+        );
+        
+        if (error) return [];
+        return data || [];
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          console.warn('[ProgressScreen] doses-progress query timed out');
+        }
+        return [];
+      }
     },
+    retry: 1,
   });
 
   const dataLoading = entriesLoading || compoundsLoading || dosesLoading;

@@ -195,6 +195,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
   // Prevent concurrent refreshes
   const refreshingRef = useRef(false);
+  // Watchdog timer ID
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Maximum time to allow refresh to run before forcing isLoading=false
+  const REFRESH_WATCHDOG_MS = 8000;
 
   const refreshSubscription = async (trigger: string = 'unknown') => {
     // Prevent concurrent calls
@@ -213,6 +217,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setLastRefreshTrigger(trigger);
     const startTime = Date.now();
     console.log('[SubscriptionContext] 🚀 Starting refresh... trigger:', trigger);
+
+    // Start watchdog timer - if refresh hangs, force isLoading to false
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+    }
+    watchdogRef.current = setTimeout(() => {
+      console.warn('[SubscriptionContext] ⏰ Watchdog triggered - forcing isLoading=false');
+      setIsLoading(false);
+      refreshingRef.current = false;
+    }, REFRESH_WATCHDOG_MS);
 
     // Track edge-function status so we don't overwrite it with a stale profile read.
     let edgeStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' | null = null;
@@ -435,6 +449,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Error fetching subscription:', error);
     } finally {
+      // Clear watchdog since we're completing normally
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+      }
       setIsLoading(false);
       refreshingRef.current = false;
     }

@@ -11,9 +11,11 @@ import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
 import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -280,14 +282,17 @@ export const TodayScreen = () => {
 
   const loadUserName = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data: profile, error } = await withQueryTimeout(
+        supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        'loadUserName'
+      );
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading user name:', error);
@@ -309,57 +314,87 @@ export const TodayScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Error loading user name:', error);
+      if (error instanceof TimeoutError) {
+        console.warn('[TodayScreen] loadUserName timed out');
+      } else {
+        console.error('Error loading user name:', error);
+      }
     }
   };
 
   // Load data for medication levels card
   const loadLevelsData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
 
       // Fetch active compounds
-      const { data: compounds, error: compoundsError } = await supabase
-        .from('compounds')
-        .select('id, name, is_active, dose_unit')
-        .eq('user_id', user.id)
-        .eq('is_active', true);
+      const { data: compounds, error: compoundsError } = await withQueryTimeout(
+        supabase
+          .from('compounds')
+          .select('id, name, is_active, dose_unit')
+          .eq('user_id', userId)
+          .eq('is_active', true),
+        'loadLevelsData-compounds'
+      );
 
       if (compoundsError) throw compoundsError;
       setCompoundsForLevels(compounds || []);
 
       // Fetch taken doses from last 30 days for levels calculation
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString().split('T')[0];
-      const { data: recentDoses, error: dosesError } = await supabase
-        .from('doses')
-        .select('id, compound_id, dose_amount, dose_unit, taken, taken_at, scheduled_date')
-        .eq('user_id', user.id)
-        .eq('taken', true)
-        .not('taken_at', 'is', null)
-        .gte('scheduled_date', thirtyDaysAgo)
-        .order('taken_at', { ascending: false });
+      const { data: recentDoses, error: dosesError } = await withQueryTimeout(
+        supabase
+          .from('doses')
+          .select('id, compound_id, dose_amount, dose_unit, taken, taken_at, scheduled_date')
+          .eq('user_id', userId)
+          .eq('taken', true)
+          .not('taken_at', 'is', null)
+          .gte('scheduled_date', thirtyDaysAgo)
+          .order('taken_at', { ascending: false }),
+        'loadLevelsData-doses'
+      );
 
       if (dosesError) throw dosesError;
       setDosesForLevels(recentDoses || []);
     } catch (error) {
-      console.error('Error loading levels data:', error);
+      if (error instanceof TimeoutError) {
+        console.warn('[TodayScreen] loadLevelsData timed out');
+      } else {
+        console.error('Error loading levels data:', error);
+      }
     }
   };
 
   const checkCompounds = async () => {
     try {
-      const { data, error } = await supabase
-        .from('compounds')
-        .select('id')
-        .limit(1);
+      const { data, error } = await withQueryTimeout(
+        supabase
+          .from('compounds')
+          .select('id')
+          .limit(1),
+        'checkCompounds'
+      );
       
       if (error) throw error;
       setHasCompounds((data?.length || 0) > 0);
     } catch (error) {
-      console.error('Error checking compounds:', error);
+      if (error instanceof TimeoutError) {
+        console.warn('[TodayScreen] checkCompounds timed out');
+      } else {
+        console.error('Error checking compounds:', error);
+      }
     }
   };
+
+  // Retry handler for when loads fail
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    loadDoses();
+    loadLevelsData();
+    loadUserName();
+    checkCompounds();
+  }, [selectedDate]);
 
   const loadDoses = async () => {
     const startTime = Date.now();
@@ -372,23 +407,29 @@ export const TodayScreen = () => {
       const dateStr = `${year}-${month}-${day}`;
       
       // Get regular scheduled doses for the selected date (only from active compounds)
-      const { data: dosesData, error: dosesError } = await supabase
-        .from('doses')
-        .select(`
-          *,
-          compounds (name, schedule_type, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)
-        `)
-        .eq('scheduled_date', dateStr);
+      const { data: dosesData, error: dosesError } = await withQueryTimeout(
+        supabase
+          .from('doses')
+          .select(`
+            *,
+            compounds (name, schedule_type, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)
+          `)
+          .eq('scheduled_date', dateStr),
+        'loadDoses-main'
+      );
       console.log('[TodayScreen] ⏱️ doses query took:', Date.now() - startTime, 'ms');
 
       if (dosesError) throw dosesError;
 
       // Get "As Needed" compounds for this user
-      const { data: asNeededCompounds, error: compoundsError } = await supabase
-        .from('compounds')
-        .select('*')
-        .eq('schedule_type', 'As Needed')
-        .eq('is_active', true);
+      const { data: asNeededCompounds, error: compoundsError } = await withQueryTimeout(
+        supabase
+          .from('compounds')
+          .select('*')
+          .eq('schedule_type', 'As Needed')
+          .eq('is_active', true),
+        'loadDoses-asNeeded'
+      );
 
       if (compoundsError) throw compoundsError;
 
@@ -475,7 +516,23 @@ export const TodayScreen = () => {
       setDoses(sortedDoses);
       console.log('[TodayScreen] ⏱️ Total loadDoses took:', Date.now() - startTime, 'ms');
     } catch (error) {
-      console.error('Error loading doses:', error);
+      if (error instanceof TimeoutError) {
+        console.warn('[TodayScreen] loadDoses timed out');
+        toast({
+          title: "Slow connection",
+          description: "Couldn't load data. Tap to retry.",
+          action: (
+            <button
+              onClick={retryLoad}
+              className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+            >
+              Retry
+            </button>
+          ),
+        });
+      } else {
+        console.error('Error loading doses:', error);
+      }
     } finally {
       setLoading(false);
     }

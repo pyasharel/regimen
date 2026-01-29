@@ -8,9 +8,15 @@ import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 import { runFullCleanup } from '@/utils/doseCleanup';
 import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
 import { processPendingActions } from '@/utils/pendingDoseActions';
+import { getUserIdWithFallback } from '@/utils/safeAuth';
+import { withQueryTimeout, TimeoutError } from '@/utils/withTimeout';
 
 // Debounce time to prevent rapid-fire sync during permission dialogs
 const SYNC_DEBOUNCE_MS = 2000;
+// Delay before starting heavy sync work on resume (lets webview/network stabilize)
+const RESUME_DELAY_MS = 600;
+// Timeout for the entire sync operation
+const SYNC_TIMEOUT_MS = 15000;
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -19,11 +25,18 @@ const SYNC_DEBOUNCE_MS = 2000;
  */
 export const useAppStateSync = () => {
   const lastSyncTime = useRef(0);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const syncNotifications = async () => {
+      // Single-flight protection: prevent overlapping syncs
+      if (inFlightRef.current) {
+        console.log('[AppStateSync] Sync already in flight, skipping');
+        return;
+      }
+
       // Debounce: prevent rapid execution during iOS permission dialogs
       const now = Date.now();
       if (now - lastSyncTime.current < SYNC_DEBOUNCE_MS) {
@@ -36,101 +49,166 @@ export const useAppStateSync = () => {
       if (window.location.pathname.includes('/onboarding')) {
         return;
       }
+
+      inFlightRef.current = true;
+      const syncStartTime = Date.now();
+      console.log('[AppStateSync] 🚀 Starting sync...');
       
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        // Use cached session to avoid slow/hanging getUser calls
+        const userId = await getUserIdWithFallback(3000);
+        if (!userId) {
+          console.log('[AppStateSync] No user ID available, skipping sync');
+          return;
+        }
 
         // =====================================================
         // PROCESS PENDING NOTIFICATION ACTIONS FIRST
         // These were queued by the notification action handler
         // when the app wasn't fully ready
         // =====================================================
-        const pendingResult = await processPendingActions(user.id);
-        if (pendingResult.processed > 0) {
-          console.log(`📱 Processed ${pendingResult.processed} pending notification actions`);
+        try {
+          const pendingResult = await processPendingActions(userId);
+          if (pendingResult.processed > 0) {
+            console.log(`📱 Processed ${pendingResult.processed} pending notification actions`);
+          }
+        } catch (pendingError) {
+          console.warn('[AppStateSync] Error processing pending actions:', pendingError);
         }
 
-        // Check subscription status to enable notification actions
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('subscription_status, beta_access_end_date')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        const betaAccessEndDate = profile?.beta_access_end_date ? new Date(profile.beta_access_end_date) : null;
-        const hasBetaAccess = betaAccessEndDate && betaAccessEndDate > new Date();
-        const isSubscribed = hasBetaAccess || 
-          profile?.subscription_status === 'active' || 
-          profile?.subscription_status === 'trialing';
-        
-        console.log('📱 Subscription status for notifications:', { isSubscribed, status: profile?.subscription_status });
-
-        // Run cleanup tasks first (removes duplicates and stale doses)
-        const cleanup = await runFullCleanup(user.id);
-        if (cleanup.duplicates > 0 || cleanup.stale > 0) {
-          console.log(`🧹 Cleanup complete: ${cleanup.duplicates} duplicates, ${cleanup.stale} stale doses removed`);
+        // Check subscription status to enable notification actions (with timeout)
+        let isSubscribed = false;
+        try {
+          const { data: profile } = await withQueryTimeout(
+            supabase
+              .from('profiles')
+              .select('subscription_status, beta_access_end_date')
+              .eq('user_id', userId)
+              .maybeSingle(),
+            'profile-subscription',
+            5000
+          );
+          
+          const betaAccessEndDate = profile?.beta_access_end_date ? new Date(profile.beta_access_end_date) : null;
+          const hasBetaAccess = betaAccessEndDate && betaAccessEndDate > new Date();
+          isSubscribed = hasBetaAccess || 
+            profile?.subscription_status === 'active' || 
+            profile?.subscription_status === 'trialing';
+          
+          console.log('📱 Subscription status for notifications:', { isSubscribed, status: profile?.subscription_status });
+        } catch (profileError) {
+          if (profileError instanceof TimeoutError) {
+            console.warn('[AppStateSync] Profile fetch timed out, continuing with isSubscribed=false');
+          } else {
+            console.warn('[AppStateSync] Profile fetch error:', profileError);
+          }
         }
 
-        // Check and regenerate doses if needed
-        await checkAndRegenerateDoses(user.id);
+        // Run cleanup tasks first (removes duplicates and stale doses) - with timeout
+        try {
+          const cleanup = await withQueryTimeout(
+            runFullCleanup(userId),
+            'cleanup',
+            5000
+          );
+          if (cleanup.duplicates > 0 || cleanup.stale > 0) {
+            console.log(`🧹 Cleanup complete: ${cleanup.duplicates} duplicates, ${cleanup.stale} stale doses removed`);
+          }
+        } catch (cleanupError) {
+          if (cleanupError instanceof TimeoutError) {
+            console.warn('[AppStateSync] Cleanup timed out, skipping');
+          } else {
+            console.warn('[AppStateSync] Cleanup error:', cleanupError);
+          }
+        }
 
-        // Fetch all upcoming doses - only from ACTIVE compounds
-        const { data: allDoses } = await supabase
-          .from('doses')
-          .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
-          .eq('user_id', user.id)
-          .eq('taken', false);
-        
-        if (allDoses) {
-          // Filter out doses from inactive compounds and those in off-cycle periods
-          const activeDoses = allDoses.filter(dose => {
-            // Skip if compound is inactive
-            if (dose.compounds?.is_active === false) return false;
-            
-            // Check if in off-cycle period
-            if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
-              const startDate = new Date(dose.compounds.start_date + 'T00:00:00');
-              const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
-              const daysSinceStart = Math.floor((doseDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        // Check and regenerate doses if needed (with timeout)
+        try {
+          await withQueryTimeout(
+            checkAndRegenerateDoses(userId),
+            'regenerateDoses',
+            5000
+          );
+        } catch (regenError) {
+          if (regenError instanceof TimeoutError) {
+            console.warn('[AppStateSync] Dose regeneration timed out, skipping');
+          } else {
+            console.warn('[AppStateSync] Dose regeneration error:', regenError);
+          }
+        }
+
+        // Fetch all upcoming doses - only from ACTIVE compounds (with timeout)
+        try {
+          const { data: allDoses } = await withQueryTimeout(
+            supabase
+              .from('doses')
+              .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
+              .eq('user_id', userId)
+              .eq('taken', false),
+            'fetchDoses',
+            5000
+          );
+          
+          if (allDoses) {
+            // Filter out doses from inactive compounds and those in off-cycle periods
+            const activeDoses = allDoses.filter(dose => {
+              // Skip if compound is inactive
+              if (dose.compounds?.is_active === false) return false;
               
-              // Values are stored as DAYS in the database
-              const daysOn = dose.compounds.cycle_weeks_on;
-              
-              if (dose.compounds.cycle_weeks_off) {
-                // Continuous cycling
-                const daysOff = dose.compounds.cycle_weeks_off;
-                const cycleLength = daysOn + daysOff;
-                const positionInCycle = daysSinceStart % cycleLength;
+              // Check if in off-cycle period
+              if (dose.compounds?.has_cycles && dose.compounds?.cycle_weeks_on) {
+                const startDate = new Date(dose.compounds.start_date + 'T00:00:00');
+                const doseDate = new Date(dose.scheduled_date + 'T00:00:00');
+                const daysSinceStart = Math.floor((doseDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
                 
-                // If in off period, skip this dose
-                if (positionInCycle >= daysOn) return false;
-              } else {
-                // One-time cycle - after on period, skip
-                if (daysSinceStart >= daysOn) return false;
+                // Values are stored as DAYS in the database
+                const daysOn = dose.compounds.cycle_weeks_on;
+                
+                if (dose.compounds.cycle_weeks_off) {
+                  // Continuous cycling
+                  const daysOff = dose.compounds.cycle_weeks_off;
+                  const cycleLength = daysOn + daysOff;
+                  const positionInCycle = daysSinceStart % cycleLength;
+                  
+                  // If in off period, skip this dose
+                  if (positionInCycle >= daysOn) return false;
+                } else {
+                  // One-time cycle - after on period, skip
+                  if (daysSinceStart >= daysOn) return false;
+                }
               }
-            }
+              
+              return true;
+            });
             
-            return true;
-          });
-          
-          const dosesWithCompoundName = activeDoses.map(dose => ({
-            ...dose,
-            compound_name: dose.compounds?.name || 'Medication'
-          }));
-          // Pass subscription status to enable notification actions
-          await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
-          
-          // Also reschedule cycle reminders
-          await rescheduleAllCycleReminders();
-          
-          console.log('✅ Notifications synced successfully with isPremium:', isSubscribed);
+            const dosesWithCompoundName = activeDoses.map(dose => ({
+              ...dose,
+              compound_name: dose.compounds?.name || 'Medication'
+            }));
+            // Pass subscription status to enable notification actions
+            await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
+            
+            // Also reschedule cycle reminders
+            await rescheduleAllCycleReminders();
+            
+            console.log('✅ Notifications synced successfully with isPremium:', isSubscribed);
+          }
+        } catch (dosesError) {
+          if (dosesError instanceof TimeoutError) {
+            console.warn('[AppStateSync] Doses fetch timed out');
+          } else {
+            console.warn('[AppStateSync] Doses fetch error:', dosesError);
+          }
         }
         
-        // Weekly engagement snapshot tracking
-        await checkAndSendWeeklySnapshot(user.id, profile?.subscription_status || 'none');
+        // Weekly engagement snapshot tracking (non-critical, no timeout needed)
+        await checkAndSendWeeklySnapshot(userId, isSubscribed ? 'active' : 'none');
+        
+        console.log(`[AppStateSync] ⏱️ Total sync took: ${Date.now() - syncStartTime}ms`);
       } catch (error) {
         console.error('❌ Error syncing notifications:', error);
+      } finally {
+        inFlightRef.current = false;
       }
     };
     
@@ -197,7 +275,12 @@ export const useAppStateSync = () => {
     
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive && isMounted) {
-        syncNotifications();
+        // Delay heavy sync slightly on resume to let webview/network stabilize
+        setTimeout(() => {
+          if (isMounted) {
+            syncNotifications();
+          }
+        }, RESUME_DELAY_MS);
       }
     }).then((handle) => {
       if (isMounted) {
@@ -210,8 +293,12 @@ export const useAppStateSync = () => {
       // Not on native platform, ignore
     });
 
-    // Also sync on initial mount
-    syncNotifications();
+    // Also sync on initial mount (with small delay)
+    setTimeout(() => {
+      if (isMounted) {
+        syncNotifications();
+      }
+    }, 300);
 
     // Set up notification action handlers
     setupNotificationActionHandlers();
