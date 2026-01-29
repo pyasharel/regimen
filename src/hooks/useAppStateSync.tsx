@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
-import { scheduleAllUpcomingDoses, setupNotificationActionHandlers } from '@/utils/notificationScheduler';
+import { scheduleAllUpcomingDoses, setupNotificationActionHandlers, cancelAllNotifications } from '@/utils/notificationScheduler';
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 import { runFullCleanup } from '@/utils/doseCleanup';
@@ -10,6 +10,7 @@ import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
 import { processPendingActions } from '@/utils/pendingDoseActions';
 import { getUserIdWithFallback } from '@/utils/safeAuth';
 import { withQueryTimeout, TimeoutError } from '@/utils/withTimeout';
+import { persistentStorage } from '@/utils/persistentStorage';
 
 // Debounce time to prevent rapid-fire sync during permission dialogs
 const SYNC_DEBOUNCE_MS = 2000;
@@ -138,19 +139,30 @@ export const useAppStateSync = () => {
           }
         }
 
+        // Check if user has dose reminders enabled before scheduling
+        const doseRemindersEnabled = await persistentStorage.getBoolean('doseReminders', true);
+        const cycleRemindersEnabled = await persistentStorage.getBoolean('cycleReminders', true);
+        
+        console.log('[AppStateSync] Preferences:', { doseRemindersEnabled, cycleRemindersEnabled });
+
         // Fetch all upcoming doses - only from ACTIVE compounds (with timeout)
         try {
-          const { data: allDoses } = await withQueryTimeout(
-            supabase
-              .from('doses')
-              .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
-              .eq('user_id', userId)
-              .eq('taken', false),
-            'fetchDoses',
-            5000
-          );
-          
-          if (allDoses) {
+          // If dose reminders are disabled, cancel all and skip scheduling
+          if (!doseRemindersEnabled) {
+            console.log('[AppStateSync] Dose reminders disabled - skipping scheduling');
+            await cancelAllNotifications();
+          } else {
+            const { data: allDoses } = await withQueryTimeout(
+              supabase
+                .from('doses')
+                .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
+                .eq('user_id', userId)
+                .eq('taken', false),
+              'fetchDoses',
+              5000
+            );
+            
+            if (allDoses) {
             // Filter out doses from inactive compounds and those in off-cycle periods
             const activeDoses = allDoses.filter(dose => {
               // Skip if compound is inactive
@@ -186,13 +198,17 @@ export const useAppStateSync = () => {
               ...dose,
               compound_name: dose.compounds?.name || 'Medication'
             }));
-            // Pass subscription status to enable notification actions
-            await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
-            
-            // Also reschedule cycle reminders
+              // Pass subscription status to enable notification actions
+              await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
+              
+              console.log('✅ Dose notifications synced with isPremium:', isSubscribed);
+            }
+          }
+          
+          // Reschedule cycle reminders only if enabled
+          if (cycleRemindersEnabled) {
             await rescheduleAllCycleReminders();
-            
-            console.log('✅ Notifications synced successfully with isPremium:', isSubscribed);
+            console.log('✅ Cycle reminders synced');
           }
         } catch (dosesError) {
           if (dosesError instanceof TimeoutError) {

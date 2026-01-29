@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Bell, Camera, Scale, Send } from "lucide-react";
+import { ChevronLeft, Bell, Camera, Scale, Send, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,11 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from "@/integrations/supabase/client";
 import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
+import { scheduleAllUpcomingDoses, ensureDoseActionTypesRegistered } from "@/utils/notificationScheduler";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { trackNotificationToggled } from "@/utils/analytics";
+
+type PermissionStatus = 'granted' | 'prompt' | 'denied' | 'unknown';
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
@@ -32,28 +35,37 @@ export const NotificationsSettings = () => {
   const [weightTime, setWeightTime] = useState("07:00");
   const [weightDay, setWeightDay] = useState<string>("1"); // 1 = Monday
   
-  // OS-level permission status
-  const [osPermissionGranted, setOsPermissionGranted] = useState<boolean | null>(null);
+  // OS-level permission status (tri-state)
+  const [osPermissionStatus, setOsPermissionStatus] = useState<PermissionStatus>('unknown');
   const [testingNotification, setTestingNotification] = useState(false);
+  const [requestingPermission, setRequestingPermission] = useState(false);
+
+  const checkPermissionStatus = async (): Promise<PermissionStatus> => {
+    if (!Capacitor.isNativePlatform()) {
+      return 'granted'; // Web fallback
+    }
+    
+    try {
+      const status = await LocalNotifications.checkPermissions();
+      console.log('[NotificationsSettings] OS permission status:', status.display);
+      
+      if (status.display === 'granted') return 'granted';
+      if (status.display === 'denied') return 'denied';
+      return 'prompt'; // 'prompt' or any other status
+    } catch (error) {
+      console.error('[NotificationsSettings] Error checking permissions:', error);
+      return 'unknown';
+    }
+  };
 
   useEffect(() => {
     // Load saved preferences from persistent storage
     const loadSettings = async () => {
       // Check actual iOS permission status first
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const status = await LocalNotifications.checkPermissions();
-          setOsPermissionGranted(status.display === 'granted');
-          console.log('[NotificationsSettings] OS permission status:', status.display);
-        } catch (error) {
-          console.error('[NotificationsSettings] Error checking permissions:', error);
-          setOsPermissionGranted(null);
-        }
-      } else {
-        setOsPermissionGranted(true); // Web fallback
-      }
+      const status = await checkPermissionStatus();
+      setOsPermissionStatus(status);
       
-      // Load doseReminders from storage (was missing!)
+      // Load doseReminders from storage
       const savedDoseReminders = await persistentStorage.getBoolean('doseReminders', true);
       setDoseReminders(savedDoseReminders);
       console.log('[NotificationsSettings] Loaded doseReminders:', savedDoseReminders);
@@ -83,6 +95,77 @@ export const NotificationsSettings = () => {
     loadSettings();
   }, []);
 
+  // Request notification permission and schedule if granted
+  const requestPermissionAndSchedule = async (): Promise<boolean> => {
+    if (!Capacitor.isNativePlatform()) return true;
+    
+    setRequestingPermission(true);
+    
+    try {
+      // Register action types first
+      await ensureDoseActionTypesRegistered();
+      
+      const result = await LocalNotifications.requestPermissions();
+      const granted = result.display === 'granted';
+      
+      setOsPermissionStatus(granted ? 'granted' : 'denied');
+      
+      if (granted) {
+        // Schedule notifications immediately
+        await scheduleNotificationsNow();
+        toast.success("Notifications enabled!");
+      } else {
+        toast.error("Notifications not enabled. You can enable them in iOS Settings.");
+      }
+      
+      return granted;
+    } catch (error) {
+      console.error('[NotificationsSettings] Error requesting permissions:', error);
+      toast.error("Failed to request notification permissions");
+      return false;
+    } finally {
+      setRequestingPermission(false);
+    }
+  };
+
+  // Schedule all dose notifications
+  const scheduleNotificationsNow = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: allDoses } = await supabase
+        .from('doses')
+        .select('*, compounds(name, is_active)')
+        .eq('user_id', user.id)
+        .eq('taken', false);
+
+      if (allDoses) {
+        const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
+        const dosesWithName = activeDoses.map(d => ({
+          ...d,
+          compound_name: d.compounds?.name || 'Medication'
+        }));
+        await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+        console.log('[NotificationsSettings] Scheduled notifications after permission grant');
+      }
+    } catch (error) {
+      console.error('[NotificationsSettings] Error scheduling notifications:', error);
+    }
+  };
+
+  // Open iOS Settings for this app
+  const openAppSettings = async () => {
+    try {
+      // Use Browser plugin as fallback since App.openUrl doesn't support app-settings on all platforms
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: 'app-settings:' });
+    } catch (error) {
+      console.error('[NotificationsSettings] Error opening settings:', error);
+      toast.info("Open Settings → Regimen → Notifications to enable");
+    }
+  };
+
   // Send a test notification to verify the pipeline works
   const sendTestNotification = async () => {
     if (!Capacitor.isNativePlatform()) {
@@ -93,10 +176,20 @@ export const NotificationsSettings = () => {
     setTestingNotification(true);
     
     try {
-      const status = await LocalNotifications.checkPermissions();
-      if (status.display !== 'granted') {
-        toast.error("Notifications are blocked at the system level. Open Settings → Regimen → Notifications to enable.");
-        setOsPermissionGranted(false);
+      // If permission is 'prompt', request first
+      if (osPermissionStatus === 'prompt') {
+        const granted = await requestPermissionAndSchedule();
+        if (!granted) {
+          setTestingNotification(false);
+          return;
+        }
+      }
+      
+      // If permission is denied, guide to settings
+      if (osPermissionStatus === 'denied') {
+        toast.error("Enable notifications in iOS Settings first");
+        openAppSettings();
+        setTestingNotification(false);
         return;
       }
       
@@ -157,12 +250,36 @@ export const NotificationsSettings = () => {
   
   const handleDoseRemindersToggle = async (checked: boolean) => {
     triggerHaptic();
-    setDoseReminders(checked);
-    await persistentStorage.setBoolean('doseReminders', checked);
-    trackNotificationToggled('dose', checked);
+    
     if (checked) {
+      // User wants to enable dose reminders
+      if (osPermissionStatus === 'prompt') {
+        // Need to request permission first
+        const granted = await requestPermissionAndSchedule();
+        if (!granted) {
+          // Permission denied - don't enable the toggle
+          return;
+        }
+      } else if (osPermissionStatus === 'denied') {
+        // Can't enable - guide to settings
+        toast.error("Enable notifications in iOS Settings to use dose reminders");
+        openAppSettings();
+        return;
+      }
+      
+      // Permission granted or already granted - enable
+      setDoseReminders(true);
+      await persistentStorage.setBoolean('doseReminders', true);
+      trackNotificationToggled('dose', true);
+      
+      // Schedule notifications now
+      await scheduleNotificationsNow();
       toast.success("Dose reminders enabled");
     } else {
+      // User wants to disable dose reminders
+      setDoseReminders(false);
+      await persistentStorage.setBoolean('doseReminders', false);
+      trackNotificationToggled('dose', false);
       toast.success("Dose reminders disabled");
     }
   };
@@ -248,16 +365,61 @@ export const NotificationsSettings = () => {
       </header>
 
       <div className="p-4 space-y-6 max-w-2xl mx-auto">
-        {/* OS Permission Warning Banner */}
-        {osPermissionGranted === false && (
-          <div className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm border border-destructive/20">
-            <strong>⚠️ Notifications blocked</strong>
-            <p className="mt-1">Notifications are disabled at the system level. Open Settings → Regimen → Notifications to enable.</p>
-          </div>
+        {/* Permission Status Cards - Only show on native */}
+        {Capacitor.isNativePlatform() && (
+          <>
+            {/* Status: prompt - Show "Enable Notifications" CTA */}
+            {osPermissionStatus === 'prompt' && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Enable Notifications</h3>
+                    <p className="text-sm text-muted-foreground">Get reminders for your doses</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={requestPermissionAndSchedule}
+                  disabled={requestingPermission}
+                  className="w-full"
+                >
+                  {requestingPermission ? "Enabling..." : "Enable Notifications"}
+                </Button>
+              </div>
+            )}
+
+            {/* Status: denied - Show gentle hint with Settings button */}
+            {osPermissionStatus === 'denied' && (
+              <div className="rounded-xl border border-muted bg-muted/30 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <Bell className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-foreground">Notifications Off</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      To receive dose reminders, enable notifications in iOS Settings.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={openAppSettings}
+                      className="mt-3 gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Open Settings
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
         
-        {/* Test Notification Button */}
-        {Capacitor.isNativePlatform() && (
+        {/* Test Notification Button - Only show when permissions are granted */}
+        {Capacitor.isNativePlatform() && osPermissionStatus === 'granted' && (
           <Button 
             variant="outline" 
             onClick={sendTestNotification}
@@ -268,6 +430,7 @@ export const NotificationsSettings = () => {
             {testingNotification ? "Sending..." : "Send Test Notification"}
           </Button>
         )}
+
         {/* Dose Reminders */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-2">
@@ -283,8 +446,14 @@ export const NotificationsSettings = () => {
             <Switch
               checked={doseReminders}
               onCheckedChange={handleDoseRemindersToggle}
+              disabled={osPermissionStatus === 'denied'}
             />
           </div>
+          {osPermissionStatus === 'denied' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Enable notifications in iOS Settings to use dose reminders
+            </p>
+          )}
         </div>
 
         {/* Cycle Reminders */}
@@ -450,6 +619,9 @@ export const NotificationsSettings = () => {
                     <SelectItem value="08:00">8:00 AM</SelectItem>
                     <SelectItem value="09:00">9:00 AM</SelectItem>
                     <SelectItem value="10:00">10:00 AM</SelectItem>
+                    <SelectItem value="18:00">6:00 PM</SelectItem>
+                    <SelectItem value="19:00">7:00 PM</SelectItem>
+                    <SelectItem value="20:00">8:00 PM</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -457,7 +629,7 @@ export const NotificationsSettings = () => {
           )}
         </div>
 
-        {/* Weekly Digest */}
+        {/* Weekly Digest Section */}
         <WeeklyDigestSettings />
       </div>
     </div>
