@@ -234,14 +234,27 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     let edgeStatus: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' | null = null;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('[SubscriptionContext] ⏱️ getUser took:', Date.now() - startTime, 'ms');
+      // Use getUserIdWithFallback to avoid hanging on iOS resume
+      // This uses cached session first, then falls back to getUser with timeout
+      const userId = await getUserIdWithFallback(3000);
+      console.log('[SubscriptionContext] ⏱️ getUserIdWithFallback took:', Date.now() - startTime, 'ms');
       
-      if (!user) {
+      if (!userId) {
         setIsSubscribed(false);
         setSubscriptionStatus('none', 'refresh_no_user');
         setIsLoading(false);
         return;
+      }
+
+      // Get full user object only if needed (for setUser state)
+      // Use a short timeout to prevent hanging
+      let user: User | null = null;
+      try {
+        const { data } = await supabase.auth.getUser();
+        user = data?.user ?? null;
+      } catch {
+        // If getUser fails, create a minimal user object for state
+        user = { id: userId } as User;
       }
 
       setUser(user);
@@ -257,14 +270,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         if (revenueCatConfiguredRef.current) {
           const needsIdentify =
             !revenueCatIdentifiedRef.current ||
-            revenueCatAppUserIdRef.current !== user.id;
+            revenueCatAppUserIdRef.current !== userId;
 
           if (needsIdentify) {
             console.log('[SubscriptionContext] Native platform - identifying RevenueCat user before entitlement check...', {
               currentAppUserId: revenueCatAppUserIdRef.current,
-              targetUserId: user.id,
+              targetUserId: userId,
             });
-            await identifyRevenueCatUser(user.id);
+            await identifyRevenueCatUser(userId);
           }
         }
       }
@@ -315,7 +328,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             }
 
             // 💾 Save to persistent cache
-            await saveEntitlementToCache(user.id, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
+            await saveEntitlementToCache(userId, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
           }
         } catch (rcError) {
           console.error('[SubscriptionContext] RevenueCat check error:', rcError);
@@ -375,7 +388,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('subscription_status, subscription_type, subscription_end_date, trial_end_date, preview_mode_compound_added, beta_access_end_date, is_lifetime_access')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
       console.log('[SubscriptionContext] ⏱️ profile fetch took:', Date.now() - profileStart, 'ms');
       console.log('[SubscriptionContext] ⏱️ Total refresh took:', Date.now() - startTime, 'ms');

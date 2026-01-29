@@ -13,6 +13,16 @@ import type { Session } from '@supabase/supabase-js';
 const GET_SESSION_TIMEOUT_MS = 4000;
 // How long to wait for setSession during hydration
 const SET_SESSION_TIMEOUT_MS = 2000;
+// How long to wait for hasAnyAuthTokens check
+const TOKEN_CHECK_TIMEOUT_MS = 1500;
+
+// Stage tracking for diagnostics
+const setHydrationStage = (stage: string) => {
+  try {
+    localStorage.setItem('regimen_auth_hydration_stage', stage);
+    localStorage.setItem('regimen_auth_hydration_stage_time', Date.now().toString());
+  } catch { /* ignore */ }
+};
 
 /**
  * Synchronously returns the user ID from the cached session, if available.
@@ -33,18 +43,24 @@ export const getCachedUserId = (): string | null => {
  * 1. Try supabase.auth.getSession() with timeout
  * 2. If that fails/times out, check for cached session tokens
  * 3. If we have cached tokens, call setSession to hydrate the client
- * 4. Verify hydration succeeded with a quick getSession
+ * 4. Try native mirror restoration (with strict timeouts)
+ * 5. Final verification - one more quick getSession attempt
  * 
  * Returns a real Session object or null. Never returns a "fake" session.
  * This ensures RLS-protected queries will work correctly.
+ * 
+ * IMPORTANT: All steps have strict timeouts to prevent indefinite hangs
+ * on iOS resume scenarios.
  */
 export const hydrateSessionOrNull = async (
   timeoutMs: number = GET_SESSION_TIMEOUT_MS
 ): Promise<Session | null> => {
   const startTime = Date.now();
+  setHydrationStage('start');
   
   // Step 1: Try the normal getSession path
   try {
+    setHydrationStage('getSession_start');
     console.log('[SafeAuth] Attempting getSession...');
     const { data, error } = await withTimeout(
       supabase.auth.getSession(),
@@ -53,24 +69,31 @@ export const hydrateSessionOrNull = async (
     );
     
     if (data?.session) {
+      setHydrationStage('getSession_success');
       console.log('[SafeAuth] getSession succeeded in', Date.now() - startTime, 'ms');
       return data.session;
     }
     
     if (error) {
+      setHydrationStage('getSession_error');
       console.warn('[SafeAuth] getSession returned error:', error.message);
+    } else {
+      setHydrationStage('getSession_no_session');
     }
   } catch (e) {
+    setHydrationStage('getSession_timeout');
     console.warn('[SafeAuth] getSession timed out or failed:', e);
   }
   
   // Step 2: Try to hydrate from cached tokens (doesn't check expiry - relies on refresh)
+  setHydrationStage('cache_hydration_start');
   console.log('[SafeAuth] Falling back to cache hydration...');
   const cached = getCachedSessionForHydration();
   
   if (cached?.refresh_token) {
     // Step 3: Call setSession to hydrate the Supabase client
     try {
+      setHydrationStage('setSession_start');
       console.log('[SafeAuth] Calling setSession with cached tokens...');
       const { data: setData, error: setError } = await withTimeout(
         supabase.auth.setSession({
@@ -82,32 +105,41 @@ export const hydrateSessionOrNull = async (
       );
       
       if (!setError && setData?.session) {
+        setHydrationStage('setSession_success');
         console.log('[SafeAuth] Cache hydration succeeded in', Date.now() - startTime, 'ms');
         return setData.session;
       }
       
       if (setError) {
+        setHydrationStage('setSession_error');
         console.warn('[SafeAuth] setSession failed:', setError.message);
       }
     } catch (e) {
+      setHydrationStage('setSession_timeout');
       console.warn('[SafeAuth] setSession timed out:', e);
     }
   }
   
   // Step 4: Try native mirror restoration (Capacitor Preferences fallback)
+  // This now has strict internal timeouts
+  setHydrationStage('mirror_start');
   console.log('[SafeAuth] Trying native token mirror...');
   try {
     const mirroredSession = await restoreSessionFromMirror();
     if (mirroredSession) {
+      setHydrationStage('mirror_success');
       console.log('[SafeAuth] Mirror restoration succeeded in', Date.now() - startTime, 'ms');
       return mirroredSession;
     }
+    setHydrationStage('mirror_no_session');
   } catch (e) {
+    setHydrationStage('mirror_error');
     console.warn('[SafeAuth] Mirror restoration failed:', e);
   }
   
   // Step 5: Final verification - one more quick getSession attempt
   try {
+    setHydrationStage('verify_start');
     console.log('[SafeAuth] Final verification getSession...');
     const { data } = await withTimeout(
       supabase.auth.getSession(),
@@ -116,31 +148,47 @@ export const hydrateSessionOrNull = async (
     );
     
     if (data?.session) {
+      setHydrationStage('verify_success');
       console.log('[SafeAuth] Verification succeeded, total time:', Date.now() - startTime, 'ms');
       return data.session;
     }
+    setHydrationStage('verify_no_session');
   } catch (e) {
+    setHydrationStage('verify_timeout');
     console.warn('[SafeAuth] Verification getSession failed:', e);
   }
   
-  console.log('[SafeAuth] All hydration attempts failed, returning null');
+  setHydrationStage('all_failed');
+  console.log('[SafeAuth] All hydration attempts failed, returning null after', Date.now() - startTime, 'ms');
   return null;
 };
 
 /**
  * Check if we have any auth tokens available (localStorage OR native mirror)
  * This is used to distinguish "no tokens anywhere" from "hydration failed"
+ * 
+ * Now with strict timeout to prevent indefinite hangs
  */
 export const hasAnyAuthTokens = async (): Promise<boolean> => {
-  // Check localStorage first
+  // Check localStorage first (synchronous)
   const cached = getCachedSessionForHydration();
   if (cached?.refresh_token) {
     return true;
   }
   
-  // Check native mirror
-  const mirrored = await loadFromMirror();
-  return !!mirrored?.refresh_token;
+  // Check native mirror with timeout
+  try {
+    const mirrored = await withTimeout(
+      loadFromMirror(),
+      TOKEN_CHECK_TIMEOUT_MS,
+      'hasAnyAuthTokens-mirror'
+    );
+    return !!mirrored?.refresh_token;
+  } catch {
+    // On timeout, assume no tokens to fail fast
+    console.warn('[SafeAuth] hasAnyAuthTokens mirror check timed out');
+    return false;
+  }
 };
 
 /**
@@ -188,4 +236,18 @@ export const getUserIdWithFallback = async (
 export const ensureAuthReady = async (): Promise<string | null> => {
   const session = await hydrateSessionOrNull();
   return session?.user?.id ?? null;
+};
+
+/**
+ * Get the last hydration stage for diagnostics
+ */
+export const getLastHydrationStage = (): { stage: string; time: number } | null => {
+  try {
+    const stage = localStorage.getItem('regimen_auth_hydration_stage');
+    const time = localStorage.getItem('regimen_auth_hydration_stage_time');
+    if (stage && time) {
+      return { stage, time: parseInt(time, 10) };
+    }
+  } catch { /* ignore */ }
+  return null;
 };

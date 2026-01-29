@@ -9,9 +9,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import { persistentStorage } from './persistentStorage';
 import { Capacitor } from '@capacitor/core';
+import { withTimeout } from './withTimeout';
 import type { Session } from '@supabase/supabase-js';
 
 const MIRROR_KEY = 'authTokenMirror';
+
+// Timeouts for mirror operations - keep short to fail fast on iOS resume hangs
+const MIRROR_LOAD_TIMEOUT_MS = 1000;
+const MIRROR_RESTORE_TIMEOUT_MS = 2500;
 
 interface MirroredSession {
   access_token: string;
@@ -57,10 +62,17 @@ const clearMirror = async (): Promise<void> => {
 
 /**
  * Load mirrored session tokens (for hydration fallback)
+ * Now wrapped with a timeout to prevent indefinite hangs on iOS resume
  */
 export const loadFromMirror = async (): Promise<MirroredSession | null> => {
   try {
-    const stored = await persistentStorage.get(MIRROR_KEY);
+    // Wrap the native storage read with a timeout
+    const stored = await withTimeout(
+      persistentStorage.get(MIRROR_KEY),
+      MIRROR_LOAD_TIMEOUT_MS,
+      'loadFromMirror'
+    );
+    
     if (!stored) return null;
     
     const parsed = JSON.parse(stored) as MirroredSession;
@@ -74,38 +86,59 @@ export const loadFromMirror = async (): Promise<MirroredSession | null> => {
     
     return parsed;
   } catch (error) {
-    console.warn('[AuthMirror] Failed to load from mirror:', error);
+    // Log timeout specifically
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      console.warn('[AuthMirror] loadFromMirror timed out - iOS bridge may be suspended');
+    } else {
+      console.warn('[AuthMirror] Failed to load from mirror:', error);
+    }
     return null;
   }
 };
 
 /**
  * Check if we have any mirrored tokens (sync check via flag)
+ * Now with timeout protection
  */
 export const hasMirroredTokens = async (): Promise<boolean> => {
-  const mirrored = await loadFromMirror();
-  return !!mirrored?.refresh_token;
+  try {
+    const mirrored = await loadFromMirror();
+    return !!mirrored?.refresh_token;
+  } catch {
+    return false;
+  }
 };
 
 /**
  * Attempt to restore session from mirrored tokens
  * Returns the restored session or null if restoration failed
+ * 
+ * Now with strict timeouts on both mirror read and setSession
+ * to prevent indefinite hangs on iOS resume
  */
 export const restoreSessionFromMirror = async (): Promise<Session | null> => {
-  const mirrored = await loadFromMirror();
-  
-  if (!mirrored?.refresh_token) {
-    console.log('[AuthMirror] No mirrored tokens available');
-    return null;
-  }
-  
-  console.log('[AuthMirror] Attempting session restoration from mirror...');
+  const startTime = Date.now();
   
   try {
-    const { data, error } = await supabase.auth.setSession({
-      access_token: mirrored.access_token,
-      refresh_token: mirrored.refresh_token,
-    });
+    // Step 1: Load from mirror (with timeout via loadFromMirror)
+    const mirrored = await loadFromMirror();
+    
+    if (!mirrored?.refresh_token) {
+      console.log('[AuthMirror] No mirrored tokens available');
+      return null;
+    }
+    
+    console.log('[AuthMirror] Attempting session restoration from mirror...');
+    
+    // Step 2: Call setSession with a timeout
+    const { data, error } = await withTimeout(
+      supabase.auth.setSession({
+        access_token: mirrored.access_token,
+        refresh_token: mirrored.refresh_token,
+      }),
+      MIRROR_RESTORE_TIMEOUT_MS,
+      'setSession-mirror'
+    );
     
     if (error) {
       console.warn('[AuthMirror] setSession failed:', error.message);
@@ -117,13 +150,18 @@ export const restoreSessionFromMirror = async (): Promise<Session | null> => {
     }
     
     if (data?.session) {
-      console.log('[AuthMirror] Session restored successfully from mirror');
+      console.log('[AuthMirror] Session restored in', Date.now() - startTime, 'ms');
       return data.session;
     }
     
     return null;
   } catch (error) {
-    console.warn('[AuthMirror] Restoration error:', error);
+    // Log timeout specifically
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      console.warn('[AuthMirror] restoreSessionFromMirror timed out at', Date.now() - startTime, 'ms');
+    } else {
+      console.warn('[AuthMirror] Restoration error:', error);
+    }
     return null;
   }
 };
