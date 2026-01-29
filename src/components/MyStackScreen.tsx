@@ -2,10 +2,12 @@ import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
+import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { Progress } from "@/components/ui/progress";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -73,22 +75,48 @@ export const MyStackScreen = () => {
     }
   }, []);
 
+  // Retry handler for when loads fail
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    loadCompounds();
+    loadWeeklyStats();
+  }, []);
+
   const loadCompounds = async () => {
     try {
-      const { data, error } = await supabase
-        .from('compounds')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await withQueryTimeout(
+        supabase
+          .from('compounds')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        'loadCompounds'
+      );
 
       if (error) throw error;
       setCompounds(data || []);
     } catch (error) {
-      console.error('Error loading compounds:', error);
-      toast({
-        title: "Error loading compounds",
-        description: error instanceof Error ? error.message : "Failed to fetch your compounds",
-        variant: "destructive"
-      });
+      if (error instanceof TimeoutError) {
+        console.warn('[MyStackScreen] loadCompounds timed out');
+        toast({
+          title: "Slow connection",
+          description: "Couldn't load data. Tap to retry.",
+          action: (
+            <button
+              onClick={retryLoad}
+              className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+            >
+              Retry
+            </button>
+          ),
+        });
+      } else {
+        console.error('Error loading compounds:', error);
+        toast({
+          title: "Error loading compounds",
+          description: error instanceof Error ? error.message : "Failed to fetch your compounds",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -96,19 +124,22 @@ export const MyStackScreen = () => {
 
   const loadWeeklyStats = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
 
       // Get doses from the last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
-      const { data: doses, error } = await supabase
-        .from('doses')
-        .select('taken, scheduled_date')
-        .eq('user_id', user.id)
-        .gte('scheduled_date', sevenDaysAgoStr);
+      const { data: doses, error } = await withQueryTimeout(
+        supabase
+          .from('doses')
+          .select('taken, scheduled_date')
+          .eq('user_id', userId)
+          .gte('scheduled_date', sevenDaysAgoStr),
+        'loadWeeklyStats'
+      );
 
       if (error) throw error;
 
@@ -118,12 +149,16 @@ export const MyStackScreen = () => {
       setWeeklyDoses(takenDoses);
       setAdherenceRate(totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0);
     } catch (error) {
-      console.error('Error loading weekly stats:', error);
-      toast({
-        title: "Error loading stats",
-        description: "Failed to fetch weekly statistics",
-        variant: "destructive"
-      });
+      if (error instanceof TimeoutError) {
+        console.warn('[MyStackScreen] loadWeeklyStats timed out');
+      } else {
+        console.error('Error loading weekly stats:', error);
+        toast({
+          title: "Error loading stats",
+          description: "Failed to fetch weekly statistics",
+          variant: "destructive"
+        });
+      }
     }
   };
 
