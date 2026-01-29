@@ -5,6 +5,11 @@ import { enqueuePendingAction } from './pendingDoseActions';
 // Track if action types are registered
 let actionTypesRegistered = false;
 
+// Debounce rapid scheduling calls to prevent duplicate notifications
+// when DoseEditModal reschedule overlaps with app resume sync
+let lastScheduleTime = 0;
+const SCHEDULE_DEBOUNCE_MS = 5000; // 5 seconds between full reschedules
+
 /**
  * Register notification action types without requesting permissions
  * Safe to call multiple times - will only register once
@@ -194,6 +199,16 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
     return;
   }
 
+  // Debounce rapid scheduling calls to prevent duplicate notifications
+  // This prevents overlap between DoseEditModal reschedule and app resume sync
+  const debounceNow = Date.now();
+  if (debounceNow - lastScheduleTime < SCHEDULE_DEBOUNCE_MS) {
+    console.log('⏭️ Skipping duplicate schedule call (debounced - last call was', 
+      Math.round((debounceNow - lastScheduleTime) / 1000), 'seconds ago)');
+    return;
+  }
+  lastScheduleTime = debounceNow;
+
   // CHECK permissions instead of REQUESTING during sync/resume
   // This prevents iOS permission dialogs from appearing during boot
   // and causing native bridge contention
@@ -240,9 +255,9 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
       doseDateTime = new Date(year, month - 1, day, hour, 0);
     }
     
-    // More lenient filter: include doses within next 2 minutes (to catch "just added" doses)
-    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
-    return doseDateTime > twoMinutesAgo && doseDateTime <= sevenDaysFromNow;
+    // Only schedule strictly future doses to prevent duplicates
+    // The debounce above handles "just edited" doses without needing a lenient window
+    return doseDateTime > now && doseDateTime <= sevenDaysFromNow;
   });
 
   console.log(`📅 Scheduling ${upcomingDoses.length} notifications from ${doses.length} total doses`);
