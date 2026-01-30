@@ -296,6 +296,37 @@ npm run build && npx cap update ios && npx cap sync ios && npx cap open ios
 
 ---
 
+## App Hangs on Resume / Black Screen (CRITICAL)
+
+**Symptoms:**
+- App shows black screen or empty data after reopening
+- "Slow connection" toast appears repeatedly
+- UI structure visible but no content loads
+- App becomes unresponsive after closing and reopening
+
+**Root Cause:**
+The `@supabase/auth-js` library uses the `navigator.locks` API, which deadlocks on iOS/Android WebViews when the app is suspended mid-operation. The lock is never released on resume, causing all auth and data operations to hang indefinitely.
+
+**Resolution (Build 28+):**
+This was fixed in v1.0.4 (Build 28) by implementing a `noOpLock` bypass in both Supabase clients. Mobile apps don't need cross-tab locking since they run as single instances.
+
+**For Affected Users:**
+1. Force quit the app (swipe up from app switcher)
+2. Check for updates in the App Store / Play Store
+3. Update to v1.0.4 or later
+4. If update doesn't appear, try deleting and reinstalling the app
+
+**For Developers:**
+See the full post-mortem: `.storage/memory/postmortems/v103-supabase-deadlock-incident.md`
+
+Key files:
+- `src/integrations/supabase/client.ts` - Main client with `noOpLock`
+- `src/integrations/supabase/dataClient.ts` - Data client with `noOpLock`
+
+**Reference:** [supabase/auth-js#866](https://github.com/supabase/auth-js/issues/866)
+
+---
+
 ## TestFlightDetectorPlugin Build Stability
 
 ### Problem
