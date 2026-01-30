@@ -127,6 +127,18 @@ const getAccessToken = async (): Promise<string | null> => {
 };
 
 /**
+ * No-op lock for iOS Capacitor WebView compatibility.
+ * Matches the fix in the main client.ts
+ */
+const noOpLock = async <T>(
+  name: string,
+  acquireTimeout: number,
+  fn: () => Promise<T>
+): Promise<T> => {
+  return await fn();
+};
+
+/**
  * Create a fresh data client instance with abortable fetch.
  */
 const createDataClientInstance = (): SupabaseClient<Database> => {
@@ -137,6 +149,7 @@ const createDataClientInstance = (): SupabaseClient<Database> => {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
+        lock: noOpLock,
       },
       global: {
         fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
