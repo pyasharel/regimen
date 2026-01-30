@@ -1,92 +1,128 @@
 
-
-# Post-Mortem Documentation: iOS/Android Supabase Deadlock Crisis
+# GA4 Analytics Improvement Plan (Updated)
 
 ## Summary
 
-Create a comprehensive post-mortem document that captures the full incident timeline, root cause analysis, and resolution for the app-hanging issue that affected v1.0.3 users. This will serve as both a troubleshooting reference and architectural guidance.
+Add platform parameter to key events for better funnel analysis by iOS/Android/Web. Based on your suggestions and the current codebase, here's what makes sense:
 
-## Document Location
+## Events to Update
 
-**New file:** `.storage/memory/postmortems/v103-supabase-deadlock-incident.md`
+| Event | File | Change |
+|-------|------|--------|
+| `session_started` | `src/utils/analytics.ts` | Add `platform` and `app_version` parameters |
+| `screen_view` / `pageview` | `src/utils/analytics.ts` | Add `platform` parameter |
+| `compound_added` | `src/utils/analytics.ts` | Add `platform` parameter |
+| `dose_logged` | `src/utils/analytics.ts` | Convert to GA4 format with `platform` parameter |
+| `feature_first_use` | `src/utils/featureTracking.ts` | Add `platform` parameter |
+| `onboarding_step` | `src/utils/analytics.ts` | Add `platform` parameter |
 
-This creates a new `postmortems/` directory for future incident documentation.
+## Events Already Covered (No Changes Needed)
 
-## Document Structure
+| Event | Why Skip |
+|-------|----------|
+| `subscription_purchased` | Already tracked with platform via `paywall_purchase_complete` and RevenueCat webhook |
+| `subscription_trial_started` | Already tracked server-side via RevenueCat webhook with platform |
 
-### 1. Incident Summary
-- **Affected versions:** v1.0.3 (Build 27 and earlier)
-- **Platforms:** iOS and Android (Capacitor WebView)
-- **Symptoms:** Black screen, empty data, "Slow connection" toasts, app hangs on resume
-- **Resolution:** v1.0.4 (Build 28) with `noOpLock` fix
+## Files to Modify
 
-### 2. Timeline of Events
-- Initial user reports of app hanging after closing/reopening
-- Diagnostic investigation phases
-- Root cause identification
-- Fix implementation and deployment
+### 1. `src/utils/analytics.ts`
 
-### 3. Root Cause Analysis
-- **Primary cause:** `navigator.locks` API deadlock in `@supabase/auth-js`
-- **Why it happened:** iOS WebViews fail to release locks when app is suspended mid-operation
-- **Why Android was also affected:** Same WebView behavior on Android Capacitor
-- **Reference:** GitHub issue supabase/auth-js#866
+**Changes:**
 
-### 4. The Fix: noOpLock
-- Explanation of why mobile apps don't need cross-tab locking
-- Code implementation in both `client.ts` and `dataClient.ts`
-- Why this is safe and won't cause race conditions
+- `trackSessionStart()` - Add platform and app_version parameters
+- `trackPageView()` - Add platform parameter
+- `trackCompoundAdded()` - Add platform parameter
+- `trackDoseLogged()` - Convert from category/action format to GA4 event format with platform
+- `trackOnboardingStep()` - Add platform parameter
+- Add debug logging to key functions for troubleshooting
 
-### 5. Supporting Fixes
-- Dual client recreation on resume
-- AbortController for stuck requests
-- Failed boot detection and recovery
-- Boot tracer diagnostics
+### 2. `src/utils/featureTracking.ts`
 
-### 6. Prevention Checklist
-- Patterns to avoid in future development
-- Testing scenarios to verify (hard close, notification tap, background resume)
-- Warning signs to watch for
+**Changes:**
 
-### 7. Deployment Lessons
-- App Store versioning constraints (can't add builds to closed versions)
-- Google Play `versionCode` requirements across tracks
-- CDN propagation delays for beta testing
+- Import `getPlatform` from analytics
+- Add platform parameter to `feature_first_use` event
 
----
+### 3. `src/hooks/useAnalytics.tsx`
 
-## Also Update
+**Changes:**
 
-### TROUBLESHOOTING_IOS.md
-Add a new section for "App Hangs on Resume / Black Screen" that references the post-mortem and provides quick resolution steps.
+- Add console log when GA4 initializes on native platforms
+- Add console log when session starts with platform info
 
 ---
 
 ## Technical Details
 
-The post-mortem will include:
+### Updated Event Formats
 
-```text
-Root Cause Chain:
-1. User opens app → Supabase auth acquires navigator.lock
-2. iOS suspends app (home button, notification, etc.)
-3. Lock is never released (iOS WebView bug)
-4. User reopens app → all auth.getSession() calls wait forever
-5. dataClient tries to get token → also blocked
-6. All network requests hang → empty UI
+**`trackDoseLogged` (Before):**
+```typescript
+ReactGA.event({
+  category: 'Dose',
+  action: completed ? 'Marked Complete' : 'Marked Incomplete',
+  label: compoundName,
+});
 ```
 
-The fix bypasses this entirely:
+**`trackDoseLogged` (After):**
+```typescript
+ReactGA.event('dose_logged', {
+  compound_name: compoundName,
+  completed: completed,
+  platform: getPlatform(),
+  app_version: APP_VERSION,
+});
+```
+
+**`trackSessionStart` (Before):**
+```typescript
+ReactGA.event({
+  category: 'Session',
+  action: 'Started',
+});
+```
+
+**`trackSessionStart` (After):**
+```typescript
+ReactGA.event('session_started', {
+  platform: getPlatform(),
+  app_version: APP_VERSION,
+});
+```
+
+**`feature_first_use` (After):**
+```typescript
+ReactGA.event('feature_first_use', {
+  feature_name: featureKey,
+  features_used_count: usedFeatures.length,
+  features_remaining: FEATURE_KEYS.length - usedFeatures.length,
+  platform: getPlatform(),
+});
+```
+
+### Debug Logging
+
+Adding console logs to verify events fire on native:
 
 ```typescript
-const noOpLock = async <T>(
-  name: string,
-  acquireTimeout: number,
-  fn: () => Promise<T>
-): Promise<T> => {
-  return await fn(); // Execute immediately, no locking
-};
+console.log('[Analytics] Session started:', { platform, app_version });
+console.log('[Analytics] Dose logged:', { compound, completed, platform });
+console.log('[Analytics] Feature first use:', { feature, platform });
 ```
 
-This is safe because mobile apps are single-instance (no tabs competing for session state).
+---
 
+## GA4 Visibility After Implementation
+
+Once deployed, you'll be able to:
+
+1. **Event Reports**: Go to Reports > Engagement > Events and click any event to see breakdown by `platform` parameter
+2. **Explorations**: Create funnels filtering by `platform = ios` vs `platform = android`
+3. **Comparisons**: Compare conversion rates between platforms
+
+## Timeline
+
+- Code changes: ~10 minutes
+- Deployment: Automatic with next build
+- Data visible: 24-48 hours after users update to new version
