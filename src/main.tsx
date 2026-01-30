@@ -5,10 +5,20 @@ import { startBootTrace, trace, endBootTrace } from './utils/bootTracer';
 startBootTrace();
 
 // ========================================
-// SUPABASE CLIENT RECREATION IMPORT
+// SUPABASE CLIENT RECREATION - EVERY NATIVE COLD START
 // ========================================
-// Import early so we can recreate the client on failed boot detection
+// Import early so we can recreate the client before any auth operations
 import { recreateSupabaseClient } from './integrations/supabase/client';
+import { Capacitor } from '@capacitor/core';
+
+// ALWAYS recreate Supabase client on native cold start
+// iOS hard-close corrupts the client's internal state (stale connections, locked auth)
+// This runs BEFORE any auth operations to ensure a fresh client
+if (Capacitor.isNativePlatform()) {
+  console.log('[BOOT] Native platform detected - recreating Supabase client for fresh start');
+  recreateSupabaseClient();
+  trace('SUPABASE_CLIENT_RECREATED_NATIVE');
+}
 
 // ========================================
 // FAILED BOOT DETECTION - MUST RUN FIRST
@@ -40,10 +50,7 @@ if (lastBootStatus === 'STARTING') {
     }
   });
   
-  // CRITICAL: Recreate the Supabase client to clear corrupted internal state
-  // After iOS hard-close, the client may have stale connections and locked auth state
-  recreateSupabaseClient();
-  trace('SUPABASE_CLIENT_RECREATED');
+  // Note: Supabase client already recreated at top of file for native platforms
   
   localStorage.setItem('REGIMEN_BOOT_STATUS', 'RECOVERED');
   trace('FAILED_BOOT_KEYS_CLEARED');
@@ -178,7 +185,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { initGA } from './utils/analytics';
 import { captureAttribution } from './utils/attribution';
 import { setInstallDate } from './utils/featureTracking';
-import { Capacitor } from '@capacitor/core';
+// Capacitor already imported at top of file for client recreation
 import { Preferences } from '@capacitor/preferences';
 
 window.updateBootStage?.('imports-done');
