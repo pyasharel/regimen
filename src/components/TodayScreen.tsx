@@ -416,25 +416,25 @@ export const TodayScreen = () => {
     const startTime = Date.now();
     console.log('[TodayScreen] 🚀 Starting loadDoses...');
     
-    // CRITICAL: Ensure Supabase client has a hydrated session before querying
-    // This fixes the "Slow connection" issue on cold start from notification
-    // where cached userId exists but Supabase client isn't authenticated yet
-    const userId = await ensureAuthReady();
-    if (!userId) {
-      // Fall back to cached userId as last resort
-      const cachedUserId = await getUserIdWithFallback(3000);
-      if (!cachedUserId) {
-        console.log('[TodayScreen] loadDoses: No userId available, keeping loading state');
-        return;
-      }
-      console.log('[TodayScreen] loadDoses: Using cached userId (auth not fully ready):', cachedUserId.slice(0, 8) + '...');
-      // Don't proceed with queries if we only have cached ID - Supabase client isn't ready
-      // The ProtectedRoute will eventually hydrate and trigger a re-render
-      return;
-    }
-    console.log('[TodayScreen] loadDoses: Got userId from hydrated session:', userId.slice(0, 8) + '...');
-    
     try {
+      // CRITICAL: Ensure Supabase client has a hydrated session before querying
+      // This fixes the "Slow connection" issue on cold start from notification
+      // where cached userId exists but Supabase client isn't authenticated yet
+      const userId = await ensureAuthReady();
+      if (!userId) {
+        // Fall back to cached userId as last resort
+        const cachedUserId = await getUserIdWithFallback(3000);
+        if (!cachedUserId) {
+          console.log('[TodayScreen] loadDoses: No userId available, will retry on next render');
+          return; // Now inside try, so finally { setLoading(false) } runs
+        }
+        console.log('[TodayScreen] loadDoses: Have cached userId but auth not ready, will retry on next render');
+        // Don't proceed with queries if we only have cached ID - Supabase client isn't ready
+        // The ProtectedRoute will eventually hydrate and trigger a re-render
+        return; // Now inside try, so finally { setLoading(false) } runs
+      }
+      console.log('[TodayScreen] loadDoses: Got userId from hydrated session:', userId.slice(0, 8) + '...');
+      
       // Format date in local timezone to avoid UTC conversion issues
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
