@@ -1,22 +1,67 @@
 // ========================================
-// STARTUP PREFLIGHT - MUST RUN FIRST
+// FAILED BOOT DETECTION - MUST RUN FIRST
+// ========================================
+// If the previous boot didn't complete, clear suspect keys that may cause hangs.
+// This runs before ANY other code to break the poison-data cycle.
+const lastBootStatus = localStorage.getItem('REGIMEN_BOOT_STATUS');
+if (lastBootStatus === 'STARTING') {
+  console.warn('[BOOT] Previous boot failed. Clearing suspect keys.');
+  
+  // Clear keys most likely to cause boot issues
+  const suspectKeys = [
+    'selectedLevelsCompound',
+    'medicationLevelsCollapsed',
+    'cachedEntitlement',
+    'pendingDoseActions',
+  ];
+  
+  suspectKeys.forEach(key => {
+    try { localStorage.removeItem(key); } catch {}
+  });
+  
+  // Clear potentially corrupted Supabase auth keys
+  const keysToCheck = Object.keys(localStorage);
+  keysToCheck.forEach(key => {
+    if (key.includes('sb-') || key.includes('supabase')) {
+      try { localStorage.removeItem(key); } catch {}
+    }
+  });
+  
+  localStorage.setItem('REGIMEN_BOOT_STATUS', 'RECOVERED');
+  console.log('[BOOT] Suspect keys cleared, status set to RECOVERED');
+}
+
+// Mark that we're starting boot - if this remains 'STARTING' on next launch, boot failed
+localStorage.setItem('REGIMEN_BOOT_STATUS', 'STARTING');
+
+// Update boot stage indicator
+(window as any).updateBootStage?.('failed-boot-check-done');
+
+// ========================================
+// STARTUP PREFLIGHT
 // ========================================
 // This validates localStorage before anything else loads.
 // Prevents "poison pill" scenarios that cause black screen.
 import { runStartupPreflight } from './utils/startupPreflight';
 
+(window as any).updateBootStage?.('preflight-start');
+
 // Run preflight immediately, before any other imports execute their side effects
 const preflightReport = runStartupPreflight();
+
+(window as any).updateBootStage?.('preflight-done');
 
 // ========================================
 // BOOT TIMEOUT FALLBACK
 // ========================================
-// If the app doesn't render within 6 seconds, show recovery UI
-const BOOT_TIMEOUT_MS = 6000;
+// If the app doesn't render within 4 seconds, show recovery UI
+// Reduced from 6s to 4s for faster recovery
+const BOOT_TIMEOUT_MS = 4000;
 
 declare global {
   interface Window {
     __bootTimeoutId?: ReturnType<typeof setTimeout>;
+    updateBootStage?: (stage: string) => void;
   }
 }
 
@@ -99,6 +144,8 @@ window.addEventListener('unhandledrejection', (event) => {
 // ========================================
 // NORMAL APP IMPORTS
 // ========================================
+window.updateBootStage?.('imports-start');
+
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -111,6 +158,8 @@ import { captureAttribution } from './utils/attribution';
 import { setInstallDate } from './utils/featureTracking';
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+
+window.updateBootStage?.('imports-done');
 
 // Mark that imports completed successfully
 try {
@@ -210,7 +259,11 @@ const bootstrapTheme = async (): Promise<void> => {
 
 // Bootstrap theme, then render React app
 // Use .finally() to ensure app renders even if bootstrap fails
+window.updateBootStage?.('theme-bootstrap-start');
+
 bootstrapTheme().finally(() => {
+  window.updateBootStage?.('rendering');
+  
   createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -220,4 +273,6 @@ bootstrapTheme().finally(() => {
       </QueryClientProvider>
     </React.StrictMode>
   );
+  
+  window.updateBootStage?.('rendered');
 });

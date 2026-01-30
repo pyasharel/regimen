@@ -27,6 +27,25 @@
 </head>
 
   <body>
+    <!-- HOTFIX: Boot stage indicator for debugging black screen issues -->
+    <div id="boot-stage" style="position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: lime; padding: 8px; font-family: monospace; font-size: 12px; z-index: 99999; display: none;">
+      Stage: init
+    </div>
+    <script>
+      // Only show boot stage indicator in development or when debugging
+      window.updateBootStage = function(stage) {
+        var el = document.getElementById('boot-stage');
+        if (el) {
+          el.textContent = 'Stage: ' + stage + ' @ ' + Date.now();
+          // Show indicator if boot takes too long (>2 seconds)
+          if (stage === 'timeout' || stage === 'error') {
+            el.style.display = 'block';
+          }
+        }
+        console.log('[BOOT-STAGE]', stage, Date.now());
+      };
+      window.updateBootStage('html-loaded');
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

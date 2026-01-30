@@ -144,7 +144,13 @@ const App = () => {
     requestAnimationFrame(attemptHide);
     setTimeout(attemptHide, 400);
     setTimeout(attemptHide, 1200);
-    setTimeout(attemptHide, 2500);
+    setTimeout(() => {
+      attemptHide();
+      // Mark boot as complete after final splash hide attempt
+      // This indicates the app successfully reached a renderable state
+      localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
+      console.log('[BOOT] Boot marked as COMPLETE');
+    }, 2500);
     
     // Handle app resume with safety check
     let resumeListener: any;
@@ -177,10 +183,13 @@ const App = () => {
     };
   }, []);
 
-  // Migrate localStorage to Capacitor Preferences on app start
-  useEffect(() => {
-    persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
-  }, []);
+  // HOTFIX: Migration disabled - suspected cause of black screen on cold start
+  // The 40+ sequential Preferences.get() calls may saturate the Capacitor bridge
+  // and cause boot hangs when localStorage has data from a previous session.
+  // TODO: Re-enable with lazy loading after root cause is confirmed
+  // useEffect(() => {
+  //   persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
+  // }, []);
 
   // Initialize auth token mirror to keep native storage in sync with auth state
   useEffect(() => {
