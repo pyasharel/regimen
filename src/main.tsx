@@ -9,15 +9,17 @@ startBootTrace();
 // ========================================
 // Import early so we can recreate the client before any auth operations
 import { recreateSupabaseClient } from './integrations/supabase/client';
+import { recreateDataClient } from './integrations/supabase/dataClient';
 import { Capacitor } from '@capacitor/core';
 
-// ALWAYS recreate Supabase client on native cold start
+// ALWAYS recreate BOTH Supabase clients on native cold start
 // iOS hard-close corrupts the client's internal state (stale connections, locked auth)
-// This runs BEFORE any auth operations to ensure a fresh client
+// This runs BEFORE any auth operations to ensure fresh clients
 if (Capacitor.isNativePlatform()) {
-  console.log('[BOOT] Native platform detected - recreating Supabase client for fresh start');
+  console.log('[BOOT] Native platform detected - recreating ALL Supabase clients for fresh start');
   recreateSupabaseClient();
-  trace('SUPABASE_CLIENT_RECREATED_NATIVE');
+  recreateDataClient();
+  trace('SUPABASE_CLIENTS_RECREATED_NATIVE');
 }
 
 // ========================================

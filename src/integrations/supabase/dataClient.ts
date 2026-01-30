@@ -1,36 +1,38 @@
 /**
- * Auth-Lock-Resistant Data Client
+ * Auth-Lock-Resistant Data Client (v2 - with abort + recreation support)
  * 
  * This Supabase client is used ONLY for database queries (not auth operations).
  * It bypasses supabase.auth.getSession() which can deadlock when the global
- * auth lock is held by another operation (e.g., getUser() during permission dialogs).
+ * auth lock is held by another operation.
  * 
- * How it works:
- * 1. Uses the `accessToken` callback option in createClient
- * 2. Reads the access token directly from localStorage (or native mirror)
- * 3. Does NOT call any auth.* methods, so it can't be blocked by the auth lock
+ * Key features in v2:
+ * 1. Abortable fetch - all requests can be cancelled on app resume
+ * 2. Proxy pattern - allows client recreation without breaking imports
+ * 3. Token caching - reads tokens from localStorage/native mirror
  * 
- * Use this for all data-fetching in boot-critical paths like:
- * - TodayScreen
- * - MyStackScreen
- * - ProgressScreen
- * - AppStateSync
- * 
- * Keep using the regular `supabase` client for:
- * - signIn / signUp / signOut
- * - onAuthStateChange listeners
- * - functions.invoke (when auth header is auto-added)
+ * Use this for all data-fetching in boot-critical paths.
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
+import { createAbortableFetch } from '@/utils/abortableFetch';
+import { trace } from '@/utils/bootTracer';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const SUPABASE_PROJECT_ID = 'ywxhjnwaogsxtjwulyci';
 const MIRROR_KEY = 'authTokenMirror';
+
+// Default timeout for data queries (8 seconds)
+const DATA_QUERY_TIMEOUT_MS = 8000;
+
+// Create abortable fetch instance for this client
+const abortableFetchInstance = createAbortableFetch({
+  defaultTimeoutMs: DATA_QUERY_TIMEOUT_MS,
+  tag: 'DataClient',
+});
 
 /**
  * Read the access token directly from localStorage.
@@ -73,14 +75,12 @@ const getAccessTokenFromCache = (): string | null => {
 
 /**
  * Fallback: Try to get token from native mirror (Capacitor Preferences).
- * This is a synchronous-ish check that reads from an in-memory cache if available.
  */
 let mirroredTokenCache: string | null = null;
 let mirrorCacheTime = 0;
-const MIRROR_CACHE_TTL_MS = 5000; // Cache mirror read for 5 seconds
+const MIRROR_CACHE_TTL_MS = 5000;
 
 const getAccessTokenFromMirror = async (): Promise<string | null> => {
-  // Use in-memory cache to avoid async call on every request
   if (mirroredTokenCache && Date.now() - mirrorCacheTime < MIRROR_CACHE_TTL_MS) {
     return mirroredTokenCache;
   }
@@ -92,7 +92,6 @@ const getAccessTokenFromMirror = async (): Promise<string | null> => {
     const parsed = JSON.parse(stored);
     if (!parsed.access_token) return null;
     
-    // Check expiry
     if (parsed.expires_at) {
       const expiresAtMs = parsed.expires_at * 1000;
       if (expiresAtMs < Date.now() + 30000) {
@@ -100,7 +99,6 @@ const getAccessTokenFromMirror = async (): Promise<string | null> => {
       }
     }
     
-    // Cache it
     mirroredTokenCache = parsed.access_token;
     mirrorCacheTime = Date.now();
     
@@ -113,16 +111,13 @@ const getAccessTokenFromMirror = async (): Promise<string | null> => {
 
 /**
  * Get access token for the data client.
- * Prioritizes localStorage (faster), falls back to native mirror on Capacitor.
  */
 const getAccessToken = async (): Promise<string | null> => {
-  // Try localStorage first (synchronous, fast)
   const cachedToken = getAccessTokenFromCache();
   if (cachedToken) {
     return cachedToken;
   }
   
-  // On native platforms, try the mirror
   if (Capacitor.isNativePlatform()) {
     console.log('[DataClient] No localStorage token, trying native mirror...');
     return await getAccessTokenFromMirror();
@@ -132,46 +127,76 @@ const getAccessToken = async (): Promise<string | null> => {
 };
 
 /**
- * Create the data client with accessToken callback.
- * This client skips auth.getSession() on every request.
+ * Create a fresh data client instance with abortable fetch.
  */
-export const dataClient: SupabaseClient<Database> = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      // Don't persist session in this client - we read tokens manually
-      persistSession: false,
-      // Don't auto-refresh - the main client handles that
-      autoRefreshToken: false,
-      // Provide the access token directly
-      // This bypasses getSession() entirely
-    },
-    global: {
-      fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
-        const token = await getAccessToken();
-        
-        const headers = new Headers(options.headers);
-        
-        if (token) {
-          headers.set('Authorization', `Bearer ${token}`);
-        }
-        
-        // Also ensure apikey header is set
-        headers.set('apikey', SUPABASE_PUBLISHABLE_KEY);
-        
-        return fetch(url, {
-          ...options,
-          headers,
-        });
+const createDataClientInstance = (): SupabaseClient<Database> => {
+  return createClient<Database>(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    },
-  }
-);
+      global: {
+        fetch: async (url: RequestInfo | URL, options: RequestInit = {}) => {
+          const token = await getAccessToken();
+          
+          const headers = new Headers(options.headers);
+          
+          if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+          }
+          
+          headers.set('apikey', SUPABASE_PUBLISHABLE_KEY);
+          
+          // Use abortable fetch to allow cancellation
+          return abortableFetchInstance.fetch(url, {
+            ...options,
+            headers,
+          });
+        },
+      },
+    }
+  );
+};
+
+// Mutable instance - can be recreated on app resume
+let dataClientInstance = createDataClientInstance();
+
+/**
+ * Recreate the data client with a fresh instance.
+ * Also aborts all inflight requests from the previous instance.
+ */
+export const recreateDataClient = (): SupabaseClient<Database> => {
+  const abortedCount = abortableFetchInstance.abortAll();
+  trace('DATA_CLIENT_RECREATED', `aborted ${abortedCount} requests`);
+  console.log('[DataClient] Recreating client instance (aborted', abortedCount, 'inflight requests)');
+  
+  dataClientInstance = createDataClientInstance();
+  return dataClientInstance;
+};
+
+/**
+ * Abort all inflight data client requests.
+ * Call this before recreation or during recovery.
+ */
+export const abortDataClientRequests = (): number => {
+  return abortableFetchInstance.abortAll();
+};
+
+/**
+ * Proxy that forwards all property access to the current instance.
+ * This allows the underlying client to be swapped without breaking imports.
+ */
+export const dataClient: SupabaseClient<Database> = new Proxy({} as SupabaseClient<Database>, {
+  get: (_, prop: keyof SupabaseClient<Database>) => {
+    return (dataClientInstance as any)[prop];
+  },
+});
 
 /**
  * Check if the data client has a valid token available.
- * Use this before making queries to avoid anonymous results.
  */
 export const hasDataClientToken = async (): Promise<boolean> => {
   const token = await getAccessToken();
@@ -184,4 +209,11 @@ export const hasDataClientToken = async (): Promise<boolean> => {
 export const clearDataClientCache = (): void => {
   mirroredTokenCache = null;
   mirrorCacheTime = 0;
+};
+
+/**
+ * Get count of active inflight requests
+ */
+export const getDataClientActiveRequestCount = (): number => {
+  return abortableFetchInstance.getActiveCount();
 };
