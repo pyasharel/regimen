@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, recreateSupabaseClient } from '@/integrations/supabase/client';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers, cancelAllNotifications } from '@/utils/notificationScheduler';
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
@@ -292,6 +292,12 @@ export const useAppStateSync = () => {
     
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive && isMounted) {
+        console.log('[AppStateSync] App became active - recreating Supabase client');
+        
+        // CRITICAL: Recreate client FIRST to clear corrupted state from suspension
+        // iOS hard-close can corrupt the client's internal state, causing auth timeouts
+        recreateSupabaseClient();
+        
         // Delay heavy sync slightly on resume to let webview/network stabilize
         setTimeout(() => {
           if (isMounted) {
