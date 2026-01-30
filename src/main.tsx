@@ -5,13 +5,19 @@ import { startBootTrace, trace, endBootTrace } from './utils/bootTracer';
 startBootTrace();
 
 // ========================================
+// SUPABASE CLIENT RECREATION IMPORT
+// ========================================
+// Import early so we can recreate the client on failed boot detection
+import { recreateSupabaseClient } from './integrations/supabase/client';
+
+// ========================================
 // FAILED BOOT DETECTION - MUST RUN FIRST
 // ========================================
 // If the previous boot didn't complete, clear suspect keys that may cause hangs.
 // This runs before ANY other code to break the poison-data cycle.
 const lastBootStatus = localStorage.getItem('REGIMEN_BOOT_STATUS');
 if (lastBootStatus === 'STARTING') {
-  console.warn('[BOOT] Previous boot failed. Clearing suspect keys.');
+  console.warn('[BOOT] Previous boot failed. Clearing suspect keys and recreating Supabase client.');
   trace('FAILED_BOOT_DETECTED', 'Previous boot did not complete');
   
   // Clear keys most likely to cause boot issues
@@ -34,9 +40,14 @@ if (lastBootStatus === 'STARTING') {
     }
   });
   
+  // CRITICAL: Recreate the Supabase client to clear corrupted internal state
+  // After iOS hard-close, the client may have stale connections and locked auth state
+  recreateSupabaseClient();
+  trace('SUPABASE_CLIENT_RECREATED');
+  
   localStorage.setItem('REGIMEN_BOOT_STATUS', 'RECOVERED');
   trace('FAILED_BOOT_KEYS_CLEARED');
-  console.log('[BOOT] Suspect keys cleared, status set to RECOVERED');
+  console.log('[BOOT] Suspect keys cleared, client recreated, status set to RECOVERED');
 }
 
 // Mark that we're starting boot - if this remains 'STARTING' on next launch, boot failed
