@@ -14,11 +14,13 @@ import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { dataClient, hasDataClientToken } from "@/integrations/supabase/dataClient";
+import { dataClient, hasDataClientToken, recreateDataClient, abortDataClientRequests } from "@/integrations/supabase/dataClient";
+import { recreateSupabaseClient } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
 import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { trace } from "@/utils/bootTracer";
+import { useAppActive, waitForAppReady } from "@/hooks/useAppActive";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -80,7 +82,10 @@ export const TodayScreen = () => {
   // Track engagement for first dose notification
   useEngagementTracking();
   const { data: streakData } = useStreaks();
+  const { isAppReadyForNetwork } = useAppActive();
   const [loading, setLoading] = useState(true);
+  const [connectionStuck, setConnectionStuck] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [hasCompounds, setHasCompounds] = useState(false);
@@ -253,12 +258,18 @@ export const TodayScreen = () => {
     verifyCheckout();
   }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
-  // Load data when date changes
+  // Load data when date changes OR when app becomes ready
   useEffect(() => {
+    // On native, wait for app to be ready before loading
+    if (Capacitor.isNativePlatform() && !isAppReadyForNetwork) {
+      console.log('[TodayScreen] Waiting for app to be ready before loading...');
+      return;
+    }
+    
     loadDoses();
     checkCompounds();
     loadUserName();
-  }, [selectedDate]);
+  }, [selectedDate, isAppReadyForNetwork]);
 
   // DIAGNOSTIC: Disabled - suspected cause of boot issues
   // Load levels data on mount and when doses change
@@ -402,14 +413,33 @@ export const TodayScreen = () => {
     }
   };
 
-  // Retry handler for when loads fail
-  const retryLoad = useCallback(() => {
+  // Retry handler with recovery logic for stuck connections
+  const retryLoad = useCallback(async () => {
     setLoading(true);
+    setConnectionStuck(false);
+    
+    // If this is a retry after a failure, recreate clients first
+    if (retryCount > 0) {
+      console.log('[TodayScreen] Retry attempt', retryCount, '- recreating clients');
+      abortDataClientRequests();
+      recreateSupabaseClient();
+      recreateDataClient();
+      
+      // Wait a moment for clients to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    setRetryCount(prev => prev + 1);
     loadDoses();
-    // loadLevelsData();  // DIAGNOSTIC: Disabled
     loadUserName();
     checkCompounds();
-  }, [selectedDate]);
+  }, [retryCount]);
+
+  // Hard reload function for stuck state
+  const hardReload = useCallback(() => {
+    console.log('[TodayScreen] Hard reload requested');
+    window.location.reload();
+  }, []);
 
   const loadDoses = async () => {
     const startTime = Date.now();
@@ -555,25 +585,39 @@ export const TodayScreen = () => {
         return getTimeValue(a.scheduled_time).localeCompare(getTimeValue(b.scheduled_time));
       });
 
+      // Success! Reset retry count and connection stuck state
+      setRetryCount(0);
+      setConnectionStuck(false);
       trace('TODAY_DOSES_LOADED', `${sortedDoses.length} doses in ${Date.now() - startTime}ms`);
       setDoses(sortedDoses);
       console.log('[TodayScreen] ⏱️ Total loadDoses took:', Date.now() - startTime, 'ms');
     } catch (error) {
       trace('TODAY_LOAD_ERROR', String(error));
       if (error instanceof TimeoutError) {
-        console.warn('[TodayScreen] loadDoses timed out');
-        toast({
-          title: "Slow connection",
-          description: "Couldn't load data. Tap to retry.",
-          action: (
-            <button
-              onClick={retryLoad}
-              className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-            >
-              Retry
-            </button>
-          ),
-        });
+        console.warn('[TodayScreen] loadDoses timed out (retry count:', retryCount, ')');
+        
+        // If we've already retried once after recreation, show stuck UI
+        if (retryCount >= 1) {
+          setConnectionStuck(true);
+          toast({
+            title: "Connection stuck",
+            description: "Network requests are hanging. Try reloading the app.",
+          });
+        } else {
+          // First timeout - show toast with retry
+          toast({
+            title: "Slow connection",
+            description: "Couldn't load data. Tap to retry.",
+            action: (
+              <button
+                onClick={retryLoad}
+                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+              >
+                Retry
+              </button>
+            ),
+          });
+        }
       } else {
         console.error('Error loading doses:', error);
       }
@@ -1265,11 +1309,28 @@ export const TodayScreen = () => {
           </>
         )}
         
-        {loading ? (
+        {/* Connection Stuck Recovery UI */}
+        {connectionStuck && !loading && (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-4xl mb-4">🔌</div>
+            <h3 className="text-lg font-semibold mb-2">Connection Stuck</h3>
+            <p className="text-muted-foreground text-sm mb-6 max-w-xs">
+              Network requests are hanging. This can happen after the app is suspended. Reloading usually fixes it.
+            </p>
+            <button
+              onClick={hardReload}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold shadow-lg"
+            >
+              Reload App
+            </button>
+          </div>
+        )}
+        
+        {loading && !connectionStuck ? (
           <div className="text-center py-8 text-muted-foreground">
             Loading doses...
           </div>
-        ) : doses.length === 0 ? (
+        ) : !connectionStuck && doses.length === 0 ? (
           hasCompounds ? (
             <div className="text-center py-8 text-muted-foreground">
               No doses scheduled for this date
