@@ -1,5 +1,6 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/supabase/dataClient";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 
 export interface UserStats {
   id: string;
@@ -16,22 +17,42 @@ export const useStreaks = () => {
   return useQuery({
     queryKey: ["user-stats"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No user found");
+      // Use getUserIdWithFallback instead of supabase.auth.getUser()
+      // This prevents auth lock contention during boot/resume
+      const userId = await getUserIdWithFallback(3000);
+      
+      // Return default stats if no userId (instead of throwing)
+      if (!userId) {
+        console.log('[useStreaks] No userId available, returning defaults');
+        return {
+          id: "",
+          user_id: "",
+          current_streak: 0,
+          longest_streak: 0,
+          last_check_in_date: null,
+          total_doses_logged: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserStats;
+      }
 
-      const { data, error } = await supabase
+      // Use dataClient which bypasses auth.getSession()
+      const { data, error } = await dataClient
         .from("user_stats")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useStreaks] Query error:', error);
+        throw error;
+      }
 
       // If no stats exist yet, return default values
       if (!data) {
         return {
           id: "",
-          user_id: user.id,
+          user_id: userId,
           current_streak: 0,
           longest_streak: 0,
           last_check_in_date: null,
@@ -45,6 +66,9 @@ export const useStreaks = () => {
     },
     // Keep previous data during refetch to prevent flicker
     placeholderData: keepPreviousData,
+    // Retry on failure (in case auth takes time to hydrate)
+    retry: 2,
+    retryDelay: 1000,
   });
 };
 

@@ -167,14 +167,15 @@ export const TodayScreen = () => {
         return;
       }
 
-      // Check if user has any compounds
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Use getUserIdWithFallback instead of supabase.auth.getUser()
+      // to avoid auth lock contention during boot/resume
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
 
       const { count } = await supabase
         .from('compounds')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (count && count > 0) {
         console.log('[TodayScreen] 🎯 User in preview mode with compound, starting timer');
