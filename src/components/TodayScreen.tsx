@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
 import { getUserIdWithFallback, ensureAuthReady } from "@/utils/safeAuth";
+import { trace } from "@/utils/bootTracer";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -409,20 +410,29 @@ export const TodayScreen = () => {
 
   const loadDoses = async () => {
     const startTime = Date.now();
+    trace('TODAY_LOAD_DOSES_START');
     console.log('[TodayScreen] 🚀 Starting loadDoses...');
     
     try {
       // CRITICAL: Ensure Supabase client has a hydrated session before querying
       // This fixes the "Slow connection" issue on cold start from notification
       // where cached userId exists but Supabase client isn't authenticated yet
+      trace('TODAY_ENSURE_AUTH_START');
       const userId = await ensureAuthReady();
+      trace('TODAY_ENSURE_AUTH_DONE', userId ? `userId: ${userId.slice(0, 8)}...` : 'no userId');
+      
       if (!userId) {
         // Fall back to cached userId as last resort
+        trace('TODAY_FALLBACK_USER_ID_START');
         const cachedUserId = await getUserIdWithFallback(3000);
+        trace('TODAY_FALLBACK_USER_ID_DONE', cachedUserId ? 'found' : 'not found');
+        
         if (!cachedUserId) {
+          trace('TODAY_NO_USER_ID', 'will retry on next render');
           console.log('[TodayScreen] loadDoses: No userId available, will retry on next render');
           return; // Now inside try, so finally { setLoading(false) } runs
         }
+        trace('TODAY_CACHED_ONLY', 'auth not ready, will retry');
         console.log('[TodayScreen] loadDoses: Have cached userId but auth not ready, will retry on next render');
         // Don't proceed with queries if we only have cached ID - Supabase client isn't ready
         // The ProtectedRoute will eventually hydrate and trigger a re-render
@@ -545,9 +555,11 @@ export const TodayScreen = () => {
         return getTimeValue(a.scheduled_time).localeCompare(getTimeValue(b.scheduled_time));
       });
 
+      trace('TODAY_DOSES_LOADED', `${sortedDoses.length} doses in ${Date.now() - startTime}ms`);
       setDoses(sortedDoses);
       console.log('[TodayScreen] ⏱️ Total loadDoses took:', Date.now() - startTime, 'ms');
     } catch (error) {
+      trace('TODAY_LOAD_ERROR', String(error));
       if (error instanceof TimeoutError) {
         console.warn('[TodayScreen] loadDoses timed out');
         toast({
@@ -566,6 +578,7 @@ export const TodayScreen = () => {
         console.error('Error loading doses:', error);
       }
     } finally {
+      trace('TODAY_SET_LOADING_FALSE');
       setLoading(false);
     }
   };
