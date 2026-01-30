@@ -3,7 +3,8 @@ import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, P
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
-import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
+// DIAGNOSTIC: Disabled to test if this feature causes boot issues
+// import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
 import { ComponentErrorBoundary } from "@/components/ui/ComponentErrorBoundary";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -116,24 +117,24 @@ export const TodayScreen = () => {
   // (no banner - just triggers iOS system dialog automatically when conditions met)
   useNotificationPermissionPrompt(hasCompounds, isSubscribed);
 
-  // Medication levels card state
-  interface CompoundForLevels {
-    id: string;
-    name: string;
-    is_active: boolean | null;
-    dose_unit: string;
-  }
-  interface DoseForLevels {
-    id: string;
-    compound_id: string | null;
-    dose_amount: number;
-    dose_unit: string;
-    taken: boolean | null;
-    taken_at: string | null;
-    scheduled_date: string;
-  }
-  const [compoundsForLevels, setCompoundsForLevels] = useState<CompoundForLevels[]>([]);
-  const [dosesForLevels, setDosesForLevels] = useState<DoseForLevels[]>([]);
+  // DIAGNOSTIC: Medication levels card state disabled - suspected cause of boot issues
+  // interface CompoundForLevels {
+  //   id: string;
+  //   name: string;
+  //   is_active: boolean | null;
+  //   dose_unit: string;
+  // }
+  // interface DoseForLevels {
+  //   id: string;
+  //   compound_id: string | null;
+  //   dose_amount: number;
+  //   dose_unit: string;
+  //   taken: boolean | null;
+  //   taken_at: string | null;
+  //   scheduled_date: string;
+  // }
+  // const [compoundsForLevels, setCompoundsForLevels] = useState<CompoundForLevels[]>([]);
+  // const [dosesForLevels, setDosesForLevels] = useState<DoseForLevels[]>([]);
   
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
@@ -262,10 +263,11 @@ export const TodayScreen = () => {
     loadUserName();
   }, [selectedDate]);
 
+  // DIAGNOSTIC: Disabled - suspected cause of boot issues
   // Load levels data on mount and when doses change
-  useEffect(() => {
-    loadLevelsData();
-  }, []);
+  // useEffect(() => {
+  //   loadLevelsData();
+  // }, []);
 
   // Initialize engagement notifications only once on mount
   useEffect(() => {
@@ -327,49 +329,50 @@ export const TodayScreen = () => {
     }
   };
 
+  // DIAGNOSTIC: Disabled - suspected cause of boot issues
   // Load data for medication levels card
-  const loadLevelsData = async () => {
-    try {
-      const userId = await getUserIdWithFallback(3000);
-      if (!userId) return;
-
-      // Fetch active compounds
-      const { data: compounds, error: compoundsError } = await withQueryTimeout(
-        supabase
-          .from('compounds')
-          .select('id, name, is_active, dose_unit')
-          .eq('user_id', userId)
-          .eq('is_active', true),
-        'loadLevelsData-compounds'
-      );
-
-      if (compoundsError) throw compoundsError;
-      setCompoundsForLevels(compounds || []);
-
-      // Fetch latest 500 taken doses for levels calculation (no date filter)
-      // This ensures the "most recently taken" medication is always available
-      const { data: recentDoses, error: dosesError } = await withQueryTimeout(
-        supabase
-          .from('doses')
-          .select('id, compound_id, dose_amount, dose_unit, taken, taken_at, scheduled_date')
-          .eq('user_id', userId)
-          .eq('taken', true)
-          .not('taken_at', 'is', null)
-          .order('taken_at', { ascending: false })
-          .limit(500),
-        'loadLevelsData-doses'
-      );
-
-      if (dosesError) throw dosesError;
-      setDosesForLevels(recentDoses || []);
-    } catch (error) {
-      if (error instanceof TimeoutError) {
-        console.warn('[TodayScreen] loadLevelsData timed out');
-      } else {
-        console.error('Error loading levels data:', error);
-      }
-    }
-  };
+  // const loadLevelsData = async () => {
+  //   try {
+  //     const userId = await getUserIdWithFallback(3000);
+  //     if (!userId) return;
+  //
+  //     // Fetch active compounds
+  //     const { data: compounds, error: compoundsError } = await withQueryTimeout(
+  //       supabase
+  //         .from('compounds')
+  //         .select('id, name, is_active, dose_unit')
+  //         .eq('user_id', userId)
+  //         .eq('is_active', true),
+  //       'loadLevelsData-compounds'
+  //     );
+  //
+  //     if (compoundsError) throw compoundsError;
+  //     setCompoundsForLevels(compounds || []);
+  //
+  //     // Fetch latest 500 taken doses for levels calculation (no date filter)
+  //     // This ensures the "most recently taken" medication is always available
+  //     const { data: recentDoses, error: dosesError } = await withQueryTimeout(
+  //       supabase
+  //         .from('doses')
+  //         .select('id, compound_id, dose_amount, dose_unit, taken, taken_at, scheduled_date')
+  //         .eq('user_id', userId)
+  //         .eq('taken', true)
+  //         .not('taken_at', 'is', null)
+  //         .order('taken_at', { ascending: false })
+  //         .limit(500),
+  //       'loadLevelsData-doses'
+  //     );
+  //
+  //     if (dosesError) throw dosesError;
+  //     setDosesForLevels(recentDoses || []);
+  //   } catch (error) {
+  //     if (error instanceof TimeoutError) {
+  //       console.warn('[TodayScreen] loadLevelsData timed out');
+  //     } else {
+  //       console.error('Error loading levels data:', error);
+  //     }
+  //   }
+  // };
 
   const checkCompounds = async () => {
     try {
@@ -404,7 +407,7 @@ export const TodayScreen = () => {
   const retryLoad = useCallback(() => {
     setLoading(true);
     loadDoses();
-    loadLevelsData();
+    // loadLevelsData();  // DIAGNOSTIC: Disabled
     loadUserName();
     checkCompounds();
   }, [selectedDate]);
@@ -700,8 +703,9 @@ export const TodayScreen = () => {
         // Check and schedule streak notifications
         await checkAndScheduleStreakNotifications();
         
+        // DIAGNOSTIC: Disabled - suspected cause of boot issues
         // Refresh levels data to show updated medication levels
-        loadLevelsData();
+        // loadLevelsData();
       }
 
       // Remove from animating set after animation completes
@@ -1197,7 +1201,7 @@ export const TodayScreen = () => {
       {/* Smart Banner */}
       <TodayBanner />
 
-      {/* Medication Levels Card - only show when viewing today */}
+      {/* DIAGNOSTIC: Medication Levels feature disabled to test boot stability
       {isToday(selectedDate) && (
         <ComponentErrorBoundary 
           name="MedicationLevels"
@@ -1213,6 +1217,7 @@ export const TodayScreen = () => {
           />
         </ComponentErrorBoundary>
       )}
+      */}
 
       {/* Doses */}
       <div ref={dosesRef} className="p-4 space-y-4 relative">
