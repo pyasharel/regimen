@@ -92,8 +92,32 @@ const BOOT_TIMEOUT_MS = 4000;
 declare global {
   interface Window {
     __bootTimeoutId?: ReturnType<typeof setTimeout>;
+    __bootNetworkReady?: boolean;
     updateBootStage?: (stage: string) => void;
   }
+}
+
+// ========================================
+// BUILD 26: NUCLEAR FIX - 2s DELAY ON NATIVE COLD START
+// ========================================
+// iOS networking stack isn't ready immediately after app resume/cold start.
+// We unconditionally wait 2 seconds before allowing ANY network requests.
+// This is not elegant, but it's reliable.
+const NATIVE_BOOT_DELAY_MS = 2000;
+
+if (Capacitor.isNativePlatform()) {
+  window.__bootNetworkReady = false;
+  console.log('[BOOT] Native cold start - waiting 2s for iOS networking...');
+  trace('NATIVE_BOOT_DELAY_START');
+  
+  setTimeout(() => {
+    window.__bootNetworkReady = true;
+    trace('NATIVE_BOOT_DELAY_DONE');
+    console.log('[BOOT] ✅ Network ready flag set after 2s delay');
+  }, NATIVE_BOOT_DELAY_MS);
+} else {
+  // Web is always ready immediately
+  window.__bootNetworkReady = true;
 }
 
 window.__bootTimeoutId = setTimeout(() => {

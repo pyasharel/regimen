@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
 import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { trace } from "@/utils/bootTracer";
-import { useAppActive, waitForAppReady } from "@/hooks/useAppActive";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -82,7 +81,7 @@ export const TodayScreen = () => {
   // Track engagement for first dose notification
   useEngagementTracking();
   const { data: streakData } = useStreaks();
-  const { isAppReadyForNetwork } = useAppActive();
+  // Build 26: Using window.__bootNetworkReady flag instead of hook
   const [loading, setLoading] = useState(true);
   const [connectionStuck, setConnectionStuck] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -258,18 +257,29 @@ export const TodayScreen = () => {
     verifyCheckout();
   }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
-  // Load data when date changes OR when app becomes ready
+  // Load data when date changes - wait for boot network ready flag on native
   useEffect(() => {
-    // On native, wait for app to be ready before loading
-    if (Capacitor.isNativePlatform() && !isAppReadyForNetwork) {
-      console.log('[TodayScreen] Waiting for app to be ready before loading...');
-      return;
+    // On native, wait for the 2s boot delay to complete
+    if (Capacitor.isNativePlatform() && !window.__bootNetworkReady) {
+      console.log('[TodayScreen] Waiting for boot network ready flag...');
+      const checkReady = setInterval(() => {
+        if (window.__bootNetworkReady) {
+          clearInterval(checkReady);
+          console.log('[TodayScreen] Boot ready, starting data load');
+          trace('TODAY_BOOT_READY_LOADING');
+          loadDoses();
+          checkCompounds();
+          loadUserName();
+        }
+      }, 100);
+      return () => clearInterval(checkReady);
     }
     
+    // Web or already ready - load immediately
     loadDoses();
     checkCompounds();
     loadUserName();
-  }, [selectedDate, isAppReadyForNetwork]);
+  }, [selectedDate]);
 
   // DIAGNOSTIC: Disabled - suspected cause of boot issues
   // Load levels data on mount and when doses change
@@ -596,13 +606,25 @@ export const TodayScreen = () => {
       if (error instanceof TimeoutError) {
         console.warn('[TodayScreen] loadDoses timed out (retry count:', retryCount, ')');
         
+        // BUILD 26: Auto-reload after 2 failed attempts
+        if (retryCount >= 2) {
+          console.log('[TodayScreen] Persistent timeouts - forcing app reload');
+          trace('TODAY_FORCE_RELOAD', 'retryCount >= 2');
+          window.location.reload();
+          return;
+        }
+        
         // If we've already retried once after recreation, show stuck UI
         if (retryCount >= 1) {
           setConnectionStuck(true);
           toast({
             title: "Connection stuck",
-            description: "Network requests are hanging. Try reloading the app.",
+            description: "Network requests are hanging. Reloading app...",
           });
+          // Auto-reload after showing toast
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         } else {
           // First timeout - show toast with retry
           toast({

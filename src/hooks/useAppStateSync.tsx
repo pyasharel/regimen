@@ -12,7 +12,7 @@ import { processPendingActions } from '@/utils/pendingDoseActions';
 import { getUserIdWithFallback } from '@/utils/safeAuth';
 import { withQueryTimeout, TimeoutError } from '@/utils/withTimeout';
 import { persistentStorage } from '@/utils/persistentStorage';
-import { waitForAppReady, getAppReadyState } from '@/hooks/useAppActive';
+// Build 26: Using window.__bootNetworkReady flag instead of useAppActive hook
 import { trace } from '@/utils/bootTracer';
 
 // Debounce time to prevent rapid-fire sync during permission dialogs
@@ -320,31 +320,45 @@ export const useAppStateSync = () => {
       // Not on native platform
     });
 
-    // Initial sync: wait for app to be truly ready, then sync
-    // This replaces the old blind 3-second timer
+    // BUILD 26: Initial sync waits for the global boot network ready flag
+    // This is set after a 2s delay in main.tsx to let iOS networking stabilize
     const runInitialSync = async () => {
       if (hasRunInitialSync.current) return;
       hasRunInitialSync.current = true;
       
-      trace('INITIAL_SYNC_WAITING_FOR_READY');
-      console.log('[AppStateSync] Waiting for app to be ready...');
+      trace('INITIAL_SYNC_WAITING_FOR_BOOT_FLAG');
+      console.log('[AppStateSync] Waiting for boot network ready flag...');
       
-      // Check if already ready
-      const { isReady } = getAppReadyState();
+      // Wait for the boot network ready flag (set after 2s delay in main.tsx)
+      const waitForBootReady = (): Promise<void> => {
+        return new Promise((resolve) => {
+          if (window.__bootNetworkReady) {
+            resolve();
+            return;
+          }
+          
+          const checkInterval = setInterval(() => {
+            if (window.__bootNetworkReady) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          
+          // Timeout after 5 seconds as failsafe
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            console.warn('[AppStateSync] Boot ready flag timeout - proceeding anyway');
+            resolve();
+          }, 5000);
+        });
+      };
       
-      if (isReady) {
-        // Already ready - just wait a small delay for stability
-        trace('INITIAL_SYNC_ALREADY_READY');
-        console.log('[AppStateSync] App already ready, scheduling initial sync');
-        await new Promise(resolve => setTimeout(resolve, RESUME_DELAY_MS));
-      } else {
-        // Wait for app to become ready (max 5 seconds)
-        const becameReady = await waitForAppReady(5000);
-        if (!becameReady) {
-          console.warn('[AppStateSync] App never became ready, running sync anyway');
-        }
-        trace('INITIAL_SYNC_READY_AFTER_WAIT', becameReady ? 'ready' : 'timeout');
-      }
+      await waitForBootReady();
+      trace('INITIAL_SYNC_BOOT_READY');
+      console.log('[AppStateSync] Boot ready, waiting additional delay for stability...');
+      
+      // Additional small delay for network stability
+      await new Promise(resolve => setTimeout(resolve, RESUME_DELAY_MS));
       
       if (isMounted) {
         console.log('[AppStateSync] Running initial cold-start sync');
