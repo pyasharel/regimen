@@ -1,4 +1,10 @@
 // ========================================
+// BOOT TRACER - START IMMEDIATELY
+// ========================================
+import { startBootTrace, trace, endBootTrace } from './utils/bootTracer';
+startBootTrace();
+
+// ========================================
 // FAILED BOOT DETECTION - MUST RUN FIRST
 // ========================================
 // If the previous boot didn't complete, clear suspect keys that may cause hangs.
@@ -6,6 +12,7 @@
 const lastBootStatus = localStorage.getItem('REGIMEN_BOOT_STATUS');
 if (lastBootStatus === 'STARTING') {
   console.warn('[BOOT] Previous boot failed. Clearing suspect keys.');
+  trace('FAILED_BOOT_DETECTED', 'Previous boot did not complete');
   
   // Clear keys most likely to cause boot issues
   const suspectKeys = [
@@ -28,11 +35,13 @@ if (lastBootStatus === 'STARTING') {
   });
   
   localStorage.setItem('REGIMEN_BOOT_STATUS', 'RECOVERED');
+  trace('FAILED_BOOT_KEYS_CLEARED');
   console.log('[BOOT] Suspect keys cleared, status set to RECOVERED');
 }
 
 // Mark that we're starting boot - if this remains 'STARTING' on next launch, boot failed
 localStorage.setItem('REGIMEN_BOOT_STATUS', 'STARTING');
+trace('BOOT_STATUS_SET', 'STARTING');
 
 // Update boot stage indicator
 (window as any).updateBootStage?.('failed-boot-check-done');
@@ -45,9 +54,11 @@ localStorage.setItem('REGIMEN_BOOT_STATUS', 'STARTING');
 import { runStartupPreflight } from './utils/startupPreflight';
 
 (window as any).updateBootStage?.('preflight-start');
+trace('PREFLIGHT_START');
 
 // Run preflight immediately, before any other imports execute their side effects
 const preflightReport = runStartupPreflight();
+trace('PREFLIGHT_DONE', preflightReport.errors.length > 0 ? `${preflightReport.errors.length} errors` : 'clean');
 
 (window as any).updateBootStage?.('preflight-done');
 
@@ -260,9 +271,12 @@ const bootstrapTheme = async (): Promise<void> => {
 // Bootstrap theme, then render React app
 // Use .finally() to ensure app renders even if bootstrap fails
 window.updateBootStage?.('theme-bootstrap-start');
+trace('THEME_BOOTSTRAP_START');
 
 bootstrapTheme().finally(() => {
+  trace('THEME_BOOTSTRAP_DONE');
   window.updateBootStage?.('rendering');
+  trace('REACT_RENDER_START');
   
   createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
@@ -274,5 +288,6 @@ bootstrapTheme().finally(() => {
     </React.StrictMode>
   );
   
+  trace('REACT_RENDER_QUEUED');
   window.updateBootStage?.('rendered');
 });

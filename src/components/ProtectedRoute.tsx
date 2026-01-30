@@ -5,6 +5,7 @@ import { hydrateSessionOrNull, hasAnyAuthTokens, getLastHydrationStage } from "@
 import { getCachedSessionAsSupabaseSession } from "@/utils/authSessionCache";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, LogIn, RotateCcw } from "lucide-react";
+import { trace, endBootTrace } from "@/utils/bootTracer";
 
 // How long to wait for full session hydration (only used if cache fast-path fails)
 const HYDRATION_TIMEOUT_MS = 8000;
@@ -46,15 +47,18 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // NEW: Fast-path using localStorage cache - avoids auth lock contention
   const tryFastPath = useCallback((): Session | null => {
+    trace('PROTECTED_ROUTE_FAST_PATH_START');
     console.log('[ProtectedRoute] Checking cache fast-path...');
     const cached = getCachedSessionAsSupabaseSession();
     
     if (cached) {
+      trace('PROTECTED_ROUTE_FAST_PATH_HIT', `user: ${cached.user?.id?.slice(0, 8)}...`);
       console.log('[ProtectedRoute] ✅ Fast-path: Using cached session, skipping auth calls');
       // Cast to Session - the cached data has all required fields
       return cached as unknown as Session;
     }
     
+    trace('PROTECTED_ROUTE_FAST_PATH_MISS');
     console.log('[ProtectedRoute] Fast-path miss, will try async hydration');
     return null;
   }, []);
@@ -63,6 +67,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (!isMountedRef.current) return;
     
     const startTime = Date.now();
+    trace('HYDRATION_ATTEMPT_START', `attempt ${attemptNumber}`);
     console.log('[ProtectedRoute] Starting session hydration attempt', attemptNumber);
     
     // FAST PATH: Try cache first - avoids auth lock contention entirely
@@ -72,6 +77,10 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         clearWatchdog();
         setSession(fastPathSession);
         setHydrationState('hydrated');
+        trace('HYDRATION_SUCCESS', `fast-path, ${Date.now() - startTime}ms`);
+        endBootTrace(true);
+        // Mark boot as complete
+        localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
         // Record success
         try {
           localStorage.setItem('regimen_last_hydration', JSON.stringify({
@@ -88,12 +97,14 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     // SLOW PATH: Fall back to Supabase auth calls (only if cache unavailable)
     try {
+      trace('HYDRATION_SLOW_PATH_START', `attempt ${attemptNumber}`);
       setHydrationState('loading');
       
       const hydratedSession = await hydrateSessionOrNull(HYDRATION_TIMEOUT_MS);
       if (!isMountedRef.current) return;
       
       const elapsed = Date.now() - startTime;
+      trace('HYDRATION_SLOW_PATH_DONE', `${elapsed}ms, session: ${!!hydratedSession}`);
       console.log('[ProtectedRoute] Hydration completed in', elapsed, 'ms, session:', !!hydratedSession);
       
       // Record diagnostics
@@ -111,12 +122,16 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         clearWatchdog();
         setSession(hydratedSession);
         setHydrationState('hydrated');
+        trace('HYDRATION_SUCCESS', `slow-path, ${elapsed}ms`);
+        endBootTrace(true);
+        localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
         return;
       }
       
       // No session on first attempt - try once more after a short delay
       // This handles transient cases during rapid hard-close/reopen
       if (attemptNumber < MAX_HYDRATION_ATTEMPTS) {
+        trace('HYDRATION_RETRY_SCHEDULED', `attempt ${attemptNumber + 1}`);
         console.log('[ProtectedRoute] No session found, retrying after delay...');
         await new Promise(resolve => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS));
         
@@ -127,6 +142,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       } else {
         // All attempts exhausted - check if we have tokens anywhere
         // If yes, show "failed" (connection issue), if no, redirect to auth
+        trace('HYDRATION_EXHAUSTED', 'checking for tokens');
         console.log('[ProtectedRoute] All hydration attempts exhausted, checking for tokens...');
         
         const hasTokens = await hasAnyAuthTokens();
@@ -136,11 +152,15 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         
         if (hasTokens) {
           // Tokens exist but hydration failed - likely a network/connection issue
+          trace('HYDRATION_FAILED', 'tokens exist but hydration failed');
+          endBootTrace(false);
           console.log('[ProtectedRoute] Tokens exist but hydration failed, showing retry UI');
           setSession(null);
           setHydrationState('failed');
         } else {
           // No tokens anywhere - user is genuinely not authenticated
+          trace('HYDRATION_NO_TOKENS', 'redirecting to auth');
+          endBootTrace(false);
           console.log('[ProtectedRoute] No tokens found anywhere, redirecting to auth');
           setSession(null);
           setHydrationState('unauthenticated');
@@ -149,6 +169,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       if (!isMountedRef.current) return;
       
+      trace('HYDRATION_ERROR', String(error));
       console.error('[ProtectedRoute] Hydration failed with error:', error);
       
       // On error, retry if we have attempts left
@@ -163,6 +184,8 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         const hasTokens = await hasAnyAuthTokens();
         clearWatchdog();
         setSupportCode(generateSupportCode());
+        trace('HYDRATION_FINAL_FAIL', hasTokens ? 'has tokens' : 'no tokens');
+        endBootTrace(false);
         setHydrationState(hasTokens ? 'failed' : 'unauthenticated');
       }
     }

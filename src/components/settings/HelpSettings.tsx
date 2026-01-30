@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink } from "lucide-react";
+import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink, Bug, Copy, Check } from "lucide-react";
 import { appVersion, appBuild } from "../../../capacitor.config";
+import { getBootTraceText, getLastBootSummary, clearBootTrace } from "@/utils/bootTracer";
 
 // Build-time constant defined in vite.config.ts
 declare const __WEB_BUNDLE_STAMP__: string;
 
 export const HelpSettings = () => {
   const navigate = useNavigate();
+  const [showTrace, setShowTrace] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [bootSummary] = useState(() => getLastBootSummary());
 
   const faqItems = [
     {
@@ -98,6 +103,58 @@ export const HelpSettings = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Boot Trace (Diagnostics) */}
+        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+              <Bug className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-semibold">Boot Diagnostics</h2>
+              <p className="text-xs text-muted-foreground font-mono">{bootSummary}</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowTrace(!showTrace)}
+              className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
+            >
+              {showTrace ? 'Hide Trace' : 'View Boot Trace'}
+            </button>
+            <button
+              onClick={() => {
+                const text = getBootTraceText();
+                navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+              }}
+              className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              title="Copy to clipboard"
+            >
+              {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          
+          {showTrace && (
+            <div className="mt-2">
+              <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
+                {getBootTraceText()}
+              </pre>
+              <button
+                onClick={() => {
+                  clearBootTrace();
+                  setShowTrace(false);
+                }}
+                className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors"
+              >
+                Clear Trace History
+              </button>
+            </div>
+          )}
         </div>
 
         {/* App Version */}
