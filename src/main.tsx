@@ -98,22 +98,21 @@ declare global {
 }
 
 // ========================================
-// BUILD 26: NUCLEAR FIX - 2s DELAY ON NATIVE COLD START
+// BUILD 27: REDUCED DELAY (noOpLock handles deadlock)
 // ========================================
-// iOS networking stack isn't ready immediately after app resume/cold start.
-// We unconditionally wait 2 seconds before allowing ANY network requests.
-// This is not elegant, but it's reliable.
-const NATIVE_BOOT_DELAY_MS = 2000;
+// The noOpLock fix in Supabase clients prevents navigator.locks deadlock.
+// We keep a small 500ms delay as a safety buffer for iOS networking stack.
+const NATIVE_BOOT_DELAY_MS = 500;
 
 if (Capacitor.isNativePlatform()) {
   window.__bootNetworkReady = false;
-  console.log('[BOOT] Native cold start - waiting 2s for iOS networking...');
+  console.log('[BOOT] Native cold start - waiting 500ms safety buffer...');
   trace('NATIVE_BOOT_DELAY_START');
   
   setTimeout(() => {
     window.__bootNetworkReady = true;
     trace('NATIVE_BOOT_DELAY_DONE');
-    console.log('[BOOT] ✅ Network ready flag set after 2s delay');
+    console.log('[BOOT] ✅ Network ready flag set after 500ms');
   }, NATIVE_BOOT_DELAY_MS);
 } else {
   // Web is always ready immediately

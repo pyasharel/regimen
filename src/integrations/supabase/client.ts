@@ -5,11 +5,29 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+/**
+ * No-op lock for iOS Capacitor WebView compatibility.
+ * 
+ * The default navigator.locks API deadlocks on iOS when the app
+ * is suspended and resumed. Since mobile apps are single-instance,
+ * we don't need cross-tab locking.
+ * 
+ * See: https://github.com/supabase/auth-js/issues/866
+ */
+const noOpLock = async <T>(
+  name: string,
+  acquireTimeout: number,
+  fn: () => Promise<T>
+): Promise<T> => {
+  return await fn();
+};
+
 const clientOptions = {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    lock: noOpLock,
   }
 };
 
