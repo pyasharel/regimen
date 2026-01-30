@@ -1,201 +1,180 @@
 
-# Guaranteed Boot Hotfix - Implementation Plan
+# Diagnostic Build v1.0.3 (Build 20) - Disable Medication Levels Feature
 
-## Overview
+## Goal
 
-This hotfix addresses the critical "black screen on cold start" issue affecting all users. The plan implements the consensus recommendations from Claude, ChatGPT, and Gemini to guarantee users can boot the app, even if some features are temporarily degraded.
+Create a diagnostic build that **completely disables the Medication Levels feature** to test whether it's the root cause of the black screen, slow connection, and other issues that started on Wednesday. The existing boot fixes will remain in place.
 
-## Root Cause Summary
+## Rationale
 
-**Primary Suspects (High Confidence):**
-1. `persistentStorage.migrateFromLocalStorage()` - 40+ sequential `Preferences.get()` calls saturating the Capacitor bridge on every boot
-2. Supabase Auth session restore hanging indefinitely due to corrupted cached session
+All symptoms began on Wednesday when the Medication Levels feature was released:
+- Black screen on boot
+- "Slow connection" errors
+- Data not loading
+- Random sign-outs (reported by some users)
 
-**Why "works once, breaks on second launch":**
-- First install: localStorage is empty, migration does nothing, app boots fast
-- First successful session: App writes data to localStorage (auth tokens, theme, selectedLevelsCompound, etc.)
-- Second launch: Migration tries to read 40+ keys that now have data, potentially saturating the Capacitor bridge
+The feature introduced:
+- Reading from `localStorage` on boot (`selectedLevelsCompound`, `medicationLevelsCollapsed`)
+- A query fetching up to 500 doses (`loadLevelsData`)
+- Heavy data processing (half-life calculations, chart rendering)
+
+If all problems disappear after disabling this feature, we've confirmed the root cause and can fix it properly before re-enabling.
 
 ---
 
-## Implementation Changes
-
-### 1. Failed Boot Detection (main.tsx)
-
-Add failed boot detection at the **very top** of `main.tsx`, **before** the preflight import:
+## Changes Summary
 
 ```text
-Logic:
-- Check if REGIMEN_BOOT_STATUS === 'STARTING' (means previous boot never completed)
-- If so, clear suspect keys that could cause hangs
-- Mark boot as 'STARTING' immediately
-- Mark as 'COMPLETE' after successful app render
+┌─────────────────────────┬─────────────────────────────────────────────────────┐
+│ File                    │ Change                                              │
+├─────────────────────────┼─────────────────────────────────────────────────────┤
+│ capacitor.config.ts     │ Bump appBuild from '19' to '20'                     │
+├─────────────────────────┼─────────────────────────────────────────────────────┤
+│ src/components/         │ Comment out:                                        │
+│ TodayScreen.tsx         │   - Import of MedicationLevelsCard                  │
+│                         │   - State variables (compoundsForLevels, etc.)      │
+│                         │   - loadLevelsData() function                       │
+│                         │   - useEffect that calls loadLevelsData             │
+│                         │   - loadLevelsData call in retryLoad                │
+│                         │   - The MedicationLevelsCard JSX render             │
+├─────────────────────────┼─────────────────────────────────────────────────────┤
+│ src/main.tsx            │ Add selectedLevelsCompound &                        │
+│                         │ medicationLevelsCollapsed to suspectKeys list       │
+│                         │ (already present, just confirm)                     │
+└─────────────────────────┴─────────────────────────────────────────────────────┘
 ```
-
-**Keys to clear on failed boot detection:**
-- `selectedLevelsCompound` (Medication Levels feature)
-- `medicationLevelsCollapsed` (Medication Levels feature)
-- `cachedEntitlement` (Subscription cache)
-- `pendingDoseActions` (Notification queue)
-- Any keys containing `sb-` or `supabase` (auth tokens)
-
-### 2. Disable Eager Migration (App.tsx)
-
-Comment out the migration `useEffect` that calls `persistentStorage.migrateFromLocalStorage()`:
-
-```typescript
-// HOTFIX: Migration disabled - suspected cause of black screen
-// The 40+ sequential Preferences.get() calls may saturate the Capacitor bridge
-// TODO: Re-enable with lazy loading after root cause confirmed
-// useEffect(() => {
-//   persistentStorage.migrateFromLocalStorage(PERSISTENT_STORAGE_KEYS);
-// }, []);
-```
-
-### 3. Mark Boot Complete (App.tsx)
-
-In the splash hide `useEffect`, after successful hide attempts, mark boot as complete:
-
-```typescript
-// Mark boot complete after splash successfully hides
-localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
-```
-
-### 4. Simplify Splash Auth Check (Splash.tsx)
-
-Replace the complex session hydration with a simpler, non-blocking approach:
-
-```text
-New Approach:
-1. Always hide native splash immediately (don't wait for auth)
-2. Always show loading UI immediately
-3. Check auth in background with 3-second hard timeout
-4. On any error/timeout: go to /onboarding (user can sign in again)
-```
-
-Key changes:
-- Remove the 8-second `TIMEOUT_MS` in favor of 3-second hard timeout
-- Remove complex `hydrateSessionOrNull` call
-- Use simple `supabase.auth.getSession()` with `Promise.race` timeout
-- Always render UI first, never block on auth
-
-### 5. Reduce Boot Timeout (main.tsx)
-
-Change boot timeout from 6 seconds to 4 seconds for faster recovery:
-
-```typescript
-const BOOT_TIMEOUT_MS = 4000; // Reduced from 6000
-```
-
-### 6. Add Visible Boot Stage Indicator (index.html)
-
-Add a debug indicator visible in development/testing to show boot progress:
-
-```html
-<div id="boot-stage" style="position: fixed; bottom: 10px; left: 10px; 
-     background: rgba(0,0,0,0.8); color: lime; padding: 8px; 
-     font-family: monospace; font-size: 12px; z-index: 99999;">
-  Stage: init
-</div>
-<script>
-  window.updateBootStage = function(stage) {
-    var el = document.getElementById('boot-stage');
-    if (el) el.textContent = 'Stage: ' + stage + ' @ ' + Date.now();
-    console.log('[BOOT-STAGE]', stage, Date.now());
-  };
-  window.updateBootStage('html-loaded');
-</script>
-```
-
-Then call `window.updateBootStage?.('preflight')`, `window.updateBootStage?.('imports')`, `window.updateBootStage?.('rendering')` at each stage in `main.tsx`.
-
-### 7. Add Boot Stage Type Declaration (main.tsx)
-
-Add type declaration for the boot stage function:
-
-```typescript
-declare global {
-  interface Window {
-    __bootTimeoutId?: ReturnType<typeof setTimeout>;
-    updateBootStage?: (stage: string) => void;
-  }
-}
-```
-
----
-
-## File Changes Summary
-
-| File | Change |
-|------|--------|
-| `index.html` | Add boot stage indicator div and script |
-| `src/main.tsx` | Add failed boot detection at top, reduce timeout to 4s, add boot stage calls, add type declaration |
-| `src/App.tsx` | Comment out migration, add BOOT_STATUS = COMPLETE after splash hides |
-| `src/pages/Splash.tsx` | Simplify to non-blocking auth with 3s timeout |
-
----
-
-## Expected Results
-
-| Problem | Solution |
-|---------|----------|
-| 40+ bridge calls blocking boot | Migration disabled |
-| Corrupted data from previous session | Failed boot detection auto-clears suspect keys |
-| Supabase auth hanging forever | 3-second hard timeout, always shows UI |
-| No visibility into failures | Boot stage indicator |
-| Users stuck too long | Faster 4s timeout + recovery UI |
-
----
-
-## Testing Plan
-
-After implementing:
-
-1. **Fresh Install Test**: Install app fresh, use it, close completely, reopen → Should work
-2. **Failed Boot Recovery Test**: If black screen occurs, boot stage indicator shows where it's stuck
-3. **Auth Timeout Test**: Simulate slow/no network → App should still boot and show onboarding
-4. **Recovery UI Test**: If boot fails, user sees recovery buttons within 4 seconds
-
----
-
-## Deployment Steps
-
-1. Implement all changes
-2. Build for iOS and Android
-3. Test locally with the sequence: install → use → close → reopen
-4. Ship to TestFlight and Play Store immediately
-5. Monitor for user reports
-
----
-
-## Phase 2 (After Hotfix Stabilizes)
-
-Once users can boot reliably, we can:
-1. Re-enable migration with **lazy loading** (only migrate keys when needed)
-2. Add **once-per-install flag** so migration runs once, not every boot
-3. **Batch Preferences calls** using `Promise.all` instead of sequential awaits
-4. Add **remote boot telemetry** to track boot stages server-side
 
 ---
 
 ## Technical Details
 
-### Files to Modify
+### 1. Version Bump (capacitor.config.ts)
 
-**index.html** - Add boot stage indicator before `<div id="root">`
+Update line 6:
+```typescript
+export const appBuild = '20';  // Changed from '19'
+```
 
-**src/main.tsx** - Changes at lines 1-22:
-- Add failed boot detection before preflight import
-- Add window.updateBootStage type declaration
-- Change BOOT_TIMEOUT_MS from 6000 to 4000
-- Call window.updateBootStage at key points
+### 2. Disable Feature in TodayScreen.tsx
 
-**src/App.tsx** - Changes at lines 180-183 and 136-148:
-- Comment out migration useEffect
-- Add REGIMEN_BOOT_STATUS = COMPLETE in splash hide logic
+**Comment out the import (line 6):**
+```typescript
+// DIAGNOSTIC: Disabled to test if this feature causes boot issues
+// import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
+```
 
-**src/pages/Splash.tsx** - Major refactor:
-- Simplify to always render UI first
-- Add 3-second hard timeout on auth check
-- Remove complex hydrateSessionOrNull logic
-- Hide native splash immediately on mount
+**Comment out state variables (lines 119-136):**
+```typescript
+// DIAGNOSTIC: Medication Levels feature disabled
+// interface CompoundForLevels { ... }
+// interface DoseForLevels { ... }
+// const [compoundsForLevels, setCompoundsForLevels] = useState<...>([]);
+// const [dosesForLevels, setDosesForLevels] = useState<...>([]);
+```
+
+**Comment out the loadLevelsData useEffect (lines 266-268):**
+```typescript
+// DIAGNOSTIC: Disabled - suspected cause of boot issues
+// useEffect(() => {
+//   loadLevelsData();
+// }, []);
+```
+
+**Comment out loadLevelsData function (lines 330-372):**
+```typescript
+// DIAGNOSTIC: Disabled - suspected cause of boot issues
+// const loadLevelsData = async () => { ... };
+```
+
+**Comment out loadLevelsData in retryLoad (line 407):**
+```typescript
+const retryLoad = useCallback(() => {
+  setLoading(true);
+  loadDoses();
+  // loadLevelsData();  // DIAGNOSTIC: Disabled
+  loadUserName();
+  checkCompounds();
+}, [selectedDate]);
+```
+
+**Comment out loadLevelsData in toggleDose (line 704):**
+```typescript
+// loadLevelsData();  // DIAGNOSTIC: Disabled
+```
+
+**Comment out the MedicationLevelsCard JSX (lines 1200-1215):**
+```tsx
+{/* DIAGNOSTIC: Medication Levels feature disabled to test boot stability
+{isToday(selectedDate) && (
+  <ComponentErrorBoundary 
+    name="MedicationLevels"
+    fallback={...}
+  >
+    <MedicationLevelsCard 
+      compounds={compoundsForLevels}
+      doses={dosesForLevels}
+    />
+  </ComponentErrorBoundary>
+)}
+*/}
+```
+
+### 3. Confirm suspect keys in main.tsx (already present)
+
+Lines 11-16 already include the Medication Levels localStorage keys:
+```typescript
+const suspectKeys = [
+  'selectedLevelsCompound',
+  'medicationLevelsCollapsed',
+  'cachedEntitlement',
+  'pendingDoseActions',
+];
+```
+
+No changes needed here - this is already protecting against corrupted data from previous boots.
+
+---
+
+## What Remains Active
+
+All boot stability fixes from the previous hotfix remain active:
+- Failed boot detection (clears suspect keys if previous boot failed)
+- 4-second boot timeout with recovery UI
+- Non-blocking splash screen auth with 3-second timeout
+- `ensureAuthReady()` in loadDoses for proper session hydration
+- Android notification icon fix
+
+---
+
+## Testing Protocol
+
+After deploying to TestFlight and Play Store:
+
+1. **Fresh Install Test**: Install app fresh, use it, close completely, reopen (5x)
+2. **Notification Cold Start**: Set a notification, force-close app, tap notification when it arrives
+3. **Normal Usage**: Navigate between screens, log doses, check settings
+4. **Resume from Background**: Use app, switch to another app, return
+5. **Extended Closure**: Leave app closed overnight, reopen in morning
+
+**Success Criteria**: All tests pass without black screen, slow connection errors, or empty states.
+
+**If All Tests Pass**: The Medication Levels feature is confirmed as the root cause. We'll then fix it with:
+- Lazy initialization (don't read localStorage on boot)
+- Move the 500-dose query to only run when the card is visible
+- Add query timeout and error boundary improvements
+
+**If Problems Persist**: The root cause is elsewhere, and we'll need to investigate other recent changes.
+
+---
+
+## Build Commands
+
+After implementing:
+```bash
+git pull && npm install && npm run build && npx cap sync
+./sync-version.sh
+npx cap run ios
+npx cap run android
+```
+
+Then upload to TestFlight and Google Play Console for beta testing.
