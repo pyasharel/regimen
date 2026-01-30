@@ -3,7 +3,9 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { persistentStorage } from '@/utils/persistentStorage';
 import { scheduleAllUpcomingDoses, ensureDoseActionTypesRegistered } from '@/utils/notificationScheduler';
-import { supabase } from '@/integrations/supabase/client';
+import { dataClient } from '@/integrations/supabase/dataClient';
+import { getUserIdWithFallback } from '@/utils/safeAuth';
+import { withQueryTimeout } from '@/utils/withTimeout';
 
 const PROMPT_THROTTLE_KEY = 'notificationPermissionPromptLastShownAt';
 const PROMPT_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours between prompts
@@ -18,6 +20,9 @@ const PROMPT_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours between prompts
  * - Haven't prompted in last 24 hours
  * 
  * After granting permission, immediately schedules all upcoming dose notifications.
+ * 
+ * IMPORTANT: Uses getUserIdWithFallback() and dataClient to avoid auth lock contention
+ * that can occur when supabase.auth.getUser() is called right after permission dialogs.
  */
 export function useNotificationPermissionPrompt(
   hasActiveCompounds: boolean,
@@ -86,25 +91,39 @@ export function useNotificationPermissionPrompt(
 
         if (granted) {
           // Schedule notifications immediately after grant
+          // Use getUserIdWithFallback instead of supabase.auth.getUser() to avoid auth lock
           console.log('[AutoNotificationPrompt] Scheduling notifications after grant...');
           
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: allDoses } = await supabase
-              .from('doses')
-              .select('*, compounds(name, is_active)')
-              .eq('user_id', user.id)
-              .eq('taken', false);
+          const userId = await getUserIdWithFallback(3000);
+          if (userId) {
+            try {
+              // Use dataClient with timeout to avoid hanging on auth issues
+              const { data: allDoses } = await withQueryTimeout(
+                dataClient
+                  .from('doses')
+                  .select('*, compounds(name, is_active)')
+                  .eq('user_id', userId)
+                  .eq('taken', false),
+                'notification-prompt-doses',
+                5000
+              );
 
-            if (allDoses) {
-              const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
-              const dosesWithName = activeDoses.map(d => ({
-                ...d,
-                compound_name: d.compounds?.name || 'Medication'
-              }));
-              await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
-              console.log('[AutoNotificationPrompt] Scheduled', dosesWithName.length, 'notifications');
+              if (allDoses) {
+                const activeDoses = allDoses.filter(d => d.compounds?.is_active !== false);
+                const dosesWithName = activeDoses.map(d => ({
+                  ...d,
+                  compound_name: d.compounds?.name || 'Medication'
+                }));
+                await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+                console.log('[AutoNotificationPrompt] Scheduled', dosesWithName.length, 'notifications');
+              }
+            } catch (error) {
+              // Don't let scheduling failures break the prompt flow
+              // Normal app sync will handle it later
+              console.warn('[AutoNotificationPrompt] Failed to schedule notifications:', error);
             }
+          } else {
+            console.log('[AutoNotificationPrompt] No userId available, skipping scheduling (app sync will handle later)');
           }
         }
       } catch (error) {
