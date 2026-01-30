@@ -83,11 +83,22 @@ const SCREEN_NAMES: Record<string, string> = {
 // Page view tracking with explicit screen names
 export const trackPageView = (path: string, customScreenName?: string) => {
   const screenName = customScreenName || SCREEN_NAMES[path] || path;
+  const platform = getPlatform();
+  
   ReactGA.send({ 
     hitType: 'pageview', 
     page: path,
     page_title: `App: ${screenName}` // Prefix to differentiate from landing page
   });
+  
+  // Also fire as event with platform for better GA4 reporting
+  ReactGA.event('screen_view', {
+    screen_name: screenName,
+    platform,
+    app_version: APP_VERSION,
+  });
+  
+  console.log('[Analytics] Page view:', screenName, { platform });
 };
 
 // User signup tracking with attribution
@@ -118,34 +129,47 @@ export const trackLogin = (method: 'email' | 'google') => {
   });
 };
 
-// Dose logging tracking
+// Dose logging tracking - GA4 format with platform
 export const trackDoseLogged = (compoundName: string, completed: boolean) => {
-  ReactGA.event({
-    category: 'Dose',
-    action: completed ? 'Marked Complete' : 'Marked Incomplete',
-    label: compoundName,
+  const platform = getPlatform();
+  
+  ReactGA.event('dose_logged', {
+    compound_name: compoundName,
+    completed,
+    platform,
+    app_version: APP_VERSION,
   });
+  
+  console.log('[Analytics] Dose logged:', { compound: compoundName, completed, platform });
 };
 
 export const trackDoseSkipped = (compoundName: string) => {
-  ReactGA.event({
-    category: 'Dose',
-    action: 'Skipped',
-    label: compoundName,
+  const platform = getPlatform();
+  
+  ReactGA.event('dose_skipped', {
+    compound_name: compoundName,
+    platform,
+    app_version: APP_VERSION,
   });
 };
 
-// Compound tracking - includes compound_type for GA4 custom dimension
+// Compound tracking - includes compound_type and platform for GA4
 export const trackCompoundAdded = (
   compoundName: string, 
   scheduleType: string,
   compoundType?: 'peptide' | 'trt' | 'glp1' | 'supplement' | 'other'
 ) => {
+  const platform = getPlatform();
+  
   ReactGA.event('compound_added', {
     compound_name: compoundName,
     schedule_type: scheduleType,
     compound_type: compoundType || 'other',
+    platform,
+    app_version: APP_VERSION,
   });
+  
+  console.log('[Analytics] Compound added:', { compound: compoundName, platform });
 };
 
 export const trackCompoundEdited = (compoundName: string) => {
@@ -400,19 +424,25 @@ export const trackScreenView = (screenName: string) => {
   });
 };
 
-// Session tracking
+// Session tracking - GA4 format with platform
 export const trackSessionStart = () => {
-  ReactGA.event({
-    category: 'Session',
-    action: 'Started',
+  const platform = getPlatform();
+  
+  ReactGA.event('session_started', {
+    platform,
+    app_version: APP_VERSION,
   });
+  
+  console.log('[Analytics] Session started:', { platform, app_version: APP_VERSION });
 };
 
 export const trackSessionEnd = (duration: number) => {
-  ReactGA.event({
-    category: 'Session',
-    action: 'Ended',
-    value: Math.round(duration / 1000), // duration in seconds
+  const platform = getPlatform();
+  
+  ReactGA.event('session_ended', {
+    duration_seconds: Math.round(duration / 1000),
+    platform,
+    app_version: APP_VERSION,
   });
 };
 
@@ -449,8 +479,10 @@ export const trackWeeklyDigestClosed = (method: 'dismiss' | 'complete') => {
   });
 };
 
-// Enhanced onboarding funnel tracking
+// Enhanced onboarding funnel tracking with platform
 export const trackOnboardingStep = (screenId: string, stepNumber: number, totalSteps: number) => {
+  const platform = getPlatform();
+  
   // Calculate funnel position
   const progressPercent = Math.round((stepNumber / totalSteps) * 100);
   let funnelPosition: 'early' | 'middle' | 'late';
@@ -462,13 +494,15 @@ export const trackOnboardingStep = (screenId: string, stepNumber: number, totalS
     funnelPosition = 'late';
   }
   
-  // GA4 recommended event format
+  // GA4 recommended event format with platform
   ReactGA.event('onboarding_step', {
     step_name: screenId,
     step_number: stepNumber,
     steps_total: totalSteps,
     progress_percent: progressPercent,
     funnel_position: funnelPosition,
+    platform,
+    app_version: APP_VERSION,
   });
 };
 

@@ -37,6 +37,14 @@ export const useAnalytics = () => {
     checkAndTrackVersionUpgrade();
     // Ensure platform property is set on init
     setPlatformUserProperty();
+    
+    // Debug log for native platforms
+    if (Capacitor.isNativePlatform()) {
+      console.log('[Analytics] GA4 initialized on native:', {
+        platform: Capacitor.getPlatform(),
+        isNative: true,
+      });
+    }
   }, []);
 
   // Track page views and screen time on route change
