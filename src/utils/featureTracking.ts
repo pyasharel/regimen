@@ -5,6 +5,7 @@
 
 import ReactGA from 'react-ga4';
 import { appVersion } from '../../capacitor.config';
+import { getPlatform } from './analytics';
 
 // Feature keys for tracking first-time usage
 export const FEATURE_KEYS = [
@@ -54,11 +55,15 @@ export const trackFeatureFirstUse = (featureKey: FeatureKey): void => {
       console.warn('[FeatureTracking] Failed to save:', e);
     }
     
-    // Fire GA4 event for feature discovery
+    const platform = getPlatform();
+    
+    // Fire GA4 event for feature discovery with platform
     ReactGA.event('feature_first_use', {
       feature_name: featureKey,
       features_used_count: usedFeatures.length,
       features_remaining: FEATURE_KEYS.length - usedFeatures.length,
+      platform,
+      app_version: appVersion,
     });
     
     console.log('[FeatureTracking] First use:', featureKey, 'Total:', usedFeatures.length);
