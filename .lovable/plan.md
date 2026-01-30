@@ -1,68 +1,77 @@
 
-# Auth-Lock Fix Implemented (Build 21)
 
-## Problem Solved
-After 1-3 hard closes, the app showed "structure but no data" - empty cards that rendered but never populated. This was caused by Supabase's global auth lock getting wedged when `supabase.auth.getUser()` was called during:
-- iOS permission dialogs
-- App resume
-- TodayScreen mount
+# Cleanup: Remove Dashboard Card Remnants + Continue Auth Lock Fix
 
-When the auth lock hangs, `auth.getSession()` (called internally on every database request) also hangs, causing queries to either stall or run "anonymous" and return empty arrays due to RLS.
+## Summary
 
-## What We Fixed
+After investigation, I found **one remnant** from the Wednesday dashboard cards feature:
+- `dosesRef` and `scrollToDoses` - unused code for "Quick Stats" scroll functionality
 
-### A) Hardened Auth Calls in Boot-Critical Paths
-Replaced all `supabase.auth.getUser()` calls with `getUserIdWithFallback(3000)`:
+No other dashboard remnants are present (no weight queries, no dashboard state, no extra useEffects).
 
-1. **`src/hooks/useStreaks.tsx`**
-   - Now uses `getUserIdWithFallback()` instead of `getUser()`
-   - Returns default stats if no userId (instead of throwing)
-   - Uses `dataClient` for the query (bypasses `getSession()`)
+However, the main stability issue remains the **auth lock deadlock** we identified earlier. This cleanup will be added to the existing Build 21 fix.
 
-2. **`src/hooks/useNotificationPermissionPrompt.ts`**
-   - Uses `getUserIdWithFallback()` after permission dialog
-   - Uses `dataClient` with timeout for doses fetch
-   - Gracefully skips scheduling if userId unavailable
+---
 
-3. **`src/components/TodayScreen.tsx`**
-   - `checkPreviewMode` now uses `getUserIdWithFallback()` instead of `getUser()`
+## Changes
 
-### B) Created Auth-Lock-Resistant Data Client
-New file: **`src/integrations/supabase/dataClient.ts`**
+### File: src/components/TodayScreen.tsx
 
-This client:
-- Uses the `accessToken` callback to read tokens directly from localStorage
-- Falls back to native token mirror on Capacitor platforms
-- Does NOT call `auth.getSession()` internally
-- Makes database queries independent of the auth lock state
+**Remove unused Quick Stats remnants (lines 88-95):**
 
-Usage:
+Before:
 ```typescript
-import { dataClient } from '@/integrations/supabase/dataClient';
+const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+const lastHapticTime = useRef<number>(0); // For haptic rhythm timing
+const dosesRef = useRef<HTMLDivElement>(null); // Scroll target for Quick Stats
 
-// Use dataClient for data queries in boot-critical paths
-const { data } = await dataClient.from('doses').select('*').eq('user_id', userId);
+// Scroll to doses section
+const scrollToDoses = () => {
+  dosesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 ```
 
-## Version
-- **Build 21** (v1.0.3)
-
-## Test Plan
-1. Fresh install (or delete/reinstall) on iPhone
-2. Sign in, use the app normally
-3. Hard close + reopen **10 times**
-4. Confirm: Today loads doses, My Stack loads compounds every time
-5. Trigger notification permission prompt:
-   - Reset notifications in Settings → Regimen → Notifications
-   - Open app, allow notifications
-   - Hard close + reopen **10 times again**
-
-## Build Command
-```bash
-git pull && npm run build && npx cap sync && npx cap run ios
+After:
+```typescript
+const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+const lastHapticTime = useRef<number>(0); // For haptic rhythm timing
 ```
 
-## Success Criteria
-- No "empty structure" state after hard closes
-- Data appears on first paint
-- Permission prompt does not destabilize subsequent sessions
+**Also remove the ref usage (line 1224):**
+
+Before:
+```tsx
+<div ref={dosesRef} className="p-4 space-y-4 relative">
+```
+
+After:
+```tsx
+<div className="p-4 space-y-4 relative">
+```
+
+---
+
+## Summary of All Build 21 Changes
+
+This cleanup will be included in the auth lock fix from the previous plan:
+
+| Change | Purpose |
+|--------|---------|
+| New `dataClient.ts` | Bypass auth lock for data queries |
+| Harden `useStreaks.tsx` | Replace `getUser()` with `getUserIdWithFallback()` |
+| Harden `useNotificationPermissionPrompt.ts` | Add timeouts, replace `getUser()` |
+| Fix `TodayScreen.tsx` checkPreviewMode | Replace `getUser()` with `getUserIdWithFallback()` |
+| **Remove `dosesRef` / `scrollToDoses`** | Remove dead code from dashboard cards |
+| Bump to Build 21 | Clear version separation |
+
+---
+
+## What I Did NOT Find
+
+- No weight/progress queries on TodayScreen boot
+- No dashboard card state variables
+- No extra useEffects loading dashboard data
+- ProgressStats component is only used on ProgressScreen
+
+The dashboard cards were cleanly removed - only this one scroll helper was left behind.
+
