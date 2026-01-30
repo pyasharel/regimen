@@ -14,9 +14,10 @@ import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { dataClient, hasDataClientToken } from "@/integrations/supabase/dataClient";
 import { useToast } from "@/hooks/use-toast";
 import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
-import { getUserIdWithFallback, ensureAuthReady } from "@/utils/safeAuth";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 import { trace } from "@/utils/bootTracer";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -288,8 +289,9 @@ export const TodayScreen = () => {
       const userId = await getUserIdWithFallback(3000);
       if (!userId) return;
 
+      // Use dataClient to bypass auth deadlock
       const { data: profile, error } = await withQueryTimeout(
-        supabase
+        dataClient
           .from('profiles')
           .select('full_name')
           .eq('user_id', userId)
@@ -379,8 +381,9 @@ export const TodayScreen = () => {
         return;
       }
       
+      // Use dataClient to bypass auth deadlock
       const { data, error } = await withQueryTimeout(
-        supabase
+        dataClient
           .from('compounds')
           .select('id')
           .eq('user_id', userId)
@@ -414,31 +417,28 @@ export const TodayScreen = () => {
     console.log('[TodayScreen] 🚀 Starting loadDoses...');
     
     try {
-      // CRITICAL: Ensure Supabase client has a hydrated session before querying
-      // This fixes the "Slow connection" issue on cold start from notification
-      // where cached userId exists but Supabase client isn't authenticated yet
-      trace('TODAY_ENSURE_AUTH_START');
-      const userId = await ensureAuthReady();
-      trace('TODAY_ENSURE_AUTH_DONE', userId ? `userId: ${userId.slice(0, 8)}...` : 'no userId');
+      // Use dataClient which bypasses the auth deadlock by reading tokens directly
+      // from localStorage. This works even when supabase.auth is corrupted after iOS suspension.
+      trace('TODAY_GET_USER_ID_START');
+      
+      // First check if we have a valid token in the dataClient
+      const hasToken = await hasDataClientToken();
+      if (!hasToken) {
+        console.log('[TodayScreen] loadDoses: No valid token in cache');
+        trace('TODAY_NO_TOKEN', 'will retry on next render');
+        return;
+      }
+      
+      // Get userId from cache (fast, synchronous)
+      const userId = await getUserIdWithFallback(3000);
+      trace('TODAY_GET_USER_ID_DONE', userId ? `userId: ${userId.slice(0, 8)}...` : 'no userId');
       
       if (!userId) {
-        // Fall back to cached userId as last resort
-        trace('TODAY_FALLBACK_USER_ID_START');
-        const cachedUserId = await getUserIdWithFallback(3000);
-        trace('TODAY_FALLBACK_USER_ID_DONE', cachedUserId ? 'found' : 'not found');
-        
-        if (!cachedUserId) {
-          trace('TODAY_NO_USER_ID', 'will retry on next render');
-          console.log('[TodayScreen] loadDoses: No userId available, will retry on next render');
-          return; // Now inside try, so finally { setLoading(false) } runs
-        }
-        trace('TODAY_CACHED_ONLY', 'auth not ready, will retry');
-        console.log('[TodayScreen] loadDoses: Have cached userId but auth not ready, will retry on next render');
-        // Don't proceed with queries if we only have cached ID - Supabase client isn't ready
-        // The ProtectedRoute will eventually hydrate and trigger a re-render
-        return; // Now inside try, so finally { setLoading(false) } runs
+        trace('TODAY_NO_USER_ID', 'will retry on next render');
+        console.log('[TodayScreen] loadDoses: No userId available, will retry on next render');
+        return;
       }
-      console.log('[TodayScreen] loadDoses: Got userId from hydrated session:', userId.slice(0, 8) + '...');
+      console.log('[TodayScreen] loadDoses: Using dataClient with userId:', userId.slice(0, 8) + '...');
       
       // Format date in local timezone to avoid UTC conversion issues
       const year = selectedDate.getFullYear();
@@ -446,9 +446,9 @@ export const TodayScreen = () => {
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      // Get regular scheduled doses for the selected date - explicitly filter by user_id
+      // Use dataClient for queries - bypasses auth deadlock
       const { data: dosesData, error: dosesError } = await withQueryTimeout(
-        supabase
+        dataClient
           .from('doses')
           .select(`
             *,
@@ -462,9 +462,9 @@ export const TodayScreen = () => {
 
       if (dosesError) throw dosesError;
 
-      // Get "As Needed" compounds for this user - explicitly filter by user_id
+      // Get "As Needed" compounds for this user - use dataClient
       const { data: asNeededCompounds, error: compoundsError } = await withQueryTimeout(
-        supabase
+        dataClient
           .from('compounds')
           .select('*')
           .eq('user_id', userId)

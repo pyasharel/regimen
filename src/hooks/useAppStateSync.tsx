@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { supabase, recreateSupabaseClient } from '@/integrations/supabase/client';
+import { dataClient } from '@/integrations/supabase/dataClient';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers, cancelAllNotifications } from '@/utils/notificationScheduler';
 import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
@@ -81,8 +82,9 @@ export const useAppStateSync = () => {
         // Check subscription status to enable notification actions (with timeout)
         let isSubscribed = false;
         try {
+          // Use dataClient to bypass auth deadlock
           const { data: profile } = await withQueryTimeout(
-            supabase
+            dataClient
               .from('profiles')
               .select('subscription_status, beta_access_end_date')
               .eq('user_id', userId)
@@ -152,8 +154,9 @@ export const useAppStateSync = () => {
             console.log('[AppStateSync] Dose reminders disabled - skipping scheduling');
             await cancelAllNotifications();
           } else {
+            // Use dataClient to bypass auth deadlock
             const { data: allDoses } = await withQueryTimeout(
-              supabase
+              dataClient
                 .from('doses')
                 .select('*, compounds(name, is_active, has_cycles, cycle_weeks_on, cycle_weeks_off, start_date)')
                 .eq('user_id', userId)
@@ -258,16 +261,17 @@ export const useAppStateSync = () => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
+        // Use dataClient to bypass auth deadlock
         const [compoundsResult, dosesResult, photosResult, statsResult] = await Promise.all([
-          supabase.from('compounds').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-          supabase.from('doses').select('id', { count: 'exact', head: true })
+          dataClient.from('compounds').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+          dataClient.from('doses').select('id', { count: 'exact', head: true })
             .eq('user_id', userId)
             .eq('taken', true)
             .gte('taken_at', thirtyDaysAgo.toISOString()),
-          supabase.from('progress_entries').select('id', { count: 'exact', head: true })
+          dataClient.from('progress_entries').select('id', { count: 'exact', head: true })
             .eq('user_id', userId)
             .not('photo_url', 'is', null),
-          supabase.from('user_stats').select('current_streak').eq('user_id', userId).single(),
+          dataClient.from('user_stats').select('current_streak').eq('user_id', userId).single(),
         ]);
         
         trackWeeklyEngagementSnapshot({
