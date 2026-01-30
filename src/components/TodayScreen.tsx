@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { withQueryTimeout, TimeoutError } from "@/utils/withTimeout";
-import { getUserIdWithFallback } from "@/utils/safeAuth";
+import { getUserIdWithFallback, ensureAuthReady } from "@/utils/safeAuth";
 import { Calendar } from "@/components/ui/calendar";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -413,15 +413,23 @@ export const TodayScreen = () => {
     const startTime = Date.now();
     console.log('[TodayScreen] 🚀 Starting loadDoses...');
     
-    // Require userId to prevent anonymous queries returning empty results (RLS)
-    const userId = await getUserIdWithFallback(3000);
+    // CRITICAL: Ensure Supabase client has a hydrated session before querying
+    // This fixes the "Slow connection" issue on cold start from notification
+    // where cached userId exists but Supabase client isn't authenticated yet
+    const userId = await ensureAuthReady();
     if (!userId) {
-      console.log('[TodayScreen] loadDoses: No userId, keeping loading state');
-      // Don't set loading=false or doses=[] - keep showing "loading" 
-      // This prevents "first-time user" empty state when auth is still hydrating
+      // Fall back to cached userId as last resort
+      const cachedUserId = await getUserIdWithFallback(3000);
+      if (!cachedUserId) {
+        console.log('[TodayScreen] loadDoses: No userId available, keeping loading state');
+        return;
+      }
+      console.log('[TodayScreen] loadDoses: Using cached userId (auth not fully ready):', cachedUserId.slice(0, 8) + '...');
+      // Don't proceed with queries if we only have cached ID - Supabase client isn't ready
+      // The ProtectedRoute will eventually hydrate and trigger a re-render
       return;
     }
-    console.log('[TodayScreen] loadDoses: Got userId:', userId.slice(0, 8) + '...');
+    console.log('[TodayScreen] loadDoses: Got userId from hydrated session:', userId.slice(0, 8) + '...');
     
     try {
       // Format date in local timezone to avoid UTC conversion issues
