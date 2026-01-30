@@ -51,16 +51,23 @@ export default function Auth() {
 
   useEffect(() => {
     const mode = searchParams.get("mode");
-    if (mode === "reset") {
+    const isResetMode = mode === "reset";
+    
+    // Check for reset mode from URL parameter
+    if (isResetMode) {
+      console.log('[Auth] Reset mode detected from URL parameter');
       setIsResettingPassword(true);
-      return;
+      // Don't return early - still need to set up auth listener
     }
 
-    // Check for existing session and redirect immediately
+    // Check for existing session - but don't redirect if in reset mode
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+      if (session && !isResetMode) {
         console.log('[Auth] Existing session found, redirecting to /today');
         navigate("/today", { replace: true });
+      } else if (session && isResetMode) {
+        console.log('[Auth] Session found in reset mode - showing password form');
+        setSession(session);
       }
     });
 
@@ -69,8 +76,14 @@ export default function Auth() {
       setSession(currentSession);
       
       if (event === 'PASSWORD_RECOVERY') {
+        console.log('[Auth] PASSWORD_RECOVERY event received');
         setIsResettingPassword(true);
       } else if (event === 'SIGNED_IN' && currentSession) {
+        // Don't redirect if we're in reset mode - user needs to change password
+        if (isResetMode || isResettingPassword) {
+          console.log('[Auth] Signed in during reset mode - staying on password form');
+          return;
+        }
         console.log('[Auth] User signed in, checking onboarding status');
         // Set GA4 user ID for cross-session tracking
         setUserId(currentSession.user.id);
@@ -87,7 +100,7 @@ export default function Auth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, isResettingPassword]);
 
   // Track if we've already checked onboarding for this user
   const checkedUsers = useRef<Set<string>>(new Set());
