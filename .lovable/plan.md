@@ -1,156 +1,141 @@
 
-# Build 26: Nuclear Fix for iOS Cold Start Networking
 
-## Root Cause (Now Confirmed)
+# Build 27: noOpLock Fix for iOS Supabase Deadlock
 
-The logs prove that Build 25's "app ready" gating isn't blocking anything because `globalIsActive` and `globalIsVisible` default to `true`. By the time `CapacitorApp.getState()` returns the real value, the sync has already started and requests are hanging.
+## Root Cause Identified
 
-The abortable fetch has an 8-second timeout, but `withQueryTimeout` times out at 5 seconds first - and it doesn't abort the underlying request. This leaves stuck connections poisoning the client.
+The issue is a **known bug in `@supabase/auth-js`** (the authentication module used by `@supabase/supabase-js`). On iOS Capacitor WebViews, the `navigator.locks` API can fail to release locks when the app is suspended/resumed. When this happens:
 
-## The Nuclear Fix
+1. The first auth operation acquires the lock
+2. iOS suspends the app
+3. On resume, the lock is never released
+4. All subsequent auth operations wait forever for a lock that will never be released
+5. Network requests hang indefinitely (no timeout)
 
-Instead of trying to detect when iOS is "ready" (which we've proven is unreliable), we'll take a different approach:
+This matches exactly what we've been seeing: queries hang, timeouts fire, but the underlying requests stay stuck.
 
-### Strategy: Delay-First on Native Cold Start
+## The Fix: Bypass the Lock Entirely
 
-On native cold start, we will **unconditionally wait 2 seconds** before ANY network request. This gives iOS time to:
-- Finish waking up the WebView
-- Initialize the networking stack
-- Complete any pending system operations
-
-This is not elegant, but it's reliable and it works.
-
-### Changes
-
-#### 1. Add Hard Delay Before First Network Work
-
-In `main.tsx`, after client recreation, add a 2-second delay before marking boot ready:
+Supabase supports a custom `lock` function in the client options. We can provide a "no-op" lock that immediately executes the function without any locking:
 
 ```typescript
-if (Capacitor.isNativePlatform()) {
-  console.log('[BOOT] Native cold start - waiting 2s for iOS networking...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  console.log('[BOOT] Delay complete, proceeding with boot');
-}
+const noOpLock = async <T>(
+  name: string, 
+  acquireTimeout: number, 
+  fn: () => Promise<T>
+): Promise<T> => {
+  return await fn();
+};
 ```
 
-#### 2. Gate TodayScreen on Boot Complete Flag
+This is safe for mobile apps because:
+- Mobile apps run as a single instance (no tabs competing for session)
+- There's no risk of race conditions from multiple tabs refreshing tokens simultaneously
+- The lock mechanism only exists for multi-tab browser scenarios
 
-Add a global flag `window.__bootNetworkReady` that's set to `true` after the delay. TodayScreen won't start loading until this flag is true.
+## Changes Required
 
-#### 3. Gate AppStateSync Initial Sync Similarly
+### 1. Update Main Supabase Client (`src/integrations/supabase/client.ts`)
 
-The initial sync in `useAppStateSync` will also wait for the boot delay to complete.
-
-#### 4. Add Auto-Reload on Persistent Timeout
-
-If queries still timeout after retry, force `window.location.reload()` instead of showing stuck UI:
+Add the `noOpLock` function and include it in client options:
 
 ```typescript
-if (retryCount >= 2) {
-  console.log('[TodayScreen] Persistent timeouts - forcing reload');
-  window.location.reload();
-}
+/**
+ * No-op lock for iOS Capacitor WebView compatibility.
+ * 
+ * The default navigator.locks API deadlocks on iOS when the app
+ * is suspended and resumed. Since mobile apps are single-instance,
+ * we don't need cross-tab locking.
+ */
+const noOpLock = async <T>(
+  name: string,
+  acquireTimeout: number,
+  fn: () => Promise<T>
+): Promise<T> => {
+  return await fn();
+};
+
+const clientOptions = {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    lock: noOpLock, // <-- ADD THIS
+  }
+};
 ```
 
-This ensures users never get stuck on an empty screen.
+### 2. Update Data Client (`src/integrations/supabase/dataClient.ts`)
 
-### Why This Will Work
+The dataClient already has `persistSession: false` and `autoRefreshToken: false`, but for safety and consistency, we should add the same `noOpLock`:
 
-1. **Guaranteed delay**: No race conditions - we wait a fixed 2 seconds on every native cold start
-2. **Fresh clients**: Both clients are recreated before the delay
-3. **Auto-recovery**: If it still fails, auto-reload gives a fresh JS context
-4. **Users can use the app**: Even if it takes 2 extra seconds on cold start, they'll see their data
+```typescript
+const createDataClientInstance = (): SupabaseClient<Database> => {
+  return createClient<Database>(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        lock: noOpLock, // <-- ADD THIS for consistency
+      },
+      // ... rest of options
+    }
+  );
+};
+```
 
-### File Changes
+### 3. Remove 2-Second Boot Delay (Optional but Recommended)
+
+With the deadlock fixed at the source, we can remove or reduce the 2-second boot delay in `main.tsx`. However, I recommend keeping a small delay (500ms) as a safety buffer for iOS networking stack initialization.
+
+### 4. Update Documentation
+
+Add memory file documenting this fix for future reference.
+
+### 5. Bump Build Number
+
+Increment to Build 27.
+
+## Expected Behavior After Fix
+
+1. Cold start: App boots normally, no 2-second delay needed
+2. Hard close/reopen: No deadlock, queries complete normally  
+3. Notification tap: No deadlock, data loads immediately
+4. No more "Connection stuck" states
+
+## Technical Notes
+
+- The `lock` option is typed as `LockFunc` in Supabase
+- Signature: `(name: string, acquireTimeout: number, fn: () => Promise<T>) => Promise<T>`
+- This is documented in the Supabase source but not prominently in docs
+- This fix has been used successfully by other Capacitor/React Native apps with the same issue
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/main.tsx` | Add 2s delay after client recreation on native, set global ready flag |
-| `src/components/TodayScreen.tsx` | Wait for boot ready flag before loading |
-| `src/hooks/useAppStateSync.tsx` | Wait for boot ready flag before initial sync |
-| `capacitor.config.ts` | Bump to Build 26 |
+| `src/integrations/supabase/client.ts` | Add `noOpLock` function and include in auth options |
+| `src/integrations/supabase/dataClient.ts` | Add same `noOpLock` for consistency |
+| `src/main.tsx` | Reduce boot delay from 2s to 500ms (optional) |
+| `capacitor.config.ts` | Bump to Build 27 |
+| `.storage/memory/` | Add documentation for this fix |
 
-### Expected Log Sequence (Build 26)
+## Testing Protocol
 
-```
-[BOOT] Native platform detected - recreating ALL Supabase clients
-[BOOT] Native cold start - waiting 2s for iOS networking...
-... 2 seconds pass ...
-[BOOT] Delay complete, network ready flag set
-[TodayScreen] Boot ready, starting data load
-[AppStateSync] Boot ready, starting initial sync
-```
+1. Fresh install → verify data loads immediately (no 2s delay)
+2. Hard close, reopen → data should load within 1 second
+3. Schedule notification 2-3 min out
+4. Background app, tap notification → data should load immediately
+5. Repeat 10+ times with hard closes
 
-### Testing
+## Risk Assessment
 
-1. Fresh install - verify loads (may have 2s delay)
-2. Hard close, reopen - data should load after 2s delay
-3. Notification tap from killed state - data should load
-4. Repeat 10+ times
+**Low risk.** The lock mechanism only exists for multi-tab browser scenarios. Mobile apps:
+- Never have multiple tabs
+- Never compete for session refresh
+- Don't need lock coordination
 
-### User Experience
+Many production apps use this exact workaround for Capacitor/React Native.
 
-- Cold start adds ~2 seconds
-- But users see their data reliably
-- No more "empty state" frustration
-- Users stop messaging you about the app being broken
-
----
-
-## Technical Details
-
-### Boot Ready Flag Implementation
-
-```typescript
-// In main.tsx, at module level
-declare global {
-  interface Window {
-    __bootNetworkReady?: boolean;
-  }
-}
-
-// After client recreation
-if (Capacitor.isNativePlatform()) {
-  console.log('[BOOT] Native cold start - waiting 2s for iOS...');
-  setTimeout(() => {
-    window.__bootNetworkReady = true;
-    console.log('[BOOT] Network ready flag set');
-  }, 2000);
-} else {
-  window.__bootNetworkReady = true; // Web is always ready
-}
-```
-
-### TodayScreen Gating
-
-```typescript
-useEffect(() => {
-  // Wait for boot network ready
-  if (Capacitor.isNativePlatform() && !window.__bootNetworkReady) {
-    const checkReady = setInterval(() => {
-      if (window.__bootNetworkReady) {
-        clearInterval(checkReady);
-        loadDoses();
-        checkCompounds();
-        loadUserName();
-      }
-    }, 100);
-    return () => clearInterval(checkReady);
-  }
-  
-  loadDoses();
-  checkCompounds();
-  loadUserName();
-}, [selectedDate]);
-```
-
-### Auto-Reload on Persistent Failure
-
-```typescript
-if (retryCount >= 2) {
-  console.log('[TodayScreen] Too many timeouts - reloading app');
-  window.location.reload();
-  return;
-}
-```
