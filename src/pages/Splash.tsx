@@ -1,25 +1,26 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { getCachedSession } from "@/utils/authSessionCache";
+import { hasAnyAuthTokens } from "@/utils/safeAuth";
 import logo from "@/assets/regimen-wordmark-transparent.png";
 
 /**
- * HOTFIX: Simplified Splash Screen
+ * BUILD 30: Token-Mirror-Aware Splash Screen
  * 
- * This is a simplified version that prioritizes getting users into the app
- * over complex session restoration logic. Key changes:
+ * This version checks BOTH localStorage AND native token mirror before
+ * deciding to route to onboarding. This fixes the issue where tapping
+ * a notification after hours in the background would incorrectly send
+ * users to onboarding (appearing as if they were signed out).
  * 
- * 1. Always render UI immediately (never block on auth)
- * 2. Hide native splash immediately on mount
- * 3. Use 3-second hard timeout on auth check
- * 4. On any failure/timeout: go to onboarding (user can sign in again)
+ * Decision flow:
+ * 1. Fast-path: If localStorage has valid cached session → /today
+ * 2. Mirror-path: If hasAnyAuthTokens() finds tokens anywhere → /today
+ *    (let ProtectedRoute handle hydration)
+ * 3. Only if NO tokens anywhere → /onboarding
  * 
- * This breaks the "poison data" cycle where corrupted auth cache would
- * cause infinite boot loops.
+ * We intentionally avoid calling supabase.auth.getSession() here because
+ * it's prone to timeout/deadlock during iOS cold starts from notifications.
  */
-
-const AUTH_TIMEOUT_MS = 3000; // 3 second hard timeout on auth
 
 export default function Splash() {
   const navigate = useNavigate();
@@ -45,37 +46,31 @@ export default function Splash() {
       return;
     }
 
-    // Slow-path: Async session check with hard timeout
-    const checkAuth = async () => {
+    // Mirror-path: Check if we have tokens anywhere (localStorage OR native mirror)
+    // If tokens exist, route to /today and let ProtectedRoute handle hydration
+    const checkTokensAndRoute = async () => {
       if (hasNavigated.current) return;
       
-      window.updateBootStage?.('splash-auth-check');
+      window.updateBootStage?.('splash-token-check');
       
       try {
-        // Race between auth check and timeout
-        const timeoutPromise = new Promise<null>((resolve) => 
-          setTimeout(() => resolve(null), AUTH_TIMEOUT_MS)
-        );
-        
-        const sessionPromise = supabase.auth.getSession().then(res => res.data.session);
-        
-        const session = await Promise.race([sessionPromise, timeoutPromise]);
+        const hasTokens = await hasAnyAuthTokens();
         
         if (hasNavigated.current) return;
         hasNavigated.current = true;
         setStatus('redirecting');
         
-        if (session) {
-          console.log('[Splash] Auth check: Session found, navigating to /today');
+        if (hasTokens) {
+          console.log('[Splash] Mirror-path: Tokens found, navigating to /today');
           navigate('/today', { replace: true });
         } else {
-          console.log('[Splash] Auth check: No session or timeout, navigating to /onboarding');
+          console.log('[Splash] No tokens anywhere, navigating to /onboarding');
           navigate('/onboarding', { replace: true });
         }
       } catch (error) {
         if (hasNavigated.current) return;
         
-        console.warn('[Splash] Auth check failed:', error);
+        console.warn('[Splash] Token check failed:', error);
         hasNavigated.current = true;
         setStatus('redirecting');
         // On any error, go to onboarding - user can sign in again
@@ -84,7 +79,7 @@ export default function Splash() {
     };
 
     // Small delay to ensure UI is painted first
-    const timer = setTimeout(checkAuth, 100);
+    const timer = setTimeout(checkTokensAndRoute, 100);
     
     return () => clearTimeout(timer);
   }, [navigate]);
