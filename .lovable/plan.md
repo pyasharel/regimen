@@ -1,128 +1,141 @@
 
-# GA4 Analytics Improvement Plan (Updated)
 
-## Summary
+# Fix Plan: Android Sign-Out Issue (Failed Boot Detection)
 
-Add platform parameter to key events for better funnel analysis by iOS/Android/Web. Based on your suggestions and the current codebase, here's what makes sense:
+## Problem Summary
 
-## Events to Update
+The app's "failed boot detection" logic in `main.tsx` is too aggressive. When it detects an incomplete boot (which can happen normally after app updates or hard closes), it wipes all Supabase auth keys from localStorage, signing the user out.
 
-| Event | File | Change |
-|-------|------|--------|
-| `session_started` | `src/utils/analytics.ts` | Add `platform` and `app_version` parameters |
-| `screen_view` / `pageview` | `src/utils/analytics.ts` | Add `platform` parameter |
-| `compound_added` | `src/utils/analytics.ts` | Add `platform` parameter |
-| `dose_logged` | `src/utils/analytics.ts` | Convert to GA4 format with `platform` parameter |
-| `feature_first_use` | `src/utils/featureTracking.ts` | Add `platform` parameter |
-| `onboarding_step` | `src/utils/analytics.ts` | Add `platform` parameter |
+**Result:** Users get logged out unexpectedly, shown "Restoring your session..." loading screen, and miss their notifications.
 
-## Events Already Covered (No Changes Needed)
+---
 
-| Event | Why Skip |
-|-------|----------|
-| `subscription_purchased` | Already tracked with platform via `paywall_purchase_complete` and RevenueCat webhook |
-| `subscription_trial_started` | Already tracked server-side via RevenueCat webhook with platform |
+## Solution: Preserve Auth Tokens During Failed Boot Recovery
 
-## Files to Modify
+Instead of wiping all `sb-` and `supabase` keys, we will **preserve the auth token key** while still clearing other potentially corrupted data.
 
-### 1. `src/utils/analytics.ts`
+---
 
-**Changes:**
+## Implementation Steps
 
-- `trackSessionStart()` - Add platform and app_version parameters
-- `trackPageView()` - Add platform parameter
-- `trackCompoundAdded()` - Add platform parameter
-- `trackDoseLogged()` - Convert from category/action format to GA4 event format with platform
-- `trackOnboardingStep()` - Add platform parameter
-- Add debug logging to key functions for troubleshooting
+### Step 1: Modify Failed Boot Detection in `main.tsx`
 
-### 2. `src/utils/featureTracking.ts`
+**Current problematic code (lines 47-53):**
+```typescript
+const keysToCheck = Object.keys(localStorage);
+keysToCheck.forEach(key => {
+  if (key.includes('sb-') || key.includes('supabase')) {
+    try { localStorage.removeItem(key); } catch {}
+  }
+});
+```
 
-**Changes:**
+**New safe code:**
+```typescript
+// Define the specific auth token key we must NEVER delete
+const AUTH_TOKEN_KEY = 'sb-ywxhjnwaogsxtjwulyci-auth-token';
 
-- Import `getPlatform` from analytics
-- Add platform parameter to `feature_first_use` event
+const keysToCheck = Object.keys(localStorage);
+keysToCheck.forEach(key => {
+  // Skip the main auth token - this is the user's session
+  if (key === AUTH_TOKEN_KEY) {
+    console.log('[BOOT] Preserving auth token during recovery');
+    return;
+  }
+  
+  // Only clear other Supabase keys (code verifier, provider token, etc.)
+  if (key.includes('sb-') || key.includes('supabase')) {
+    try { localStorage.removeItem(key); } catch {}
+  }
+});
+```
 
-### 3. `src/hooks/useAnalytics.tsx`
+This preserves the user's login session while still clearing other potentially problematic Supabase state.
 
-**Changes:**
+---
 
-- Add console log when GA4 initializes on native platforms
-- Add console log when session starts with platform info
+### Step 2: Add Better Boot Status Tracking
+
+The current logic treats `STARTING` status as "previous boot failed." But this status can persist across normal app updates. We should add a timestamp check:
+
+**Enhancement:** Only consider it a "failed boot" if:
+1. Status is `STARTING`, AND
+2. The status was set more than 30 seconds ago
+
+```typescript
+const lastBootStatus = localStorage.getItem('REGIMEN_BOOT_STATUS');
+const lastBootTime = localStorage.getItem('REGIMEN_BOOT_TIME');
+const bootAge = lastBootTime ? Date.now() - parseInt(lastBootTime, 10) : 0;
+
+// Only treat as failed if status is STARTING and it's been stuck for >30 seconds
+// This prevents false positives from app updates or quick restarts
+const isReallyFailed = lastBootStatus === 'STARTING' && bootAge > 30000;
+
+if (isReallyFailed) {
+  // ... clear suspect keys (but preserve auth token)
+}
+```
+
+Also add timestamp tracking when setting boot status:
+```typescript
+localStorage.setItem('REGIMEN_BOOT_STATUS', 'STARTING');
+localStorage.setItem('REGIMEN_BOOT_TIME', Date.now().toString());
+```
+
+---
+
+### Step 3: Clear Boot Status on Successful Load
+
+Ensure `REGIMEN_BOOT_STATUS` is set to `COMPLETE` when the app successfully loads. This is already happening in `ProtectedRoute.tsx`:
+
+```typescript
+localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
+```
 
 ---
 
 ## Technical Details
 
-### Updated Event Formats
+### Files to Modify
 
-**`trackDoseLogged` (Before):**
-```typescript
-ReactGA.event({
-  category: 'Dose',
-  action: completed ? 'Marked Complete' : 'Marked Incomplete',
-  label: compoundName,
-});
-```
+| File | Changes |
+|------|---------|
+| `src/main.tsx` | Update failed boot detection to preserve auth token key and add timestamp check |
 
-**`trackDoseLogged` (After):**
-```typescript
-ReactGA.event('dose_logged', {
-  compound_name: compoundName,
-  completed: completed,
-  platform: getPlatform(),
-  app_version: APP_VERSION,
-});
-```
+### What Gets Preserved vs Cleared
 
-**`trackSessionStart` (Before):**
-```typescript
-ReactGA.event({
-  category: 'Session',
-  action: 'Started',
-});
-```
-
-**`trackSessionStart` (After):**
-```typescript
-ReactGA.event('session_started', {
-  platform: getPlatform(),
-  app_version: APP_VERSION,
-});
-```
-
-**`feature_first_use` (After):**
-```typescript
-ReactGA.event('feature_first_use', {
-  feature_name: featureKey,
-  features_used_count: usedFeatures.length,
-  features_remaining: FEATURE_KEYS.length - usedFeatures.length,
-  platform: getPlatform(),
-});
-```
-
-### Debug Logging
-
-Adding console logs to verify events fire on native:
-
-```typescript
-console.log('[Analytics] Session started:', { platform, app_version });
-console.log('[Analytics] Dose logged:', { compound, completed, platform });
-console.log('[Analytics] Feature first use:', { feature, platform });
-```
+| Key | Action | Reason |
+|-----|--------|--------|
+| `sb-{projectId}-auth-token` | **PRESERVE** | User's login session |
+| `sb-{projectId}-auth-token-code-verifier` | Clear | OAuth temporary state |
+| `sb-{projectId}-provider-token` | Clear | Third-party tokens |
+| Other `supabase` keys | Clear | Various temp state |
 
 ---
 
-## GA4 Visibility After Implementation
+## Testing Plan
 
-Once deployed, you'll be able to:
+After implementing the fix:
 
-1. **Event Reports**: Go to Reports > Engagement > Events and click any event to see breakdown by `platform` parameter
-2. **Explorations**: Create funnels filtering by `platform = ios` vs `platform = android`
-3. **Comparisons**: Compare conversion rates between platforms
+1. **Fresh install test**: Install app, sign in, force close, reopen → should stay logged in
+2. **Update simulation test**: Install old build, sign in, install new build → should stay logged in
+3. **Hard close test**: Use app, swipe away from recent apps, reopen 10+ times → should never log out
+4. **Notification test**: Set reminder, close app, wait for notification → should fire correctly
 
-## Timeline
+---
 
-- Code changes: ~10 minutes
-- Deployment: Automatic with next build
-- Data visible: 24-48 hours after users update to new version
+## User Communication
+
+Once this fix is deployed (v1.0.5 or next build), you can tell Jam and Kinsuu:
+
+> "We found and fixed the sign-out bug. The app was being too aggressive in clearing data after updates. The new version should keep you logged in. If you get signed out one more time after updating, that's expected - but after that, it won't happen again."
+
+---
+
+## Why This Fix Is Safe
+
+1. **Preserves the exact key** that contains user auth tokens
+2. **Still clears** OAuth code verifiers and other temporary Supabase state that could cause issues
+3. **Adds time-based check** to avoid false positives from quick app restarts
+4. **No risk of data corruption** - auth tokens are read-only and managed by Supabase SDK
+
