@@ -51,7 +51,7 @@ const ALL_COMPOUNDS = [
   
   // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Testosterone Gel",
+  "Testosterone Gel", "Sustanon", "Sustanon 250",
   
   // Anabolic Steroids
   "Nandrolone Decanoate", "Deca", "NPP",
