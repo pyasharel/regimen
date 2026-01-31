@@ -55,6 +55,7 @@ This file contains all compounds currently available in the autocomplete databas
 - NMN
 
 ## Testosterone - Men's TRT
+- Sustanon / Sustanon 250
 - Testosterone Cypionate
 - Testosterone Enanthate
 - Testosterone Gel
