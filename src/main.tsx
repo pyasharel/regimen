@@ -27,10 +27,22 @@ if (Capacitor.isNativePlatform()) {
 // ========================================
 // If the previous boot didn't complete, clear suspect keys that may cause hangs.
 // This runs before ANY other code to break the poison-data cycle.
+// IMPORTANT: We preserve the auth token to prevent unwanted sign-outs after updates.
+
+// The auth token key we must NEVER delete - this is the user's active session
+const AUTH_TOKEN_KEY = 'sb-ywxhjnwaogsxtjwulyci-auth-token';
+
 const lastBootStatus = localStorage.getItem('REGIMEN_BOOT_STATUS');
-if (lastBootStatus === 'STARTING') {
-  console.warn('[BOOT] Previous boot failed. Clearing suspect keys and recreating Supabase client.');
-  trace('FAILED_BOOT_DETECTED', 'Previous boot did not complete');
+const lastBootTime = localStorage.getItem('REGIMEN_BOOT_TIME');
+const bootAge = lastBootTime ? Date.now() - parseInt(lastBootTime, 10) : Infinity;
+
+// Only treat as failed if status is STARTING and it's been stuck for >30 seconds
+// This prevents false positives from app updates or quick restarts
+const isReallyFailed = lastBootStatus === 'STARTING' && bootAge > 30000;
+
+if (isReallyFailed) {
+  console.warn('[BOOT] Previous boot failed (stuck for', Math.round(bootAge / 1000), 's). Clearing suspect keys.');
+  trace('FAILED_BOOT_DETECTED', `Boot stuck for ${Math.round(bootAge / 1000)}s`);
   
   // Clear keys most likely to cause boot issues
   const suspectKeys = [
@@ -44,9 +56,16 @@ if (lastBootStatus === 'STARTING') {
     try { localStorage.removeItem(key); } catch {}
   });
   
-  // Clear potentially corrupted Supabase auth keys
+  // Clear potentially corrupted Supabase keys, but PRESERVE the auth token
   const keysToCheck = Object.keys(localStorage);
   keysToCheck.forEach(key => {
+    // CRITICAL: Never delete the auth token - this keeps the user signed in
+    if (key === AUTH_TOKEN_KEY) {
+      console.log('[BOOT] Preserving auth token during recovery');
+      return;
+    }
+    
+    // Clear other Supabase keys (code verifier, provider token, etc.)
     if (key.includes('sb-') || key.includes('supabase')) {
       try { localStorage.removeItem(key); } catch {}
     }
@@ -56,11 +75,17 @@ if (lastBootStatus === 'STARTING') {
   
   localStorage.setItem('REGIMEN_BOOT_STATUS', 'RECOVERED');
   trace('FAILED_BOOT_KEYS_CLEARED');
-  console.log('[BOOT] Suspect keys cleared, client recreated, status set to RECOVERED');
+  console.log('[BOOT] Suspect keys cleared (auth preserved), status set to RECOVERED');
+} else if (lastBootStatus === 'STARTING') {
+  // Boot status is STARTING but not long enough to be a real failure
+  // This is likely a quick restart or app update - don't clear anything
+  console.log('[BOOT] Previous boot incomplete but recent (' + Math.round(bootAge / 1000) + 's) - skipping cleanup');
+  trace('BOOT_STATUS_RECENT', `${Math.round(bootAge / 1000)}s ago`);
 }
 
 // Mark that we're starting boot - if this remains 'STARTING' on next launch, boot failed
 localStorage.setItem('REGIMEN_BOOT_STATUS', 'STARTING');
+localStorage.setItem('REGIMEN_BOOT_TIME', Date.now().toString());
 trace('BOOT_STATUS_SET', 'STARTING');
 
 // Update boot stage indicator
