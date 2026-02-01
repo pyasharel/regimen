@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink, Bug, Copy, Check } from "lucide-react";
+import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink, Bug, Copy, Check, LogIn } from "lucide-react";
 import { appVersion, appBuild } from "../../../capacitor.config";
 import { getBootTraceText, getLastBootSummary, clearBootTrace } from "@/utils/bootTracer";
+import { getAuthTraceText, getLastAuthSummary, clearAuthTrace } from "@/utils/authTracer";
 
 // Build-time constant defined in vite.config.ts
 declare const __WEB_BUNDLE_STAMP__: string;
 
 export const HelpSettings = () => {
   const navigate = useNavigate();
-  const [showTrace, setShowTrace] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [showBootTrace, setShowBootTrace] = useState(false);
+  const [showAuthTrace, setShowAuthTrace] = useState(false);
+  const [copiedBoot, setCopiedBoot] = useState(false);
+  const [copiedAuth, setCopiedAuth] = useState(false);
   const [bootSummary] = useState(() => getLastBootSummary());
+  const [authSummary] = useState(() => getLastAuthSummary());
 
   const faqItems = [
     {
@@ -27,6 +31,34 @@ export const HelpSettings = () => {
       answer: "Absolutely. Your data is encrypted and stored securely. We never sell your personal health information. You can delete your data at any time from Settings > Data."
     }
   ];
+
+  const handleCopyBoot = () => {
+    const text = getBootTraceText();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedBoot(true);
+      setTimeout(() => setCopiedBoot(false), 2000);
+    });
+  };
+
+  const handleCopyAuth = () => {
+    const text = getAuthTraceText();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedAuth(true);
+      setTimeout(() => setCopiedAuth(false), 2000);
+    });
+  };
+
+  const handleCopyAll = () => {
+    const combined = `${getBootTraceText()}\n\n${getAuthTraceText()}`;
+    navigator.clipboard.writeText(combined).then(() => {
+      setCopiedBoot(true);
+      setCopiedAuth(true);
+      setTimeout(() => {
+        setCopiedBoot(false);
+        setCopiedAuth(false);
+      }, 2000);
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -119,27 +151,21 @@ export const HelpSettings = () => {
           
           <div className="flex gap-2">
             <button
-              onClick={() => setShowTrace(!showTrace)}
+              onClick={() => setShowBootTrace(!showBootTrace)}
               className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
             >
-              {showTrace ? 'Hide Trace' : 'View Boot Trace'}
+              {showBootTrace ? 'Hide Trace' : 'View Boot Trace'}
             </button>
             <button
-              onClick={() => {
-                const text = getBootTraceText();
-                navigator.clipboard.writeText(text).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                });
-              }}
+              onClick={handleCopyBoot}
               className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
               title="Copy to clipboard"
             >
-              {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+              {copiedBoot ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
           
-          {showTrace && (
+          {showBootTrace && (
             <div className="mt-2">
               <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
                 {getBootTraceText()}
@@ -147,15 +173,79 @@ export const HelpSettings = () => {
               <button
                 onClick={() => {
                   clearBootTrace();
-                  setShowTrace(false);
+                  setShowBootTrace(false);
                 }}
                 className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors"
               >
-                Clear Trace History
+                Clear Boot Trace
               </button>
             </div>
           )}
         </div>
+
+        {/* Auth Trace (Login Diagnostics) */}
+        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+              <LogIn className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-semibold">Login Diagnostics</h2>
+              <p className="text-xs text-muted-foreground font-mono">{authSummary}</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAuthTrace(!showAuthTrace)}
+              className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
+            >
+              {showAuthTrace ? 'Hide Trace' : 'View Auth Trace'}
+            </button>
+            <button
+              onClick={handleCopyAuth}
+              className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+              title="Copy to clipboard"
+            >
+              {copiedAuth ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          
+          {showAuthTrace && (
+            <div className="mt-2">
+              <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
+                {getAuthTraceText()}
+              </pre>
+              <button
+                onClick={() => {
+                  clearAuthTrace();
+                  setShowAuthTrace(false);
+                }}
+                className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors"
+              >
+                Clear Auth Trace
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Copy All Diagnostics Button */}
+        <button
+          onClick={handleCopyAll}
+          className="w-full p-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2"
+        >
+          {copiedBoot && copiedAuth ? (
+            <>
+              <Check className="h-4 w-4 text-primary" />
+              Copied All Diagnostics
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4" />
+              Copy All Diagnostics
+            </>
+          )}
+        </button>
 
         {/* App Version */}
         <div className="text-center text-sm text-muted-foreground">
