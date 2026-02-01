@@ -1,132 +1,145 @@
 
-<context>
-User reports iOS-only “stuck loading” that sometimes requires hard-killing the app (TestFlight v1.0.5 build 30). They also notice short “Loading your …” spinners that feel non-premium. We previously mitigated native black-screen (splash) issues via boot timeout + client recreation, but the hang is still occurring intermittently.
-</context>
+# Analytics Fixes & RevenueCat Webhook Verification Plan
 
-<what-i-found>
-1) There is at least one high-risk login path that can hang indefinitely:
-- `src/pages/Auth.tsx` sets `checkingAuth=true` after `SIGNED_IN`, then calls `checkOnboardingStatus(userId)`.
-- `checkOnboardingStatus` performs network calls like:
-  - `supabase.from("profiles").select(...).single()`
-  - `supabase.from("profiles").update(...)`
-  - `supabase.auth.getUser()`
-  - `supabase.functions.invoke(...)`
-- These calls are NOT wrapped in `withQueryTimeout` / `withTimeout`, and there is no watchdog fallback. If any of them hang (common on iOS resume/network quirks), the UI can sit forever on the loading screen until the user force-closes.
-This matches the exact symptom pattern: “sometimes on login it just gets stuck and the only way out is hard close.”
+## Summary
 
-2) The “half-second loading” that feels new is very likely the `checkingAuth` full-screen loader:
-- `Auth.tsx` renders a blocking loader: “Loading your account…”.
-- Even if it only lasts 300–800ms, it is highly noticeable because it is a dedicated blocking screen.
+This plan addresses two issues:
+1. **RevenueCat Webhook Configuration** - The webhook is deployed and working, but you need to verify it's configured correctly in the RevenueCat dashboard
+2. **Missing Platform Parameters** - 3 analytics events are missing `platform` and `app_version` parameters
 
-3) There are other places that still use auth-client database calls (not the abortable `dataClient`) on screens that can appear early:
-- Example: `SubscriptionContext` fetches the profile via `supabase.from('profiles')...` (it does have a watchdog for `isLoading`, but it doesn’t abort the underlying request).
-- Example: `MyStackScreen` loads compounds via `supabase.from('compounds')...` (wrapped with `withQueryTimeout`, which prevents UI waiting forever, but does not abort the underlying fetch).
-These are less likely to be the “stuck forever” culprit than `Auth.tsx`, because they already have timeouts or watchdogs, but they are still candidates for perceived slowness and occasional weirdness on iOS.
+---
 
-Conclusion: the highest-leverage fix is to make the post-login flow non-blocking and time-bounded, so it can never trap the app on a loader.
-</what-i-will-change>
+## Part 1: RevenueCat Webhook Configuration (No Code Changes Needed)
 
-<goals>
-- Eliminate any path where the app can stay on a “loading” screen indefinitely (no more hard-close required).
-- Reduce perceived “jank” by preventing very short loading states from showing full-screen spinners.
-- Improve diagnostics so if anything still hangs, you get a clear, copy-pastable clue (like we already do with Boot Trace + ProtectedRoute support code).
-</goals>
+### What I Found
 
-<plan>
-<step id="1" title="Harden the Auth post-login flow so it can’t hang">
-  <why>
-  This is the most likely root cause: `checkingAuth` can remain true forever if any profile/auth call hangs.
-  </why>
-  <changes>
-  - In `src/pages/Auth.tsx`, refactor the `SIGNED_IN` path so navigation to `/today` is not blocked by network calls.
-  - Add strict time limits around any remaining post-login tasks:
-    - Wrap `profiles` reads/updates with `withQueryTimeout(...)`.
-    - Wrap `supabase.auth.getUser()` with `withTimeout(...)` (or remove it entirely when session already contains email).
-    - Ensure all branches (success/error/timeout) always clear `checkingAuth` (or remove the full-screen `checkingAuth` screen entirely).
-  </changes>
-  <implementation-details>
-  - Preferred UX approach:
-    1) On `SIGNED_IN`, immediately `navigate("/today", { replace: true })`.
-    2) Fire-and-forget “nice-to-have” tasks in the background with timeouts:
-       - welcome email send (if needed)
-       - profile enrichment / flags
-    This prevents the login experience from ever being “blocked” by a slow or stuck request.
-  - Replace `supabase.auth.getUser()` inside the welcome-email logic with `currentSession.user.email` when available (no reason to make another auth call during a sensitive phase).
-  - Add a small internal watchdog (e.g. 4–6 seconds) so even if something unexpected happens, the UI never stays on a loader indefinitely.
-  </implementation-details>
-</step>
+- **Good News**: The webhook endpoint IS deployed and responding correctly
+- **The webhook IS working for some users** - I can see recent subscribers (January 2026) have proper `subscription_start_date` and `subscription_end_date` values populated
+- **Older subscribers (December 2025)** have null dates, suggesting they subscribed before the webhook was fully configured
+- **Zero logs in Supabase analytics** - This could be a Supabase logging retention issue, not necessarily a webhook problem
 
-<step id="2" title="Make short loaders feel premium (don’t show a blocking spinner for sub-500ms work)">
-  <why>
-  The “half-second loading” may be real or perceived, but a full-screen spinner for a tiny pause makes it feel worse.
-  </why>
-  <changes>
-  - In `Auth.tsx`, implement a “delayed loader” pattern:
-    - Only show the full-screen loading UI if the operation exceeds a small threshold (e.g. 350–500ms).
-    - Otherwise, navigate immediately and let the normal screen loading skeletons handle it.
-  </changes>
-</step>
+### RevenueCat Dashboard Configuration
 
-<step id="3" title="Reduce remaining iOS risk by aligning more reads with dataClient (optional but recommended)">
-  <why>
-  You already have a proven iOS resilience strategy: use `dataClient` (abortable + token-injected) for data reads/writes, and reserve the auth client for auth operations and edge-function calls.
-  </why>
-  <changes>
-  - Convert post-login profile checks in `Auth.tsx` to use `dataClient` where feasible (especially SELECT reads), falling back gracefully if token not yet available.
-  - Consider migrating “boot-critical” reads in `SubscriptionContext` (native path) to use `dataClient` for profile reads so they benefit from abortable fetch and avoid any lingering auth-client weirdness.
-  </changes>
-  <note>
-  This step is optional for the first pass; Step 1 is the priority to stop the hard-close scenario. If you prefer, we can do Step 1+2 now and revisit Step 3 if any issues remain.
-  </note>
-</step>
+You need to verify these settings in the RevenueCat dashboard:
 
-<step id="4" title="Add a small, targeted diagnostics trail for login hangs (so you don’t need guesswork)">
-  <why>
-  BootTracer is excellent for cold start; we need similar “breadcrumbs” for the login transition.
-  </why>
-  <changes>
-  - Add lightweight “Auth Trace” events stored in localStorage (similar spirit to BootTracer but smaller scope), such as:
-    - AUTH_SIGNED_IN_RECEIVED
-    - AUTH_PROFILE_CHECK_START / DONE / TIMEOUT
-    - AUTH_NAVIGATED_TODAY
-    - AUTH_WELCOME_EMAIL_ATTEMPT / SUCCESS / FAIL / TIMEOUT
-  - Surface the last auth-trace summary in Settings → Help (near Boot Diagnostics), so when a tester reports “it got stuck,” you can read exactly what step it died on.
-  </changes>
-</step>
+**Webhook URL:**
+```
+https://ywxhjnwaogsxtjwulyci.supabase.co/functions/v1/revenuecat-webhook
+```
 
-<step id="5" title="Verification checklist (iPhone-first)">
-  <tests>
-  - iPhone (TestFlight):
-    1) Sign out → Sign in (email/password) 5 times in a row, including:
-       - strong Wi‑Fi
-       - weaker connection (or airplane mode toggle quickly off/on)
-       - after backgrounding the app for 30–60 seconds
-    2) Confirm there is no “infinite loading” screen; worst case should be a recovery UI or an automatic redirect.
-    3) Confirm the annoying short “Loading your account…” spinner is either gone or only appears if it’s genuinely slow.
-  - Android sanity:
-    - Repeat sign-in once to ensure no regressions.
-  - Regression:
-    - Make sure onboarding routing still behaves correctly for genuinely logged-out users.
-  </tests>
-</step>
-</plan>
+**Authorization Header:**
+```
+Authorization: [your REVENUECAT_WEBHOOK_SECRET value]
+```
 
-<files-in-scope>
-- Primary:
-  - `src/pages/Auth.tsx`
-- Potential follow-ups (if we include Step 3/4):
-  - `src/contexts/SubscriptionContext.tsx`
-  - `src/components/settings/HelpSettings.tsx` (to display auth-trace)
-  - `src/utils/*` (new small auth trace helper, if desired)
-</files-in-scope>
+Note: RevenueCat sends the authorization value directly (not as "Bearer token"), so whatever secret you configured should match exactly what's in the Supabase secret.
 
-<risk-and-mitigation>
-- Risk: Navigating to `/today` immediately after sign-in could hide a profile-fetch error that previously routed to onboarding.
-  - Mitigation: default to `/today` on uncertainty (safer UX, aligns with your current “token mirror aware” philosophy), and handle profile issues later without blocking entry.
-- Risk: Background “welcome email” logic might run more than intended.
-  - Mitigation: keep the existing atomic `welcome_email_sent` guard, but time-bound it and do not let it affect navigation.
-</risk-and-mitigation>
+### How to Test
 
-<notes-on-second-opinion>
-A second opinion can be useful, but there is a very concrete, high-probability hang in `Auth.tsx` that we can fix immediately. If the issue persists after hardening that flow, then it’s worth bringing in another dev with the new diagnostics in hand (it will be much faster to root-cause with traces than by intuition).
-</notes-on-second-opinion>
+1. In RevenueCat Dashboard → Webhooks → Send Test Event
+2. Check Supabase Edge Function logs immediately after
+3. Look for `[REVENUECAT-WEBHOOK]` log entries
+
+---
+
+## Part 2: Add Platform Parameter to 3 Events
+
+### Changes Required
+
+**File: `src/utils/analytics.ts`**
+
+#### 1. Update `trackSignup` (lines 105-121)
+Add `platform` and `app_version` to both event calls:
+```typescript
+export const trackSignup = (method: 'email' | 'google') => {
+  const platform = getPlatform();
+  const attribution = getStoredAttribution();
+  
+  ReactGA.event('signup_complete', {
+    method,
+    platform,
+    app_version: APP_VERSION,
+    utm_source: attribution?.utm_source || 'direct',
+    utm_medium: attribution?.utm_medium || 'none',
+    utm_campaign: attribution?.utm_campaign || 'none',
+    referrer: attribution?.referrer || 'none',
+  });
+  console.log('[Analytics] Signup:', { method, platform, app_version: APP_VERSION });
+};
+```
+
+#### 2. Update `trackLogin` (lines 124-130)
+Add platform tracking:
+```typescript
+export const trackLogin = (method: 'email' | 'google') => {
+  const platform = getPlatform();
+  ReactGA.event('login_complete', {
+    method,
+    platform,
+    app_version: APP_VERSION,
+  });
+  console.log('[Analytics] Login:', { method, platform, app_version: APP_VERSION });
+};
+```
+
+#### 3. Update `trackOnboardingComplete` (lines 509-519)
+Add platform tracking:
+```typescript
+export const trackOnboardingComplete = () => {
+  const platform = getPlatform();
+  ReactGA.event('onboarding_complete', {
+    completed: true,
+    platform,
+    app_version: APP_VERSION,
+  });
+  console.log('[Analytics] Onboarding complete:', { platform, app_version: APP_VERSION });
+};
+```
+
+---
+
+## Part 3: Enhanced Webhook Debugging (Optional)
+
+If you want more visibility into webhook calls, I can add enhanced logging to capture:
+- Full event payload (sanitized)
+- Timestamp of each call
+- Response status sent back to RevenueCat
+
+---
+
+## Verification Checklist
+
+After implementation:
+
+| Task | Status |
+|------|--------|
+| RevenueCat webhook URL configured | Manual check needed |
+| Authorization header matches secret | Manual check needed |
+| `trackSignup` has platform param | Will implement |
+| `trackLogin` has platform param | Will implement |
+| `trackOnboardingComplete` has platform param | Will implement |
+| Debug logging active | Will implement |
+
+---
+
+## How to Verify Events in GA4
+
+1. **Realtime**: GA4 → Reports → Realtime → Events
+2. **Debug View**: GA4 → Admin → DebugView (requires enabling debug mode)
+3. **Console Logs**: Check Safari Web Inspector on iOS or Chrome DevTools
+
+Expected console output after changes:
+```
+[Analytics] Signup: { method: 'email', platform: 'ios', app_version: '1.0.3' }
+[Analytics] Login: { method: 'google', platform: 'android', app_version: '1.0.3' }
+[Analytics] Onboarding complete: { platform: 'ios', app_version: '1.0.3' }
+```
+
+---
+
+## Technical Notes
+
+- The webhook IS working - recent subscribers have populated subscription data
+- The "no logs" issue is likely Supabase analytics log retention, not a webhook failure
+- RevenueCat's authorization header is sent as the raw value (not Bearer format)
+- All GA4 events from the webhook already include `platform` and `source: "revenuecat_webhook"`
