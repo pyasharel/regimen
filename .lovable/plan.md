@@ -1,71 +1,101 @@
 
-# Plan: Gate Subscription Diagnostics to Developer Only
+
+# Plan: Beta Tester Feedback Fixes
 
 ## Overview
 
-Restrict the Subscription Diagnostics modal so only designated developer accounts can access it. The implementation will use a placeholder array that can be updated with the developer UUID later.
+Implement three confirmed fixes from beta tester feedback, plus investigate and fix the week start day inconsistency.
 
 ---
 
-## Implementation Approach
+## Changes
 
-### Create Developer Check Utility
+### 1. Add Sign-Out Confirmation Dialog
 
-Create a new utility file `src/utils/developerAccess.ts` with:
+**File**: `src/components/SettingsScreen.tsx`
 
-```text
-// Array of Supabase User IDs that have developer access
-// Add your UUID here after finding it in the diagnostics modal
-const DEVELOPER_USER_IDS: string[] = [
-  // 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // Example: Your UUID goes here
-];
+Replace the simple sign-out button with an AlertDialog that requires confirmation:
 
-export const isDeveloperUser = (userId: string | null): boolean => {
-  if (!userId) return false;
-  return DEVELOPER_USER_IDS.includes(userId);
-};
+- Import `AlertDialog` components from `@/components/ui/alert-dialog`
+- Add state for `showSignOutDialog`
+- Wrap sign-out button to trigger the dialog
+- Add confirmation dialog with "Cancel" and "Sign Out" options
+- Only call `handleSignOut()` when user confirms
+
+This prevents accidental sign-outs from scroll gestures.
+
+---
+
+### 2. Enable Password Manager Support on Auth Form
+
+**File**: `src/pages/Auth.tsx`
+
+Add proper `autoComplete` and `name` attributes to enable OS password managers:
+
+| Field | Sign-In Mode | Sign-Up Mode |
+|-------|--------------|--------------|
+| Email | `autoComplete="email"` `name="email"` | Same |
+| Password | `autoComplete="current-password"` `name="password"` | `autoComplete="new-password"` |
+| Full Name | N/A | `autoComplete="name"` `name="fullName"` |
+
+The browser/OS will automatically:
+- Offer to save credentials after successful login/signup
+- Offer to autofill on return visits
+- Show the password manager prompt on iOS/Android
+
+---
+
+### 3. Fix Week Start Day in Weekly Digest Modal
+
+**File**: `src/components/WeeklyDigestModalCalendar.tsx`
+
+Change the hardcoded days array from Sunday-start to Monday-start:
+
+Before:
+```typescript
+const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 ```
 
-### Modify SettingsScreen.tsx
+After:
+```typescript
+const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+```
 
-Update the long-press handler to check developer status before enabling the diagnostics modal:
-
-1. Import the new utility and get the current user ID
-2. Only set `showSubscriptionDiagnostics(true)` if `isDeveloperUser(userId)` returns true
-3. For non-developers, the long-press does nothing (no visual feedback that the feature exists)
+This aligns with the TodayScreen week calculation which already uses Monday as the start.
 
 ---
 
-## File Changes
+### 4. Version Text Visibility (Deferred)
+
+**Recommendation**: Request a screenshot from the beta tester before making changes. The current `pb-20` padding should be sufficient for most devices. Making changes without understanding the specific issue could break the layout for other users.
+
+---
+
+## Summary of File Changes
 
 | File | Change |
 |------|--------|
-| `src/utils/developerAccess.ts` | **New file** - Developer UUID list and check function |
-| `src/components/SettingsScreen.tsx` | Gate diagnostics trigger behind developer check |
+| `src/components/SettingsScreen.tsx` | Add AlertDialog for sign-out confirmation |
+| `src/pages/Auth.tsx` | Add autocomplete/name attributes for password manager support |
+| `src/components/WeeklyDigestModalCalendar.tsx` | Fix week start day to Monday |
 
 ---
 
-## Security Considerations
+## Technical Notes
 
-- The developer UUID list is in client-side code, but this is acceptable because:
-  - UUIDs are not secret credentials
-  - The diagnostic data itself isn't exploitable
-  - This just prevents accidental discovery by regular users
-- For truly sensitive admin features, server-side checks would be required
+### Password Manager Compatibility
 
----
+The `autoComplete` attribute tells the browser what type of data the field expects. When properly set:
+- iOS Safari will show the keychain prompt
+- Chrome will offer to save passwords
+- Android will show the password manager
+- 1Password, LastPass, etc. will recognize the fields
 
-## Future Update
+### Sign-Out Confirmation
 
-When you have your UUID:
-1. Share it with me
-2. I'll add it to `DEVELOPER_USER_IDS` array
-3. The diagnostics will then work for your account only
+Using the existing `AlertDialog` component from the UI library. The dialog will:
+- Have a clear title: "Sign Out?"
+- Explain the action
+- Show "Cancel" (secondary) and "Sign Out" (destructive) buttons
+- Only proceed when user explicitly confirms
 
----
-
-## Testing
-
-After implementation:
-1. Regular users who long-press the version number will see nothing happen
-2. Once your UUID is added, you'll regain access to the diagnostics modal
