@@ -192,6 +192,15 @@ export const AddCompoundScreen = () => {
   const [customTime, setCustomTime] = useState("08:00");
   const [customTime2, setCustomTime2] = useState("20:00");
   const [numberOfDoses, setNumberOfDoses] = useState(1);
+  
+  // Twice Weekly: per-day times (keyed by day index)
+  const [twiceWeeklyDay1, setTwiceWeeklyDay1] = useState<number>(1); // Monday
+  const [twiceWeeklyDay2, setTwiceWeeklyDay2] = useState<number>(4); // Thursday
+  const [twiceWeeklyTime1, setTwiceWeeklyTime1] = useState("08:00");
+  const [twiceWeeklyTime2, setTwiceWeeklyTime2] = useState("20:00");
+  
+  // Weekly: single day selection
+  const [weeklyDay, setWeeklyDay] = useState<number>(1); // Monday
   // Set start date to today in local timezone
   const today = new Date();
   const localDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -340,18 +349,41 @@ export const AddCompoundScreen = () => {
       
       // Load the saved times - handle array of times
       const times = editingCompound.time_of_day || ['08:00'];
-      setNumberOfDoses(times.length);
-      setCustomTime(times[0] || '08:00');
-      setCustomTime2(times[1] || '20:00');
+      const days = editingCompound.schedule_days || [];
+      
+      // Handle Weekly and Twice Weekly schedule types
+      if (scheduleType === 'Weekly') {
+        // Weekly: single day, single time
+        setCustomTime(times[0] || '08:00');
+        if (days.length > 0) {
+          const dayValue = typeof days[0] === 'string' ? parseInt(days[0]) : days[0];
+          if (!isNaN(dayValue)) setWeeklyDay(dayValue);
+        }
+      } else if (scheduleType === 'Twice Weekly') {
+        // Twice Weekly: two days with paired times
+        setTwiceWeeklyTime1(times[0] || '08:00');
+        setTwiceWeeklyTime2(times[1] || '20:00');
+        if (days.length >= 2) {
+          const day1 = typeof days[0] === 'string' ? parseInt(days[0]) : days[0];
+          const day2 = typeof days[1] === 'string' ? parseInt(days[1]) : days[1];
+          if (!isNaN(day1)) setTwiceWeeklyDay1(day1);
+          if (!isNaN(day2)) setTwiceWeeklyDay2(day2);
+        }
+      } else {
+        // Other schedule types: use numberOfDoses for times
+        setNumberOfDoses(times.length);
+        setCustomTime(times[0] || '08:00');
+        setCustomTime2(times[1] || '20:00');
+      }
       
       // Handle specific days - map full day names (from onboarding) to indices
       if (scheduleType === 'Specific day(s)' || scheduleType === 'Specific day of the week' ||
-          editingCompound.schedule_type === 'specific_days' || editingCompound.schedule_type === 'weekly') {
+          editingCompound.schedule_type === 'specific_days') {
         const dayNameToIndex: Record<string, number> = {
           'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
           'Thursday': 4, 'Friday': 5, 'Saturday': 6
         };
-        const days = editingCompound.schedule_days?.map((d: string | number) => {
+        const parsedDays = days.map((d: string | number) => {
           // Handle full day names (from onboarding)
           if (typeof d === 'string' && dayNameToIndex[d] !== undefined) {
             return dayNameToIndex[d];
@@ -359,7 +391,7 @@ export const AddCompoundScreen = () => {
           // Handle numeric strings or numbers
           return typeof d === 'string' ? parseInt(d) : d;
         }).filter((n: number) => !isNaN(n)) || [];
-        setCustomDays(days);
+        setCustomDays(parsedDays);
       }
       setStartDate(editingCompound.start_date);
       setEndDate(editingCompound.end_date || "");
@@ -643,14 +675,52 @@ export const AddCompoundScreen = () => {
   const calculateInjectionsPerWeek = (): number | null => {
     if (frequency === 'As Needed') return null;
     if (frequency === 'Daily') return 7 * numberOfDoses;
+    if (frequency === 'Weekly') return 1; // 1 injection per week
+    if (frequency === 'Twice Weekly') return 2; // 2 injections per week
     if (frequency === 'Specific day(s)') {
       return (customDays.length || 0) * numberOfDoses;
     }
     if (frequency === 'Every X Days') {
       return (7 / everyXDays) * numberOfDoses;
     }
-    // Weekly (not used in current UI but handle gracefully)
     return numberOfDoses;
+  };
+
+  // Get the schedule_type for database storage
+  const getScheduleTypeForSave = (): string => {
+    if (frequency === 'Every X Days') return `Every ${everyXDays} Days`;
+    // Weekly and Twice Weekly store as their frequency name (new schedule types)
+    return frequency;
+  };
+
+  // Get the time_of_day array for database storage
+  const getTimeOfDayForSave = (): string[] => {
+    if (frequency === 'Weekly') {
+      return [customTime];
+    }
+    if (frequency === 'Twice Weekly') {
+      // For Twice Weekly, times are paired by array index with schedule_days
+      return [twiceWeeklyTime1, twiceWeeklyTime2];
+    }
+    if (numberOfDoses === 2) {
+      return [customTime, customTime2];
+    }
+    return [customTime];
+  };
+
+  // Get the schedule_days array for database storage
+  const getScheduleDaysForSave = (): string[] | null => {
+    if (frequency === 'Weekly') {
+      return [String(weeklyDay)];
+    }
+    if (frequency === 'Twice Weekly') {
+      // Days are paired by array index with time_of_day
+      return [String(twiceWeeklyDay1), String(twiceWeeklyDay2)];
+    }
+    if (frequency === 'Specific day(s)') {
+      return customDays.map(String);
+    }
+    return null;
   };
 
   // Calculate per-dose values from weekly total (reads from intendedDose when in weekly mode)
@@ -685,6 +755,8 @@ export const AddCompoundScreen = () => {
   // Get schedule description for weekly calculator
   const getScheduleDescription = (): string => {
     if (frequency === 'Daily') return `Daily (${formatInjectionsPerWeek(7 * numberOfDoses)})`;
+    if (frequency === 'Weekly') return `Weekly (1x/week)`;
+    if (frequency === 'Twice Weekly') return `Twice weekly (2x/week)`;
     if (frequency === 'Specific day(s)') {
       const dayCount = customDays.length;
       if (dayCount === 0) return 'No days selected';
@@ -788,7 +860,17 @@ export const AddCompoundScreen = () => {
       const daysSinceOriginalStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       
       // Check if should generate based on frequency
-      if (frequency === 'Specific day(s)') {
+      if (frequency === 'Weekly') {
+        // Weekly: generate only on the selected day
+        if (dayOfWeek !== weeklyDay) {
+          continue;
+        }
+      } else if (frequency === 'Twice Weekly') {
+        // Twice Weekly: generate only on the two selected days
+        if (dayOfWeek !== twiceWeeklyDay1 && dayOfWeek !== twiceWeeklyDay2) {
+          continue;
+        }
+      } else if (frequency === 'Specific day(s)') {
         if (!customDays.includes(dayOfWeek)) {
           continue;
         }
@@ -828,10 +910,23 @@ export const AddCompoundScreen = () => {
 
       let currentDose = getFinalIntendedDose();
 
-      // Generate doses based on number of doses per day
-      const timesToGenerate = numberOfDoses === 2 
-        ? [customTime, customTime2]
-        : [customTime];
+      // Generate doses based on frequency type
+      let timesToGenerate: string[] = [];
+      
+      if (frequency === 'Twice Weekly') {
+        // For Twice Weekly, use the day-specific time
+        if (dayOfWeek === twiceWeeklyDay1) {
+          timesToGenerate = [twiceWeeklyTime1];
+        } else if (dayOfWeek === twiceWeeklyDay2) {
+          timesToGenerate = [twiceWeeklyTime2];
+        }
+      } else if (frequency === 'Weekly') {
+        timesToGenerate = [customTime];
+      } else if (numberOfDoses === 2) {
+        timesToGenerate = [customTime, customTime2];
+      } else {
+        timesToGenerate = [customTime];
+      }
 
       timesToGenerate.forEach(time => {
         doses.push({
@@ -1070,12 +1165,17 @@ export const AddCompoundScreen = () => {
   };
 
   const handleSave = async () => {
+    // Immediately block double-taps to prevent duplicate entries
+    if (saving) return;
+    setSaving(true);
+
     if (!name || !intendedDose) {
       toast({
         title: "Missing fields",
         description: "Please enter compound name and dose",
         variant: "destructive"
       });
+      setSaving(false); // Reset on validation failure
       return;
     }
 
@@ -1083,10 +1183,8 @@ export const AddCompoundScreen = () => {
     console.log('Saving compound with schedule:', {
       frequency,
       customDays,
-      schedule_days: frequency === 'Specific day(s)' ? customDays : null
+      schedule_days: frequency === 'Specific day(s)' || frequency === 'Weekly' || frequency === 'Twice Weekly' ? customDays : null
     });
-
-    setSaving(true);
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -1108,11 +1206,9 @@ export const AddCompoundScreen = () => {
             calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
-          schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
-          time_of_day: numberOfDoses === 2 
-            ? [customTime, customTime2]
-            : [customTime],
-          schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
+            schedule_type: getScheduleTypeForSave(),
+            time_of_day: getTimeOfDayForSave(),
+            schedule_days: getScheduleDaysForSave(),
             start_date: startDate,
             end_date: endDate || null,
             notes: notes || null,
@@ -1256,11 +1352,9 @@ export const AddCompoundScreen = () => {
           calculated_iu: displayIU ? parseFloat(displayIU) : null,
             calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
             concentration: concentration ? parseFloat(concentration) : null,
-            schedule_type: frequency === 'Every X Days' ? `Every ${everyXDays} Days` : frequency,
-            time_of_day: numberOfDoses === 2 
-              ? [customTime, customTime2]
-              : [customTime],
-            schedule_days: frequency === 'Specific day(s)' ? customDays.map(String) : null,
+            schedule_type: getScheduleTypeForSave(),
+            time_of_day: getTimeOfDayForSave(),
+            schedule_days: getScheduleDaysForSave(),
             start_date: startDate,
             end_date: endDate || null,
             notes: notes || null,
@@ -1998,11 +2092,167 @@ export const AddCompoundScreen = () => {
               className="w-full sm:w-64 h-11 bg-input border-border rounded-lg border px-3 text-sm"
             >
               <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Twice Weekly">Twice weekly</option>
               <option value="Specific day(s)">Specific days</option>
               <option value="Every X Days">Every X days</option>
               <option value="As Needed">As needed</option>
             </select>
           </div>
+
+          {/* Weekly: Single day picker */}
+          {frequency === 'Weekly' && (
+            <div className="space-y-3">
+              <Label>Which day?</Label>
+              <div className="grid grid-cols-7 gap-2">
+                {[
+                  { label: 'M', dayIndex: 1, fullName: 'Monday' },
+                  { label: 'T', dayIndex: 2, fullName: 'Tuesday' },
+                  { label: 'W', dayIndex: 3, fullName: 'Wednesday' },
+                  { label: 'T', dayIndex: 4, fullName: 'Thursday' },
+                  { label: 'F', dayIndex: 5, fullName: 'Friday' },
+                  { label: 'S', dayIndex: 6, fullName: 'Saturday' },
+                  { label: 'S', dayIndex: 0, fullName: 'Sunday' },
+                ].map(({ label, dayIndex }) => (
+                  <button
+                    key={dayIndex}
+                    type="button"
+                    onClick={() => setWeeklyDay(dayIndex)}
+                    className={`p-2 rounded-lg text-sm font-medium transition-colors ${
+                      weeklyDay === dayIndex
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border hover:bg-muted'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Twice Weekly: Two day pickers with per-day times */}
+          {frequency === 'Twice Weekly' && (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Pick two days for your twice-weekly schedule. Each day can have its own time.
+              </p>
+              
+              {/* First injection */}
+              <div className="space-y-2 p-3 bg-surface rounded-lg border border-border">
+                <Label className="text-sm font-medium">First injection</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex gap-1">
+                    {[
+                      { label: 'M', dayIndex: 1 },
+                      { label: 'T', dayIndex: 2 },
+                      { label: 'W', dayIndex: 3 },
+                      { label: 'T', dayIndex: 4 },
+                      { label: 'F', dayIndex: 5 },
+                      { label: 'S', dayIndex: 6 },
+                      { label: 'S', dayIndex: 0 },
+                    ].map(({ label, dayIndex }) => (
+                      <button
+                        key={dayIndex}
+                        type="button"
+                        onClick={() => {
+                          // Don't allow same day as second injection
+                          if (dayIndex !== twiceWeeklyDay2) {
+                            setTwiceWeeklyDay1(dayIndex);
+                          }
+                        }}
+                        disabled={dayIndex === twiceWeeklyDay2}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                          twiceWeeklyDay1 === dayIndex
+                            ? 'bg-primary text-primary-foreground'
+                            : dayIndex === twiceWeeklyDay2
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            : 'bg-card border border-border hover:bg-muted'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground text-sm">at</span>
+                  <IOSTimePicker
+                    value={twiceWeeklyTime1}
+                    onChange={setTwiceWeeklyTime1}
+                    className="w-28"
+                  />
+                </div>
+              </div>
+              
+              {/* Second injection */}
+              <div className="space-y-2 p-3 bg-surface rounded-lg border border-border">
+                <Label className="text-sm font-medium">Second injection</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex gap-1">
+                    {[
+                      { label: 'M', dayIndex: 1 },
+                      { label: 'T', dayIndex: 2 },
+                      { label: 'W', dayIndex: 3 },
+                      { label: 'T', dayIndex: 4 },
+                      { label: 'F', dayIndex: 5 },
+                      { label: 'S', dayIndex: 6 },
+                      { label: 'S', dayIndex: 0 },
+                    ].map(({ label, dayIndex }) => (
+                      <button
+                        key={dayIndex}
+                        type="button"
+                        onClick={() => {
+                          // Don't allow same day as first injection
+                          if (dayIndex !== twiceWeeklyDay1) {
+                            setTwiceWeeklyDay2(dayIndex);
+                          }
+                        }}
+                        disabled={dayIndex === twiceWeeklyDay1}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                          twiceWeeklyDay2 === dayIndex
+                            ? 'bg-primary text-primary-foreground'
+                            : dayIndex === twiceWeeklyDay1
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            : 'bg-card border border-border hover:bg-muted'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground text-sm">at</span>
+                  <IOSTimePicker
+                    value={twiceWeeklyTime2}
+                    onChange={setTwiceWeeklyTime2}
+                    className="w-28"
+                  />
+                </div>
+              </div>
+              
+              {/* Spacing hint */}
+              {(() => {
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const day1Name = dayNames[twiceWeeklyDay1];
+                const day2Name = dayNames[twiceWeeklyDay2];
+                // Calculate days apart (handling wrap-around)
+                let daysApart = Math.abs(twiceWeeklyDay2 - twiceWeeklyDay1);
+                if (daysApart > 3.5) daysApart = 7 - daysApart;
+                const isOptimal = daysApart >= 3 && daysApart <= 4;
+                
+                return (
+                  <div className={`text-xs p-2 rounded-lg ${
+                    isOptimal 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {isOptimal 
+                      ? `✓ Good spacing: ${day1Name} → ${day2Name} (~${daysApart === 3 ? '3-4' : '3-4'} days apart)`
+                      : `${day1Name} → ${day2Name} (${daysApart} days apart). For stable levels, try 3-4 days apart.`
+                    }
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {frequency === 'Specific day(s)' && (
             <div className="space-y-2">
@@ -2078,7 +2328,8 @@ export const AddCompoundScreen = () => {
             </div>
           )}
 
-          {frequency !== 'As Needed' && (
+          {/* Hide doses per day and time pickers for Weekly/Twice Weekly (they have their own) */}
+          {frequency !== 'As Needed' && frequency !== 'Weekly' && frequency !== 'Twice Weekly' && (
             <>
               {/* Number of Doses - Compact single row */}
               <div className="flex items-center justify-between py-2">

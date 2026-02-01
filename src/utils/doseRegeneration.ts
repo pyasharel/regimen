@@ -125,11 +125,20 @@ const generateDosesForDate = (compound: any, dateStr: string) => {
     if (end && date > end) return doses;
   }
   
+  // Parse schedule_days as integers
+  const scheduleDays = compound.schedule_days?.map((d: string | number) => 
+    typeof d === 'string' ? parseInt(d) : d
+  ) || [];
+  
   // Check schedule type
-  if (compound.schedule_type === 'Specific day(s)') {
-    const scheduleDays = compound.schedule_days?.map((d: string | number) => 
-      typeof d === 'string' ? parseInt(d) : d
-    ) || [];
+  if (compound.schedule_type === 'Weekly') {
+    // Weekly: only on the single selected day
+    const weeklyDay = scheduleDays[0];
+    if (weeklyDay === undefined || dayOfWeek !== weeklyDay) return doses;
+  } else if (compound.schedule_type === 'Twice Weekly') {
+    // Twice Weekly: only on the two selected days
+    if (!scheduleDays.includes(dayOfWeek)) return doses;
+  } else if (compound.schedule_type === 'Specific day(s)') {
     if (!scheduleDays.includes(dayOfWeek)) return doses;
   }
   
@@ -159,7 +168,21 @@ const generateDosesForDate = (compound: any, dateStr: string) => {
     }
   }
   
-  const times = compound.time_of_day || ['08:00'];
+  // Get times to generate based on schedule type
+  let times: string[] = [];
+  
+  if (compound.schedule_type === 'Twice Weekly') {
+    // For Twice Weekly, times are paired with days by array index
+    const dayIndex = scheduleDays.indexOf(dayOfWeek);
+    if (dayIndex !== -1 && compound.time_of_day?.[dayIndex]) {
+      times = [compound.time_of_day[dayIndex]];
+    } else {
+      times = compound.time_of_day || ['08:00'];
+    }
+  } else {
+    times = compound.time_of_day || ['08:00'];
+  }
+  
   times.forEach((time: string) => {
     doses.push({
       compound_id: compound.id,
@@ -224,11 +247,24 @@ const generateDoses = (compound: any, fromDateStr?: string) => {
     // Calculate days since ORIGINAL start date for schedule calculations
     const daysSinceStart = Math.floor((date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
+    // Parse schedule_days as integers
+    const scheduleDays = compound.schedule_days?.map((d: string | number) => 
+      typeof d === 'string' ? parseInt(d) : d
+    ) || [];
+    
     // Check schedule type
-    if (compound.schedule_type === 'Specific day(s)') {
-      const scheduleDays = compound.schedule_days?.map((d: string | number) => 
-        typeof d === 'string' ? parseInt(d) : d
-      ) || [];
+    if (compound.schedule_type === 'Weekly') {
+      // Weekly: only on the single selected day
+      const weeklyDay = scheduleDays[0];
+      if (weeklyDay === undefined || dayOfWeek !== weeklyDay) {
+        continue;
+      }
+    } else if (compound.schedule_type === 'Twice Weekly') {
+      // Twice Weekly: only on the two selected days
+      if (!scheduleDays.includes(dayOfWeek)) {
+        continue;
+      }
+    } else if (compound.schedule_type === 'Specific day(s)') {
       if (!scheduleDays.includes(dayOfWeek)) {
         continue;
       }
@@ -274,8 +310,21 @@ const generateDoses = (compound: any, fromDateStr?: string) => {
       }
     }
 
-    // Generate dose for each time of day
-    const times = compound.time_of_day || ['08:00'];
+    // Get times to generate based on schedule type
+    let times: string[] = [];
+    
+    if (compound.schedule_type === 'Twice Weekly') {
+      // For Twice Weekly, times are paired with days by array index
+      const dayIndex = scheduleDays.indexOf(dayOfWeek);
+      if (dayIndex !== -1 && compound.time_of_day?.[dayIndex]) {
+        times = [compound.time_of_day[dayIndex]];
+      } else {
+        times = compound.time_of_day || ['08:00'];
+      }
+    } else {
+      times = compound.time_of_day || ['08:00'];
+    }
+    
     times.forEach((time: string) => {
       doses.push({
         compound_id: compound.id,
