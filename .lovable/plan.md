@@ -1,134 +1,71 @@
 
-
-# Plan: Re-enable Medication Levels Card + Fix Metric Unit Syncing
+# Plan: Gate Subscription Diagnostics to Developer Only
 
 ## Overview
 
-This plan addresses two related features:
-1. **Re-enable the Medication Levels Card** on the Today screen with smart default compound selection
-2. **Fix the metric/imperial unit syncing gap** where onboarding doesn't initialize local storage
+Restrict the Subscription Diagnostics modal so only designated developer accounts can access it. The implementation will use a placeholder array that can be updated with the developer UUID later.
 
 ---
 
-## Part 1: Medication Levels Card
+## Implementation Approach
 
-### Current State
-- The `MedicationLevelsCard` component is fully built (539 lines) and working
-- It's simply commented out in `TodayScreen.tsx` (lines 6-7 and 1278-1294)
-- The data-fetching functions (`loadLevelsData`, state variables) are also commented out (lines 120-138, 284-394)
+### Create Developer Check Utility
 
-### Default Compound Selection Analysis
-
-The existing logic in `MedicationLevelsCard.tsx` (lines 129-171) already implements smart selection:
-
-1. **Saved preference** (localStorage) — but only if that compound has logged doses
-2. **Most recently taken dose's compound** — ensures the chart shows actual data
-3. **Alphabetical fallback** — only if no doses exist
-
-**My Recommendation**: The current logic is excellent and already does what you described. The issue you experienced (seeing a flat line for BPC-157) was because your saved preference had no recent doses. The code now properly clears stale preferences and falls back to the most recently dosed compound. 
-
-No changes needed to the selection logic — it's already optimal.
-
-### Is This Feature Too Much for the Today Screen?
-
-**My take**: The Medication Levels Card adds genuine value for users who want at-a-glance visibility into their current medication status. Here's why it belongs:
-
-- **Engagement driver**: Seeing the decay curve motivates users to stay on schedule
-- **Differentiated feature**: Most medication trackers don't show pharmacokinetic data
-- **Compact design**: The card is collapsible and takes minimal space
-- **Smart visibility**: Only shows for compounds with half-life data (filters out things we can't calculate)
-
-The card is wrapped in an error boundary, so if anything goes wrong, it fails gracefully without affecting the rest of the screen.
-
----
-
-## Part 2: Metric Unit Syncing Fix
-
-### The Problem
-
-Your Android beta tester set metric in onboarding, but when logging weight, the app defaulted to imperial. Here's why:
-
-**`AccountCreationScreen.tsx`** saves to the database profile:
-```
-current_weight_unit: data.weightUnit,  // 'lb' or 'kg'
-height_unit: data.heightUnit,           // 'ft' or 'cm'
-```
-
-But it **does not** save to local `persistentStorage` (Capacitor Preferences), which is where `MetricLogModal.tsx` reads from:
-```
-const savedUnit = await persistentStorage.get('weightUnit');
-```
-
-Since local storage is empty, `MetricLogModal` defaults to 'lbs'.
-
-### The Solution
-
-**Option A (Recommended)**: Sync to persistentStorage in `AccountCreationScreen.tsx` after account creation
-- This ensures the user's onboarding choice is immediately available in local storage
-- Simple, targeted fix with no UI changes
-
-**Option B**: Remove the unit toggle from `MetricLogModal.tsx` entirely
-- You mentioned you don't want users selecting units per-entry
-- The modal would just use the saved preference from settings
-
-I recommend **both changes** together:
-1. Save units to persistentStorage during onboarding
-2. Remove the per-entry unit toggle from `MetricLogModal`
-
----
-
-## Implementation Details
-
-### Changes to `AccountCreationScreen.tsx`
-After successful account creation (around line 197), add:
+Create a new utility file `src/utils/developerAccess.ts` with:
 
 ```text
-// Sync unit preferences to local storage for immediate use
-import { persistentStorage } from '@/utils/persistentStorage';
+// Array of Supabase User IDs that have developer access
+// Add your UUID here after finding it in the diagnostics modal
+const DEVELOPER_USER_IDS: string[] = [
+  // 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', // Example: Your UUID goes here
+];
 
-// After profile update succeeds:
-await persistentStorage.set('weightUnit', data.weightUnit === 'kg' ? 'kg' : 'lbs');
-await persistentStorage.set('heightUnit', data.heightUnit === 'cm' ? 'metric' : 'imperial');
-await persistentStorage.set('unitSystem', data.weightUnit === 'kg' ? 'metric' : 'imperial');
+export const isDeveloperUser = (userId: string | null): boolean => {
+  if (!userId) return false;
+  return DEVELOPER_USER_IDS.includes(userId);
+};
 ```
 
-### Changes to `MetricLogModal.tsx`
-- Remove the unit `Select` dropdown (lines ~110-125)
-- Keep loading the unit preference from storage (already does this)
-- Use the loaded unit directly without allowing changes
+### Modify SettingsScreen.tsx
 
-### Changes to `TodayScreen.tsx`
-- Uncomment the import on line 7
-- Uncomment the state variables and interfaces (lines 120-138)
-- Uncomment the `loadLevelsData` function (lines 351-394)
-- Uncomment the useEffect that calls it (lines 284-288)
-- Uncomment the JSX render block (lines 1278-1294)
+Update the long-press handler to check developer status before enabling the diagnostics modal:
+
+1. Import the new utility and get the current user ID
+2. Only set `showSubscriptionDiagnostics(true)` if `isDeveloperUser(userId)` returns true
+3. For non-developers, the long-press does nothing (no visual feedback that the feature exists)
 
 ---
 
-## Testing Considerations
-
-1. **Fresh onboarding test**: Create a new account with metric units, verify weight logging uses kg
-2. **Existing user test**: For users who already onboarded with metric but have broken local storage, `DisplaySettings.tsx` already syncs from profile to local storage on first load (lines 55-104)
-3. **Medication Levels**: Verify the card renders for compounds with half-life data, shows "most recently dosed" by default
-
----
-
-## Risk Assessment
-
-| Change | Risk | Mitigation |
-|--------|------|------------|
-| Re-enable Medication Levels | Low | Already wrapped in ComponentErrorBoundary |
-| Unit sync in onboarding | Very Low | Additive change, only runs during account creation |
-| Remove unit toggle in modal | Low | Unit still changeable in Settings → Display |
-
----
-
-## Summary of Changes
+## File Changes
 
 | File | Change |
 |------|--------|
-| `src/components/TodayScreen.tsx` | Uncomment MedicationLevelsCard feature |
-| `src/components/onboarding/screens/AccountCreationScreen.tsx` | Sync weight/height units to persistentStorage |
-| `src/components/progress/MetricLogModal.tsx` | Remove inline unit toggle, use saved preference |
+| `src/utils/developerAccess.ts` | **New file** - Developer UUID list and check function |
+| `src/components/SettingsScreen.tsx` | Gate diagnostics trigger behind developer check |
 
+---
+
+## Security Considerations
+
+- The developer UUID list is in client-side code, but this is acceptable because:
+  - UUIDs are not secret credentials
+  - The diagnostic data itself isn't exploitable
+  - This just prevents accidental discovery by regular users
+- For truly sensitive admin features, server-side checks would be required
+
+---
+
+## Future Update
+
+When you have your UUID:
+1. Share it with me
+2. I'll add it to `DEVELOPER_USER_IDS` array
+3. The diagnostics will then work for your account only
+
+---
+
+## Testing
+
+After implementation:
+1. Regular users who long-press the version number will see nothing happen
+2. Once your UUID is added, you'll regain access to the diagnostics modal
