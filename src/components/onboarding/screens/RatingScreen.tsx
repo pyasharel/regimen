@@ -3,7 +3,7 @@ import { OnboardingButton } from '../OnboardingButton';
 import { Star, Loader2 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { InAppReview } from '@/plugins/InAppReviewPlugin';
-import { trackRatingRequested } from '@/utils/analytics';
+import { trackRatingButtonTapped, trackRatingOutcome } from '@/utils/analytics';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -33,7 +33,9 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRate = async () => {
-    trackRatingRequested('onboarding');
+    // Track the button tap immediately - this tells us if users are clicking
+    trackRatingButtonTapped('onboarding');
+    
     const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
     console.log('[RatingScreen] handleRate called');
     console.log('[RatingScreen] isNativePlatform:', Capacitor.isNativePlatform());
@@ -41,25 +43,40 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
     
     setIsRequesting(true);
     
-    if (Capacitor.isNativePlatform()) {
-      if (!isPluginAvailable) {
-        console.log('[RatingScreen] Plugin not registered, skipping');
-        setIsRequesting(false);
-        onComplete();
-        return;
-      }
-      try {
-        console.log('[RatingScreen] Requesting review...');
-        await new Promise(resolve => setTimeout(resolve, 400));
-        await InAppReview.requestReview();
-        console.log('[RatingScreen] Review request completed successfully');
-        await new Promise(resolve => setTimeout(resolve, 600));
-      } catch (error) {
-        console.error('[RatingScreen] Review request failed:', error);
-        // Silent failure - continue to next screen
-      }
-    } else {
+    if (!Capacitor.isNativePlatform()) {
       console.log('[RatingScreen] Not native platform, skipping review request');
+      trackRatingOutcome('onboarding', 'skipped_web');
+      setIsRequesting(false);
+      onComplete();
+      return;
+    }
+    
+    if (!isPluginAvailable) {
+      console.log('[RatingScreen] Plugin not registered, skipping');
+      trackRatingOutcome('onboarding', 'plugin_not_available');
+      setIsRequesting(false);
+      onComplete();
+      return;
+    }
+    
+    try {
+      console.log('[RatingScreen] Requesting review...');
+      // Small delay to ensure UI is settled before showing system dialog
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      await InAppReview.requestReview();
+      console.log('[RatingScreen] Review request completed successfully');
+      trackRatingOutcome('onboarding', 'request_sent');
+      
+      // IMPORTANT: Give the user time to interact with the rating dialog
+      // Apple's SKStoreReviewController.requestReview() returns immediately
+      // but the dialog stays on screen. We need to wait before navigating.
+      // 2.5 seconds should give enough time for quick star tap + dismiss
+      await new Promise(resolve => setTimeout(resolve, 2500));
+    } catch (error) {
+      console.error('[RatingScreen] Review request failed:', error);
+      trackRatingOutcome('onboarding', 'request_failed');
+      // Silent failure - continue to next screen
     }
     
     setIsRequesting(false);
