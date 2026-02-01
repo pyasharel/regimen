@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import { trackSignup } from '@/utils/analytics';
 import { getStoredAttribution, clearAttribution } from '@/utils/attribution';
+import { persistentStorage } from '@/utils/persistentStorage';
 
 // Generate doses for onboarding compound
 function generateDosesForOnboarding(
@@ -192,6 +193,15 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           country_code: countryCode 
         });
       }
+      
+      // Sync unit preferences to local storage for immediate use in MetricLogModal
+      await persistentStorage.set('weightUnit', data.weightUnit === 'kg' ? 'kg' : 'lbs');
+      await persistentStorage.set('heightUnit', data.heightUnit === 'cm' ? 'metric' : 'imperial');
+      await persistentStorage.set('unitSystem', data.weightUnit === 'kg' ? 'metric' : 'imperial');
+      console.log('[Onboarding] Synced unit preferences to local storage:', {
+        weightUnit: data.weightUnit === 'kg' ? 'kg' : 'lbs',
+        unitSystem: data.weightUnit === 'kg' ? 'metric' : 'imperial'
+      });
       
       // Clear attribution after successful signup
       clearAttribution();
