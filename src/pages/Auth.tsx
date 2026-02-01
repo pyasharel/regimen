@@ -14,6 +14,11 @@ import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
 import { trackSignup, trackLogin, setUserId } from "@/utils/analytics";
 import { getStoredAttribution, clearAttribution } from "@/utils/attribution";
+import { withQueryTimeout, withTimeout } from "@/utils/withTimeout";
+import { startAuthTrace, authTrace, endAuthTrace } from "@/utils/authTracer";
+
+// Timeout for post-login background tasks (4 seconds)
+const POST_LOGIN_TIMEOUT_MS = 4000;
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -22,7 +27,6 @@ export default function Auth() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(false);
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,11 +88,25 @@ export default function Auth() {
           console.log('[Auth] Signed in during reset mode - staying on password form');
           return;
         }
-        console.log('[Auth] User signed in, checking onboarding status');
+        
+        // Start auth trace for diagnostics
+        startAuthTrace();
+        authTrace('SIGNED_IN_RECEIVED', `userId: ${currentSession.user.id.slice(0, 8)}...`);
+        
         // Set GA4 user ID for cross-session tracking
         setUserId(currentSession.user.id);
-        setCheckingAuth(true);
-        checkOnboardingStatus(currentSession.user.id);
+        
+        // CRITICAL FIX: Navigate IMMEDIATELY - don't block on any network calls
+        // This prevents the "stuck loading" issue on iOS
+        authTrace('NAVIGATING_NOW', '/today');
+        navigate("/today", { replace: true });
+        endAuthTrace(true, '/today');
+        
+        // Fire background tasks without blocking navigation
+        // Use setTimeout(0) to defer per Supabase deadlock prevention guidelines
+        setTimeout(() => {
+          runPostLoginTasksInBackground(currentSession.user.id, currentSession);
+        }, 0);
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         if (window.location.pathname !== '/auth') {
@@ -102,63 +120,85 @@ export default function Auth() {
     };
   }, [searchParams, navigate, isResettingPassword]);
 
-  // Track if we've already checked onboarding for this user
-  const checkedUsers = useRef<Set<string>>(new Set());
+  // Track if we've already run background tasks for this user
+  const processedUsers = useRef<Set<string>>(new Set());
 
-  const checkOnboardingStatus = async (userId: string) => {
-    // Prevent multiple calls for the same user
-    if (checkedUsers.current.has(userId)) {
-      console.log('[Auth] Already checked onboarding for this user, skipping');
+  /**
+   * Background tasks that run AFTER navigation.
+   * These are fire-and-forget with timeouts - they cannot block the UI.
+   */
+  const runPostLoginTasksInBackground = async (userId: string, currentSession: any) => {
+    // Prevent duplicate runs
+    if (processedUsers.current.has(userId)) {
+      console.log('[Auth] Already ran background tasks for this user, skipping');
       return;
     }
-    checkedUsers.current.add(userId);
+    processedUsers.current.add(userId);
 
     try {
-      console.log('[Auth] Checking onboarding status for user:', userId);
+      authTrace('BG_TASKS_START', 'profile check + welcome email');
       
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("onboarding_completed, welcome_email_sent, full_name")
-        .eq("user_id", userId)
-        .single();
+      // Fetch profile with timeout
+      const profileResult = await withQueryTimeout(
+        supabase
+          .from("profiles")
+          .select("onboarding_completed, welcome_email_sent, full_name")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        'profile_fetch',
+        POST_LOGIN_TIMEOUT_MS
+      );
 
-      if (profileError) {
-        console.error("[Auth] Error fetching profile:", profileError);
-        setTimeout(() => {
-          setCheckingAuth(false);
-          navigate("/onboarding", { replace: true });
-        }, 100);
+      if (profileResult.error) {
+        authTrace('PROFILE_FETCH_ERROR', profileResult.error.message);
         return;
       }
 
-      console.log('[Auth] Profile loaded:', { 
-        onboarding_completed: profile.onboarding_completed,
-        welcome_email_sent: profile.welcome_email_sent 
-      });
+      const profile = profileResult.data;
+      if (!profile) {
+        authTrace('PROFILE_NOT_FOUND', 'no profile row');
+        return;
+      }
+
+      authTrace('PROFILE_LOADED', `welcome_sent: ${profile.welcome_email_sent}`);
 
       // Send welcome email if not sent yet - use atomic update to prevent race condition
-      if (!profile?.welcome_email_sent) {
-        console.log('[Auth] Attempting to send welcome email');
+      if (!profile.welcome_email_sent) {
+        authTrace('WELCOME_EMAIL_ATTEMPT', 'starting');
+        
         // Atomically update only if welcome_email_sent is still false
-        const { data: updateResult } = await supabase
-          .from('profiles')
-          .update({ welcome_email_sent: true })
-          .eq('user_id', userId)
-          .eq('welcome_email_sent', false)
-          .select();
+        const { data: updateResult } = await withQueryTimeout(
+          supabase
+            .from('profiles')
+            .update({ welcome_email_sent: true })
+            .eq('user_id', userId)
+            .eq('welcome_email_sent', false)
+            .select(),
+          'welcome_email_flag_update',
+          POST_LOGIN_TIMEOUT_MS
+        );
 
         // Only send email if we successfully updated (meaning we won the race)
         if (updateResult && updateResult.length > 0) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.email) {
-            console.log('[Auth] Won race condition, sending welcome email to:', user.email);
-            supabase.functions.invoke('send-welcome-email', {
-              body: { 
-                email: user.email,
-                fullName: profile?.full_name || 'there'
-              }
+          // Use email from session instead of calling getUser() - avoids auth lock
+          const userEmail = currentSession.user.email;
+          if (userEmail) {
+            authTrace('WELCOME_EMAIL_SENDING', userEmail);
+            
+            // Fire-and-forget with timeout wrapper
+            withTimeout(
+              supabase.functions.invoke('send-welcome-email', {
+                body: { 
+                  email: userEmail,
+                  fullName: profile.full_name || 'there'
+                }
+              }),
+              POST_LOGIN_TIMEOUT_MS,
+              'welcome_email_invoke'
+            ).then(() => {
+              authTrace('WELCOME_EMAIL_SUCCESS');
             }).catch((emailError) => {
-              console.error('[Auth] Error sending welcome email:', emailError);
+              authTrace('WELCOME_EMAIL_ERROR', emailError.message);
               // Reset flag only if email send failed
               supabase
                 .from('profiles')
@@ -167,25 +207,14 @@ export default function Auth() {
             });
           }
         } else {
-          console.log('[Auth] Lost race condition - welcome email already sent by another process');
+          authTrace('WELCOME_EMAIL_SKIPPED', 'lost race or already sent');
         }
-      } else {
-        console.log('[Auth] Welcome email already sent previously');
       }
 
-      // Use setTimeout to ensure React processes state updates before navigation
-      setTimeout(() => {
-        setCheckingAuth(false);
-        // Skip onboarding for beta - navigate directly to /today
-        console.log('[Auth] Navigating to /today');
-        navigate("/today", { replace: true });
-      }, 100);
-    } catch (error) {
-      console.error("[Auth] Error in checkOnboardingStatus:", error);
-      setTimeout(() => {
-        setCheckingAuth(false);
-        navigate("/today", { replace: true });
-      }, 100);
+      authTrace('BG_TASKS_DONE');
+    } catch (error: any) {
+      authTrace('BG_TASKS_ERROR', error.message || 'unknown error');
+      console.error("[Auth] Background task error:", error);
     }
   };
 
@@ -382,7 +411,7 @@ export default function Auth() {
 
         if (error) throw error;
         // Account created - onAuthStateChange will handle navigation
-        // Welcome email will be sent in checkOnboardingStatus
+        // Welcome email will be sent in background task
         trackSignup('email');
         
         // Persist attribution data and country to the user's profile
@@ -431,17 +460,7 @@ export default function Auth() {
     }
   };
 
-  // Show loading while checking auth
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading your account...</p>
-        </div>
-      </div>
-    );
-  }
+  // No more blocking checkingAuth loader - navigation happens immediately
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8 safe-top safe-bottom overflow-y-auto">
@@ -480,30 +499,23 @@ export default function Auth() {
         {isResettingPassword ? (
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="password">New Password</Label>
               <div className="relative">
                 <Input
-                  id="newPassword"
+                  id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                  minLength={6}
+                  placeholder="Enter new password"
                   className="pr-10"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
@@ -512,25 +524,19 @@ export default function Auth() {
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
+                type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={loading}
-                required
-                minLength={6}
+                placeholder="Confirm new password"
+                autoComplete="new-password"
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating password...
+                  Updating...
                 </>
               ) : (
                 "Update Password"
@@ -544,43 +550,69 @@ export default function Auth() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
+                placeholder="Enter your email"
+                autoComplete="email"
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending reset link...
+                  Sending...
                 </>
               ) : (
                 "Send Reset Link"
               )}
             </Button>
+
+            <button
+              type="button"
+              onClick={() => setIsForgotPassword(false)}
+              className="w-full text-sm text-muted-foreground hover:text-foreground"
+            >
+              Back to login
+            </button>
           </form>
         ) : (
           <form onSubmit={handleAuth} className="space-y-6">
+            {/* Google Sign In - Moved to top */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2 border-border"
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+              >
+                <FcGoogle className="h-5 w-5" />
+                Continue with Google
+              </Button>
+            </div>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+
             {isSignUp && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
                   id="fullName"
-                  name="fullName"
                   type="text"
-                  placeholder="John Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  disabled={loading}
-                  required
+                  placeholder="Enter your full name"
                   autoComplete="name"
                 />
               </div>
@@ -590,141 +622,68 @@ export default function Auth() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                required
+                placeholder="Enter your email"
                 autoComplete="email"
               />
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                {!isSignUp && (
-                  <button
-                    type="button"
-                    onClick={() => setIsForgotPassword(true)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Forgot password?
-                  </button>
-                )}
-              </div>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                  required
-                  minLength={6}
+                  placeholder={isSignUp ? "Create a password" : "Enter your password"}
                   className="pr-10"
                   autoComplete={isSignUp ? "new-password" : "current-password"}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {isSignUp && (
-                <p className="text-xs text-muted-foreground">
-                  Must be at least 6 characters
-                </p>
-              )}
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={loading}
-            >
+            {!isSignUp && (
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isSignUp ? "Creating account..." : "Signing in..."}
                 </>
               ) : (
-                <>{isSignUp ? "Sign Up" : "Sign In"}</>
+                isSignUp ? "Create Account" : "Sign In"
               )}
             </Button>
 
-            {!Capacitor.isNativePlatform() && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGoogleSignIn}
-                  disabled={loading}
-                  className="w-full"
-                >
-                  <FcGoogle className="mr-2 h-5 w-5" />
-                  Google
-                </Button>
-              </>
-            )}
+            <p className="text-center text-sm text-muted-foreground">
+              {isSignUp ? "Already have an account? " : "Don't have an account? "}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-primary hover:underline"
+              >
+                {isSignUp ? "Sign in" : "Create one"}
+              </button>
+            </p>
           </form>
-        )}
-          </div>
-
-        <div className="mt-6 text-center space-y-3">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
-          
-        {isForgotPassword ? (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setIsForgotPassword(false);
-              setEmail("");
-            }}
-            className="w-full"
-            disabled={loading}
-          >
-            Back to sign in
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="w-full"
-            disabled={loading}
-          >
-            {isSignUp 
-              ? "Already have an account? Sign in" 
-              : "Don't have an account? Sign up"}
-          </Button>
         )}
           </div>
         </div>
