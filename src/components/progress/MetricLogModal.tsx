@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -61,12 +61,13 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Load user's preferred weight unit from persistent storage
+  // Load user's preferred weight unit from persistent storage (set during onboarding or in Settings)
   useEffect(() => {
     const loadWeightUnit = async () => {
       const savedUnit = await persistentStorage.get('weightUnit');
       if (savedUnit === 'kg' || savedUnit === 'lbs') {
         setWeightUnit(savedUnit);
+        console.log('[MetricLogModal] Loaded weight unit from storage:', savedUnit);
       }
     };
     if (open) {
@@ -206,7 +207,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         </DialogHeader>
         <div className="space-y-6">
           {metricType === "weight" && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Input
                 type="number"
                 step="0.1"
@@ -215,15 +216,9 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
                 placeholder="Enter weight"
                 className="flex-1 h-14 text-lg"
               />
-              <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
-                <SelectTrigger className="w-24 h-14">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lbs">lbs</SelectItem>
-                  <SelectItem value="kg">kg</SelectItem>
-                </SelectContent>
-              </Select>
+              <span className="text-lg font-medium text-muted-foreground w-12 text-center">
+                {weightUnit}
+              </span>
             </div>
           )}
 
