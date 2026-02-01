@@ -621,11 +621,37 @@ export const trackSignOut = () => {
 
 // Engagement
 export const trackRatingRequested = (source: 'settings' | 'onboarding') => {
-  ReactGA.event({
-    category: 'Engagement',
-    action: 'Rating Requested',
-    label: source,
+  const platform = getPlatform();
+  ReactGA.event('rating_requested', {
+    source,
+    platform,
+    app_version: APP_VERSION,
   });
+  console.log('[Analytics] Rating requested:', { source, platform });
+};
+
+export const trackRatingButtonTapped = (source: 'settings' | 'onboarding') => {
+  const platform = getPlatform();
+  ReactGA.event('rating_button_tapped', {
+    source,
+    platform,
+    app_version: APP_VERSION,
+  });
+  console.log('[Analytics] Rating button tapped:', { source, platform });
+};
+
+export const trackRatingOutcome = (
+  source: 'settings' | 'onboarding',
+  outcome: 'plugin_not_available' | 'request_sent' | 'request_failed' | 'skipped_web'
+) => {
+  const platform = getPlatform();
+  ReactGA.event('rating_outcome', {
+    source,
+    outcome,
+    platform,
+    app_version: APP_VERSION,
+  });
+  console.log('[Analytics] Rating outcome:', { source, outcome, platform });
 };
 
 export const trackFeedbackInitiated = () => {
