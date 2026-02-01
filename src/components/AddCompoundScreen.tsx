@@ -2141,8 +2141,8 @@ export const AddCompoundScreen = () => {
               {/* First injection - more compact */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">First injection</Label>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2161,7 +2161,7 @@ export const AddCompoundScreen = () => {
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay2}
-                        className={`w-9 h-9 rounded-full text-xs font-medium transition-colors ${
+                        className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay1 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay2
@@ -2176,7 +2176,7 @@ export const AddCompoundScreen = () => {
                   <IOSTimePicker
                     value={twiceWeeklyTime1}
                     onChange={setTwiceWeeklyTime1}
-                    className="w-[110px]"
+                    className="shrink-0"
                   />
                 </div>
               </div>
@@ -2184,8 +2184,8 @@ export const AddCompoundScreen = () => {
               {/* Second injection - more compact */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">Second injection</Label>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2204,7 +2204,7 @@ export const AddCompoundScreen = () => {
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay1}
-                        className={`w-9 h-9 rounded-full text-xs font-medium transition-colors ${
+                        className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay2 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay1
@@ -2219,19 +2219,29 @@ export const AddCompoundScreen = () => {
                   <IOSTimePicker
                     value={twiceWeeklyTime2}
                     onChange={setTwiceWeeklyTime2}
-                    className="w-[110px]"
+                    className="shrink-0"
                   />
                 </div>
               </div>
               
-              {/* Spacing hint - more compact */}
+              {/* Spacing hint - calculate forward distance correctly */}
               {(() => {
                 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 const day1Name = dayNames[twiceWeeklyDay1];
                 const day2Name = dayNames[twiceWeeklyDay2];
-                let daysApart = Math.abs(twiceWeeklyDay2 - twiceWeeklyDay1);
-                if (daysApart > 3.5) daysApart = 7 - daysApart;
-                const isOptimal = daysApart >= 3 && daysApart <= 4;
+                
+                // Calculate forward distance from day1 to day2 (wrapping around week)
+                const forwardToDay2 = (twiceWeeklyDay2 - twiceWeeklyDay1 + 7) % 7;
+                const forwardToDay1 = 7 - forwardToDay2; // The other gap
+                
+                // Both gaps should ideally be 3-4 days for optimal spacing
+                const gap1 = forwardToDay2;
+                const gap2 = forwardToDay1;
+                const minGap = Math.min(gap1, gap2);
+                const maxGap = Math.max(gap1, gap2);
+                
+                // Optimal: gaps of 3-4 days (like Mon/Thu = 3 and 4)
+                const isOptimal = minGap >= 3 && maxGap <= 4;
                 
                 return (
                   <div className={`text-xs py-1.5 px-2.5 rounded-md inline-flex items-center gap-1.5 ${
@@ -2240,8 +2250,8 @@ export const AddCompoundScreen = () => {
                       : 'bg-amber-500/10 text-amber-500'
                   }`}>
                     {isOptimal 
-                      ? `✓ ${day1Name} → ${day2Name} (~3-4 days apart)`
-                      : `${day1Name} → ${day2Name} (${daysApart} day${daysApart !== 1 ? 's' : ''} apart)`
+                      ? `✓ ${day1Name} & ${day2Name} (~3-4 days apart)`
+                      : `${day1Name} & ${day2Name} (${minGap} & ${maxGap} days apart)`
                     }
                   </div>
                 );
