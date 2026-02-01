@@ -2133,16 +2133,16 @@ export const AddCompoundScreen = () => {
 
           {/* Twice Weekly: Two day pickers with per-day times */}
           {frequency === 'Twice Weekly' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
                 Pick two days for your twice-weekly schedule. Each day can have its own time.
               </p>
               
-              {/* First injection */}
-              <div className="space-y-2 p-3 bg-surface rounded-lg border border-border">
-                <Label className="text-sm font-medium">First injection</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex gap-1">
+              {/* First injection - more compact */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">First injection</Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1 flex-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2156,17 +2156,16 @@ export const AddCompoundScreen = () => {
                         key={dayIndex}
                         type="button"
                         onClick={() => {
-                          // Don't allow same day as second injection
                           if (dayIndex !== twiceWeeklyDay2) {
                             setTwiceWeeklyDay1(dayIndex);
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay2}
-                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                        className={`w-9 h-9 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay1 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay2
-                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            ? 'bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
                             : 'bg-card border border-border hover:bg-muted'
                         }`}
                       >
@@ -2174,20 +2173,19 @@ export const AddCompoundScreen = () => {
                       </button>
                     ))}
                   </div>
-                  <span className="text-muted-foreground text-sm">at</span>
                   <IOSTimePicker
                     value={twiceWeeklyTime1}
                     onChange={setTwiceWeeklyTime1}
-                    className="w-28"
+                    className="w-[110px]"
                   />
                 </div>
               </div>
               
-              {/* Second injection */}
-              <div className="space-y-2 p-3 bg-surface rounded-lg border border-border">
-                <Label className="text-sm font-medium">Second injection</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex gap-1">
+              {/* Second injection - more compact */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Second injection</Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1 flex-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2201,17 +2199,16 @@ export const AddCompoundScreen = () => {
                         key={dayIndex}
                         type="button"
                         onClick={() => {
-                          // Don't allow same day as first injection
                           if (dayIndex !== twiceWeeklyDay1) {
                             setTwiceWeeklyDay2(dayIndex);
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay1}
-                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                        className={`w-9 h-9 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay2 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay1
-                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                            ? 'bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
                             : 'bg-card border border-border hover:bg-muted'
                         }`}
                       >
@@ -2219,34 +2216,32 @@ export const AddCompoundScreen = () => {
                       </button>
                     ))}
                   </div>
-                  <span className="text-muted-foreground text-sm">at</span>
                   <IOSTimePicker
                     value={twiceWeeklyTime2}
                     onChange={setTwiceWeeklyTime2}
-                    className="w-28"
+                    className="w-[110px]"
                   />
                 </div>
               </div>
               
-              {/* Spacing hint */}
+              {/* Spacing hint - more compact */}
               {(() => {
                 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                 const day1Name = dayNames[twiceWeeklyDay1];
                 const day2Name = dayNames[twiceWeeklyDay2];
-                // Calculate days apart (handling wrap-around)
                 let daysApart = Math.abs(twiceWeeklyDay2 - twiceWeeklyDay1);
                 if (daysApart > 3.5) daysApart = 7 - daysApart;
                 const isOptimal = daysApart >= 3 && daysApart <= 4;
                 
                 return (
-                  <div className={`text-xs p-2 rounded-lg ${
+                  <div className={`text-xs py-1.5 px-2.5 rounded-md inline-flex items-center gap-1.5 ${
                     isOptimal 
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                      : 'bg-muted text-muted-foreground'
+                      ? 'bg-emerald-500/10 text-emerald-500' 
+                      : 'bg-amber-500/10 text-amber-500'
                   }`}>
                     {isOptimal 
-                      ? `✓ Good spacing: ${day1Name} → ${day2Name} (~${daysApart === 3 ? '3-4' : '3-4'} days apart)`
-                      : `${day1Name} → ${day2Name} (${daysApart} days apart). For stable levels, try 3-4 days apart.`
+                      ? `✓ ${day1Name} → ${day2Name} (~3-4 days apart)`
+                      : `${day1Name} → ${day2Name} (${daysApart} day${daysApart !== 1 ? 's' : ''} apart)`
                     }
                   </div>
                 );
