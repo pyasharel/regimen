@@ -2138,11 +2138,12 @@ export const AddCompoundScreen = () => {
                 Pick two days for your twice-weekly schedule. Each day can have its own time.
               </p>
               
-              {/* First injection - more compact */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">First injection</Label>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
+              {/* Two-column layout for injections */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* First injection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">First injection</Label>
+                  <div className="flex flex-wrap gap-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2161,7 +2162,7 @@ export const AddCompoundScreen = () => {
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay2}
-                        className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                        className={`w-7 h-7 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay1 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay2
@@ -2176,16 +2177,13 @@ export const AddCompoundScreen = () => {
                   <IOSTimePicker
                     value={twiceWeeklyTime1}
                     onChange={setTwiceWeeklyTime1}
-                    className="shrink-0"
                   />
                 </div>
-              </div>
-              
-              {/* Second injection - more compact */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">Second injection</Label>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
+                
+                {/* Second injection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Second injection</Label>
+                  <div className="flex flex-wrap gap-1">
                     {[
                       { label: 'M', dayIndex: 1 },
                       { label: 'T', dayIndex: 2 },
@@ -2204,7 +2202,7 @@ export const AddCompoundScreen = () => {
                           }
                         }}
                         disabled={dayIndex === twiceWeeklyDay1}
-                        className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                        className={`w-7 h-7 rounded-full text-xs font-medium transition-colors ${
                           twiceWeeklyDay2 === dayIndex
                             ? 'bg-primary text-primary-foreground'
                             : dayIndex === twiceWeeklyDay1
@@ -2219,7 +2217,6 @@ export const AddCompoundScreen = () => {
                   <IOSTimePicker
                     value={twiceWeeklyTime2}
                     onChange={setTwiceWeeklyTime2}
-                    className="shrink-0"
                   />
                 </div>
               </div>
