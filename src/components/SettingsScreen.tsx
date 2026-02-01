@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
 import { SubscriptionDiagnostics } from "@/components/subscription/SubscriptionDiagnostics";
+import { isDeveloperUser } from "@/utils/developerAccess";
 
 // Version info - pulled from central config
 import { appVersion, appBuild } from '../../capacitor.config';
@@ -28,6 +29,7 @@ export const SettingsScreen = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [userId, setUserId] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,6 +43,8 @@ export const SettingsScreen = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      setUserId(user.id);
 
       const { data: profile } = await supabase
         .from('profiles')
@@ -356,7 +360,9 @@ export const SettingsScreen = () => {
             className="text-[10px] text-muted-foreground/40 select-none cursor-pointer"
             onTouchStart={() => {
               longPressTimerRef.current = setTimeout(() => {
-                setShowDiagnostics(true);
+                if (isDeveloperUser(userId)) {
+                  setShowDiagnostics(true);
+                }
               }, 1500);
             }}
             onTouchEnd={() => {
@@ -367,7 +373,9 @@ export const SettingsScreen = () => {
             }}
             onMouseDown={() => {
               longPressTimerRef.current = setTimeout(() => {
-                setShowDiagnostics(true);
+                if (isDeveloperUser(userId)) {
+                  setShowDiagnostics(true);
+                }
               }, 1500);
             }}
             onMouseUp={() => {
