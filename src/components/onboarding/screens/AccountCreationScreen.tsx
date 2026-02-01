@@ -7,6 +7,58 @@ import { Eye, EyeOff } from 'lucide-react';
 import { trackSignup } from '@/utils/analytics';
 import { getStoredAttribution, clearAttribution } from '@/utils/attribution';
 import { persistentStorage } from '@/utils/persistentStorage';
+import { withQueryTimeout } from '@/utils/withTimeout';
+
+// Timeout for welcome email (4 seconds)
+const WELCOME_EMAIL_TIMEOUT_MS = 4000;
+
+/**
+ * Send welcome email in background with timeout - never blocks UI
+ */
+async function sendWelcomeEmailInBackground(userId: string, email: string, fullName: string) {
+  try {
+    console.log('[Onboarding] Attempting to send welcome email to:', email);
+    
+    // Atomically update only if welcome_email_sent is still false
+    const { data: updateResult } = await withQueryTimeout(
+      supabase
+        .from('profiles')
+        .update({ welcome_email_sent: true })
+        .eq('user_id', userId)
+        .eq('welcome_email_sent', false)
+        .select(),
+      'welcome_email_flag_update',
+      WELCOME_EMAIL_TIMEOUT_MS
+    );
+
+    // Only send email if we successfully updated (meaning we won the race)
+    if (updateResult && updateResult.length > 0) {
+      console.log('[Onboarding] Won race condition, sending welcome email');
+      
+      const { error } = await supabase.functions.invoke('send-welcome-email', {
+        body: { 
+          email,
+          fullName: fullName || 'there'
+        }
+      });
+      
+      if (error) {
+        console.error('[Onboarding] Welcome email send failed:', error);
+        // Reset flag on failure
+        await supabase
+          .from('profiles')
+          .update({ welcome_email_sent: false })
+          .eq('user_id', userId);
+      } else {
+        console.log('[Onboarding] Welcome email sent successfully');
+      }
+    } else {
+      console.log('[Onboarding] Welcome email already sent or update failed');
+    }
+  } catch (error) {
+    console.error('[Onboarding] Welcome email background task error:', error);
+  }
+}
 
 // Generate doses for onboarding compound
 function generateDosesForOnboarding(
@@ -339,6 +391,9 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           console.log('[Onboarding] Created initial weight entry');
         }
       }
+
+      // Send welcome email in background (fire-and-forget, never blocks UI)
+      sendWelcomeEmailInBackground(authData.user.id, email, data.firstName || '');
 
       trackSignup('email');
       onSuccess();
