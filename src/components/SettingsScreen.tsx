@@ -18,6 +18,16 @@ import { SettingsSubscriptionSection } from "@/components/subscription/SettingsS
 import { MainHeader } from "@/components/MainHeader";
 import { SubscriptionDiagnostics } from "@/components/subscription/SubscriptionDiagnostics";
 import { isDeveloperUser } from "@/utils/developerAccess";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Version info - pulled from central config
 import { appVersion, appBuild } from '../../capacitor.config';
@@ -31,6 +41,7 @@ export const SettingsScreen = () => {
   const [userName, setUserName] = useState<string>('');
   const [userId, setUserId] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -331,13 +342,34 @@ export const SettingsScreen = () => {
 
         {/* Sign Out Button */}
         <Button 
-          onClick={handleSignOut}
+          onClick={() => setShowSignOutDialog(true)}
           variant="ghost" 
           className="w-full text-destructive hover:text-destructive/80 hover:bg-destructive/10 gap-2"
         >
           <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
+
+        {/* Sign Out Confirmation Dialog */}
+        <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign Out?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You'll need to sign back in to access your data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleSignOut}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sign Out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Footer: Legal Links + Version */}
         <div className="text-center mt-2 space-y-0.5">

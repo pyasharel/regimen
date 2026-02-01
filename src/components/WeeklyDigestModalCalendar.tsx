@@ -46,8 +46,8 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
     ? weekData.weightData[weekData.weightData.length - 1].weight - weekData.weightData[0].weight
     : 0;
 
-  // Organize data by day - only show taken medications
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Organize data by day - only show taken medications (Monday start)
+  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const dailyData = daysOfWeek.map((day, dayIndex) => {
     const compoundsForDay = weekData.compounds.map(compound => {
       const doseForDay = compound.dailyDoses.find(d => d.day === day);

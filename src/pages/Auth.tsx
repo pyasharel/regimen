@@ -574,12 +574,14 @@ export default function Auth() {
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
                   id="fullName"
+                  name="fullName"
                   type="text"
                   placeholder="John Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={loading}
                   required
+                  autoComplete="name"
                 />
               </div>
             )}
@@ -588,12 +590,14 @@ export default function Auth() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 required
+                autoComplete="email"
               />
             </div>
 
@@ -613,6 +617,7 @@ export default function Auth() {
               <div className="relative">
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
@@ -621,6 +626,7 @@ export default function Auth() {
                   required
                   minLength={6}
                   className="pr-10"
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
                 />
                 <button
                   type="button"
