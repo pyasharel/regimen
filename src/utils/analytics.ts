@@ -103,30 +103,34 @@ export const trackPageView = (path: string, customScreenName?: string) => {
 
 // User signup tracking with attribution
 export const trackSignup = (method: 'email' | 'google') => {
+  const platform = getPlatform();
   const attribution = getStoredAttribution();
-  ReactGA.event({
-    category: 'User',
-    action: 'Signup',
-    label: method,
-  });
   
-  // Enhanced signup event with attribution
+  // Enhanced signup event with attribution and platform
   ReactGA.event('signup_complete', {
     method,
+    platform,
+    app_version: APP_VERSION,
     utm_source: attribution?.utm_source || 'direct',
     utm_medium: attribution?.utm_medium || 'none',
     utm_campaign: attribution?.utm_campaign || 'none',
     referrer: attribution?.referrer || 'none',
   });
+  
+  console.log('[Analytics] Signup:', { method, platform, app_version: APP_VERSION });
 };
 
 // User login tracking
 export const trackLogin = (method: 'email' | 'google') => {
-  ReactGA.event({
-    category: 'User',
-    action: 'Login',
-    label: method,
+  const platform = getPlatform();
+  
+  ReactGA.event('login_complete', {
+    method,
+    platform,
+    app_version: APP_VERSION,
   });
+  
+  console.log('[Analytics] Login:', { method, platform, app_version: APP_VERSION });
 };
 
 // Dose logging tracking - GA4 format with platform
@@ -507,15 +511,15 @@ export const trackOnboardingStep = (screenId: string, stepNumber: number, totalS
 };
 
 export const trackOnboardingComplete = () => {
-  ReactGA.event({
-    category: 'Onboarding',
-    action: 'Completed',
-  });
+  const platform = getPlatform();
   
-  // Also fire as custom event for easier funnel analysis
   ReactGA.event('onboarding_complete', {
     completed: true,
+    platform,
+    app_version: APP_VERSION,
   });
+  
+  console.log('[Analytics] Onboarding complete:', { platform, app_version: APP_VERSION });
 };
 
 export const trackOnboardingSkip = (screenId: string, reason?: string) => {
