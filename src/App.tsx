@@ -140,6 +140,22 @@ const App = () => {
       });
     };
     
+    // Common resume handler - runs safety checks on any resume signal
+    const handleResumeSignal = (source: string) => {
+      console.log(`[RESUME] Signal received: ${source}`);
+      attemptHide();
+      
+      // Safety check: if root is empty after 3 seconds, something went wrong
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        const hasContent = root && root.children.length > 0 && root.innerHTML.length > 100;
+        if (!hasContent) {
+          console.error(`[RECOVERY] App appears stuck after ${source}, reloading`);
+          window.location.reload();
+        }
+      }, 3000);
+    };
+    
     // Retry strategy: immediate, 400ms, 1200ms, 2500ms
     requestAnimationFrame(attemptHide);
     setTimeout(attemptHide, 400);
@@ -157,17 +173,7 @@ const App = () => {
     import('@capacitor/app').then(({ App: CapacitorApp }) => {
       CapacitorApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
-          attemptHide();
-          
-          // Safety check: if root is empty after 3 seconds, something went wrong
-          setTimeout(() => {
-            const root = document.getElementById('root');
-            const hasContent = root && root.children.length > 0 && root.innerHTML.length > 100;
-            if (!hasContent) {
-              console.error('[RECOVERY] App appears stuck after resume, reloading');
-              window.location.reload();
-            }
-          }, 3000);
+          handleResumeSignal('appStateChange');
         }
       }).then(handle => {
         resumeListener = handle;
@@ -178,8 +184,26 @@ const App = () => {
       // Capacitor not available
     });
     
+    // FALLBACK 1: visibilitychange - fires when iOS notification tap brings app visible
+    // This catches cases where appStateChange fails to fire on iOS
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleResumeSignal('visibilitychange');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // FALLBACK 2: Custom regimen:resume event - dispatched by notification action handler
+    // This provides a deterministic signal tied to user notification interaction
+    const handleCustomResume = () => {
+      handleResumeSignal('regimen:resume');
+    };
+    window.addEventListener('regimen:resume', handleCustomResume);
+    
     return () => {
       resumeListener?.remove();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('regimen:resume', handleCustomResume);
     };
   }, []);
 

@@ -453,6 +453,15 @@ export const setupNotificationActionHandlers = () => {
     const doseId = extra.doseId;
     const actionId = notification.actionId;
 
+    // Dispatch custom resume event to trigger recovery logic
+    // This ensures the app runs resume handlers even if appStateChange/visibilitychange fails
+    try {
+      window.dispatchEvent(new Event('regimen:resume'));
+      console.log('[Notifications] Dispatched regimen:resume event');
+    } catch (e) {
+      console.warn('[Notifications] Failed to dispatch resume event:', e);
+    }
+
     if (!doseId) {
       console.log('[Notifications] No doseId in notification, ignoring action');
       return;

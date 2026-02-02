@@ -275,10 +275,11 @@ export const useAppStateSync = () => {
 
   /**
    * Called when app becomes active - recreates clients and schedules sync
+   * @param source - What triggered this (for tracing/debugging)
    */
-  const handleAppBecameActive = useCallback(async () => {
-    trace('APP_BECAME_ACTIVE_HANDLER');
-    console.log('[AppStateSync] 🔄 App became active - preparing clients...');
+  const handleAppBecameActive = useCallback(async (source: string = 'unknown') => {
+    trace('RESUME_TRIGGER', source);
+    console.log(`[AppStateSync] 🔄 App became active via ${source} - preparing clients...`);
     
     // Step 1: Abort any stuck inflight requests
     const abortedCount = abortDataClientRequests();
@@ -305,10 +306,24 @@ export const useAppStateSync = () => {
     let isMounted = true;
     let listener: { remove: () => void } | null = null;
     
-    // Listen for app state changes
+    // Debounce: prevent multiple resume signals from triggering duplicate syncs
+    let lastResumeTime = 0;
+    const RESUME_DEBOUNCE_MS = 2000;
+    
+    const debouncedResume = (source: string) => {
+      const now = Date.now();
+      if (now - lastResumeTime < RESUME_DEBOUNCE_MS) {
+        console.log(`[AppStateSync] Debounced ${source} - too soon since last resume`);
+        return;
+      }
+      lastResumeTime = now;
+      handleAppBecameActive(source);
+    };
+    
+    // PRIMARY: Listen for Capacitor appStateChange
     CapacitorApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive && isMounted) {
-        handleAppBecameActive();
+        debouncedResume('appStateChange');
       }
     }).then((handle) => {
       if (isMounted) {
@@ -319,6 +334,24 @@ export const useAppStateSync = () => {
     }).catch(() => {
       // Not on native platform
     });
+    
+    // FALLBACK 1: visibilitychange - fires when iOS notification tap brings app visible
+    // This catches cases where appStateChange fails to fire on iOS
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        debouncedResume('visibilitychange');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // FALLBACK 2: Custom regimen:resume event - dispatched by notification action handler
+    // This provides a deterministic signal tied to user notification interaction
+    const handleCustomResume = () => {
+      if (isMounted) {
+        debouncedResume('notification_action');
+      }
+    };
+    window.addEventListener('regimen:resume', handleCustomResume);
 
     // BUILD 26: Initial sync waits for the global boot network ready flag
     // This is set after a 2s delay in main.tsx to let iOS networking stabilize
@@ -374,6 +407,8 @@ export const useAppStateSync = () => {
     return () => {
       isMounted = false;
       listener?.remove();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('regimen:resume', handleCustomResume);
     };
   }, [handleAppBecameActive, syncNotifications]);
 };
