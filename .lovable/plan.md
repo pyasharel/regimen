@@ -1,159 +1,139 @@
 
+## What I found (and why partner promo codes are almost certainly not the cause)
 
-# BETALIST Partner Promo Code Implementation
+### Promo code logic only runs when the user taps “Apply” on the paywall
+In the current codebase, the only places that call the backend promo-code functions are:
+- `src/components/SubscriptionPaywall.tsx` → calls `validate-promo-code` and (sometimes) `activate-beta-access`
+- `src/components/onboarding/screens/OnboardingPaywallScreen.tsx` → same, during onboarding
 
-## Summary
+Nothing in the app’s boot/resume path calls those functions automatically. So the “app hangs when opening from a notification” issue is not being triggered by partner promo code checks in the background.
 
-Add BETALIST promo code with iOS Safari redirect flow (real subscription) and Android backend beta access fallback (30 days free). Includes fixing a platform detection bug found during code review.
+### The hang you describe matches a known weak spot: notification-tap resume not triggering the usual “resume” handlers
+You already have multiple “resume handlers” that do important recovery work:
+- `useAppStateSync.tsx` recreates clients + aborts inflight requests on resume (via `appStateChange`)
+- `SubscriptionContext.tsx` refreshes subscription state on resume (via `appStateChange`)
+- `App.tsx` has a “resume safety check” that reloads if the root is empty (via `appStateChange`)
 
-**Total Time Estimate: ~45 minutes** (mostly testing)
+But your own architecture notes in the repo highlight that **on iOS, resuming via notification tap can fail to fire `appStateChange`**. If that happens:
+- client recreation/abort doesn’t happen
+- the “root empty → reload” safety check doesn’t run
+- any “poisoned” networking/auth state can persist
+…and the user is forced into a manual hard close.
 
----
-
-## What Each Platform Gets
-
-| Platform | User Experience | Subscribes? |
-|----------|-----------------|-------------|
-| **iOS** | Enter code → Safari opens → App Store with 1 month free → Annual subscription starts | ✅ Yes |
-| **Android** | Enter code → Instant 30 days premium access → No payment | ❌ No (but using app) |
-| **Web** | Enter code → Same as Android fallback | ❌ No |
-
----
-
-## Changes Required
-
-### 1. Database Insert (No Code Change)
-
-Insert BETALIST into `partner_promo_codes`:
-
-```sql
-INSERT INTO partner_promo_codes (
-  code,
-  partner_name,
-  description,
-  free_days,
-  plan_type,
-  offer_identifier,
-  is_active
-) VALUES (
-  'BETALIST',
-  'BetaList',
-  '1 month free from BetaList',
-  30,
-  'annual',
-  'partner_betalist_1mo',
-  true
-);
-```
-
-### 2. Fix Platform Detection Bug
-
-**File:** `src/components/SubscriptionPaywall.tsx` (Line 93)
-
-```typescript
-// Before (BUG - hardcodes iOS):
-platform: Capacitor.isNativePlatform() ? 'ios' : 'web',
-
-// After (CORRECT - detects actual platform):
-platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web',
-```
-
-### 3. Update Edge Function for Android Fallback
-
-**File:** `supabase/functions/validate-promo-code/index.ts`
-
-Accept platform parameter and return beta_access type for non-iOS partner codes:
-
-```typescript
-// Parse platform from request
-const { code, platform } = await req.json();
-
-// In partner code section, after finding valid partner code:
-if (partnerCode) {
-  // For iOS: Continue with Safari redirect (real subscription)
-  if (platform === 'ios') {
-    return { 
-      valid: true, 
-      isPartnerCode: true,
-      redemptionUrl: `https://apps.apple.com/redeem?...`,
-      // ... existing iOS response
-    };
-  }
-  
-  // For Android/Web: Fall back to beta access (30 days free, no subscription)
-  return {
-    valid: true,
-    type: 'beta_access',
-    duration: partnerCode.free_days,
-    discount: 100,
-    planType: 'both',
-    isBackendCode: true,  // Triggers activate-beta-access flow
-    description: partnerCode.description
-  };
-}
-```
-
-### 4. Send Platform When Validating Codes
-
-**File:** `src/components/SubscriptionPaywall.tsx` (Line ~156)
-
-```typescript
-// Before:
-const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
-  body: { code }
-});
-
-// After:
-const currentPlatform = Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web';
-const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
-  body: { code, platform: currentPlatform }
-});
-```
+That pattern fits your symptom very closely, and it’s unrelated to promo codes.
 
 ---
 
-## Manual Steps (You Do These)
+## Proposed fix (high confidence, low risk): treat “visibility becomes visible” and “notification opened” as resume signals too
 
-### App Store Connect Setup
+### Goal
+Make resume recovery logic run even when `CapacitorApp.addListener('appStateChange')` fails to fire (common on iOS notification-tap resume).
 
-1. Go to **App Store Connect → Regimen → Subscriptions**
-2. Select your **Annual subscription** product
-3. Go to **Offer Codes** section
-4. Create new offer code:
-   - **Reference Name:** `partner_betalist_1mo`
-   - **Offer Code:** `BETALIST`
-   - **Offer Type:** Free Trial
-   - **Duration:** 1 Month
-   - **Eligibility:** New Subscribers
+### Approach
+Add **additional resume triggers** that are more reliable than `appStateChange` alone:
+1. `document.visibilitychange` (when app becomes visible again)
+2. “notification action performed” (already captured in `notificationScheduler.ts`)
 
----
-
-## Testing Checklist
-
-| Test | Expected Result |
-|------|-----------------|
-| Enter BETALIST on iOS | Safari opens App Store with offer applied |
-| Enter BETALIST on Android | Toast: "Promo activated! Enjoy 30 days free" |
-| Enter BETALIST on Web | Same as Android - 30 days beta access |
-| Check `partner_code_redemptions` table | Attribution saved with correct platform |
+And route those triggers through the same existing recovery actions:
+- abort inflight data requests
+- recreate clients
+- run the delayed sync
+- run the “root empty” reload safety check
 
 ---
 
-## Files Modified
+## Implementation steps (what I would change)
 
-| File | Change |
-|------|--------|
-| `partner_promo_codes` table | Add BETALIST row |
-| `supabase/functions/validate-promo-code/index.ts` | Accept platform param, add Android fallback |
-| `src/components/SubscriptionPaywall.tsx` | Fix platform detection, send platform to API |
+### 1) Add a single “resume coordinator” concept (minimal, no new behavior—just consolidating triggers)
+Options:
+- **Option A (cleaner):** create a tiny `src/utils/resumeCoordinator.ts` that:
+  - exposes `registerResumeTrigger(cb)` and internally listens to:
+    - `appStateChange`
+    - `visibilitychange`
+    - (optional) a custom DOM event: `regimen:resume`
+- **Option B (even smaller diff):** keep everything inline by adding listeners directly inside:
+  - `src/hooks/useAppStateSync.tsx`
+  - `src/App.tsx`
+  - (optional) `SubscriptionContext.tsx`
+
+I’d start with Option B to reduce moving parts.
+
+### 2) App.tsx: Add `visibilitychange` fallback for the “resume safety reload” and splash-hide retries
+In `src/App.tsx`, where you currently do this only in `appStateChange`:
+- call `SplashScreen.hide()` retry
+- after 3s, check if root is “empty/stuck” and reload
+
+Add a `document.visibilitychange` listener:
+- If `document.visibilityState === 'visible'`:
+  - call the same `attemptHide()` routine
+  - schedule the same “root content check” and reload fallback
+
+This directly addresses the “notification tap resume didn’t fire appStateChange so we never recover” failure mode.
+
+### 3) useAppStateSync.tsx: Add `visibilitychange` fallback to run `handleAppBecameActive()`
+In `src/hooks/useAppStateSync.tsx`:
+- Add a `visibilitychange` listener
+- When it becomes visible:
+  - run `handleAppBecameActive()` (respecting the existing debounce / single-flight protections)
+This ensures the “abort + recreate + delayed sync” happens even if iOS skips `appStateChange`.
+
+### 4) notificationScheduler.ts: “poke” resume logic on notification interaction (optional but strong)
+In `src/utils/notificationScheduler.ts`, inside:
+- `LocalNotifications.addListener('localNotificationActionPerformed', ...)`
+
+After enqueueing the pending action, add a very small “poke”:
+- `window.dispatchEvent(new Event('regimen:resume'))`
+Then, in App.tsx and/or useAppStateSync.tsx, listen for that event and treat it as a resume trigger.
+
+Why this helps:
+- Some notification interactions may not reliably flip `visibilityState` timing in a way we expect.
+- This gives you a deterministic signal tied to the user action.
+
+### 5) Add BootTracer markers so we can prove which trigger fired
+You already have a great `bootTracer`.
+Add a couple trace points like:
+- `trace('RESUME_TRIGGER', 'appStateChange')`
+- `trace('RESUME_TRIGGER', 'visibilitychange')`
+- `trace('RESUME_TRIGGER', 'notification_action')`
+
+Then, when you reproduce the hang, the Boot Diagnostics screen will tell us:
+- whether the fallback triggers fired
+- whether recovery ran
+- where it got stuck next (if it still does)
 
 ---
 
-## Why This Approach?
+## Testing checklist (to confirm the fix actually targets the issue)
 
-1. **iOS gets real subscriptions** - your primary revenue driver
-2. **Android users aren't blocked** - they get 30 days to love the app
-3. **No app update required** - edge function handles the logic
-4. **Quick implementation** - leverages existing `activate-beta-access` flow
-5. **Future-proof** - when you add Google Play Promotional Offers later, just update the edge function
+### Repro steps (iOS, on-device)
+1. Ensure you have scheduled dose notifications.
+2. Put the phone on lock screen, wait for a notification.
+3. Tap the notification to open the app (repeat 10–20 times over a day; the bug is intermittent).
+4. When it hangs (or after a “bad” open), go to:
+   - Settings → Help & Support → Boot Diagnostics → Copy All Diagnostics
+5. Confirm we see:
+   - `RESUME_TRIGGER` events
+   - `CLIENTS_RECREATED_ON_RESUME` (from `useAppStateSync`)
+   - no stalls before `BOOT_END`
+
+### Pass criteria
+- No more “hard close required” events (or drastically reduced).
+- If a resume opens into a broken state, the app auto-recovers by reloading itself within ~3–10 seconds.
+
+---
+
+## Why I’m not blaming the promo codes
+- Promo code functions are not called on boot/resume.
+- The hang scenario aligns with “resume trigger not firing” (a known iOS notification behavior).
+- The proposed changes specifically target that gap by adding backup resume signals.
+
+---
+
+## If this doesn’t fully fix it (next layer)
+If the issue persists after adding these triggers, the next most likely culprits to investigate are:
+- a native plugin stall during notification open (bridge issue)
+- a background thread deadlock in RevenueCat calls (less likely, but possible)
+- a specific query path still using `supabase` instead of `dataClient` during resume (there are a few remaining)
+
+We can use the new trace markers to narrow it down quickly.
 
