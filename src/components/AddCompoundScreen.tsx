@@ -789,6 +789,21 @@ export const AddCompoundScreen = () => {
     return parseFloat(intendedDose);
   };
 
+  // Get the final calculated mL for saving (uses per-injection value in weekly mode)
+  const getFinalCalculatedML = (): number | null => {
+    if (doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg') {
+      const result = calculateFromWeekly();
+      if (result) {
+        return result.mlPerInjection;
+      }
+    }
+    // Fall back to standard calculatedML for per-injection mode
+    if (calculatedML) {
+      return parseFloat(calculatedML);
+    }
+    return null;
+  };
+
   const filteredPeptides = Array.from(new Set(COMMON_PEPTIDES))
     .filter(p => p.toLowerCase().includes(name.toLowerCase()))
     .sort((a, b) => {
@@ -937,7 +952,7 @@ export const AddCompoundScreen = () => {
           dose_amount: currentDose,
           dose_unit: doseUnit,
           calculated_iu: displayIU ? parseFloat(displayIU) : null,
-          calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+          calculated_ml: getFinalCalculatedML(),
           concentration: concentration ? parseFloat(concentration) : null
         });
       });
@@ -1204,7 +1219,7 @@ export const AddCompoundScreen = () => {
             intended_dose: getFinalIntendedDose(),
             dose_unit: doseUnit,
             calculated_iu: displayIU ? parseFloat(displayIU) : null,
-            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+            calculated_ml: getFinalCalculatedML(),
             concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: getScheduleTypeForSave(),
             time_of_day: getTimeOfDayForSave(),
@@ -1350,7 +1365,7 @@ export const AddCompoundScreen = () => {
             intended_dose: getFinalIntendedDose(),
             dose_unit: doseUnit,
           calculated_iu: displayIU ? parseFloat(displayIU) : null,
-            calculated_ml: calculatedML ? parseFloat(calculatedML) : null,
+            calculated_ml: getFinalCalculatedML(),
             concentration: concentration ? parseFloat(concentration) : null,
             schedule_type: getScheduleTypeForSave(),
             time_of_day: getTimeOfDayForSave(),
