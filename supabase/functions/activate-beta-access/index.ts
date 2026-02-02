@@ -127,7 +127,115 @@ serve(async (req) => {
       });
     }
     
-    // SECOND: Check regular promo codes
+    // SECOND: Check if this is a partner promo code (for Android/Web fallback)
+    const { data: partnerCode, error: partnerError } = await supabaseClient
+      .from('partner_promo_codes')
+      .select('*')
+      .eq('code', upperCode)
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (partnerError) {
+      console.error('[ACTIVATE-BETA] Error checking partner codes:', partnerError);
+    }
+    
+    if (partnerCode) {
+      console.log('[ACTIVATE-BETA] Valid partner promo code found:', upperCode, {
+        partner: partnerCode.partner_name,
+        freeDays: partnerCode.free_days
+      });
+      
+      // Check if user already has beta access or lifetime access
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('beta_access_end_date, is_lifetime_access')
+        .eq('user_id', user.id)
+        .single();
+
+      // Don't allow promo codes for lifetime users
+      if (profile?.is_lifetime_access) {
+        console.log('[ACTIVATE-BETA] User already has lifetime access');
+        return new Response(JSON.stringify({ 
+          valid: true,
+          alreadyActive: true,
+          message: "You already have lifetime VIP access"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      if (profile?.beta_access_end_date) {
+        const endDate = new Date(profile.beta_access_end_date);
+        if (endDate > new Date()) {
+          console.log('[ACTIVATE-BETA] User already has active beta access');
+          return new Response(JSON.stringify({ 
+            valid: true,
+            alreadyActive: true,
+            message: "Beta access already active",
+            endDate: profile.beta_access_end_date
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      }
+
+      // Activate beta access using partner code's free_days
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + partnerCode.free_days);
+
+      console.log('[ACTIVATE-BETA] Activating partner beta access for user:', user.id);
+      console.log('[ACTIVATE-BETA] Setting beta_access_end_date to:', endDate.toISOString());
+
+      const { data: updateData, error: updateError } = await supabaseClient
+        .from('profiles')
+        .update({ 
+          beta_access_end_date: endDate.toISOString(),
+        })
+        .eq('user_id', user.id)
+        .select();
+
+      if (updateError) {
+        console.error('[ACTIVATE-BETA] Update error:', updateError);
+        throw updateError;
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error('[ACTIVATE-BETA] No rows updated! User may not have a profile.');
+        throw new Error('Failed to update profile - user profile may not exist');
+      }
+
+      // Save partner attribution
+      const { error: attrError } = await supabaseClient
+        .from('partner_code_redemptions')
+        .insert({
+          code_id: partnerCode.id,
+          user_id: user.id,
+          platform: 'android', // This flow is for Android/Web
+          offer_applied: true // Beta access granted immediately
+        });
+      
+      if (attrError) {
+        console.error('[ACTIVATE-BETA] Failed to save partner attribution:', attrError);
+        // Don't fail the whole operation for attribution error
+      }
+
+      console.log('[ACTIVATE-BETA] Partner beta access activated until:', endDate);
+
+      return new Response(JSON.stringify({ 
+        valid: true,
+        activated: true,
+        message: `Beta access activated! Enjoy ${partnerCode.free_days} days free from ${partnerCode.partner_name}`,
+        endDate: endDate.toISOString(),
+        partnerName: partnerCode.partner_name
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
+    // THIRD: Check regular promo codes
     const promoConfig = PROMO_CODES[upperCode];
     
     if (!promoConfig) {
