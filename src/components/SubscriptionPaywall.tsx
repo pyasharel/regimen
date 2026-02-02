@@ -90,7 +90,7 @@ export const SubscriptionPaywall = ({
         .insert({
           code_id: partnerCodeId,
           user_id: userId,
-          platform: Capacitor.isNativePlatform() ? 'ios' : 'web',
+          platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web',
           offer_applied: false // Will be set to true by webhook on INITIAL_PURCHASE
         });
       
@@ -151,10 +151,11 @@ export const SubscriptionPaywall = ({
     
     try {
       // First validate the code against the backend (checks beta codes, partner codes, and Stripe codes)
-      console.log('[PROMO] Calling validate-promo-code function...');
+      const currentPlatform = Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web';
+      console.log('[PROMO] Calling validate-promo-code function...', { platform: currentPlatform });
       
       const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
-        body: { code }
+        body: { code, platform: currentPlatform }
       });
 
       console.log('[PROMO] Validation response:', JSON.stringify({ validateData, validateError }, null, 2));

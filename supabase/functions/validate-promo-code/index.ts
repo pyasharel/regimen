@@ -24,10 +24,10 @@ serve(async (req) => {
   }
 
   try {
-    const { code } = await req.json();
+    const { code, platform } = await req.json();
     const upperCode = code.toUpperCase();
     
-    console.log(`[VALIDATE-PROMO] Checking code: ${upperCode}`);
+    console.log(`[VALIDATE-PROMO] Checking code: ${upperCode}, platform: ${platform || 'not specified'}`);
     
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -90,7 +90,8 @@ serve(async (req) => {
     if (partnerCode) {
       console.log(`[VALIDATE-PROMO] Found valid partner promo code: ${upperCode}`, {
         partner: partnerCode.partner_name,
-        partnerCodeId: partnerCode.id
+        partnerCodeId: partnerCode.id,
+        platform: platform || 'not specified'
       });
       
       // Check if max redemptions reached
@@ -105,14 +106,34 @@ serve(async (req) => {
         });
       }
       
-      // Return partner code details for Safari redirect flow with 1-month free offer
+      // For iOS: Use Safari redirect flow with Apple Offer Code
+      if (platform === 'ios') {
+        console.log(`[VALIDATE-PROMO] iOS platform - returning Safari redirect flow`);
+        return new Response(JSON.stringify({
+          valid: true,
+          type: 'partner_code',
+          isPartnerCode: true,
+          useNativePurchase: false, // Use Safari redirect for Apple Offer Code redemption
+          redemptionUrl: `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${upperCode}`,
+          planType: partnerCode.plan_type,
+          partnerName: partnerCode.partner_name,
+          partnerCodeId: partnerCode.id,
+          description: partnerCode.description
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      // For Android/Web: Fall back to backend beta access (no subscription, instant access)
+      console.log(`[VALIDATE-PROMO] Non-iOS platform (${platform}) - returning beta access fallback`);
       return new Response(JSON.stringify({
         valid: true,
-        type: 'partner_code',
-        isPartnerCode: true,
-        useNativePurchase: false, // Use Safari redirect for Apple Offer Code redemption
-        redemptionUrl: `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${upperCode}`,
-        planType: partnerCode.plan_type,
+        type: 'beta_access',
+        duration: partnerCode.free_days,
+        discount: 100,
+        planType: 'both',
+        isBackendCode: true, // Triggers activate-beta-access flow
         partnerName: partnerCode.partner_name,
         partnerCodeId: partnerCode.id,
         description: partnerCode.description
