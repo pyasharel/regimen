@@ -1,145 +1,159 @@
 
-# Analytics Fixes & RevenueCat Webhook Verification Plan
+
+# BETALIST Partner Promo Code Implementation
 
 ## Summary
 
-This plan addresses two issues:
-1. **RevenueCat Webhook Configuration** - The webhook is deployed and working, but you need to verify it's configured correctly in the RevenueCat dashboard
-2. **Missing Platform Parameters** - 3 analytics events are missing `platform` and `app_version` parameters
+Add BETALIST promo code with iOS Safari redirect flow (real subscription) and Android backend beta access fallback (30 days free). Includes fixing a platform detection bug found during code review.
+
+**Total Time Estimate: ~45 minutes** (mostly testing)
 
 ---
 
-## Part 1: RevenueCat Webhook Configuration (No Code Changes Needed)
+## What Each Platform Gets
 
-### What I Found
-
-- **Good News**: The webhook endpoint IS deployed and responding correctly
-- **The webhook IS working for some users** - I can see recent subscribers (January 2026) have proper `subscription_start_date` and `subscription_end_date` values populated
-- **Older subscribers (December 2025)** have null dates, suggesting they subscribed before the webhook was fully configured
-- **Zero logs in Supabase analytics** - This could be a Supabase logging retention issue, not necessarily a webhook problem
-
-### RevenueCat Dashboard Configuration
-
-You need to verify these settings in the RevenueCat dashboard:
-
-**Webhook URL:**
-```
-https://ywxhjnwaogsxtjwulyci.supabase.co/functions/v1/revenuecat-webhook
-```
-
-**Authorization Header:**
-```
-Authorization: [your REVENUECAT_WEBHOOK_SECRET value]
-```
-
-Note: RevenueCat sends the authorization value directly (not as "Bearer token"), so whatever secret you configured should match exactly what's in the Supabase secret.
-
-### How to Test
-
-1. In RevenueCat Dashboard → Webhooks → Send Test Event
-2. Check Supabase Edge Function logs immediately after
-3. Look for `[REVENUECAT-WEBHOOK]` log entries
+| Platform | User Experience | Subscribes? |
+|----------|-----------------|-------------|
+| **iOS** | Enter code → Safari opens → App Store with 1 month free → Annual subscription starts | ✅ Yes |
+| **Android** | Enter code → Instant 30 days premium access → No payment | ❌ No (but using app) |
+| **Web** | Enter code → Same as Android fallback | ❌ No |
 
 ---
 
-## Part 2: Add Platform Parameter to 3 Events
+## Changes Required
 
-### Changes Required
+### 1. Database Insert (No Code Change)
 
-**File: `src/utils/analytics.ts`**
+Insert BETALIST into `partner_promo_codes`:
 
-#### 1. Update `trackSignup` (lines 105-121)
-Add `platform` and `app_version` to both event calls:
+```sql
+INSERT INTO partner_promo_codes (
+  code,
+  partner_name,
+  description,
+  free_days,
+  plan_type,
+  offer_identifier,
+  is_active
+) VALUES (
+  'BETALIST',
+  'BetaList',
+  '1 month free from BetaList',
+  30,
+  'annual',
+  'partner_betalist_1mo',
+  true
+);
+```
+
+### 2. Fix Platform Detection Bug
+
+**File:** `src/components/SubscriptionPaywall.tsx` (Line 93)
+
 ```typescript
-export const trackSignup = (method: 'email' | 'google') => {
-  const platform = getPlatform();
-  const attribution = getStoredAttribution();
+// Before (BUG - hardcodes iOS):
+platform: Capacitor.isNativePlatform() ? 'ios' : 'web',
+
+// After (CORRECT - detects actual platform):
+platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web',
+```
+
+### 3. Update Edge Function for Android Fallback
+
+**File:** `supabase/functions/validate-promo-code/index.ts`
+
+Accept platform parameter and return beta_access type for non-iOS partner codes:
+
+```typescript
+// Parse platform from request
+const { code, platform } = await req.json();
+
+// In partner code section, after finding valid partner code:
+if (partnerCode) {
+  // For iOS: Continue with Safari redirect (real subscription)
+  if (platform === 'ios') {
+    return { 
+      valid: true, 
+      isPartnerCode: true,
+      redemptionUrl: `https://apps.apple.com/redeem?...`,
+      // ... existing iOS response
+    };
+  }
   
-  ReactGA.event('signup_complete', {
-    method,
-    platform,
-    app_version: APP_VERSION,
-    utm_source: attribution?.utm_source || 'direct',
-    utm_medium: attribution?.utm_medium || 'none',
-    utm_campaign: attribution?.utm_campaign || 'none',
-    referrer: attribution?.referrer || 'none',
-  });
-  console.log('[Analytics] Signup:', { method, platform, app_version: APP_VERSION });
-};
+  // For Android/Web: Fall back to beta access (30 days free, no subscription)
+  return {
+    valid: true,
+    type: 'beta_access',
+    duration: partnerCode.free_days,
+    discount: 100,
+    planType: 'both',
+    isBackendCode: true,  // Triggers activate-beta-access flow
+    description: partnerCode.description
+  };
+}
 ```
 
-#### 2. Update `trackLogin` (lines 124-130)
-Add platform tracking:
-```typescript
-export const trackLogin = (method: 'email' | 'google') => {
-  const platform = getPlatform();
-  ReactGA.event('login_complete', {
-    method,
-    platform,
-    app_version: APP_VERSION,
-  });
-  console.log('[Analytics] Login:', { method, platform, app_version: APP_VERSION });
-};
-```
+### 4. Send Platform When Validating Codes
 
-#### 3. Update `trackOnboardingComplete` (lines 509-519)
-Add platform tracking:
+**File:** `src/components/SubscriptionPaywall.tsx` (Line ~156)
+
 ```typescript
-export const trackOnboardingComplete = () => {
-  const platform = getPlatform();
-  ReactGA.event('onboarding_complete', {
-    completed: true,
-    platform,
-    app_version: APP_VERSION,
-  });
-  console.log('[Analytics] Onboarding complete:', { platform, app_version: APP_VERSION });
-};
+// Before:
+const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
+  body: { code }
+});
+
+// After:
+const currentPlatform = Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web';
+const { data: validateData, error: validateError } = await supabase.functions.invoke('validate-promo-code', {
+  body: { code, platform: currentPlatform }
+});
 ```
 
 ---
 
-## Part 3: Enhanced Webhook Debugging (Optional)
+## Manual Steps (You Do These)
 
-If you want more visibility into webhook calls, I can add enhanced logging to capture:
-- Full event payload (sanitized)
-- Timestamp of each call
-- Response status sent back to RevenueCat
+### App Store Connect Setup
+
+1. Go to **App Store Connect → Regimen → Subscriptions**
+2. Select your **Annual subscription** product
+3. Go to **Offer Codes** section
+4. Create new offer code:
+   - **Reference Name:** `partner_betalist_1mo`
+   - **Offer Code:** `BETALIST`
+   - **Offer Type:** Free Trial
+   - **Duration:** 1 Month
+   - **Eligibility:** New Subscribers
 
 ---
 
-## Verification Checklist
+## Testing Checklist
 
-After implementation:
+| Test | Expected Result |
+|------|-----------------|
+| Enter BETALIST on iOS | Safari opens App Store with offer applied |
+| Enter BETALIST on Android | Toast: "Promo activated! Enjoy 30 days free" |
+| Enter BETALIST on Web | Same as Android - 30 days beta access |
+| Check `partner_code_redemptions` table | Attribution saved with correct platform |
 
-| Task | Status |
+---
+
+## Files Modified
+
+| File | Change |
 |------|--------|
-| RevenueCat webhook URL configured | Manual check needed |
-| Authorization header matches secret | Manual check needed |
-| `trackSignup` has platform param | Will implement |
-| `trackLogin` has platform param | Will implement |
-| `trackOnboardingComplete` has platform param | Will implement |
-| Debug logging active | Will implement |
+| `partner_promo_codes` table | Add BETALIST row |
+| `supabase/functions/validate-promo-code/index.ts` | Accept platform param, add Android fallback |
+| `src/components/SubscriptionPaywall.tsx` | Fix platform detection, send platform to API |
 
 ---
 
-## How to Verify Events in GA4
+## Why This Approach?
 
-1. **Realtime**: GA4 → Reports → Realtime → Events
-2. **Debug View**: GA4 → Admin → DebugView (requires enabling debug mode)
-3. **Console Logs**: Check Safari Web Inspector on iOS or Chrome DevTools
+1. **iOS gets real subscriptions** - your primary revenue driver
+2. **Android users aren't blocked** - they get 30 days to love the app
+3. **No app update required** - edge function handles the logic
+4. **Quick implementation** - leverages existing `activate-beta-access` flow
+5. **Future-proof** - when you add Google Play Promotional Offers later, just update the edge function
 
-Expected console output after changes:
-```
-[Analytics] Signup: { method: 'email', platform: 'ios', app_version: '1.0.3' }
-[Analytics] Login: { method: 'google', platform: 'android', app_version: '1.0.3' }
-[Analytics] Onboarding complete: { platform: 'ios', app_version: '1.0.3' }
-```
-
----
-
-## Technical Notes
-
-- The webhook IS working - recent subscribers have populated subscription data
-- The "no logs" issue is likely Supabase analytics log retention, not a webhook failure
-- RevenueCat's authorization header is sent as the raw value (not Bearer format)
-- All GA4 events from the webhook already include `platform` and `source: "revenuecat_webhook"`
