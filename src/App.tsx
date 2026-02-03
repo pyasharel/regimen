@@ -35,6 +35,7 @@ import { HelpSettings } from "./components/settings/HelpSettings";
 import { TermsSettings } from "./components/settings/TermsSettings";
 import { PrivacySettings } from "./components/settings/PrivacySettings";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 import { SubscriptionTest } from "./pages/SubscriptionTest";
 import { CompoundDetailScreen } from "./components/CompoundDetailScreen";
 import { CompoundDetailScreenV2 } from "./components/CompoundDetailScreenV2";
@@ -96,8 +97,8 @@ const AppContent = () => {
             <Route path="/settings/help" element={<ProtectedRoute><HelpSettings /></ProtectedRoute>} />
             <Route path="/settings/terms" element={<ProtectedRoute><TermsSettings /></ProtectedRoute>} />
             <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
-            <Route path="/test-subscription" element={<ProtectedRoute><SubscriptionTest /></ProtectedRoute>} />
-            <Route path="/email-test" element={<ProtectedRoute><EmailTest /></ProtectedRoute>} />
+            <Route path="/test-subscription" element={<AdminRoute><SubscriptionTest /></AdminRoute>} />
+            <Route path="/email-test" element={<AdminRoute><EmailTest /></AdminRoute>} />
             <Route path="/widget-preview" element={<WidgetPreview />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
