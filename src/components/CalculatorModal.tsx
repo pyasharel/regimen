@@ -190,12 +190,17 @@ export const CalculatorModal = ({
     onOpenChange(false);
     
     if (activeTab === 'reconstitution') {
+      // For reverse mode, use calculated BAC water; for standard, use input value
+      const bacWaterValue = reconMode === 'reverse' 
+        ? (calculatedReverseBAC ? parseFloat(calculatedReverseBAC) : 0)
+        : parseFloat(bacWater);
+      
       navigate('/add-compound', {
         state: {
           prefillData: {
             vialSize: parseFloat(vialSize),
             vialUnit,
-            bacWater: parseFloat(bacWater),
+            bacWater: bacWaterValue,
             intendedDose: parseFloat(intendedDose),
             doseUnit
           }
@@ -346,8 +351,8 @@ export const CalculatorModal = ({
                 <>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1.5">
-                      BAC Water Added
-                      <InfoTooltip content="How much bacteriostatic water you added to reconstitute the peptide" />
+                      BAC Water
+                      <InfoTooltip content="How much bacteriostatic water to add to the vial" />
                     </Label>
                     <div className="flex gap-1.5 flex-wrap items-center">
                       {BAC_WATER_AMOUNTS.map((amount) => (
@@ -373,7 +378,7 @@ export const CalculatorModal = ({
 
                   <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Label className="text-sm font-medium flex items-center gap-1.5 min-h-[20px]">
                         Dose
                         <InfoTooltip content="The amount you want to inject per dose" />
                       </Label>
@@ -387,7 +392,7 @@ export const CalculatorModal = ({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Unit</Label>
+                      <Label className="text-sm font-medium min-h-[20px] flex items-center">Unit</Label>
                       <SegmentedControl
                         value={doseUnit}
                         onChange={(val) => setDoseUnit(val)}
@@ -395,6 +400,7 @@ export const CalculatorModal = ({
                           { value: 'mcg', label: 'mcg' },
                           { value: 'mg', label: 'mg' }
                         ]}
+                        size="sm"
                       />
                     </div>
                   </div>
@@ -406,7 +412,7 @@ export const CalculatorModal = ({
                 <>
                   <div className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                      <Label className="text-sm font-medium flex items-center gap-1.5 min-h-[20px]">
                         Dose
                         <InfoTooltip content="The amount you want to inject per dose" />
                       </Label>
@@ -420,7 +426,7 @@ export const CalculatorModal = ({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Unit</Label>
+                      <Label className="text-sm font-medium min-h-[20px] flex items-center">Unit</Label>
                       <SegmentedControl
                         value={doseUnit}
                         onChange={(val) => setDoseUnit(val)}
@@ -428,6 +434,7 @@ export const CalculatorModal = ({
                           { value: 'mcg', label: 'mcg' },
                           { value: 'mg', label: 'mg' }
                         ]}
+                        size="sm"
                       />
                     </div>
                   </div>
