@@ -1,99 +1,118 @@
 
 
-# Quick Fixes: Calculator Field Order & Padding
+# Calculator UX Fixes: Alignment, Labels, and Reverse Mode Mapping
 
 ## Overview
-Two small improvements based on your review:
-1. Add quick-select buttons for "Preferred Units" in reverse calculator mode
-2. Fix padding on the Oil-Based helper text
+Fix alignment issues, update label tense, and ensure reverse calculator correctly passes calculated BAC water when adding to stack.
 
-## Changes
+## Issues to Fix
 
-### 1. Add Quick Select Buttons for Preferred Units
+### 1. Alignment: Dose/Unit Fields Not Aligned
+The "Dose" label with tooltip icon is taller than the "Unit" label, causing misalignment.
 
-**File**: `src/components/CalculatorModal.tsx`
+**Fix**: Add consistent label heights and align the input/segmented control properly.
 
-**Current** (lines 435-448):
+**File**: `src/components/CalculatorModal.tsx` (lines 374-400)
+
+**Current**:
 ```jsx
-<div className="space-y-2">
-  <Label className="text-sm font-medium flex items-center gap-1.5">
-    Preferred Units to Draw
-    <InfoTooltip content="..." />
-  </Label>
-  <Input
-    type="number"
-    ...
-    placeholder="e.g., 10"
-    value={preferredUnits}
-    ...
-  />
-</div>
-```
-
-**New**:
-```jsx
-<div className="space-y-2">
-  <Label className="text-sm font-medium flex items-center gap-1.5">
-    Preferred Units to Draw
-    <InfoTooltip content="..." />
-  </Label>
-  <div className="flex gap-1.5 flex-wrap items-center">
-    {[5, 10, 20, 25].map((units) => (
-      <QuickSelectButton 
-        key={units} 
-        value={units} 
-        currentValue={preferredUnits} 
-        onSelect={setPreferredUnits}
-        suffix="u"
-      />
-    ))}
-    <Input
-      type="number"
-      inputMode="decimal"
-      min="1"
-      placeholder="Other"
-      value={[5, 10, 20, 25].includes(Number(preferredUnits)) ? '' : preferredUnits}
-      onChange={(e) => handlePositiveInput(e.target.value, setPreferredUnits, 1)}
-      className="w-16 h-8 text-xs px-2"
-    />
+<div className="grid grid-cols-2 gap-3 items-end">
+  <div className="space-y-2">
+    <Label className="text-sm font-medium flex items-center gap-1.5">
+      Dose
+      <InfoTooltip content="..." />
+    </Label>
+    <Input ... />
+  </div>
+  <div className="space-y-2">
+    <Label className="text-sm font-medium">Unit</Label>
+    <SegmentedControl ... />
   </div>
 </div>
 ```
 
-This matches the UX pattern used for Vial Size and BAC Water — quick buttons plus an "Other" input for custom values.
+**Change**:
+- Add `min-h-[20px]` to both label containers to ensure equal heights
+- Change segmented control size to match input height
 
 ---
 
-### 2. Fix Oil-Based Helper Text Padding
+### 2. Label Tense: "BAC Water Added" → "BAC Water"
+Users may be calculating BEFORE reconstituting, so past tense is confusing.
 
 **File**: `src/components/CalculatorModal.tsx`
 
-**Current** (line 530-531):
-```jsx
-<p className="text-xs text-muted-foreground -mt-2">
-  For oil-based compounds (testosterone, etc.)
-</p>
-```
-
-**Change**: Remove the negative margin `-mt-2` and replace with `mt-1` to add a small gap from the top of the content area:
-
-```jsx
-<p className="text-xs text-muted-foreground">
-  For oil-based compounds (testosterone, etc.)
-</p>
-```
-
-The `space-y-4` on the parent div will handle spacing between elements. Removing `-mt-2` gives proper breathing room from the border.
+**Changes**:
+- Line 349: Change `BAC Water Added` → `BAC Water`
+- Line 350: Change tooltip from "How much bacteriostatic water you added" → "How much bacteriostatic water to add to the vial"
 
 ---
 
-## Summary of Input Order Validation
+### 3. Critical Bug: Reverse Mode Doesn't Pass Calculated BAC Water
+When clicking "Add to Stack" in reverse mode, the code passes the empty `bacWater` state variable instead of `calculatedReverseBAC`.
 
-| Calculator | Current Order | Assessment |
-|------------|--------------|------------|
-| Standard | Mode → Vial → BAC Water → Dose → Syringe → Result | Correct |
-| Reverse | Mode → Vial → Dose → Preferred Units → Syringe → Result | Correct |
-| Oil-Based | Concentration → Dose → Result | Correct |
+**File**: `src/components/CalculatorModal.tsx` (lines 189-203)
 
-All field orders follow logical user mental models — you input what you have, then what you want, then get the result.
+**Current**:
+```jsx
+if (activeTab === 'reconstitution') {
+  navigate('/add-compound', {
+    state: {
+      prefillData: {
+        vialSize: parseFloat(vialSize),
+        vialUnit,
+        bacWater: parseFloat(bacWater), // ❌ Empty in reverse mode!
+        ...
+      }
+    }
+  });
+}
+```
+
+**Fix**: Check reconMode and pass the calculated value:
+```jsx
+if (activeTab === 'reconstitution') {
+  // For reverse mode, use calculated BAC water; for standard, use input value
+  const bacWaterValue = reconMode === 'reverse' 
+    ? (calculatedReverseBAC ? parseFloat(calculatedReverseBAC) : 0)
+    : parseFloat(bacWater);
+    
+  navigate('/add-compound', {
+    state: {
+      prefillData: {
+        vialSize: parseFloat(vialSize),
+        vialUnit,
+        bacWater: bacWaterValue,
+        intendedDose: parseFloat(intendedDose),
+        doseUnit
+      }
+    }
+  });
+}
+```
+
+---
+
+## Field Order Validation
+
+| Context | Current Order | Assessment |
+|---------|---------------|------------|
+| Quick Add Standard | Mode → Vial → BAC Water → Dose → Result | Correct (industry standard) |
+| Quick Add Reverse | Mode → Vial → Dose → Units → Result | Correct |
+| Add Compound | Dose (top) → Vial → BAC Water → Result | Correct (dose is primary input) |
+
+**Note**: The order differs between screens intentionally:
+- Quick Add: Calculator-focused, so "what you have" comes first
+- Add Compound: Dose is the primary field, calculator is secondary
+
+---
+
+## Summary of Changes
+
+| File | Line(s) | Change |
+|------|---------|--------|
+| CalculatorModal.tsx | 349-350 | "BAC Water Added" → "BAC Water", update tooltip |
+| CalculatorModal.tsx | 374-400 | Fix Dose/Unit alignment with consistent label heights |
+| CalculatorModal.tsx | 407-432 | Same alignment fix for reverse mode Dose/Unit |
+| CalculatorModal.tsx | 189-215 | Fix handleAddToStack to use calculated BAC water in reverse mode |
 
