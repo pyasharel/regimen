@@ -6,7 +6,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface WelcomeEmailRequest {
@@ -20,20 +20,66 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
+  // Create admin client for database operations
+  const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } }
   );
 
   try {
+    // Verify authentication - user must be logged in
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[WELCOME-EMAIL] No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Create authenticated client to verify the user
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error('[WELCOME-EMAIL] Invalid token:', claimsError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    const userEmail = claimsData.claims.email;
+
     const { email, fullName }: WelcomeEmailRequest = await req.json();
 
-    console.log(`[WELCOME-EMAIL] Request received for: ${email}`);
+    // Security: Verify email matches authenticated user OR user is admin
+    const { data: isAdmin } = await supabaseAdmin.rpc('has_role', {
+      _user_id: userId,
+      _role: 'admin'
+    });
+
+    if (email !== userEmail && !isAdmin) {
+      console.error(`[WELCOME-EMAIL] Email mismatch: requested ${email}, authenticated as ${userEmail}`);
+      return new Response(
+        JSON.stringify({ error: 'Can only send emails to your own address' }),
+        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    console.log(`[WELCOME-EMAIL] Request received for: ${email} (by user: ${userId})`);
 
     // Atomically record that we're sending this email. The UNIQUE constraint
     // on user_email guarantees that only the first insert succeeds.
-    const { data: insertResult, error: insertError } = await supabaseClient
+    const { data: insertResult, error: insertError } = await supabaseAdmin
       .from('welcome_emails_sent')
       .insert({ user_email: email })
       .select('sent_at')
