@@ -1,73 +1,69 @@
 
-# Fix Timezone Bug in Cycle Status Calculation
+# Subscription Status Improvements Plan
 
-## Problem Summary
-A beta tester reported that their 5 days on / 2 days off cycle was showing incorrectly (4 on / 2 off). After investigation, this is caused by a timezone parsing bug in `cycleUtils.ts`.
+## Overview
+Update the RevenueCat webhook to properly distinguish between trial users and paid subscribers, matching the behavior already implemented for Stripe subscriptions.
 
-## Root Cause
-When JavaScript parses a date string like `"2025-01-22"` using `new Date("2025-01-22")`, it interprets it as **UTC midnight**. For users in western timezones (like PST/EST - all of North America), this actually resolves to the **previous day** in local time.
+## Changes
 
-**Example:**
-- Start date stored: `"2025-01-22"` (January 22nd)
-- `new Date("2025-01-22")` → `Wed Jan 21 2025 16:00:00` (PST)
-- Cycle calculation thinks the start was January 21st → off by one day
+### 1. Update RevenueCat Webhook to Track Trial Status
 
-## Scope of Impact
-- **Affects**: All users west of UTC (entire Americas, ~50%+ of users)
-- **Impact**: Cycle phase displayed incorrectly (ON vs OFF off by one day)
-- **Frequency**: Every cycle status calculation
+**File:** `supabase/functions/revenuecat-webhook/index.ts`
 
-## Comprehensive Audit Results
+Modify the `INITIAL_PURCHASE` handler to check `event.period_type`:
 
-I reviewed all date handling across the scheduling system:
+```text
+Current behavior:
+  INITIAL_PURCHASE → subscription_status = 'active'
 
-| File | Current Approach | Status |
-|------|-----------------|--------|
-| `cycleUtils.ts` | `new Date(startDate)` | BUG - needs fix |
-| `doseRegeneration.ts` | `createLocalDate()` | Already correct |
-| `cycleReminderScheduler.ts` | `safeParseDate()` | Already correct |
-| `CycleTimeline.tsx` | `safeParseDate()` | Already correct |
-| `notificationScheduler.ts` | Manual parse with `split('-').map(Number)` | Already correct |
-| `AddCompoundScreen.tsx` | `+ 'T00:00:00'` suffix | Already correct |
-| `useAppStateSync.tsx` | `+ 'T00:00:00'` suffix | Already correct |
-| `CompoundDetailScreen.tsx` | `+ 'T00:00:00'` suffix | Already correct |
-
-**Conclusion**: Only `cycleUtils.ts` has the bug. All other scheduling code is already timezone-safe.
-
-## Other Schedule Types - Not Affected
-- **Daily/Specific days/Weekly/Twice Weekly**: Uses day-of-week comparison on already-correct dates
-- **Every X Days**: Uses `daysSinceStart` calculation, but in `doseRegeneration.ts` which uses `createLocalDate()` 
-- **Custom times**: Time parsing is independent of date parsing
-- **Notifications**: Already manually parsing dates correctly
-
-## The Fix
-
-Update `cycleUtils.ts` to use the existing `createLocalDate()` utility:
-
-```typescript
-// Before (line 27):
-const start = new Date(startDate);
-
-// After:
-import { createLocalDate } from "@/utils/dateUtils";
-// ...
-const start = createLocalDate(startDate);
-if (!start) return null;  // Handle invalid date
+New behavior:
+  INITIAL_PURCHASE + period_type = 'TRIAL' → subscription_status = 'trialing'
+  INITIAL_PURCHASE + period_type != 'TRIAL' → subscription_status = 'active'
 ```
 
-## Technical Details
+**Technical details:**
+- RevenueCat sends `period_type` field with values: `TRIAL`, `INTRO`, `NORMAL`
+- Check if `event.period_type === 'TRIAL' || event.period_type === 'INTRO'` 
+- Set `subscription_status = 'trialing'` for trial period
+- Set `trial_end_date` from `event.expiration_at_ms` for trial users
 
-The `createLocalDate()` function already handles this correctly:
-```typescript
-// From dateUtils.ts - parses in LOCAL timezone
-const [year, month, day] = dateStr.split('-').map(Number);
-const date = new Date(year, month - 1, day);  // Local midnight
-```
+### 2. Handle Trial-to-Paid Conversion Event
 
-## Risk Assessment
-- **Low risk**: Simple one-line change using existing utility
-- **Already tested**: Same function used successfully in `doseRegeneration.ts` and `CycleTimeline.tsx`
-- **Backwards compatible**: No data migration needed
+When a trial converts to paid, RevenueCat sends a `RENEWAL` event. Update the webhook to:
+- For `RENEWAL` events where previous period was trial → set `subscription_status = 'active'`
+- Clear `trial_end_date` when transitioning from trial to paid
 
-## Files to Modify
-1. **src/utils/cycleUtils.ts** - Import `createLocalDate` and use it instead of raw `new Date()`
+### 3. Update GA4 Events for Better Analytics
+
+The webhook already tracks `is_trial` in GA4 events, but ensure this is consistent across all event types:
+- `subscription_started` - already has `is_trial` ✓
+- `subscription_cancelled` - already has `was_trial` ✓
+- Add trial info to renewal events to track trial-to-paid conversions
+
+## What This Enables
+
+After implementation, you'll be able to:
+
+1. **In your database:**
+   - Query `subscription_status = 'trialing'` → all trial users
+   - Query `subscription_status = 'active'` → all paid users
+   - Query `subscription_status IN ('active', 'trialing')` → all users with access
+
+2. **In RevenueCat:**
+   - Continue using "Active Subscription" filter
+   - Sort by "Total Spent" to see paid users at top
+   - Use Charts → Conversions for trial-to-paid funnel
+
+3. **In GA4:**
+   - Filter `subscription_started` events by `is_trial = true/false`
+   - Track trial conversion rate over time
+
+## Implementation Notes
+
+- This is a non-breaking change - existing users with `active` status remain valid
+- The frontend already handles `trialing` status correctly (from Stripe)
+- Banners and UI will work immediately without changes
+
+## Files Modified
+
+1. `supabase/functions/revenuecat-webhook/index.ts` - Add trial detection logic
