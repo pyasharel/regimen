@@ -391,11 +391,19 @@ serve(async (req) => {
           renewalNumber: event.renewal_number
         });
         
+        // Determine renewal type for analytics
+        const renewalType = wasTrialConversion 
+          ? "trial_to_paid" 
+          : (event.period_type === "TRIAL" || event.period_type === "INTRO") 
+            ? "trial_renewal" 
+            : "paid_renewal";
+        
         // Track renewal in GA4 with platform and trial conversion info
         await trackGA4Event(userId, "subscription_renewed", {
           plan_type: subscriptionType,
           renewal_count: event.renewal_number || 1,
           was_trial_conversion: wasTrialConversion,
+          renewal_type: renewalType,
         }, event.store);
         
         // Fire dedicated trial_converted event for easier GA4 funnel tracking
