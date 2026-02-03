@@ -316,11 +316,14 @@ serve(async (req) => {
     let subscriptionType: string | null = null;
     let subscriptionStartDate: string | null = null;
     let subscriptionEndDate: string | null = null;
+    let trialEndDate: string | null | undefined = undefined; // undefined = don't update, null = clear it
 
     // RevenueCat event types: https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
     switch (event.type) {
-      case "INITIAL_PURCHASE":
-        subscriptionStatus = "active";
+      case "INITIAL_PURCHASE": {
+        // Check if this is a trial or paid subscription
+        const isTrial = event.period_type === "TRIAL" || event.period_type === "INTRO";
+        subscriptionStatus = isTrial ? "trialing" : "active";
         subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
         subscriptionStartDate = event.purchased_at_ms 
           ? new Date(event.purchased_at_ms).toISOString() 
@@ -328,27 +331,44 @@ serve(async (req) => {
         subscriptionEndDate = event.expiration_at_ms 
           ? new Date(event.expiration_at_ms).toISOString() 
           : null;
-        console.log("[REVENUECAT-WEBHOOK] Setting active subscription:", { subscriptionType, subscriptionEndDate });
+        
+        // Set trial_end_date for trial users
+        if (isTrial && event.expiration_at_ms) {
+          trialEndDate = new Date(event.expiration_at_ms).toISOString();
+        }
+        
+        console.log("[REVENUECAT-WEBHOOK] Setting subscription:", { 
+          subscriptionStatus, 
+          subscriptionType, 
+          subscriptionEndDate,
+          trialEndDate,
+          isTrial,
+          periodType: event.period_type 
+        });
         
         // Track subscription started in GA4 with platform
         await trackGA4Event(userId, "subscription_started", {
           plan_type: subscriptionType,
-          is_trial: event.period_type === "TRIAL",
+          is_trial: isTrial,
           price: event.price || 0,
           currency: event.currency || "USD",
         }, event.store);
 
-        // Update partner redemption with initial revenue
-        await updatePartnerRedemptionRevenue(
-          supabase,
-          userId,
-          subscriptionType,
-          "INITIAL_PURCHASE",
-          event.original_transaction_id || event.transaction_id
-        );
+        // Update partner redemption with initial revenue (only for non-trial)
+        if (!isTrial) {
+          await updatePartnerRedemptionRevenue(
+            supabase,
+            userId,
+            subscriptionType,
+            "INITIAL_PURCHASE",
+            event.original_transaction_id || event.transaction_id
+          );
+        }
         break;
+      }
 
-      case "RENEWAL":
+      case "RENEWAL": {
+        // Renewals always mean the user is now paying (trial converted or continued subscription)
         subscriptionStatus = "active";
         subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
         subscriptionStartDate = event.purchased_at_ms 
@@ -357,12 +377,25 @@ serve(async (req) => {
         subscriptionEndDate = event.expiration_at_ms 
           ? new Date(event.expiration_at_ms).toISOString() 
           : null;
-        console.log("[REVENUECAT-WEBHOOK] Subscription renewed:", { subscriptionType, subscriptionEndDate });
         
-        // Track renewal in GA4 with platform
+        // Check if this was a trial-to-paid conversion (first renewal after trial)
+        const wasTrialConversion = event.renewal_number === 1;
+        
+        // Clear trial_end_date since user is now paying
+        trialEndDate = null;
+        
+        console.log("[REVENUECAT-WEBHOOK] Subscription renewed:", { 
+          subscriptionType, 
+          subscriptionEndDate,
+          wasTrialConversion,
+          renewalNumber: event.renewal_number
+        });
+        
+        // Track renewal in GA4 with platform and trial conversion info
         await trackGA4Event(userId, "subscription_renewed", {
           plan_type: subscriptionType,
           renewal_count: event.renewal_number || 1,
+          was_trial_conversion: wasTrialConversion,
         }, event.store);
 
         // Update partner redemption with renewal revenue (only if within first year)
@@ -373,6 +406,7 @@ serve(async (req) => {
           "RENEWAL"
         );
         break;
+      }
 
       case "PRODUCT_CHANGE":
       case "UNCANCELLATION":
@@ -466,6 +500,10 @@ serve(async (req) => {
     }
     if (subscriptionEndDate !== null) {
       updateData.subscription_end_date = subscriptionEndDate;
+    }
+    // Handle trial_end_date: undefined = don't update, null = clear it, string = set it
+    if (trialEndDate !== undefined) {
+      updateData.trial_end_date = trialEndDate;
     }
 
     console.log("[REVENUECAT-WEBHOOK] Updating profile for user:", userId, updateData);
