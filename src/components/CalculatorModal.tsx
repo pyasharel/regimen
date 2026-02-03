@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Calculator, Copy, Plus, HelpCircle, ChevronDown, Settings2, ArrowRightLeft } from "lucide-react";
+import { X, Calculator, Copy, Plus, HelpCircle, ArrowRightLeft } from "lucide-react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from 'sonner';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -16,11 +16,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 interface CalculatorModalProps {
   open: boolean;
@@ -70,7 +65,6 @@ export const CalculatorModal = ({
   const [intendedDose, setIntendedDose] = useState(initialDose?.toString() || '');
   const [doseUnit, setDoseUnit] = useState(initialDoseUnit);
   const [syringeSize, setSyringeSize] = useState(100); // 1mL is most common
-  const [showAdvanced, setShowAdvanced] = useState(false); // Always start collapsed
   
   // Reverse mode state
   const [preferredUnits, setPreferredUnits] = useState('');
@@ -300,6 +294,25 @@ export const CalculatorModal = ({
           {/* Reconstitution Calculator */}
           {activeTab === 'reconstitution' && (
             <div className="space-y-4">
+              {/* Mode Toggle - at top for discoverability */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  Mode
+                  <InfoTooltip content="Standard: calculate units to draw. Reverse: calculate BAC water needed for preferred units." />
+                </Label>
+                <SegmentedControl
+                  value={reconMode}
+                  onChange={(val) => {
+                    triggerHaptic();
+                    setReconMode(val as ReconstitutionMode);
+                  }}
+                  options={[
+                    { value: 'standard', label: 'Standard' },
+                    { value: 'reverse', label: 'Reverse' }
+                  ]}
+                />
+              </div>
+
               {/* Vial Size */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
@@ -436,65 +449,31 @@ export const CalculatorModal = ({
                 </>
               )}
 
-              {/* Advanced Options (Collapsible) */}
-              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-                <CollapsibleTrigger asChild>
-                  <button 
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
-                    onClick={triggerHaptic}
-                  >
-                    <Settings2 className="w-3.5 h-3.5" />
-                    <span>Advanced Options</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-3 space-y-3">
-                  {/* Mode Toggle */}
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium flex items-center gap-1.5">
-                      Mode
-                      <InfoTooltip content="Standard: calculate units to draw. Reverse: calculate BAC water needed for preferred units." />
-                    </Label>
-                    <SegmentedControl
-                      value={reconMode}
-                      onChange={(val) => {
+              {/* Syringe Size - always visible */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  Syringe Size
+                  <InfoTooltip content="Select your insulin syringe size. 1mL (100u) is most common." />
+                </Label>
+                <div className="flex gap-2">
+                  {SYRINGE_SIZES.map((syringe) => (
+                    <button
+                      key={syringe.value}
+                      onClick={() => {
                         triggerHaptic();
-                        setReconMode(val as ReconstitutionMode);
+                        setSyringeSize(syringe.value);
                       }}
-                      options={[
-                        { value: 'standard', label: 'Standard' },
-                        { value: 'reverse', label: 'Reverse' }
-                      ]}
-                    />
-                  </div>
-
-                  {/* Syringe Size */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium flex items-center gap-1.5">
-                      Syringe Size
-                      <InfoTooltip content="Select your insulin syringe size. 1mL (100u) is most common." />
-                    </Label>
-                    <div className="flex gap-2">
-                      {SYRINGE_SIZES.map((syringe) => (
-                        <button
-                          key={syringe.value}
-                          onClick={() => {
-                            triggerHaptic();
-                            setSyringeSize(syringe.value);
-                          }}
-                          className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                            syringeSize === syringe.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80'
-                          }`}
-                        >
-                          {syringe.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                      className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        syringeSize === syringe.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      {syringe.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Standard Result */}
               {reconMode === 'standard' && calculatedIU && (
