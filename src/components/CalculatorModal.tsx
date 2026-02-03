@@ -437,14 +437,26 @@ export const CalculatorModal = ({
                       Preferred Units to Draw
                       <InfoTooltip content="The number of units you want each dose to be (e.g., 10u for easy measuring)" />
                     </Label>
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      min="1"
-                      placeholder="e.g., 10"
-                      value={preferredUnits}
-                      onChange={(e) => handlePositiveInput(e.target.value, setPreferredUnits, 1)}
-                    />
+                    <div className="flex gap-1.5 flex-wrap items-center">
+                      {[5, 10, 20, 25].map((units) => (
+                        <QuickSelectButton 
+                          key={units} 
+                          value={units} 
+                          currentValue={preferredUnits} 
+                          onSelect={setPreferredUnits}
+                          suffix="u"
+                        />
+                      ))}
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min="1"
+                        placeholder="Other"
+                        value={[5, 10, 20, 25].includes(Number(preferredUnits)) ? '' : preferredUnits}
+                        onChange={(e) => handlePositiveInput(e.target.value, setPreferredUnits, 1)}
+                        className="w-16 h-8 text-xs px-2"
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -527,7 +539,7 @@ export const CalculatorModal = ({
           {/* mL Calculator */}
           {activeTab === 'ml' && (
             <div className="space-y-4">
-              <p className="text-xs text-muted-foreground -mt-2">
+              <p className="text-xs text-muted-foreground">
                 For oil-based compounds (testosterone, etc.)
               </p>
               <div className="space-y-2">
