@@ -397,6 +397,24 @@ serve(async (req) => {
           renewal_count: event.renewal_number || 1,
           was_trial_conversion: wasTrialConversion,
         }, event.store);
+        
+        // Fire dedicated trial_converted event for easier GA4 funnel tracking
+        if (wasTrialConversion) {
+          // Calculate trial duration in days from original purchase to now
+          const trialDurationDays = event.original_purchase_date_ms 
+            ? calculateDaysActive(event.original_purchase_date_ms, Date.now())
+            : 0;
+          
+          await trackGA4Event(userId, "trial_converted", {
+            plan_type: subscriptionType,
+            trial_duration_days: trialDurationDays,
+          }, event.store);
+          
+          console.log("[REVENUECAT-WEBHOOK] Trial converted:", { 
+            trialDurationDays, 
+            subscriptionType 
+          });
+        }
 
         // Update partner redemption with renewal revenue (only if within first year)
         await updatePartnerRedemptionRevenue(
