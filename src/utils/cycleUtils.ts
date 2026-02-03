@@ -1,3 +1,5 @@
+import { createLocalDate } from "@/utils/dateUtils";
+
 interface CycleStatus {
   isInCycle: boolean;
   currentPhase: 'on' | 'off';
@@ -24,7 +26,12 @@ export const calculateCycleStatus = (
     return null;
   }
 
-  const start = new Date(startDate);
+  // Use createLocalDate to avoid timezone issues - new Date('YYYY-MM-DD') 
+  // parses as UTC midnight, which shifts to previous day in western timezones
+  const start = createLocalDate(startDate);
+  if (!start) {
+    return null;
+  }
   const now = new Date();
   
   // Calculate days since start
