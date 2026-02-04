@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Input } from "@/components/ui/input";
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed } from '@/utils/analytics';
+import { trackPaywallShown, trackPaywallDismissed, trackSubscriptionStarted, trackPromoCodeApplied, trackSubscriptionSuccess, trackSubscriptionFailed, trackPreConversionState, getSessionCount } from '@/utils/analytics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { usePaywall } from '@/contexts/PaywallContext';
 
@@ -308,6 +308,33 @@ export const SubscriptionPaywall = ({
     }
     
     setIsLoading(true);
+    
+    // Track pre-conversion engagement state
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Fetch engagement metrics in parallel
+        const [profileRes, statsRes, compoundsRes] = await Promise.all([
+          supabase.from('profiles').select('created_at').eq('user_id', user.id).single(),
+          supabase.from('user_stats').select('total_doses_logged').eq('user_id', user.id).single(),
+          supabase.from('compounds').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        ]);
+        
+        const daysSinceSignup = profileRes.data?.created_at
+          ? Math.floor((Date.now() - new Date(profileRes.data.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        
+        trackPreConversionState({
+          dosesLoggedTotal: statsRes.data?.total_doses_logged || 0,
+          compoundsCount: compoundsRes.count || 0,
+          daysSinceSignup,
+          sessionsCount: getSessionCount(),
+          selectedPlan,
+        });
+      }
+    } catch (err) {
+      console.log('[PAYWALL] Could not track pre-conversion state:', err);
+    }
     
     try {
       // ==================== NATIVE IAP (RevenueCat - Standard Flow for all users including partners) ====================
