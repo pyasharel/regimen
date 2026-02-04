@@ -90,6 +90,17 @@ export function OnboardingFlow() {
     checkExistingUser();
   }, [navigate]);
 
+  // Set onboarding flag on mount, clear on unmount/complete
+  useEffect(() => {
+    localStorage.setItem('regimen_in_onboarding', 'true');
+    console.log('[Onboarding] Set in-onboarding flag');
+    
+    return () => {
+      // Only clear if not navigating to complete (handleComplete clears it)
+      // This handles browser back/refresh edge cases
+    };
+  }, []);
+
   // Force light mode during onboarding, default new users to light mode
   useEffect(() => {
     const savedTheme = localStorage.getItem('vite-ui-theme');
@@ -199,6 +210,10 @@ export function OnboardingFlow() {
   };
 
   const handleComplete = () => {
+    // Clear in-onboarding flag BEFORE completion tracking
+    localStorage.removeItem('regimen_in_onboarding');
+    console.log('[Onboarding] Cleared in-onboarding flag');
+    
     // Track successful onboarding completion
     trackOnboardingComplete();
     // Force light mode for all users completing onboarding

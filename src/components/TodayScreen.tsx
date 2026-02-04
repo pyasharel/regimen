@@ -36,7 +36,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
 import { DoseEditModal } from "@/components/DoseEditModal";
 import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
-import { trackDoseLogged, trackDoseSkipped, trackPaywallShown } from "@/utils/analytics";
+import { trackDoseLogged, trackDoseSkipped, trackPaywallShown, trackActivationComplete } from "@/utils/analytics";
 import { useTheme } from "@/components/ThemeProvider";
 import { useNotificationPermissionPrompt } from "@/hooks/useNotificationPermissionPrompt";
 import {
@@ -777,6 +777,62 @@ export const TodayScreen = () => {
         
         // Check and schedule streak notifications
         await checkAndScheduleStreakNotifications();
+        
+        // Track activation (first dose ever) - fires ONCE per user lifetime
+        const activationKey = 'regimen_activation_tracked';
+        if (!localStorage.getItem(activationKey)) {
+          try {
+            // Verify this is actually first dose by checking user_stats
+            const userId = await getUserIdWithFallback(3000);
+            if (userId) {
+              const { data: stats } = await supabase
+                .from('user_stats')
+                .select('total_doses_logged')
+                .eq('user_id', userId)
+                .single();
+              
+              // total_doses_logged includes this dose, so check if it's 1
+              if (stats?.total_doses_logged === 1) {
+                // Get profile for timing data
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('created_at, first_compound_added_at')
+                  .eq('user_id', userId)
+                  .single();
+                
+                if (profile?.created_at) {
+                  const signupTime = new Date(profile.created_at).getTime();
+                  const now = Date.now();
+                  const hoursSinceSignup = Math.round((now - signupTime) / (1000 * 60 * 60));
+                  
+                  let hoursSinceFirstCompound: number | null = null;
+                  if (profile.first_compound_added_at) {
+                    const compoundTime = new Date(profile.first_compound_added_at).getTime();
+                    hoursSinceFirstCompound = Math.round((now - compoundTime) / (1000 * 60 * 60));
+                  }
+                  
+                  // Fire activation event
+                  trackActivationComplete({
+                    timeSinceSignupHours: hoursSinceSignup,
+                    timeSinceFirstCompoundHours: hoursSinceFirstCompound,
+                  });
+                  
+                  // Update profile with timestamp
+                  await supabase
+                    .from('profiles')
+                    .update({ first_dose_logged_at: new Date().toISOString() })
+                    .eq('user_id', userId);
+                  
+                  // Set flag to prevent duplicate events
+                  localStorage.setItem(activationKey, 'true');
+                  console.log('[TodayScreen] Tracked activation complete (first dose)');
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[TodayScreen] Error tracking activation:', err);
+          }
+        }
       }
       
       // Update dosesForLevels state for real-time levels chart (no network call)

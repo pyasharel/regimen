@@ -687,3 +687,66 @@ export const trackStreakMilestone = (streakDays: number) => {
     milestone_type: streakDays >= 30 ? 'monthly' : streakDays >= 7 ? 'weekly' : 'daily',
   });
 };
+
+// ============================================
+// ACTIVATION TRACKING
+// ============================================
+
+/**
+ * Check if user is currently in the onboarding flow.
+ * Used to accurately track `added_during_onboarding` and `logged_during_onboarding`.
+ */
+export const isInOnboarding = (): boolean => {
+  return localStorage.getItem('regimen_in_onboarding') === 'true';
+};
+
+/**
+ * Track first compound added - fires ONCE per user lifetime.
+ * Call this after successfully inserting a user's first compound.
+ */
+export const trackFirstCompoundAdded = (params: {
+  timeSinceSignupHours: number;
+}) => {
+  const platform = getPlatform();
+  const addedDuringOnboarding = isInOnboarding();
+  
+  ReactGA.event('first_compound_added', {
+    platform,
+    app_version: APP_VERSION,
+    time_since_signup_hours: params.timeSinceSignupHours,
+    added_during_onboarding: addedDuringOnboarding,
+  });
+  
+  console.log('[Analytics] First compound added:', { 
+    timeSinceSignupHours: params.timeSinceSignupHours,
+    addedDuringOnboarding,
+    platform 
+  });
+};
+
+/**
+ * Track activation complete (first dose logged) - fires ONCE per user lifetime.
+ * This is the key "activation" moment indicating a user has truly engaged with the app.
+ */
+export const trackActivationComplete = (params: {
+  timeSinceSignupHours: number;
+  timeSinceFirstCompoundHours: number | null;
+}) => {
+  const platform = getPlatform();
+  const loggedDuringOnboarding = isInOnboarding();
+  
+  ReactGA.event('activation_complete', {
+    platform,
+    app_version: APP_VERSION,
+    time_since_signup_hours: params.timeSinceSignupHours,
+    time_since_first_compound_hours: params.timeSinceFirstCompoundHours,
+    logged_during_onboarding: loggedDuringOnboarding,
+  });
+  
+  console.log('[Analytics] Activation complete:', { 
+    timeSinceSignupHours: params.timeSinceSignupHours,
+    timeSinceFirstCompoundHours: params.timeSinceFirstCompoundHours,
+    loggedDuringOnboarding,
+    platform 
+  });
+};

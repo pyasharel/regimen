@@ -311,6 +311,8 @@ export type Database = {
           current_weight_unit: string | null
           detected_locale: string | null
           experience_level: string | null
+          first_compound_added_at: string | null
+          first_dose_logged_at: string | null
           full_name: string | null
           goal_weight: number | null
           goals: string[] | null
@@ -358,6 +360,8 @@ export type Database = {
           current_weight_unit?: string | null
           detected_locale?: string | null
           experience_level?: string | null
+          first_compound_added_at?: string | null
+          first_dose_logged_at?: string | null
           full_name?: string | null
           goal_weight?: number | null
           goals?: string[] | null
@@ -405,6 +409,8 @@ export type Database = {
           current_weight_unit?: string | null
           detected_locale?: string | null
           experience_level?: string | null
+          first_compound_added_at?: string | null
+          first_dose_logged_at?: string | null
           full_name?: string | null
           goal_weight?: number | null
           goals?: string[] | null

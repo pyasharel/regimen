@@ -4,7 +4,7 @@ import { OnboardingData } from '../hooks/useOnboardingState';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import { trackSignup } from '@/utils/analytics';
+import { trackSignup, trackFirstCompoundAdded } from '@/utils/analytics';
 import { getStoredAttribution, clearAttribution } from '@/utils/attribution';
 import { persistentStorage } from '@/utils/persistentStorage';
 import { withQueryTimeout } from '@/utils/withTimeout';
@@ -320,6 +320,21 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           // Don't fail the flow
         } else if (compoundData) {
           console.log('[Onboarding] Compound created:', compoundData.id);
+          
+          // Track first compound added (during onboarding = time_since_signup ~0)
+          const firstCompoundKey = 'regimen_first_compound_tracked';
+          if (!localStorage.getItem(firstCompoundKey)) {
+            trackFirstCompoundAdded({ timeSinceSignupHours: 0 });
+            
+            // Update profile with timestamp
+            await supabase
+              .from('profiles')
+              .update({ first_compound_added_at: new Date().toISOString() })
+              .eq('user_id', authData.user.id);
+            
+            localStorage.setItem(firstCompoundKey, 'true');
+            console.log('[Onboarding] Tracked first compound added during onboarding');
+          }
           
           // Generate doses for the next 60 days
           const doses = generateDosesForOnboarding(

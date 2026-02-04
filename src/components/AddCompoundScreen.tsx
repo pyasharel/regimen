@@ -4,7 +4,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { usePaywall } from "@/contexts/PaywallContext";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
-import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted, trackCycleEnabled, trackCalculatorUsed } from "@/utils/analytics";
+import { trackCompoundAdded, trackCompoundEdited, trackCompoundDeleted, trackCycleEnabled, trackCalculatorUsed, trackFirstCompoundAdded } from "@/utils/analytics";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1443,6 +1443,40 @@ export const AddCompoundScreen = () => {
       // Track calculator usage if used
       if (activeCalculator === 'iu') trackCalculatorUsed('iu');
       if (activeCalculator === 'ml') trackCalculatorUsed('ml');
+      
+      // Track first compound added (fires ONCE per user lifetime)
+      const firstCompoundKey = 'regimen_first_compound_tracked';
+      if (!localStorage.getItem(firstCompoundKey) && !isEditing) {
+        try {
+          // Get profile for signup timestamp
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('created_at')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profile?.created_at) {
+            const signupTime = new Date(profile.created_at).getTime();
+            const now = Date.now();
+            const hoursSinceSignup = Math.round((now - signupTime) / (1000 * 60 * 60));
+            
+            // Fire analytics event
+            trackFirstCompoundAdded({ timeSinceSignupHours: hoursSinceSignup });
+            
+            // Update profile with timestamp
+            await supabase
+              .from('profiles')
+              .update({ first_compound_added_at: new Date().toISOString() })
+              .eq('user_id', user.id);
+            
+            // Set flag to prevent duplicate events
+            localStorage.setItem(firstCompoundKey, 'true');
+            console.log('[AddCompound] Tracked first compound added');
+          }
+        } catch (err) {
+          console.error('[AddCompound] Error tracking first compound:', err);
+        }
+      }
       
       // Check if this is first compound and notification permission wasn't asked
       const isFirstCompound = await checkIsFirstCompound(user.id);
