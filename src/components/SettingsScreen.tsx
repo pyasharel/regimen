@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { persistentStorage } from "@/utils/persistentStorage";
 import { trackSignOut, trackRatingRequested, trackFeedbackInitiated, trackShareAction, trackThemeChanged, trackSoundToggled } from "@/utils/analytics";
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
@@ -45,8 +46,11 @@ export const SettingsScreen = () => {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const savedSound = localStorage.getItem('soundEnabled');
-    setSoundEnabled(savedSound !== 'false');
+    const loadSettings = async () => {
+      const savedSound = await persistentStorage.getBoolean('soundEnabled', true);
+      setSoundEnabled(savedSound);
+    };
+    loadSettings();
     loadUserProfile();
   }, []);
 
@@ -93,9 +97,9 @@ export const SettingsScreen = () => {
   };
 
 
-  const toggleSound = (checked: boolean) => {
+  const toggleSound = async (checked: boolean) => {
     setSoundEnabled(checked);
-    localStorage.setItem('soundEnabled', String(checked));
+    await persistentStorage.setBoolean('soundEnabled', checked);
     trackSoundToggled(checked);
   };
 
