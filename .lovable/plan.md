@@ -1,244 +1,295 @@
 
-# Fixes: Sound Effects, Persistence, and Real-Time Levels Update
+# Activation Analytics & iOS Platform Detection Implementation
 
 ## Overview
-Three separate issues to address:
-1. Android sound not playing when checking off medications
-2. Sound settings not persisting on native platforms
-3. Medication Levels card not updating in real-time when doses are checked/unchecked
+Implementing comprehensive activation tracking to understand when users truly engage with the app, plus adding an onboarding flow flag for accurate `added_during_onboarding` and `logged_during_onboarding` tracking.
 
 ---
 
-## 1. Android Sound Effects Fix
+## Part 1: iOS Platform Detection - Answer to Your Question
 
-### Problem
-The current `new Audio()` approach has known issues on Android WebView:
-- Requires user gesture before first playback
-- May silently fail without errors
-- First tap often produces no sound
+**When can you publish the new iOS build?**
 
-### Solution
-Use Web Audio API with AudioContext, similar to how `playChimeSound()` already works. This is more reliable across platforms and handles Android's autoplay policies better.
+You can publish **immediately after these changes are merged**. The platform detection code (`getPlatform()` returning `'ios'`) is already correct. However, the `user_platform` GA4 user property was added relatively recently, so:
 
-**File**: `src/components/TodayScreen.tsx`
+1. If your current TestFlight build predates the `setPlatformUserProperty()` addition, iOS users are showing as "web" because GA4 user properties don't backfill
+2. After publishing a new build with these activation tracking changes, iOS users will correctly show as `ios` in GA4
 
-**Current** (lines 1045-1050):
-```javascript
-const playCheckSound = () => {
-  const audio = new Audio(bubblePopSound);
-  audio.volume = 1.0;
-  audio.play().catch(err => console.log('Sound play failed:', err));
+**To verify after publishing:**
+- Check iOS device console for: `[Analytics] Platform user property set: ios`
+- Wait 24-48 hours for GA4 user property data to populate in reports
+
+---
+
+## Part 2: Onboarding Flow Flag
+
+### localStorage Flag: `regimen_in_onboarding`
+
+**Set when onboarding starts (OnboardingFlow.tsx):**
+```typescript
+useEffect(() => {
+  // Set flag when entering onboarding
+  localStorage.setItem('regimen_in_onboarding', 'true');
+}, []);
+```
+
+**Clear when onboarding completes (OnboardingFlow.tsx - handleComplete):**
+```typescript
+const handleComplete = () => {
+  // Clear in-onboarding flag
+  localStorage.removeItem('regimen_in_onboarding');
+  
+  trackOnboardingComplete();
+  localStorage.setItem('vite-ui-theme', 'light');
+  document.documentElement.classList.remove('dark');
+  clearState();
+  navigate('/today', { replace: true });
 };
 ```
 
-**Change**: Preload the audio buffer on component mount, then use AudioContext for playback:
-
-```javascript
-// Add state/ref at component level
-const audioContextRef = useRef<AudioContext | null>(null);
-const bubbleBufferRef = useRef<AudioBuffer | null>(null);
-
-// Preload audio on mount
-useEffect(() => {
-  const preloadAudio = async () => {
-    try {
-      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-      audioContextRef.current = context;
-      
-      const response = await fetch(bubblePopSound);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await context.decodeAudioData(arrayBuffer);
-      bubbleBufferRef.current = audioBuffer;
-    } catch (err) {
-      console.log('Audio preload failed:', err);
-    }
-  };
-  preloadAudio();
-  
-  return () => {
-    audioContextRef.current?.close();
-  };
-}, []);
-
-// Updated playCheckSound
-const playCheckSound = () => {
-  if (!audioContextRef.current || !bubbleBufferRef.current) return;
-  
-  try {
-    const context = audioContextRef.current;
-    // Resume context if suspended (required for iOS/Android after backgrounding)
-    if (context.state === 'suspended') {
-      context.resume();
-    }
-    
-    const source = context.createBufferSource();
-    const gainNode = context.createGain();
-    source.buffer = bubbleBufferRef.current;
-    source.connect(gainNode);
-    gainNode.connect(context.destination);
-    gainNode.gain.value = 1.0;
-    source.start(0);
-  } catch (err) {
-    console.log('Sound play failed:', err);
-  }
+**Helper function (analytics.ts):**
+```typescript
+export const isInOnboarding = (): boolean => {
+  return localStorage.getItem('regimen_in_onboarding') === 'true';
 };
 ```
 
 ---
 
-## 2. Sound Settings Persistence Fix
+## Part 3: Database Changes
 
-### Problem
-Sound settings use `localStorage` directly, but on native platforms (iOS/Android), `localStorage` may not persist across app updates. The `persistentStorage` utility handles this by using Capacitor Preferences on native.
+**Add two columns to `profiles` table:**
 
-### Solution
-Update SettingsScreen.tsx to use `persistentStorage` for sound settings.
-
-**File**: `src/components/SettingsScreen.tsx`
-
-**Current** (lines 47-50):
-```javascript
-useEffect(() => {
-  const savedSound = localStorage.getItem('soundEnabled');
-  setSoundEnabled(savedSound !== 'false');
-}, []);
+```sql
+ALTER TABLE profiles 
+ADD COLUMN first_compound_added_at TIMESTAMPTZ,
+ADD COLUMN first_dose_logged_at TIMESTAMPTZ;
 ```
 
-**Change**:
-```javascript
-import { persistentStorage } from "@/utils/persistentStorage";
-
-useEffect(() => {
-  const loadSettings = async () => {
-    const savedSound = await persistentStorage.getBoolean('soundEnabled', true);
-    setSoundEnabled(savedSound);
-  };
-  loadSettings();
-}, []);
-```
-
-**Current** (lines 96-100):
-```javascript
-const toggleSound = (checked: boolean) => {
-  setSoundEnabled(checked);
-  localStorage.setItem('soundEnabled', String(checked));
-  trackSoundToggled(checked);
-};
-```
-
-**Change**:
-```javascript
-const toggleSound = async (checked: boolean) => {
-  setSoundEnabled(checked);
-  await persistentStorage.setBoolean('soundEnabled', checked);
-  trackSoundToggled(checked);
-};
-```
-
-**Also update TodayScreen.tsx** (line 659) to use persistentStorage:
-```javascript
-// Change from:
-const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-
-// To:
-const soundEnabledSetting = await persistentStorage.getBoolean('soundEnabled', true);
-```
-
-Since `toggleDose` is already async, this is a seamless change.
+These enable backend cohort analysis and RevenueCat webhook enrichment.
 
 ---
 
-## 3. Real-Time Medication Levels Update
+## Part 4: New Analytics Functions
 
-### Problem
-The `loadLevelsData()` call was disabled due to suspected boot issues:
-```javascript
-// DIAGNOSTIC: Disabled - suspected cause of boot issues
-// loadLevelsData();
-```
+**File: `src/utils/analytics.ts`**
 
-### Solution
-Instead of refetching from the database, update the local state directly. This is:
-- Faster (no network call)
-- More reliable (no chance of boot issues)
-- Cleaner architecture (state-driven updates)
-
-**File**: `src/components/TodayScreen.tsx`
-
-When a dose is toggled, update `dosesForLevels` directly:
-
-```javascript
-// Inside toggleDose, after successful database update and local doses update:
-
-// Update dosesForLevels state for real-time levels chart
-if (!currentStatus) {
-  // Dose was just marked as taken - add/update in levels data
-  const newDoseForLevels: DoseForLevels = {
-    id: doseId,
-    compound_id: dose.compound_id,
-    dose_amount: dose.dose_amount,
-    dose_unit: dose.dose_unit,
-    taken: true,
-    taken_at: takenAtTimestamp,
-    scheduled_date: dose.scheduled_date
-  };
+```typescript
+// Track first compound added - fires ONCE per user lifetime
+export const trackFirstCompoundAdded = async (params: {
+  timeSinceSignupHours: number;
+}) => {
+  const platform = getPlatform();
+  const addedDuringOnboarding = isInOnboarding();
   
-  setDosesForLevels(prev => {
-    // Check if dose already exists in levels data
-    const existingIndex = prev.findIndex(d => d.id === doseId);
-    if (existingIndex >= 0) {
-      // Update existing
-      const updated = [...prev];
-      updated[existingIndex] = newDoseForLevels;
-      return updated;
-    } else {
-      // Add new
-      return [newDoseForLevels, ...prev];
-    }
+  ReactGA.event('first_compound_added', {
+    platform,
+    app_version: APP_VERSION,
+    time_since_signup_hours: params.timeSinceSignupHours,
+    added_during_onboarding: addedDuringOnboarding,
   });
-} else {
-  // Dose was unchecked - remove from levels data (set taken to false)
-  setDosesForLevels(prev => 
-    prev.map(d => d.id === doseId ? { ...d, taken: false, taken_at: null } : d)
-  );
+  
+  console.log('[Analytics] First compound added:', { 
+    timeSinceSignupHours: params.timeSinceSignupHours,
+    addedDuringOnboarding,
+    platform 
+  });
+};
+
+// Track activation complete (first dose logged) - fires ONCE per user lifetime
+export const trackActivationComplete = async (params: {
+  timeSinceSignupHours: number;
+  timeSinceFirstCompoundHours: number | null;
+}) => {
+  const platform = getPlatform();
+  const loggedDuringOnboarding = isInOnboarding();
+  
+  ReactGA.event('activation_complete', {
+    platform,
+    app_version: APP_VERSION,
+    time_since_signup_hours: params.timeSinceSignupHours,
+    time_since_first_compound_hours: params.timeSinceFirstCompoundHours,
+    logged_during_onboarding: loggedDuringOnboarding,
+  });
+  
+  console.log('[Analytics] Activation complete:', { 
+    timeSinceSignupHours: params.timeSinceSignupHours,
+    timeSinceFirstCompoundHours: params.timeSinceFirstCompoundHours,
+    loggedDuringOnboarding,
+    platform 
+  });
+};
+
+// Check if user is currently in onboarding flow
+export const isInOnboarding = (): boolean => {
+  return localStorage.getItem('regimen_in_onboarding') === 'true';
+};
+```
+
+---
+
+## Part 5: First Compound Tracking
+
+**File: `src/components/AddCompoundScreen.tsx`**
+
+**Changes after successful compound insert (around line 1437):**
+
+```typescript
+// After successful insert, check if this is user's first compound
+const firstCompoundKey = 'regimen_first_compound_tracked';
+if (!localStorage.getItem(firstCompoundKey)) {
+  // Get profile for signup timestamp
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('created_at')
+    .eq('user_id', user.id)
+    .single();
+  
+  if (profile?.created_at) {
+    const signupTime = new Date(profile.created_at).getTime();
+    const now = Date.now();
+    const hoursSinceSignup = Math.round((now - signupTime) / (1000 * 60 * 60));
+    
+    // Fire analytics event
+    trackFirstCompoundAdded({ timeSinceSignupHours: hoursSinceSignup });
+    
+    // Update profile with timestamp
+    await supabase
+      .from('profiles')
+      .update({ first_compound_added_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+    
+    // Set flag to prevent duplicate events
+    localStorage.setItem(firstCompoundKey, 'true');
+  }
 }
 ```
 
-### Architectural Assessment
+---
 
-**Performance Impact**: Minimal
-- State update is synchronous and local
-- React will batch the update with other state changes
-- MedicationLevelsCard uses `useMemo` for calculations, so it only recalculates when data changes
-- No additional network calls
+## Part 6: Activation Complete Tracking (First Dose)
 
-**Should you do this?**: Yes, it's a good idea because:
-1. Provides immediate visual feedback to users
-2. Reinforces the connection between actions and results
-3. The calculation is lightweight (runs on ~500 doses max)
-4. Follows React's unidirectional data flow pattern
+**File: `src/components/TodayScreen.tsx`**
+
+**Changes in `toggleDose` after successful dose mark as taken (around line 779):**
+
+```typescript
+// After marking dose as taken successfully, check for first dose (activation)
+if (!currentStatus) { // Only when checking OFF (marking as taken)
+  const activationKey = 'regimen_activation_tracked';
+  if (!localStorage.getItem(activationKey)) {
+    // Verify this is actually first dose by checking user_stats
+    const { data: stats } = await supabase
+      .from('user_stats')
+      .select('total_doses_logged')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+      .single();
+    
+    // total_doses_logged includes this dose, so check if it's 1
+    if (stats?.total_doses_logged === 1) {
+      // Get profile for timing data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('created_at, first_compound_added_at')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+      
+      if (profile?.created_at) {
+        const signupTime = new Date(profile.created_at).getTime();
+        const now = Date.now();
+        const hoursSinceSignup = Math.round((now - signupTime) / (1000 * 60 * 60));
+        
+        let hoursSinceFirstCompound: number | null = null;
+        if (profile.first_compound_added_at) {
+          const compoundTime = new Date(profile.first_compound_added_at).getTime();
+          hoursSinceFirstCompound = Math.round((now - compoundTime) / (1000 * 60 * 60));
+        }
+        
+        // Fire activation event
+        trackActivationComplete({
+          timeSinceSignupHours: hoursSinceSignup,
+          timeSinceFirstCompoundHours: hoursSinceFirstCompound,
+        });
+        
+        // Update profile with timestamp
+        await supabase
+          .from('profiles')
+          .update({ first_dose_logged_at: new Date().toISOString() })
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        
+        // Set flag to prevent duplicate events
+        localStorage.setItem(activationKey, 'true');
+      }
+    }
+  }
+}
+```
 
 ---
 
-## Summary of Files Changed
+## Part 7: Also Track Onboarding-Added Compounds
+
+Compounds added during onboarding (via `AccountCreationScreen.tsx`) should also trigger the first compound event.
+
+**File: `src/components/onboarding/screens/AccountCreationScreen.tsx`**
+
+After successful compound creation during signup, add:
+
+```typescript
+// Track first compound added (during onboarding)
+const firstCompoundKey = 'regimen_first_compound_tracked';
+if (!localStorage.getItem(firstCompoundKey)) {
+  // Onboarding = immediate after signup, so time_since_signup is ~0
+  trackFirstCompoundAdded({ timeSinceSignupHours: 0 });
+  
+  // Update profile
+  await supabase
+    .from('profiles')
+    .update({ first_compound_added_at: new Date().toISOString() })
+    .eq('user_id', user.id);
+  
+  localStorage.setItem(firstCompoundKey, 'true');
+}
+```
+
+---
+
+## Summary of Changes
 
 | File | Changes |
 |------|---------|
-| TodayScreen.tsx | AudioContext for sound, persistentStorage for settings, direct state update for levels |
-| SettingsScreen.tsx | Use persistentStorage instead of localStorage for sound toggle |
+| **Database migration** | Add `first_compound_added_at`, `first_dose_logged_at` columns |
+| `src/utils/analytics.ts` | Add `trackFirstCompoundAdded()`, `trackActivationComplete()`, `isInOnboarding()` |
+| `src/components/onboarding/OnboardingFlow.tsx` | Set `regimen_in_onboarding` on mount, clear on complete |
+| `src/components/AddCompoundScreen.tsx` | Fire `first_compound_added` event after insert |
+| `src/components/TodayScreen.tsx` | Fire `activation_complete` event on first dose toggle |
+| `src/components/onboarding/screens/AccountCreationScreen.tsx` | Fire `first_compound_added` for onboarding compounds |
 
 ---
 
-## Technical Notes
+## localStorage Keys
 
-**Why AudioContext over Audio element?**
-- AudioContext handles browser autoplay policies better
-- Works more reliably on Android WebView
-- Allows reuse of decoded audio buffer (more efficient)
-- Already used in the app for `playChimeSound()`
+| Key | Purpose |
+|-----|---------|
+| `regimen_in_onboarding` | Tracks if user is currently IN onboarding flow |
+| `regimen_first_compound_tracked` | Prevents duplicate `first_compound_added` events |
+| `regimen_activation_tracked` | Prevents duplicate `activation_complete` events |
 
-**Why direct state update over refetch?**
-- Eliminates network latency
-- Removes potential for race conditions
-- No chance of triggering boot issues
-- Follows React best practices
+---
+
+## Testing Plan
+
+1. **Create fresh test account**
+2. **During onboarding**, add a compound → verify `first_compound_added` with `added_during_onboarding: true`
+3. **Complete onboarding**, log first dose → verify `activation_complete` with `logged_during_onboarding: false`
+4. **Alternative path**: Skip medication in onboarding, add compound later → verify `added_during_onboarding: false`
+
+---
+
+## iOS Build Timeline
+
+After these changes are merged:
+1. **Sync and build**: `git pull && npm run build && npx cap sync ios`
+2. **Upload to TestFlight**: Through Xcode
+3. **Wait 24-48h**: For GA4 user properties to populate
+4. **Verify**: Check GA4 User Properties for `user_platform: ios`
