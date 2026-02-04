@@ -1,118 +1,244 @@
 
-
-# Calculator UX Fixes: Alignment, Labels, and Reverse Mode Mapping
+# Fixes: Sound Effects, Persistence, and Real-Time Levels Update
 
 ## Overview
-Fix alignment issues, update label tense, and ensure reverse calculator correctly passes calculated BAC water when adding to stack.
+Three separate issues to address:
+1. Android sound not playing when checking off medications
+2. Sound settings not persisting on native platforms
+3. Medication Levels card not updating in real-time when doses are checked/unchecked
 
-## Issues to Fix
+---
 
-### 1. Alignment: Dose/Unit Fields Not Aligned
-The "Dose" label with tooltip icon is taller than the "Unit" label, causing misalignment.
+## 1. Android Sound Effects Fix
 
-**Fix**: Add consistent label heights and align the input/segmented control properly.
+### Problem
+The current `new Audio()` approach has known issues on Android WebView:
+- Requires user gesture before first playback
+- May silently fail without errors
+- First tap often produces no sound
 
-**File**: `src/components/CalculatorModal.tsx` (lines 374-400)
+### Solution
+Use Web Audio API with AudioContext, similar to how `playChimeSound()` already works. This is more reliable across platforms and handles Android's autoplay policies better.
 
-**Current**:
-```jsx
-<div className="grid grid-cols-2 gap-3 items-end">
-  <div className="space-y-2">
-    <Label className="text-sm font-medium flex items-center gap-1.5">
-      Dose
-      <InfoTooltip content="..." />
-    </Label>
-    <Input ... />
-  </div>
-  <div className="space-y-2">
-    <Label className="text-sm font-medium">Unit</Label>
-    <SegmentedControl ... />
-  </div>
-</div>
+**File**: `src/components/TodayScreen.tsx`
+
+**Current** (lines 1045-1050):
+```javascript
+const playCheckSound = () => {
+  const audio = new Audio(bubblePopSound);
+  audio.volume = 1.0;
+  audio.play().catch(err => console.log('Sound play failed:', err));
+};
+```
+
+**Change**: Preload the audio buffer on component mount, then use AudioContext for playback:
+
+```javascript
+// Add state/ref at component level
+const audioContextRef = useRef<AudioContext | null>(null);
+const bubbleBufferRef = useRef<AudioBuffer | null>(null);
+
+// Preload audio on mount
+useEffect(() => {
+  const preloadAudio = async () => {
+    try {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = context;
+      
+      const response = await fetch(bubblePopSound);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await context.decodeAudioData(arrayBuffer);
+      bubbleBufferRef.current = audioBuffer;
+    } catch (err) {
+      console.log('Audio preload failed:', err);
+    }
+  };
+  preloadAudio();
+  
+  return () => {
+    audioContextRef.current?.close();
+  };
+}, []);
+
+// Updated playCheckSound
+const playCheckSound = () => {
+  if (!audioContextRef.current || !bubbleBufferRef.current) return;
+  
+  try {
+    const context = audioContextRef.current;
+    // Resume context if suspended (required for iOS/Android after backgrounding)
+    if (context.state === 'suspended') {
+      context.resume();
+    }
+    
+    const source = context.createBufferSource();
+    const gainNode = context.createGain();
+    source.buffer = bubbleBufferRef.current;
+    source.connect(gainNode);
+    gainNode.connect(context.destination);
+    gainNode.gain.value = 1.0;
+    source.start(0);
+  } catch (err) {
+    console.log('Sound play failed:', err);
+  }
+};
+```
+
+---
+
+## 2. Sound Settings Persistence Fix
+
+### Problem
+Sound settings use `localStorage` directly, but on native platforms (iOS/Android), `localStorage` may not persist across app updates. The `persistentStorage` utility handles this by using Capacitor Preferences on native.
+
+### Solution
+Update SettingsScreen.tsx to use `persistentStorage` for sound settings.
+
+**File**: `src/components/SettingsScreen.tsx`
+
+**Current** (lines 47-50):
+```javascript
+useEffect(() => {
+  const savedSound = localStorage.getItem('soundEnabled');
+  setSoundEnabled(savedSound !== 'false');
+}, []);
 ```
 
 **Change**:
-- Add `min-h-[20px]` to both label containers to ensure equal heights
-- Change segmented control size to match input height
+```javascript
+import { persistentStorage } from "@/utils/persistentStorage";
+
+useEffect(() => {
+  const loadSettings = async () => {
+    const savedSound = await persistentStorage.getBoolean('soundEnabled', true);
+    setSoundEnabled(savedSound);
+  };
+  loadSettings();
+}, []);
+```
+
+**Current** (lines 96-100):
+```javascript
+const toggleSound = (checked: boolean) => {
+  setSoundEnabled(checked);
+  localStorage.setItem('soundEnabled', String(checked));
+  trackSoundToggled(checked);
+};
+```
+
+**Change**:
+```javascript
+const toggleSound = async (checked: boolean) => {
+  setSoundEnabled(checked);
+  await persistentStorage.setBoolean('soundEnabled', checked);
+  trackSoundToggled(checked);
+};
+```
+
+**Also update TodayScreen.tsx** (line 659) to use persistentStorage:
+```javascript
+// Change from:
+const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+
+// To:
+const soundEnabledSetting = await persistentStorage.getBoolean('soundEnabled', true);
+```
+
+Since `toggleDose` is already async, this is a seamless change.
 
 ---
 
-### 2. Label Tense: "BAC Water Added" → "BAC Water"
-Users may be calculating BEFORE reconstituting, so past tense is confusing.
+## 3. Real-Time Medication Levels Update
 
-**File**: `src/components/CalculatorModal.tsx`
+### Problem
+The `loadLevelsData()` call was disabled due to suspected boot issues:
+```javascript
+// DIAGNOSTIC: Disabled - suspected cause of boot issues
+// loadLevelsData();
+```
 
-**Changes**:
-- Line 349: Change `BAC Water Added` → `BAC Water`
-- Line 350: Change tooltip from "How much bacteriostatic water you added" → "How much bacteriostatic water to add to the vial"
+### Solution
+Instead of refetching from the database, update the local state directly. This is:
+- Faster (no network call)
+- More reliable (no chance of boot issues)
+- Cleaner architecture (state-driven updates)
 
----
+**File**: `src/components/TodayScreen.tsx`
 
-### 3. Critical Bug: Reverse Mode Doesn't Pass Calculated BAC Water
-When clicking "Add to Stack" in reverse mode, the code passes the empty `bacWater` state variable instead of `calculatedReverseBAC`.
+When a dose is toggled, update `dosesForLevels` directly:
 
-**File**: `src/components/CalculatorModal.tsx` (lines 189-203)
+```javascript
+// Inside toggleDose, after successful database update and local doses update:
 
-**Current**:
-```jsx
-if (activeTab === 'reconstitution') {
-  navigate('/add-compound', {
-    state: {
-      prefillData: {
-        vialSize: parseFloat(vialSize),
-        vialUnit,
-        bacWater: parseFloat(bacWater), // ❌ Empty in reverse mode!
-        ...
-      }
+// Update dosesForLevels state for real-time levels chart
+if (!currentStatus) {
+  // Dose was just marked as taken - add/update in levels data
+  const newDoseForLevels: DoseForLevels = {
+    id: doseId,
+    compound_id: dose.compound_id,
+    dose_amount: dose.dose_amount,
+    dose_unit: dose.dose_unit,
+    taken: true,
+    taken_at: takenAtTimestamp,
+    scheduled_date: dose.scheduled_date
+  };
+  
+  setDosesForLevels(prev => {
+    // Check if dose already exists in levels data
+    const existingIndex = prev.findIndex(d => d.id === doseId);
+    if (existingIndex >= 0) {
+      // Update existing
+      const updated = [...prev];
+      updated[existingIndex] = newDoseForLevels;
+      return updated;
+    } else {
+      // Add new
+      return [newDoseForLevels, ...prev];
     }
   });
+} else {
+  // Dose was unchecked - remove from levels data (set taken to false)
+  setDosesForLevels(prev => 
+    prev.map(d => d.id === doseId ? { ...d, taken: false, taken_at: null } : d)
+  );
 }
 ```
 
-**Fix**: Check reconMode and pass the calculated value:
-```jsx
-if (activeTab === 'reconstitution') {
-  // For reverse mode, use calculated BAC water; for standard, use input value
-  const bacWaterValue = reconMode === 'reverse' 
-    ? (calculatedReverseBAC ? parseFloat(calculatedReverseBAC) : 0)
-    : parseFloat(bacWater);
-    
-  navigate('/add-compound', {
-    state: {
-      prefillData: {
-        vialSize: parseFloat(vialSize),
-        vialUnit,
-        bacWater: bacWaterValue,
-        intendedDose: parseFloat(intendedDose),
-        doseUnit
-      }
-    }
-  });
-}
-```
+### Architectural Assessment
+
+**Performance Impact**: Minimal
+- State update is synchronous and local
+- React will batch the update with other state changes
+- MedicationLevelsCard uses `useMemo` for calculations, so it only recalculates when data changes
+- No additional network calls
+
+**Should you do this?**: Yes, it's a good idea because:
+1. Provides immediate visual feedback to users
+2. Reinforces the connection between actions and results
+3. The calculation is lightweight (runs on ~500 doses max)
+4. Follows React's unidirectional data flow pattern
 
 ---
 
-## Field Order Validation
+## Summary of Files Changed
 
-| Context | Current Order | Assessment |
-|---------|---------------|------------|
-| Quick Add Standard | Mode → Vial → BAC Water → Dose → Result | Correct (industry standard) |
-| Quick Add Reverse | Mode → Vial → Dose → Units → Result | Correct |
-| Add Compound | Dose (top) → Vial → BAC Water → Result | Correct (dose is primary input) |
-
-**Note**: The order differs between screens intentionally:
-- Quick Add: Calculator-focused, so "what you have" comes first
-- Add Compound: Dose is the primary field, calculator is secondary
+| File | Changes |
+|------|---------|
+| TodayScreen.tsx | AudioContext for sound, persistentStorage for settings, direct state update for levels |
+| SettingsScreen.tsx | Use persistentStorage instead of localStorage for sound toggle |
 
 ---
 
-## Summary of Changes
+## Technical Notes
 
-| File | Line(s) | Change |
-|------|---------|--------|
-| CalculatorModal.tsx | 349-350 | "BAC Water Added" → "BAC Water", update tooltip |
-| CalculatorModal.tsx | 374-400 | Fix Dose/Unit alignment with consistent label heights |
-| CalculatorModal.tsx | 407-432 | Same alignment fix for reverse mode Dose/Unit |
-| CalculatorModal.tsx | 189-215 | Fix handleAddToStack to use calculated BAC water in reverse mode |
+**Why AudioContext over Audio element?**
+- AudioContext handles browser autoplay policies better
+- Works more reliably on Android WebView
+- Allows reuse of decoded audio buffer (more efficient)
+- Already used in the app for `playChimeSound()`
 
+**Why direct state update over refetch?**
+- Eliminates network latency
+- Removes potential for race conditions
+- No chance of triggering boot issues
+- Follows React best practices
