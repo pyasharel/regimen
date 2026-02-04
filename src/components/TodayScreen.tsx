@@ -11,7 +11,8 @@ import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
 import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { persistentStorage } from "@/utils/persistentStorage";
 import { supabase } from "@/integrations/supabase/client";
 import { dataClient, hasDataClientToken, recreateDataClient, abortDataClientRequests } from "@/integrations/supabase/dataClient";
 import { recreateSupabaseClient } from "@/integrations/supabase/client";
@@ -92,6 +93,11 @@ export const TodayScreen = () => {
   const [showDayComplete, setShowDayComplete] = useState(false);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const lastHapticTime = useRef<number>(0); // For haptic rhythm timing
+  
+  // Audio context refs for reliable sound playback (especially Android)
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const bubbleBufferRef = useRef<AudioBuffer | null>(null);
+  const soundEnabledRef = useRef<boolean>(true); // Cache sound setting for sync access
   
   // Dose edit modal state
   const [editingDose, setEditingDose] = useState<Dose | null>(null);
@@ -655,9 +661,6 @@ export const TodayScreen = () => {
       const dose = doses.find(d => d.id === doseId);
       if (!dose) return;
       
-      // Check if sound is enabled
-      const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-      
       // Haptic rhythm: add 60ms minimum delay between haptics for rapid tapping
       const now = Date.now();
       const timeSinceLastHaptic = now - lastHapticTime.current;
@@ -669,7 +672,8 @@ export const TodayScreen = () => {
       }, hapticDelay);
       
       // Play sound if enabled and checking off (not unchecking)
-      if (!currentStatus && soundEnabled) {
+      // Use cached ref value for synchronous access
+      if (!currentStatus && soundEnabledRef.current) {
         setTimeout(() => playCheckSound(), hapticDelay);
       }
 
@@ -773,10 +777,63 @@ export const TodayScreen = () => {
         
         // Check and schedule streak notifications
         await checkAndScheduleStreakNotifications();
+      }
+      
+      // Update dosesForLevels state for real-time levels chart (no network call)
+      if (!currentStatus) {
+        // Dose was just marked as taken - add/update in levels data
+        // Calculate taken_at based on dose type
+        let levelsTimestamp: string;
+        if (dose.schedule_type === 'As Needed') {
+          levelsTimestamp = new Date().toISOString();
+        } else {
+          // For scheduled doses, compute from scheduled date/time
+          const scheduledDateStr = dose.scheduled_date;
+          const scheduledTime = dose.scheduled_time || '08:00';
+          let hours = 8, minutes = 0;
+          if (scheduledTime === 'Morning') { hours = 8; minutes = 0; }
+          else if (scheduledTime === 'Afternoon') { hours = 14; minutes = 0; }
+          else if (scheduledTime === 'Evening') { hours = 18; minutes = 0; }
+          else {
+            const timeMatch = scheduledTime.match(/^(\d{1,2}):(\d{2})$/);
+            if (timeMatch) {
+              hours = parseInt(timeMatch[1]);
+              minutes = parseInt(timeMatch[2]);
+            }
+          }
+          const takenDate = new Date(scheduledDateStr + 'T00:00:00');
+          takenDate.setHours(hours, minutes, 0, 0);
+          levelsTimestamp = takenDate.toISOString();
+        }
         
-        // DIAGNOSTIC: Disabled - suspected cause of boot issues
-        // Refresh levels data to show updated medication levels
-        // loadLevelsData();
+        const newDoseForLevels: DoseForLevels = {
+          id: doseId,
+          compound_id: dose.compound_id,
+          dose_amount: dose.dose_amount,
+          dose_unit: dose.dose_unit,
+          taken: true,
+          taken_at: levelsTimestamp,
+          scheduled_date: dose.scheduled_date
+        };
+        
+        setDosesForLevels(prev => {
+          // Check if dose already exists in levels data
+          const existingIndex = prev.findIndex(d => d.id === doseId);
+          if (existingIndex >= 0) {
+            // Update existing
+            const updated = [...prev];
+            updated[existingIndex] = newDoseForLevels;
+            return updated;
+          } else {
+            // Add new
+            return [newDoseForLevels, ...prev];
+          }
+        });
+      } else {
+        // Dose was unchecked - update in levels data (set taken to false)
+        setDosesForLevels(prev => 
+          prev.map(d => d.id === doseId ? { ...d, taken: false, taken_at: null } : d)
+        );
       }
 
       // Remove from animating set after animation completes
@@ -1042,11 +1099,64 @@ export const TodayScreen = () => {
     }
   };
 
-  // Sound feedback function - bubble pop sound
+  // Preload audio on mount using Web Audio API (more reliable on Android)
+  useEffect(() => {
+    const preloadAudio = async () => {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        
+        const context = new AudioContextClass();
+        audioContextRef.current = context;
+        
+        const response = await fetch(bubblePopSound);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await context.decodeAudioData(arrayBuffer);
+        bubbleBufferRef.current = audioBuffer;
+        console.log('[TodayScreen] Audio preloaded successfully');
+      } catch (err) {
+        console.log('[TodayScreen] Audio preload failed:', err);
+      }
+    };
+    
+    // Load sound enabled setting from persistent storage
+    const loadSoundSetting = async () => {
+      const enabled = await persistentStorage.getBoolean('soundEnabled', true);
+      soundEnabledRef.current = enabled;
+    };
+    
+    preloadAudio();
+    loadSoundSetting();
+    
+    return () => {
+      audioContextRef.current?.close();
+    };
+  }, []);
+  
+  // Sound feedback function - bubble pop sound using Web Audio API
   const playCheckSound = () => {
-    const audio = new Audio(bubblePopSound);
-    audio.volume = 1.0; // Full volume
-    audio.play().catch(err => console.log('Sound play failed:', err));
+    if (!audioContextRef.current || !bubbleBufferRef.current) {
+      console.log('[TodayScreen] Audio not ready, skipping sound');
+      return;
+    }
+    
+    try {
+      const context = audioContextRef.current;
+      // Resume context if suspended (required for iOS/Android after backgrounding)
+      if (context.state === 'suspended') {
+        context.resume();
+      }
+      
+      const source = context.createBufferSource();
+      const gainNode = context.createGain();
+      source.buffer = bubbleBufferRef.current;
+      source.connect(gainNode);
+      gainNode.connect(context.destination);
+      gainNode.gain.value = 1.0;
+      source.start(0);
+    } catch (err) {
+      console.log('[TodayScreen] Sound play failed:', err);
+    }
   };
 
   // IMPORTANT: Do not block the entire Today screen on subscription refresh.
