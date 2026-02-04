@@ -27,6 +27,25 @@ export const setPlatformUserProperty = () => {
   console.log('[Analytics] Platform user property set:', platform, 'version:', APP_VERSION);
 };
 
+/**
+ * Sets user profile properties as GA4 user properties.
+ * Call this after profile data is loaded (on app init and after auth).
+ * These allow segmenting ALL reports by user type.
+ */
+export const setProfileUserProperties = (profile: {
+  pathType: string | null;
+  experienceLevel: string | null;
+}) => {
+  ReactGA.gtag('set', 'user_properties', {
+    user_path_type: profile.pathType || 'unknown',
+    user_experience_level: profile.experienceLevel || 'unknown',
+  });
+  console.log('[Analytics] Profile user properties set:', {
+    path_type: profile.pathType,
+    experience_level: profile.experienceLevel,
+  });
+};
+
 // Initialize Google Analytics with content group and user properties
 export const initGA = (measurementId: string) => {
   ReactGA.initialize(measurementId);
@@ -428,16 +447,58 @@ export const trackScreenView = (screenName: string) => {
   });
 };
 
+// Session counter for pre-conversion analytics
+const SESSION_COUNT_KEY = 'regimen_session_count';
+
+export const incrementSessionCount = (): number => {
+  const current = parseInt(localStorage.getItem(SESSION_COUNT_KEY) || '0', 10);
+  const next = current + 1;
+  localStorage.setItem(SESSION_COUNT_KEY, String(next));
+  return next;
+};
+
+export const getSessionCount = (): number => {
+  return parseInt(localStorage.getItem(SESSION_COUNT_KEY) || '0', 10);
+};
+
 // Session tracking - GA4 format with platform
 export const trackSessionStart = () => {
   const platform = getPlatform();
+  const sessionCount = incrementSessionCount();
   
   ReactGA.event('session_started', {
     platform,
     app_version: APP_VERSION,
+    session_number: sessionCount,
   });
   
-  console.log('[Analytics] Session started:', { platform, app_version: APP_VERSION });
+  console.log('[Analytics] Session started:', { platform, app_version: APP_VERSION, session_number: sessionCount });
+};
+
+/**
+ * Track user engagement state right before subscription purchase attempt.
+ * This helps identify what engagement level predicts conversion.
+ */
+export const trackPreConversionState = (params: {
+  dosesLoggedTotal: number;
+  compoundsCount: number;
+  daysSinceSignup: number;
+  sessionsCount: number;
+  selectedPlan: 'monthly' | 'annual';
+}) => {
+  const platform = getPlatform();
+  
+  ReactGA.event('pre_conversion_state', {
+    platform,
+    app_version: APP_VERSION,
+    doses_logged_total: params.dosesLoggedTotal,
+    compounds_count: params.compoundsCount,
+    days_since_signup: params.daysSinceSignup,
+    sessions_count: params.sessionsCount,
+    selected_plan: params.selectedPlan,
+  });
+  
+  console.log('[Analytics] Pre-conversion state:', params);
 };
 
 export const trackSessionEnd = (duration: number) => {

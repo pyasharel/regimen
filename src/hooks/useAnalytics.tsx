@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ReactGA from 'react-ga4';
-import { trackPageView, trackSessionStart, trackSessionEnd, trackAppOpened, setPlatformUserProperty } from '@/utils/analytics';
+import { trackPageView, trackSessionStart, trackSessionEnd, trackAppOpened, setPlatformUserProperty, setProfileUserProperties } from '@/utils/analytics';
 import { getDaysSinceInstall, setInstallDate, checkAndTrackVersionUpgrade } from '@/utils/featureTracking';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
-
+import { supabase } from '@/integrations/supabase/client';
 // Screen name mapping for cleaner GA4 reports
 const SCREEN_MAP: Record<string, string> = {
   '/': 'Landing',
@@ -211,6 +211,45 @@ export const useAnalytics = () => {
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Set user profile properties (path_type, experience_level) for GA4 segmentation
+  useEffect(() => {
+    const setUserProfileProperties = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('path_type, experience_level')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile) {
+          setProfileUserProperties({
+            pathType: profile.path_type,
+            experienceLevel: profile.experience_level,
+          });
+        }
+      } catch (err) {
+        console.log('[Analytics] Could not load profile for user properties');
+      }
+    };
+    
+    // Run on initial load
+    setUserProfileProperties();
+    
+    // Also run when auth state changes (login/signup)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        setUserProfileProperties();
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
     };
   }, []);
 };
