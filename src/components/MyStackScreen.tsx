@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, Share2, Calculator } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, ChevronDown, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -19,6 +19,7 @@ import { shareElementAsImage } from "@/utils/visualShare";
 import { trackCompoundDeleted, trackCompoundViewed, trackShareAction } from "@/utils/analytics";
 import { trackFeatureFirstUse } from "@/utils/featureTracking";
 import { CalculatorModal } from "@/components/CalculatorModal";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,7 @@ export const MyStackScreen = () => {
   const [adherenceRate, setAdherenceRate] = useState(0);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [inactiveExpanded, setInactiveExpanded] = useState(true);
   
   // Check if progress animation already played this session
   const [hasAnimatedProgress, setHasAnimatedProgress] = useState(() => {
@@ -421,6 +423,15 @@ export const MyStackScreen = () => {
     }
   };
 
+  // Auto-collapse inactive section when 3+ inactive compounds
+  useEffect(() => {
+    if (inactiveCompounds.length >= 3) {
+      setInactiveExpanded(false);
+    } else {
+      setInactiveExpanded(true);
+    }
+  }, [inactiveCompounds.length]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
@@ -658,12 +669,19 @@ export const MyStackScreen = () => {
         </div>
 
         {/* Inactive Compounds */}
-        <div className="space-y-3 pt-4">
-          <h2 id="inactive-section" className="text-xs font-semibold uppercase tracking-wider text-header-text">
-            Inactive ({inactiveCompounds.length})
-          </h2>
-          
-          {inactiveCompounds.map((compound) => (
+        {inactiveCompounds.length > 0 && (
+          <Collapsible open={inactiveExpanded} onOpenChange={setInactiveExpanded} className="pt-4">
+            <CollapsibleTrigger className="w-full flex items-center justify-between py-2 group">
+              <h2 id="inactive-section" className="text-xs font-semibold uppercase tracking-wider text-header-text">
+                Inactive ({inactiveCompounds.length})
+              </h2>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                inactiveExpanded ? 'rotate-180' : ''
+              }`} />
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="space-y-3">
+              {inactiveCompounds.map((compound) => (
             <div
               key={compound.id}
               className="overflow-hidden rounded-2xl border border-border bg-muted shadow-sm opacity-70 hover:opacity-85 transition-opacity cursor-pointer"
@@ -716,8 +734,10 @@ export const MyStackScreen = () => {
                 </div>
               </div>
             </div>
-          ))}
-          </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
         </div>
 
         {/* Share Link - Only show when has active compounds */}
