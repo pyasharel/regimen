@@ -332,10 +332,10 @@ export const MedicationLevelsCard = ({
         className="mx-4 mt-3 mb-4 rounded-2xl bg-card border border-border overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
         onClick={handleCardTap}
       >
-        {/* Single header row with compound selector and chevron */}
+        {/* Single header row with compound selector, current level (when collapsed), and chevron */}
         <div className="flex items-center justify-between px-3 pt-1.5 pb-0">
           <div 
-            className="flex-shrink-0" 
+            className="flex-shrink-0 flex items-center gap-2" 
             onClick={(e) => e.stopPropagation()}
           >
             {compoundsWithHalfLife.length > 1 ? (
@@ -363,6 +363,13 @@ export const MedicationLevelsCard = ({
                 <span>{selectedCompound.name}</span>
               </div>
             ) : null}
+            
+            {/* Show current level when collapsed for glanceable data */}
+            {isCollapsed && currentLevel && selectedCompound && (
+              <span className="text-xs text-muted-foreground">
+                ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound.dose_unit}
+              </span>
+            )}
           </div>
           
           {/* Chevron only in header */}

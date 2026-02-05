@@ -1033,9 +1033,8 @@ export const TodayScreen = () => {
       setTimeout(() => triggerHaptic('light'), 200);
     }
 
-    // Play two-tone chime
-    const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-    if (soundEnabled) {
+    // Play two-tone chime (use cached ref for consistency with other sounds)
+    if (soundEnabledRef.current) {
       playChimeSound();
     }
 
