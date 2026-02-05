@@ -717,7 +717,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, created_at, onboarding_completed, experience_level, path_type')
             .eq('user_id', userId)
             .single();
           
@@ -765,6 +765,77 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
             console.log('[RevenueCat] Country/locale set:', countryCode, locale);
           } catch (localeError) {
             console.warn('[RevenueCat] Could not set country/locale:', localeError);
+          }
+          
+          // Sync comprehensive engagement attributes to RevenueCat
+          try {
+            const engagementAttrs: Record<string, string> = {};
+            
+            // Profile-based attributes
+            if (profile) {
+              // Signup date for cohort analysis
+              if (profile.created_at) {
+                const signupDate = profile.created_at.split('T')[0]; // YYYY-MM-DD
+                engagementAttrs.signup_date = signupDate;
+                
+                // Calculate days since signup
+                const signupTime = new Date(profile.created_at).getTime();
+                const daysSinceSignup = Math.floor((Date.now() - signupTime) / (1000 * 60 * 60 * 24));
+                engagementAttrs.days_since_signup = String(daysSinceSignup);
+              }
+              
+              // Onboarding completion status
+              if (profile.onboarding_completed !== null) {
+                engagementAttrs.onboarding_completed = String(profile.onboarding_completed);
+              }
+              
+              // User segmentation attributes
+              if (profile.experience_level) {
+                engagementAttrs.experience_level = profile.experience_level;
+              }
+              if (profile.path_type) {
+                engagementAttrs.path_type = profile.path_type;
+              }
+            }
+            
+            // Session count from localStorage (tracks how often they return)
+            const sessionCount = localStorage.getItem('regimen_session_count');
+            if (sessionCount) {
+              engagementAttrs.total_sessions = sessionCount;
+            }
+            
+            // Set profile-based attributes
+            if (Object.keys(engagementAttrs).length > 0) {
+              await Purchases.setAttributes(engagementAttrs);
+              console.log('[RevenueCat] Engagement attributes set:', engagementAttrs);
+            }
+            
+            // Compound count (requires separate query)
+            const { count: compoundsCount } = await supabase
+              .from('compounds')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', userId);
+            
+            await Purchases.setAttributes({
+              compounds_count: String(compoundsCount || 0),
+            });
+            console.log('[RevenueCat] compounds_count set:', compoundsCount);
+            
+            // Total doses logged (engagement depth)
+            const { count: dosesCount } = await supabase
+              .from('doses')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', userId)
+              .eq('taken', true);
+            
+            await Purchases.setAttributes({
+              total_doses_logged: String(dosesCount || 0),
+            });
+            console.log('[RevenueCat] total_doses_logged set:', dosesCount);
+            
+          } catch (engagementError) {
+            console.warn('[RevenueCat] Could not set engagement attributes:', engagementError);
+            // Don't fail the identify flow if engagement sync fails
           }
         } catch (enrichError) {
           console.warn('[RevenueCat] Failed to enrich user details:', enrichError);
