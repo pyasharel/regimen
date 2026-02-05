@@ -671,6 +671,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       setRevenueCatConfigured(true);
       revenueCatConfiguredRef.current = true;
       console.log('[RevenueCat] Configuration complete');
+      
+      // Enable Apple Search Ads attribution token collection (iOS only)
+      // This allows RevenueCat to automatically collect ASA attribution data
+      if (Capacitor.getPlatform() === 'ios') {
+        try {
+          await Purchases.enableAdServicesAttributionTokenCollection();
+          console.log('[RevenueCat] AdServices attribution token collection enabled');
+        } catch (adServicesError) {
+          console.warn('[RevenueCat] Could not enable AdServices attribution:', adServicesError);
+        }
+      }
 
       // Get initial customer info (for anonymous user - DON'T check entitlements yet)
       // We'll only trust entitlements after identifying the user with their Supabase ID
