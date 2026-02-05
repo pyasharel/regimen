@@ -1,119 +1,228 @@
 
-# Plan: Collapsed Level Display, Chime Sound Fix, and Testing Recommendation
+# Plan: Comprehensive RevenueCat Attribution & Analytics Enhancement
 
 ## Overview
-Three minor, low-risk improvements that enhance UX without affecting core functionality:
-1. Show current medication level when the Levels card is collapsed
-2. Fix the "day complete" chime to use the cached sound setting
-3. Recommendation on testing approach
+Enhance RevenueCat subscriber attributes with comprehensive user engagement data for better cohort analysis, segmentation, and understanding what drives conversions. Also increment build number to 32 for the new release.
 
 ---
 
-## Part 1: Show Current Level When Collapsed
+## Part 1: Build Number Increment
 
-### Current Behavior
-When collapsed, the header only shows:
-- Medication name (or dropdown if multiple)
-- Chevron to expand
+### File: `capacitor.config.ts`
+**Line 6**: Change build number from 31 to 32
 
-### New Behavior
-When collapsed, show the current level in the header row:
-```
-[Activity Icon] Testosterone ▼     ~42mg     [ChevronDown]
+```typescript
+export const appBuild = '32';
 ```
 
-This provides glanceable data without requiring the user to expand the card.
+---
 
-### Changes to `src/components/MedicationLevelsCard.tsx`
+## Part 2: RevenueCat Dashboard Configuration (Manual Steps)
 
-**Location: Lines 336-380 (header section)**
+### Apple Search Ads Attribution
+This gives you **campaign name, ad group, keyword, and creative** data for users who came from your Apple Ads.
 
-Add the current level display to the header, visible when collapsed and when `currentLevel` exists:
+**Steps (no code needed):**
+1. Go to RevenueCat Dashboard → Your Project → Integrations
+2. Find "Apple Search Ads" and enable it
+3. Click "Connect with Apple" and authenticate with your Apple Search Ads account via OAuth
+4. Once connected, RevenueCat will automatically collect attribution for all new users
 
-```tsx
-{/* Single header row with compound selector, current level (when collapsed), and chevron */}
-<div className="flex items-center justify-between px-3 pt-1.5 pb-0">
-  <div 
-    className="flex-shrink-0 flex items-center gap-2" 
-    onClick={(e) => e.stopPropagation()}
-  >
-    {/* Existing compound selector/name */}
-    {compoundsWithHalfLife.length > 1 ? (
-      <Select ...>
-        ...
-      </Select>
-    ) : selectedCompound ? (
-      <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
-        <Activity className="w-3.5 h-3.5 text-primary" />
-        <span>{selectedCompound.name}</span>
-      </div>
-    ) : null}
-    
-    {/* NEW: Show current level when collapsed */}
-    {isCollapsed && currentLevel && selectedCompound && (
-      <span className="text-xs text-muted-foreground">
-        ~{formatLevel(currentLevel.absoluteLevel)} {selectedCompound.dose_unit}
-      </span>
-    )}
-  </div>
+**Data you'll see per customer:**
+- `$campaign` - Campaign name (e.g., "TRT Keywords Q1")
+- `$adgroup` - Ad group name
+- `$keyword` - The exact search term they used
+- `$creative` - Creative set name
+
+This works via the AdServices framework and does NOT require ATT opt-in.
+
+---
+
+## Part 3: Enhanced RevenueCat Attributes (Code Changes)
+
+### Current State
+Already syncing:
+- `$displayName`, `$email`
+- `utm_source`, `utm_medium`, `utm_campaign`
+- `platform`, `app_version`
+- `country_code`, `locale`
+- `partner_code` (when applicable)
+
+### New Attributes to Add
+
+| Attribute | Value | Analytics Value |
+|-----------|-------|-----------------|
+| `signup_date` | ISO date (YYYY-MM-DD) | Cohort analysis - LTV by signup month |
+| `compounds_count` | Number | Power user indicator - more compounds = deeper engagement |
+| `total_sessions` | Number | Return frequency - how sticky is the app? |
+| `total_doses_logged` | Number | Core value engagement - are they using the main feature? |
+| `days_since_signup` | Number | User maturity - fresh vs veteran users |
+| `onboarding_completed` | "true"/"false" | Funnel completion analysis |
+| `experience_level` | "beginner"/"intermediate"/"advanced" | User segmentation by self-reported skill |
+| `path_type` | "glp1"/"protocol" | Product-market fit by user type |
+
+---
+
+## Implementation Details
+
+### File: `src/contexts/SubscriptionContext.tsx`
+
+#### Location: `identifyRevenueCatUser` function (starting around line 700)
+
+#### Changes Required:
+
+**1. Expand profile query (around line 718-722)**
+
+```typescript
+// Current:
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('full_name')
+  .eq('user_id', userId)
+  .single();
+
+// Updated:
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('full_name, created_at, onboarding_completed, experience_level, path_type')
+  .eq('user_id', userId)
+  .single();
+```
+
+**2. Add new attribute sync block (after existing UTM/platform sync, around line 768)**
+
+```typescript
+// Sync comprehensive engagement attributes to RevenueCat
+try {
+  const engagementAttrs: Record<string, string> = {};
   
-  {/* Chevron button (unchanged) */}
-  ...
-</div>
-```
-
----
-
-## Part 2: Fix Chime Sound to Use Cached Setting
-
-### Bug Found
-In `TodayScreen.tsx`, the day-complete celebration chime reads directly from `localStorage` on line 1037:
-```typescript
-const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-```
-
-This bypasses the `soundEnabledRef` that's properly synchronized with persistent storage. While it usually works, it's inconsistent with the rest of the sound logic.
-
-### Fix
-Replace the direct `localStorage` read with the cached ref value:
-
-**Location: Line 1037 in `src/components/TodayScreen.tsx`**
-
-```typescript
-// Before (buggy)
-const soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-
-// After (consistent)
-if (soundEnabledRef.current) {
-  playChimeSound();
+  // Profile-based attributes
+  if (profile) {
+    // Signup date for cohort analysis
+    if (profile.created_at) {
+      const signupDate = profile.created_at.split('T')[0]; // YYYY-MM-DD
+      engagementAttrs.signup_date = signupDate;
+      
+      // Calculate days since signup
+      const signupTime = new Date(profile.created_at).getTime();
+      const daysSinceSignup = Math.floor((Date.now() - signupTime) / (1000 * 60 * 60 * 24));
+      engagementAttrs.days_since_signup = String(daysSinceSignup);
+    }
+    
+    // Onboarding completion status
+    if (profile.onboarding_completed !== null) {
+      engagementAttrs.onboarding_completed = String(profile.onboarding_completed);
+    }
+    
+    // User segmentation attributes
+    if (profile.experience_level) {
+      engagementAttrs.experience_level = profile.experience_level;
+    }
+    if (profile.path_type) {
+      engagementAttrs.path_type = profile.path_type;
+    }
+  }
+  
+  // Session count from localStorage (tracks how often they return)
+  const sessionCount = localStorage.getItem('regimen_session_count');
+  if (sessionCount) {
+    engagementAttrs.total_sessions = sessionCount;
+  }
+  
+  // Set profile-based attributes
+  if (Object.keys(engagementAttrs).length > 0) {
+    await Purchases.setAttributes(engagementAttrs);
+    console.log('[RevenueCat] Engagement attributes set:', engagementAttrs);
+  }
+  
+  // Compound count (requires separate query)
+  const { count: compoundsCount } = await supabase
+    .from('compounds')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  
+  await Purchases.setAttributes({
+    compounds_count: String(compoundsCount || 0),
+  });
+  console.log('[RevenueCat] compounds_count set:', compoundsCount);
+  
+  // Total doses logged (engagement depth)
+  const { count: dosesCount } = await supabase
+    .from('doses')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('taken', true);
+  
+  await Purchases.setAttributes({
+    total_doses_logged: String(dosesCount || 0),
+  });
+  console.log('[RevenueCat] total_doses_logged set:', dosesCount);
+  
+} catch (engagementError) {
+  console.warn('[RevenueCat] Could not set engagement attributes:', engagementError);
+  // Don't fail the identify flow if engagement sync fails
 }
 ```
 
 ---
 
-## Part 3: Testing Recommendation
+## Import Required
 
-### My Recommendation: Proceed to App Store
+No new imports needed - `Purchases`, `supabase`, and `Capacitor` are already imported in SubscriptionContext.tsx.
 
-These changes are extremely low risk:
-- No database changes
-- No authentication changes
-- No new dependencies
-- Isolated to display and sound logic
-- All changes are additive/cosmetic
+---
 
-**Testing approach:**
-1. Continue your current testing session with the existing native build
-2. If no inactivity/hanging issues surface after 30-60 minutes of normal use (backgrounding, resuming, etc.), you can confidently publish
-3. The minor tweaks I'm implementing now won't affect boot behavior or data flow
+## Data You'll See in RevenueCat Dashboard
 
-**Publish process:**
-1. Publish the web app (immediate for web users)
-2. Build new iOS version in Xcode and upload to App Store Connect
-3. Build new Android version in Android Studio and upload to Google Play Console
-4. Submit for review
+After implementation, each customer profile will show:
 
-The changes I'm making are "polish" improvements that don't require fresh testing on-device - they'll be included in the next native build you create.
+**Attribution (from Apple Search Ads integration):**
+- Campaign name
+- Ad group
+- Keyword (what they searched!)
+- Creative set
+
+**User Profile:**
+- Name, email
+- Platform (iOS/Android)
+- App version
+- Country, locale
+
+**Engagement Metrics:**
+- Signup date
+- Days since signup
+- Total sessions (return frequency)
+- Compounds count
+- Total doses logged
+- Onboarding completed
+
+**Segmentation:**
+- Experience level (beginner/intermediate/advanced)
+- Path type (glp1/protocol)
+- Partner code (if applicable)
+
+---
+
+## What You Can Do With This Data
+
+1. **Cohort Analysis**: Filter revenue by `signup_date` to see which months have best LTV
+2. **Engagement Correlation**: See if users with more `compounds_count` or `total_doses_logged` convert at higher rates
+3. **Return Frequency**: Segment by `total_sessions` to find your power users
+4. **Keyword Performance**: (After Apple Search Ads integration) See which keywords drive paying users
+5. **Partner Attribution**: Track which partner codes lead to conversions
+6. **Path Type Segmentation**: Compare GLP-1 users vs Protocol users for conversion rates
+
+---
+
+## Limitations / What We Can't Get
+
+| Data | Reason |
+|------|--------|
+| City/region | Privacy - only country from locale detection |
+| Age/gender | Not collected |
+| Organic search keywords | Only paid Apple Search Ads keywords via AdServices |
+| Device model | RevenueCat collects this automatically, no code needed |
+| OS version | RevenueCat collects this automatically, no code needed |
 
 ---
 
@@ -121,27 +230,35 @@ The changes I'm making are "polish" improvements that don't require fresh testin
 
 | File | Changes |
 |------|---------|
-| `src/components/MedicationLevelsCard.tsx` | Add current level to collapsed header |
-| `src/components/TodayScreen.tsx` | Fix chime to use `soundEnabledRef.current` instead of direct localStorage |
+| `capacitor.config.ts` | Increment build to 32 |
+| `src/contexts/SubscriptionContext.tsx` | Add comprehensive engagement attributes to RevenueCat sync |
 
 ---
 
-## Technical Notes
+## Risk Assessment
 
-### Risk Assessment
-- **Very low risk** - Pure UI/UX improvements
-- No changes to data loading, authentication, or state management
-- All changes are behind existing conditionals
+- **Low risk** - All new attribute syncing is wrapped in try/catch
+- Failures won't affect subscription flow
+- No database schema changes
+- Works identically on iOS and Android
 
-### Before/After Preview
+---
 
-**Collapsed Card - Before:**
+## Post-Implementation Steps
+
+### Code Deployment
+```bash
+git pull
+./sync-version.sh
+npm run build
+npx cap sync
 ```
-[Activity] Testosterone ▼                    [V]
-```
 
-**Collapsed Card - After:**
-```
-[Activity] Testosterone ▼    ~42mg           [V]
-```
+Then for each platform:
+- **iOS**: `npx cap open ios` → Archive → Distribute
+- **Android**: `npx cap open android` → Build → Generate Signed Bundle (AAB)
 
+### Dashboard Configuration
+1. Go to RevenueCat Dashboard → Integrations → Apple Search Ads
+2. Enable and connect with Apple OAuth
+3. This unlocks campaign/keyword attribution automatically
