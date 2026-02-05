@@ -447,22 +447,23 @@ export const MyStackScreen = () => {
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
       {/* Scrollable Content - Header inside scroll area */}
       <div className="flex-1 min-h-0 scroll-container pb-24">
-        {/* Header with Calculator Button */}
-        <div className="flex items-center justify-between px-4 pt-4">
-          <h1 className="text-2xl font-bold text-foreground">My Stack</h1>
-          <button
-            onClick={() => {
-              triggerHaptic();
-              setShowCalculator(true);
-            }}
-            className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
-            aria-label="Open Calculator"
-          >
-            <Calculator className="w-5 h-5 text-primary" />
-          </button>
-        </div>
+        <MainHeader 
+          title="My Stack" 
+          rightSlot={
+            <button
+              onClick={() => {
+                triggerHaptic();
+                setShowCalculator(true);
+              }}
+              className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
+              aria-label="Open Calculator"
+            >
+              <Calculator className="w-5 h-5 text-primary" />
+            </button>
+          }
+        />
         {/* Dashboard Stats - Compact Row with more spacing */}
-        <div className="px-4 pt-5 pb-5">
+        <div className="px-4 pt-4 pb-5">
           <div className="grid grid-cols-2 gap-2">
             {/* Active Compounds - Clickable */}
             <button
