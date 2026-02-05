@@ -1,15 +1,14 @@
 # Memory: features/medication-levels-default-compound-logic
-Updated: 2026-01-29
+Updated: 2026-02-05
 
-The Medication Levels card default selection logic prioritizes the user's most recently logged dose to ensure the dashboard chart immediately displays relevant data. Key behaviors:
+The Medication Levels card default selection logic now **always honors user's saved preference** if the compound still exists with half-life data. Key behaviors:
 
-1. **Data Fetching**: The query fetches the latest 500 taken doses ordered by `taken_at` descending, with no date filter. This ensures even infrequent users see their most recently logged medication.
+1. **Selection Persistence**: User's explicit selection (stored in localStorage as `selectedLevelsCompound`) is respected unconditionally - even if that compound has no logged doses. This prevents unwanted auto-switching when marking other medications.
 
-2. **Default Selection Priority**:
-   - User's saved preference (from localStorage) - but ONLY if that compound has logged doses in the current dataset
-   - If saved preference has no doses, clear it and fall back to most recently taken dose's compound
-   - Alphabetical fallback only if no taken doses exist
+2. **Mount-Only Initialization**: The selection logic only runs once on component mount (via `useRef` flag), preventing the card from switching compounds when a dose is marked for a different medication.
 
-3. **Persistence**: Manual selections are stored in localStorage (`selectedLevelsCompound`) and honored on subsequent visits, as long as the selected compound has logged data.
+3. **Default Selection Priority** (only when no saved preference):
+   - Most recently taken dose's compound (smart default for new users)
+   - Alphabetical fallback if no taken doses exist
 
-4. **Why No Date Filter**: Users who log medications infrequently (e.g., every few weeks) were seeing alphabetical defaults because their recent doses fell outside the previous 30-day window.
+4. **Data Fetching**: The query fetches the latest 500 taken doses ordered by `taken_at` descending, with no date filter. This ensures even infrequent users see their most recently logged medication as a default.
