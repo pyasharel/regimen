@@ -1189,27 +1189,61 @@ export const TodayScreen = () => {
     };
   }, []);
   
+  // Resume AudioContext on first user interaction (required for Android auto-play policy)
+  useEffect(() => {
+    const resumeAudioContext = () => {
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume().then(() => {
+          console.log('[TodayScreen] AudioContext resumed via user interaction');
+        }).catch(err => {
+          console.log('[TodayScreen] AudioContext resume failed:', err);
+        });
+      }
+    };
+    
+    // Resume on first touch/click anywhere on screen
+    document.addEventListener('touchstart', resumeAudioContext, { once: true });
+    document.addEventListener('click', resumeAudioContext, { once: true });
+    
+    return () => {
+      document.removeEventListener('touchstart', resumeAudioContext);
+      document.removeEventListener('click', resumeAudioContext);
+    };
+  }, []);
+  
   // Sound feedback function - bubble pop sound using Web Audio API
-  const playCheckSound = () => {
-    if (!audioContextRef.current || !bubbleBufferRef.current) {
-      console.log('[TodayScreen] Audio not ready, skipping sound');
+  const playCheckSound = async () => {
+    const context = audioContextRef.current;
+    const buffer = bubbleBufferRef.current;
+    
+    if (!context || !buffer) {
+      console.log('[TodayScreen] Audio not ready, attempting HTML5 fallback');
+      // Fallback: try HTML5 Audio (less reliable on Android but might work)
+      try {
+        const fallbackAudio = new Audio(bubblePopSound);
+        fallbackAudio.volume = 1.0;
+        await fallbackAudio.play();
+        console.log('[TodayScreen] HTML5 fallback audio played');
+      } catch (err) {
+        console.log('[TodayScreen] Fallback audio also failed:', err);
+      }
       return;
     }
     
     try {
-      const context = audioContextRef.current;
-      // Resume context if suspended (required for iOS/Android after backgrounding)
+      // Always try to resume first (required for iOS/Android after backgrounding)
       if (context.state === 'suspended') {
-        context.resume();
+        await context.resume();
       }
       
       const source = context.createBufferSource();
       const gainNode = context.createGain();
-      source.buffer = bubbleBufferRef.current;
+      source.buffer = buffer;
       source.connect(gainNode);
       gainNode.connect(context.destination);
       gainNode.gain.value = 1.0;
       source.start(0);
+      console.log('[TodayScreen] Sound played successfully');
     } catch (err) {
       console.log('[TodayScreen] Sound play failed:', err);
     }

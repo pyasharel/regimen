@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, ChevronDown, ChevronUp } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Tooltip } from 'recharts';
@@ -125,28 +125,27 @@ export const MedicationLevelsCard = ({
     return compounds.filter(c => c.is_active && getHalfLifeData(c.name));
   }, [compounds]);
 
+  // Track whether we've initialized the selection (prevents re-running on dose changes)
+  const hasInitialized = useRef(false);
+
   // Get default compound using tiered logic
+  // Priority: 1. Saved preference (always honored if compound exists)
+  //           2. Most recently taken dose
+  //           3. Alphabetical fallback
   const getDefaultCompound = (): string | null => {
-    // 1. User's saved preference - but ONLY if that compound has logged doses
-    // This prevents showing a saved compound with no data (flat line)
+    // 1. Honor saved preference if compound still exists with half-life data
+    // We ALWAYS respect user's explicit selection (even if no doses logged)
     const savedId = localStorage.getItem(STORAGE_KEY);
     if (savedId) {
       const savedCompound = compoundsWithHalfLife.find(c => c.id === savedId);
       if (savedCompound) {
-        // Check if this saved compound has any taken doses
-        const hasDoses = doses.some(d => 
-          d.compound_id === savedId && d.taken && d.taken_at
-        );
-        if (hasDoses) {
-          return savedCompound.id;
-        }
-        // If no doses, clear the stale preference and fall through
-        localStorage.removeItem(STORAGE_KEY);
+        return savedCompound.id; // Always respect user's explicit choice
       }
+      // Only clear if compound no longer exists or lacks half-life data
+      localStorage.removeItem(STORAGE_KEY);
     }
     
-    // 2. Most recently taken dose's compound (if it has half-life data)
-    // This ensures users see a compound with actual logged data first
+    // 2. No saved preference - use most recently taken (smart default for new users)
     const takenDoses = doses.filter(d => d.taken && d.taken_at);
     if (takenDoses.length > 0) {
       const sorted = [...takenDoses].sort((a, b) => 
@@ -170,9 +169,11 @@ export const MedicationLevelsCard = ({
     return null;
   };
 
-  // Initialize selected compound
+  // Initialize selected compound ONLY on first mount (not on every dose change)
+  // This prevents the card from switching compounds when user marks a dose
   useEffect(() => {
-    if (!selectedCompoundId) {
+    if (!hasInitialized.current && compoundsWithHalfLife.length > 0) {
+      hasInitialized.current = true;
       const defaultId = getDefaultCompound();
       if (defaultId) {
         setSelectedCompoundId(defaultId);
