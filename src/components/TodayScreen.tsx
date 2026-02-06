@@ -546,8 +546,9 @@ export const TodayScreen = () => {
             return true;
           }
           
-          // If compound is inactive, don't show untaken doses
-          if (d.compounds?.is_active === false) {
+          // If compound data is missing (join failed) or compound is inactive, don't show untaken doses
+          // This prevents orphan doses from inactive compounds appearing due to cache/latency issues
+          if (!d.compounds || d.compounds.is_active === false) {
             return false;
           }
           

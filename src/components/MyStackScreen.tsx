@@ -184,6 +184,16 @@ export const MyStackScreen = () => {
 
       if (error) throw error;
 
+      // Delete future untaken doses to prevent orphans showing on Today screen
+      const todayStr = new Date().toISOString().split('T')[0];
+      await supabase
+        .from('doses')
+        .delete()
+        .eq('compound_id', id)
+        .eq('taken', false)
+        .eq('skipped', false)
+        .gte('scheduled_date', todayStr);
+
       toast({
         title: "Compound marked inactive",
         description: "Moved to inactive section"

@@ -105,11 +105,60 @@ export const cleanupStaleDoses = async (userId: string): Promise<number> => {
 };
 
 /**
+ * Clean up orphan doses from inactive compounds
+ * These are future untaken doses that should have been deleted when the compound was deactivated
+ */
+export const cleanupOrphanDosesFromInactiveCompounds = async (userId: string): Promise<number> => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Get all inactive compound IDs for this user
+    const { data: inactiveCompounds, error: compoundsError } = await supabase
+      .from('compounds')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', false);
+    
+    if (compoundsError || !inactiveCompounds?.length) {
+      return 0;
+    }
+    
+    const inactiveIds = inactiveCompounds.map(c => c.id);
+    
+    // Delete future untaken doses from inactive compounds
+    const { data, error } = await supabase
+      .from('doses')
+      .delete()
+      .in('compound_id', inactiveIds)
+      .eq('taken', false)
+      .eq('skipped', false)
+      .gte('scheduled_date', todayStr)
+      .select('id');
+    
+    if (error) {
+      console.error('Error cleaning up orphan doses:', error);
+      return 0;
+    }
+    
+    const deletedCount = data?.length || 0;
+    if (deletedCount > 0) {
+      console.log(`🧹 Cleaned up ${deletedCount} orphan doses from inactive compounds`);
+    }
+    
+    return deletedCount;
+  } catch (error) {
+    console.error('Error in cleanupOrphanDosesFromInactiveCompounds:', error);
+    return 0;
+  }
+};
+
+/**
  * Run all cleanup tasks
  */
-export const runFullCleanup = async (userId: string): Promise<{ duplicates: number; stale: number }> => {
+export const runFullCleanup = async (userId: string): Promise<{ duplicates: number; stale: number; orphans: number }> => {
   const duplicates = await cleanupDuplicateDoses(userId);
   const stale = await cleanupStaleDoses(userId);
+  const orphans = await cleanupOrphanDosesFromInactiveCompounds(userId);
   
-  return { duplicates, stale };
+  return { duplicates, stale, orphans };
 };

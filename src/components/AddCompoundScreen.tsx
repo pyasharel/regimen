@@ -987,6 +987,16 @@ export const AddCompoundScreen = () => {
 
       if (compoundError) throw compoundError;
 
+      // Delete future untaken doses to prevent orphans showing on Today screen
+      const todayStr = new Date().toISOString().split('T')[0];
+      await supabase
+        .from('doses')
+        .delete()
+        .eq('compound_id', editingCompound.id)
+        .eq('taken', false)
+        .eq('skipped', false)
+        .gte('scheduled_date', todayStr);
+
       triggerHaptic('medium');
       trackCompoundDeleted(name);
       toast({
