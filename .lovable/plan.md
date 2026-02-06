@@ -1,167 +1,87 @@
 
 
-# Fix: ProtectedRoute Stuck on "Restoring your session..."
-
-## Problem Summary
-
-Jam is stuck on the "Restoring your session..." screen. The watchdog timer (12 seconds) that should trigger the recovery UI is being prematurely cleared due to a React useEffect dependency bug.
-
-## Root Cause Analysis
-
-In `ProtectedRoute.tsx`, the watchdog timer and hydration logic share the same `useEffect` hook with problematic dependencies:
-
-```typescript
-useEffect(() => {
-  // Start watchdog timer (12 seconds)
-  watchdogRef.current = setTimeout(() => {
-    if (isMountedRef.current && hydrationState === 'loading') {
-      setHydrationState('failed');
-    }
-  }, WATCHDOG_TIMEOUT_MS);
-  
-  // Early return that clears watchdog on re-runs
-  if (hydrationAttemptRef.current > 0 && retryCount === 0) {
-    clearWatchdog();  // BUG: Kills the watchdog!
-    return;
-  }
-  
-  attemptHydration(1);
-  
-  return () => clearWatchdog();
-}, [attemptHydration, retryCount, clearWatchdog, hydrationState]); // hydrationState triggers re-runs
-```
-
-**The Bug:**
-1. Effect runs on mount → watchdog starts → `attemptHydration(1)` called
-2. `attemptHydration` is async and takes 8-10+ seconds (multiple timeout steps)
-3. If `hydrationState` changes during this time, the effect re-runs
-4. On re-run: `hydrationAttemptRef.current > 0 && retryCount === 0` evaluates to `true`
-5. `clearWatchdog()` is called → watchdog is dead
-6. If hydration then hangs, there's no safety net → **infinite spinner**
-
-## Solution
-
-Separate the watchdog timer into its own `useEffect` that:
-1. Only depends on `hydrationState` (to detect when to stop)
-2. Doesn't interact with the hydration logic's lifecycle
-3. Cannot be accidentally cleared by the hydration flow
-
-Additionally, add a **global unhandled rejection handler** to catch any async errors that slip through try/catch blocks (as suggested in the Stack Overflow context).
-
-## Implementation Plan
-
-### Step 1: Separate Watchdog Effect
-Split the monolithic useEffect into two:
-- **Watchdog Effect**: Independent timer that only monitors `hydrationState`
-- **Hydration Effect**: Handles the actual session restoration
-
-### Step 2: Add Global Error Handler
-Add a global `unhandledrejection` listener in the component to catch promise rejections that escape try/catch blocks. This prevents the app from silently hanging.
-
-### Step 3: Reduce Total Timeout Budget
-The current `hydrateSessionOrNull` can take up to 10+ seconds:
-- getSession: 4s
-- setSession: 2s  
-- mirror restore: 2.5s
-- verify getSession: 1.5s
-
-Reduce these to ensure the total stays under 8 seconds so the watchdog actually fires before user patience runs out.
-
----
-
-## Technical Details
-
-### File: `src/components/ProtectedRoute.tsx`
-
-**Change 1: Separate useEffect for watchdog**
-
-Current (lines 195-220):
-```typescript
-useEffect(() => {
-  isMountedRef.current = true;
-  
-  watchdogRef.current = setTimeout(() => { ... }, WATCHDOG_TIMEOUT_MS);
-  
-  if (hydrationAttemptRef.current > 0 && retryCount === 0) {
-    clearWatchdog();
-    return;
-  }
-  hydrationAttemptRef.current++;
-  attemptHydration(1);
-  
-  return () => { ... };
-}, [attemptHydration, retryCount, clearWatchdog, hydrationState]);
-```
-
-New approach:
-```typescript
-// Watchdog effect - completely independent
-useEffect(() => {
-  // Only run watchdog if we're in loading state
-  if (hydrationState !== 'loading') return;
-  
-  const watchdog = setTimeout(() => {
-    console.warn('[ProtectedRoute] Watchdog triggered');
-    setSupportCode(generateSupportCode());
-    setHydrationState('failed');
-  }, WATCHDOG_TIMEOUT_MS);
-  
-  return () => clearTimeout(watchdog);
-}, [hydrationState]); // Only depends on hydrationState
-
-// Hydration effect - handles actual session restoration
-useEffect(() => {
-  isMountedRef.current = true;
-  
-  if (hydrationAttemptRef.current > 0 && retryCount === 0) {
-    return;
-  }
-  hydrationAttemptRef.current++;
-  attemptHydration(1);
-  
-  return () => { isMountedRef.current = false; };
-}, [attemptHydration, retryCount]);
-```
-
-**Change 2: Add global error handler**
-
-Add to the component:
-```typescript
-useEffect(() => {
-  const handleRejection = (event: PromiseRejectionEvent) => {
-    console.error('[ProtectedRoute] Unhandled rejection:', event.reason);
-    // If still in loading state, trigger recovery
-    if (hydrationState === 'loading') {
-      setSupportCode('unhandled-rejection');
-      setHydrationState('failed');
-    }
-    event.preventDefault();
-  };
-  
-  window.addEventListener('unhandledrejection', handleRejection);
-  return () => window.removeEventListener('unhandledrejection', handleRejection);
-}, [hydrationState]);
-```
-
-### File: `src/utils/safeAuth.ts`
-
-Reduce timeout budgets:
-- `GET_SESSION_TIMEOUT_MS`: 4000 → 3000
-- `SET_SESSION_TIMEOUT_MS`: 2000 → 1500
-- `MIRROR_RESTORE_TIMEOUT_MS`: 2500 → 1500 (in authTokenMirror.ts)
-- Final verify: 1500 → 1000
-
-This ensures total worst-case is ~7 seconds, well under the 12-second watchdog.
-
----
+# Persist Medication Levels Selection Across Sessions
 
 ## Summary
 
-| Issue | Fix |
-|-------|-----|
-| Watchdog cleared prematurely | Separate into independent useEffect |
-| Unhandled rejections can cause hang | Add global rejection handler |
-| Total timeout budget too long | Reduce individual step timeouts |
+Make the selected compound in the Medication Levels card persist reliably across app restarts by using Capacitor Preferences (survives app updates, memory pressure) instead of plain localStorage (which iOS clears aggressively).
 
-After these changes, even if hydration hangs indefinitely, the watchdog will **always** fire after 12 seconds and show the recovery UI with "Try Again" and "Reload App" buttons.
+## Why This is Happening
+
+The current implementation uses `localStorage` directly:
+- **Line 138**: `localStorage.getItem(STORAGE_KEY)` 
+- **Line 187**: `localStorage.setItem(STORAGE_KEY, compoundId)`
+
+On iOS, localStorage lives in the WebView's cache and can be cleared when:
+- Device is low on storage
+- iOS performs memory cleanup
+- WebView is rebuilt during app updates
+- App is backgrounded for extended periods
+
+## Solution
+
+Switch to the existing `persistentStorage` utility which uses Capacitor Preferences on native platforms. This storage persists across app updates and isn't subject to WebView cache clearing.
+
+## Implementation
+
+### File: `src/components/MedicationLevelsCard.tsx`
+
+1. **Import the utility**:
+```typescript
+import { persistentStorage } from "@/utils/persistentStorage";
+```
+
+2. **Add async state initialization** - Read from Capacitor Preferences on mount:
+```typescript
+// Load saved preference from persistent storage
+useEffect(() => {
+  const loadSavedPreference = async () => {
+    const saved = await persistentStorage.get(STORAGE_KEY);
+    if (saved && !hasInitialized.current) {
+      const compound = compoundsWithHalfLife.find(c => c.id === saved);
+      if (compound) {
+        setSelectedCompoundId(saved);
+        hasInitialized.current = true;
+      }
+    }
+  };
+  loadSavedPreference();
+}, [compoundsWithHalfLife]);
+```
+
+3. **Update the save function** - Write to Capacitor Preferences:
+```typescript
+const handleCompoundChange = (compoundId: string) => {
+  setSelectedCompoundId(compoundId);
+  persistentStorage.set(STORAGE_KEY, compoundId); // Async but fire-and-forget
+  onCompoundChange?.(compoundId);
+};
+```
+
+4. **Keep localStorage as fast fallback** for immediate render on web.
+
+### File: `src/utils/persistentStorage.ts`
+
+Add the key to the persistent keys list:
+```typescript
+// Medication Levels card preference
+'selectedLevelsCompound',
+'medicationLevelsCollapsed',
+```
+
+## Behavior After Fix
+
+1. User selects "Tirzepatide" in the levels card
+2. Selection saved to both localStorage (instant) and Capacitor Preferences (async, persistent)
+3. User closes app, reopens days later
+4. On mount: Check Capacitor Preferences → finds "Tirzepatide" → shows it
+5. Even after app update, the preference survives
+
+## Performance Impact
+
+- **Read**: ~1-2ms on mount (async, non-blocking)
+- **Write**: ~1-2ms when changed (async, fire-and-forget)
+- **No blocking**: UI renders immediately with localStorage fallback, then syncs
+
+This is the same pattern used for theme persistence, sound settings, and notification preferences - all of which work reliably across sessions.
 
