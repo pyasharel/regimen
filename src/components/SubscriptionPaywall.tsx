@@ -499,18 +499,21 @@ export const SubscriptionPaywall = ({
       <DialogContent
         className="safe-top px-4 pb-6 max-w-md max-h-[90vh] overflow-y-auto bg-transparent border-none shadow-none p-0"
         hideClose
+        onEscapeKeyDown={handleClose}
+        onPointerDownOutside={handleClose}
       >
-        <div className="mt-3 bg-background border border-border rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
+        {/* Sticky close button for web - always visible at top */}
+        <button
+          onClick={handleClose}
+          className="sticky top-0 right-0 z-50 ml-auto mr-2 mt-2 p-2 rounded-full bg-background/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm border border-border/50"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+        
+        <div className="-mt-8 bg-background border border-border rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
           {/* Header */}
           <div className="relative p-6 pb-4">
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close"
-            >
-              <X size={24} />
-            </button>
-            
             {/* VIP Partner Welcome Message */}
             {partnerPromo && !appleOfferPromo && (
               <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-6">
