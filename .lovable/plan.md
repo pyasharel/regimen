@@ -1,118 +1,148 @@
 
 
-# Refined Onboarding Fix + Android SHA-256 Guide
+# Fix Duplicate Medication Display Issue
 
-## Summary
+## Problem Summary
+Your beta tester Jam is seeing two "Testosterone Enanthate" entries on their Today screen because they have an old, inactive compound with orphan doses that weren't cleaned up when it was deactivated.
 
-This plan makes two simple changes:
-1. Makes the "Sign in instead" button **subtle** (not prominent) since it's an edge case
-2. Provides you with the **exact navigation path** to find your SHA-256 fingerprint in Google Play Console
+## Root Cause Analysis
 
----
+**What happened:**
+1. Jam originally created "Testosterone Enanthate" back in December 2025 (50mg dose)
+2. At some point, this compound was marked inactive (either via "Mark Complete" or soft delete)
+3. When a compound is marked inactive, the current code preserves historical doses but **doesn't delete future untaken doses**
+4. Jam then created a new "Testosterone Enanthate" compound in January 2026 (44mg dose)
+5. Both compounds have scheduled doses for Feb 6, 2026 at 8:00 AM
 
-## Code Change: Subtle Sign-In Button
+**Why the filtering failed:**
+The TodayScreen correctly filters out doses from inactive compounds (line 550: `if (d.compounds?.is_active === false)`), but on certain Android devices with network latency or cache issues, the compound relationship data may not populate properly in the query result. When `d.compounds` is `undefined` (not `null`), the check `d.compounds?.is_active === false` evaluates to `undefined === false` which is `false`, so the dose passes through.
 
-**File**: `src/components/onboarding/screens/AccountCreationScreen.tsx`
+## The Fix (Two Parts)
 
-**Current implementation** (from last diff) has a prominent primary-colored button:
-```tsx
-<button className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base">
-  Sign in instead
-</button>
+### Part 1: Immediate Data Fix for Jam
+Delete the 9 orphan doses from the inactive compound. This will immediately resolve their issue.
+
+```sql
+-- Delete future untaken doses from the inactive Testosterone Enanthate compound
+DELETE FROM doses 
+WHERE compound_id = 'c26a10b4-668e-4847-805a-1c61b9522c0f'
+  AND taken = false 
+  AND skipped = false 
+  AND scheduled_date >= '2026-02-06';
 ```
 
-**Updated to be subtle** - just a text link style:
-```tsx
-{error.includes('already has an account') && (
-  <button
-    type="button"
-    onClick={() => {
-      window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
-    }}
-    className="text-primary text-sm font-medium underline underline-offset-2 hover:text-primary/80 transition-colors"
-  >
-    Sign in to your account →
-  </button>
-)}
-```
+### Part 2: Code Fixes to Prevent This
 
-This changes it from a big button to a simple underlined text link that doesn't compete visually with the main "Create Account" button.
+#### Fix 2a: More Defensive Filtering in TodayScreen
+Update the filtering logic to also filter out doses where the compound join failed or returned undefined.
 
----
+**File:** `src/components/TodayScreen.tsx` (lines 543-552)
 
-## Finding Your SHA-256 Fingerprint
+```typescript
+// BEFORE
+if (d.taken || d.skipped) {
+  return true;
+}
+if (d.compounds?.is_active === false) {
+  return false;
+}
 
-### The Exact Path (from Google's official docs)
-
-**Navigation**: Left sidebar → **Test and release** → **Setup** → **App signing**
-
-Note: "Test and release" is different from "Testing" - it's a separate section in the sidebar.
-
-### Step-by-Step
-
-1. Go to [Google Play Console](https://play.google.com/console) and select your app
-2. In the **left sidebar**, look for **"Test and release"** (NOT "Testing")
-3. Click to expand it
-4. Click **"Setup"** under "Test and release"
-5. Click **"App signing"**
-6. You'll see **"App signing key certificate"** section
-7. Copy the **SHA-256 certificate fingerprint** (looks like `FA:C6:17:45:DC:09:...`)
-
-### If You Don't See "App signing"
-
-This can happen if:
-- You haven't uploaded any app bundle yet
-- Play App Signing wasn't enabled when you uploaded
-
-**Alternative method** - if you have Android Studio:
-1. Open your project in Android Studio
-2. Go to **Build > Generate Signed Bundle/APK**
-3. Select your keystore file
-4. In terminal, run:
-```bash
-keytool -list -v -keystore your-keystore.jks -alias your-alias
-```
-5. Copy the SHA-256 fingerprint from the output
-
----
-
-## Android Configuration Already Complete
-
-The Android manifest already has the correct intent-filter (added in the last change):
-
-```xml
-<!-- App Links for getregimen.app domain -->
-<intent-filter android:autoVerify="true">
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="https" android:host="getregimen.app" />
-</intent-filter>
-```
-
-The only missing piece is the SHA-256 fingerprint in `assetlinks.json`.
-
----
-
-## What I'll Do After Approval
-
-1. Update `AccountCreationScreen.tsx` to use a subtle text link instead of a prominent button
-2. Wait for your SHA-256 fingerprint to update `assetlinks.json`
-
----
-
-## After You Provide the SHA-256
-
-Once you share the fingerprint (e.g., `FA:C6:17:45:DC:09:A2:B3:...`), I'll update:
-
-**File**: `public/.well-known/assetlinks.json`
-```json
-{
-  "sha256_cert_fingerprints": [
-    "FA:C6:17:45:DC:09:A2:B3:..." // Your actual fingerprint
-  ]
+// AFTER
+if (d.taken || d.skipped) {
+  return true;
+}
+// Filter out if compound data is missing (join failed) or compound is inactive
+if (!d.compounds || d.compounds.is_active === false) {
+  return false;
 }
 ```
 
-Then Android App Links will be fully functional.
+#### Fix 2b: Clean Up Orphan Doses When Compound is Deactivated
+Add orphan dose cleanup to both deactivation paths.
+
+**File:** `src/components/MyStackScreen.tsx` (`markComplete` function)
+
+```typescript
+const markComplete = async (id: string) => {
+  try {
+    // Mark compound inactive
+    const { error } = await supabase
+      .from('compounds')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) throw error;
+
+    // NEW: Delete future untaken doses to prevent orphans
+    const todayStr = new Date().toISOString().split('T')[0];
+    await supabase
+      .from('doses')
+      .delete()
+      .eq('compound_id', id)
+      .eq('taken', false)
+      .eq('skipped', false)
+      .gte('scheduled_date', todayStr);
+
+    toast({...});
+    await loadCompounds();
+  } catch (error) {...}
+};
+```
+
+**File:** `src/components/AddCompoundScreen.tsx` (`handleDelete` function)
+Add the same orphan cleanup after setting `is_active: false`.
+
+#### Fix 2c: Add Cleanup Function for All Users
+Create a one-time cleanup function to fix any existing orphan doses.
+
+**File:** `src/utils/doseCleanup.ts` (add new function)
+
+```typescript
+export const cleanupOrphanDosesFromInactiveCompounds = async (userId: string): Promise<number> => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  // Get all inactive compound IDs for this user
+  const { data: inactiveCompounds } = await supabase
+    .from('compounds')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('is_active', false);
+  
+  if (!inactiveCompounds?.length) return 0;
+  
+  const inactiveIds = inactiveCompounds.map(c => c.id);
+  
+  // Delete future untaken doses from inactive compounds
+  const { data, error } = await supabase
+    .from('doses')
+    .delete()
+    .in('compound_id', inactiveIds)
+    .eq('taken', false)
+    .eq('skipped', false)
+    .gte('scheduled_date', todayStr)
+    .select('id');
+  
+  return data?.length || 0;
+};
+```
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/TodayScreen.tsx` | Add null check for compound join |
+| `src/components/MyStackScreen.tsx` | Add orphan dose cleanup on deactivation |
+| `src/components/AddCompoundScreen.tsx` | Add orphan dose cleanup on soft delete |
+| `src/utils/doseCleanup.ts` | Add function to clean orphans from inactive compounds |
+| Database | Execute one-time cleanup for Jam's account |
+
+## Impact
+
+- **Jam's immediate issue**: Resolved by database cleanup
+- **Future users**: Protected by the defensive filtering and proactive cleanup
+- **Existing users with orphans**: Can be cleaned up via the new utility function (could be triggered on app boot or in settings)
+
+## What to Tell Your Beta Tester
+
+> "Found the issue! You had an old Testosterone Enanthate entry from December that was marked inactive but still had future doses in the database. I've cleaned those up now so you should only see one entry. If you force-close and reopen the app, it should be fixed. I'm also adding code to prevent this from happening to anyone else."
 
