@@ -136,6 +136,10 @@ export const PERSISTENT_STORAGE_KEYS = [
   
   // Subscription entitlement cache (survives webview reloads)
   'cachedEntitlement',
+  
+  // Medication Levels card preferences
+  'selectedLevelsCompound',
+  'medicationLevelsCollapsed',
 ];
 
 // Cached entitlement interface for subscription persistence
