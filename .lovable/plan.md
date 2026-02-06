@@ -1,163 +1,144 @@
 
-# Comprehensive User Experience Fixes Plan
 
-## Executive Summary
+# Comprehensive Onboarding & Authentication Fixes
 
-Based on my analysis, I've identified **5 distinct issues** causing poor UX for users transitioning from TestFlight to App Store and for web users. Here's what's actually broken and how to properly fix each one.
+## Overview
+
+This plan fixes the critical issue where existing users get stuck during onboarding, plus cleans up URLs pointing to the wrong domain. The Android App Links fingerprint will be added once you find it in Google Play Console.
 
 ---
 
-## Issue 1: Password Reset Not Working Properly
+## Problem 1: Users Get Stuck in Onboarding
 
-### Root Cause
-The password reset uses `supabase.auth.resetPasswordForEmail()` which sends **Supabase's built-in email**, not your custom branded email. The `send-password-reset` edge function exists but is **never called** in the actual flow.
+**Current Issue**: When someone enters an email that already has an account during onboarding, they see the error "This email already has an account. Try signing in instead." but there's NO button to actually sign in. They're completely stuck.
 
-Additionally, the `redirectTo` uses `window.location.origin` which on native means the reset link opens in Safari instead of the app.
+**Solution**: Add a prominent "Sign in instead" button that:
+- Appears automatically when this error is shown
+- Takes the user to the login screen with their email pre-filled
+- Provides a smooth path to sign in without losing their place
 
-### Current Flow (Broken)
+---
+
+## Problem 2: Calculator Embeds Link to Wrong Domain
+
+**Current Issue**: The calculator embed components (used on partner sites) link to `regimen.lovable.app` instead of your production domain `getregimen.app`.
+
+**Files affected**:
+- `src/components/embeds/OilMlCalculatorEmbed.tsx`
+- `src/components/embeds/PeptideReconstitutionCalculatorEmbed.tsx`
+
+**Solution**: Update both to use `https://getregimen.app`
+
+---
+
+## Problem 3: Android Manifest Missing HTTPS Intent Filter
+
+**Current Issue**: The Android manifest only has the `regimen://` custom URL scheme. It doesn't have an intent-filter for HTTPS URLs, which means Android can't intercept `getregimen.app` links to open the app.
+
+**Solution**: Add an intent-filter in `AndroidManifest.xml` for:
+- Scheme: `https`
+- Host: `getregimen.app`
+- With `android:autoVerify="true"` for automatic verification
+
+---
+
+## Technical Changes
+
+### File 1: `src/components/onboarding/screens/AccountCreationScreen.tsx`
+
+Add a "Sign in instead" button that appears when the duplicate email error is shown:
+
+```tsx
+{/* Error message */}
+{error && (
+  <div className="space-y-3">
+    <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
+      {error}
+    </div>
+    
+    {/* Show sign-in option when account already exists */}
+    {error.includes('already has an account') && (
+      <button
+        type="button"
+        onClick={() => {
+          // Navigate to auth with email pre-filled
+          window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
+        }}
+        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base"
+      >
+        Sign in instead
+      </button>
+    )}
+  </div>
+)}
+```
+
+### File 2: `src/components/embeds/OilMlCalculatorEmbed.tsx`
+
+Change line ~381 from:
+```tsx
+href="https://regimen.lovable.app"
+```
+To:
+```tsx
+href="https://getregimen.app"
+```
+
+### File 3: `src/components/embeds/PeptideReconstitutionCalculatorEmbed.tsx`
+
+Change line ~124 from:
+```tsx
+href="https://regimen.lovable.app"
+```
+To:
+```tsx
+href="https://getregimen.app"
+```
+
+### File 4: `android/app/src/main/AndroidManifest.xml`
+
+Add new intent-filter for HTTPS App Links:
+
+```xml
+<!-- App Links for getregimen.app domain -->
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https" android:host="getregimen.app" />
+</intent-filter>
+```
+
+---
+
+## File 5: Android assetlinks.json (Separate Step)
+
+The `public/.well-known/assetlinks.json` file already exists with a placeholder. Once you find your SHA-256 fingerprint, I'll update it with the real value.
+
+**Where to find it**: Google Play Console → Your app → Setup → App signing → "App signing key certificate" → SHA-256 certificate fingerprint
+
+---
+
+## Expected User Experience After Fix
+
+**Existing User in Onboarding**:
 ```text
-User clicks "Forgot Password"
-    ↓
-supabase.auth.resetPasswordForEmail() called
-    ↓
-Supabase sends DEFAULT email (poor styling)
-    ↓
-Link opens in Safari → regimen.lovable.app/auth?mode=reset
-    ↓
-User stuck on web, not app
+1. User goes through onboarding flow
+2. Enters email that already has an account
+3. Error shows with message AND a "Sign in instead" button
+4. User taps button → Goes to /auth with email pre-filled
+5. Enters password → Signs in successfully
+6. Redirected to /today screen
 ```
 
-### Fixed Flow
-```text
-User clicks "Forgot Password"
-    ↓
-supabase.auth.resetPasswordForEmail() with redirectTo = https://getregimen.app/auth?mode=reset
-    ↓
-Supabase sends reset email with proper link
-    ↓
-User clicks link → Universal Links intercepts → App opens
-    ↓
-User sets new password in app
-```
-
-### Changes Required
-
-**File: `src/pages/Auth.tsx` (line 262-264)**
-- Change `redirectTo` from `${window.location.origin}/auth?mode=reset` to `https://getregimen.app/auth?mode=reset`
-- This ensures the link always uses the Universal Links domain
-
-**File: `src/components/settings/AccountSettings.tsx` (line 141-142)**
-- Same change for the settings page password reset
-
 ---
 
-## Issue 2: CORS Headers Missing in create-checkout Edge Function
-
-### Root Cause
-The `create-checkout` function has **incomplete CORS headers**. The Supabase client sends additional headers that aren't whitelisted.
-
-### Current (Line 8)
-```typescript
-"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-```
-
-### Required Headers (from working functions)
-```typescript
-"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-```
-
-### File to Change
-**File: `supabase/functions/create-checkout/index.ts` (line 6-8)**
-
----
-
-## Issue 3: Welcome Email Icons Rendering with Wrong Color
-
-### Root Cause
-Looking at the email template, the SVGs use `stroke="#FF6B6B"` which is your coral color. The issue Mike reported (icons appearing red instead of coral) is likely due to **email client rendering** - some clients don't render inline SVGs correctly.
-
-However, `#FF6B6B` IS coral/salmon - it's a red-orange color. If Mike is seeing it as pure red, it may be his email client or display. 
-
-### No Changes Needed
-The SVGs already use `#FF6B6B` (coral). The color you want is already there. If you want me to verify this looks correct, I can test it.
-
----
-
-## Issue 4: Android App Links Not Configured
-
-### Root Cause
-iOS Universal Links are configured in `apple-app-site-association`, but **Android App Links are not configured** - there's no `assetlinks.json` file in `public/.well-known/`.
-
-Android users clicking email links will ALWAYS open in browser.
-
-### File to Create
-**New file: `public/.well-known/assetlinks.json`**
-
-This file needs your app's SHA256 certificate fingerprint to work. I'll add the structure, but you'll need to provide the signing key fingerprint.
-
----
-
-## Issue 5: Paywall Dismissal Issues on Web
-
-### Root Cause
-From the screenshot, your friend was on the **web version** (you can see the URL bar showing `regimen.lovable.app`). The paywall dialog has `hideClose` on DialogContent (line 502), but the X button is inside the dialog.
-
-The issue is the dialog can scroll but the X button isn't "sticky" - on mobile web, bouncing can make it hard to tap.
-
-### Changes Required
-**File: `src/components/SubscriptionPaywall.tsx`**
-
-1. Make the close button sticky at the top of the scrollable area
-2. Add keyboard escape handler for web users
-3. Ensure the button is always in the viewport
-
----
-
-## Technical Implementation
-
-### File Changes:
+## Summary of Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/Auth.tsx` | Line 263: Change redirectTo to `https://getregimen.app/auth?mode=reset` |
-| `src/components/settings/AccountSettings.tsx` | Line 142: Same redirectTo change |
-| `supabase/functions/create-checkout/index.ts` | Line 6-8: Add full CORS headers |
-| `public/.well-known/assetlinks.json` | Create new file for Android App Links |
-| `src/components/SubscriptionPaywall.tsx` | Make X button sticky, add escape key handler |
+| `AccountCreationScreen.tsx` | Add "Sign in instead" button for existing accounts |
+| `OilMlCalculatorEmbed.tsx` | Fix URL to getregimen.app |
+| `PeptideReconstitutionCalculatorEmbed.tsx` | Fix URL to getregimen.app |
+| `AndroidManifest.xml` | Add HTTPS App Links intent-filter |
 
----
-
-## Why This Will Work
-
-1. **Password Reset**: Using `https://getregimen.app` (your production domain with Universal Links configured) ensures iOS intercepts the link and opens the app instead of Safari.
-
-2. **Checkout CORS**: The Supabase JS client sends these extra platform headers automatically. The function will stop returning CORS errors.
-
-3. **Paywall UX**: A sticky close button + escape key ensures users can always exit, even on bouncy mobile web browsers.
-
-4. **Android Links**: Once assetlinks.json is configured, Android users will also get seamless email-to-app transitions.
-
----
-
-## What You Need to Provide
-
-For Android App Links to work, I need:
-- Your app's **package name** (likely `com.regimen.app` based on iOS config)
-- Your **signing certificate SHA256 fingerprint** (get this from Google Play Console or via `keytool`)
-
----
-
-## Expected User Experience After Fixes
-
-```text
-Password Reset Flow:
-1. User taps "Forgot Password" in app
-2. Gets email with branded reset link
-3. Taps link → App opens directly to reset screen
-4. Sets new password → Redirected to Today screen
-
-Web Paywall Flow:
-1. User sees paywall on web
-2. Can tap X button (always visible) OR press Escape
-3. Checkout works without CORS errors
-```
