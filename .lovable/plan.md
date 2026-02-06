@@ -1,196 +1,163 @@
 
+# Comprehensive User Experience Fixes Plan
 
-# ASO Playbook - Comprehensive Strategy Document
+## Executive Summary
 
-## Overview
-Create a detailed, actionable ASO strategy document saved to `.storage/memory/marketing/aso-playbook-v1.md` that consolidates all keyword research, Apple Search Ads strategy, content marketing plans, and growth milestones.
-
----
-
-## Document Structure
-
-### 1. Current Baseline Snapshot (February 2025)
-
-**App Store Rankings:**
-| Keyword | Current Rank | Difficulty | Traffic | Priority |
-|---------|--------------|------------|---------|----------|
-| trt tracker | #4 | 24 (Easy) | 35 | 🔒 Protect |
-| testosterone tracker | #15 | 31 (Easy) | 41 | 📈 Improve |
-| peptide tracker | #34 | 38 (Medium) | 32 | 📈 Improve |
-| injection tracker | #122 | 17 (Very Easy) | 38 | 🎯 Target |
-| testosterone log | #42 | 23 (Easy) | 37 | 🎯 Golden |
-| peptide log | #51 | 34 (Easy) | 31 | 📈 Improve |
-| reconstitution calculator | Not ranked | 40 (Medium) | 46 | 🎯 Target |
-
-**Competitor Benchmark:**
-- Shotsy: 75/100 optimization score
-- Regimen: 46/100 optimization score
-- Gap: 29 points to close
+Based on my analysis, I've identified **5 distinct issues** causing poor UX for users transitioning from TestFlight to App Store and for web users. Here's what's actually broken and how to properly fix each one.
 
 ---
 
-### 2. Metadata Strategy
+## Issue 1: Password Reset Not Working Properly
 
-**App Name (30 chars - DO NOT CHANGE):**
-```
-Regimen: Peptide & TRT Tracker
+### Root Cause
+The password reset uses `supabase.auth.resetPasswordForEmail()` which sends **Supabase's built-in email**, not your custom branded email. The `send-password-reset` edge function exists but is **never called** in the actual flow.
+
+Additionally, the `redirectTo` uses `window.location.origin` which on native means the reset link opens in Safari instead of the app.
+
+### Current Flow (Broken)
+```text
+User clicks "Forgot Password"
+    ↓
+supabase.auth.resetPasswordForEmail() called
+    ↓
+Supabase sends DEFAULT email (poor styling)
+    ↓
+Link opens in Safari → regimen.lovable.app/auth?mode=reset
+    ↓
+User stuck on web, not app
 ```
 
-**Subtitle (30 chars - KEEP CURRENT):**
+### Fixed Flow
+```text
+User clicks "Forgot Password"
+    ↓
+supabase.auth.resetPasswordForEmail() with redirectTo = https://getregimen.app/auth?mode=reset
+    ↓
+Supabase sends reset email with proper link
+    ↓
+User clicks link → Universal Links intercepts → App opens
+    ↓
+User sets new password in app
 ```
-Injection Log & Calculator
+
+### Changes Required
+
+**File: `src/pages/Auth.tsx` (line 262-264)**
+- Change `redirectTo` from `${window.location.origin}/auth?mode=reset` to `https://getregimen.app/auth?mode=reset`
+- This ensures the link always uses the Universal Links domain
+
+**File: `src/components/settings/AccountSettings.tsx` (line 141-142)**
+- Same change for the settings page password reset
+
+---
+
+## Issue 2: CORS Headers Missing in create-checkout Edge Function
+
+### Root Cause
+The `create-checkout` function has **incomplete CORS headers**. The Supabase client sends additional headers that aren't whitelisted.
+
+### Current (Line 8)
+```typescript
+"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 ```
 
-**Keywords (100 chars - UPDATE IN BUILD 34/35):**
+### Required Headers (from working functions)
+```typescript
+"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 ```
-testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstitution,log,protocol,dose
-```
 
-**Keyword Rationale:**
-- `testosterone` - Captures TRT audience (not "trt" - already in name)
-- `semaglutide,tirzepatide,retatrutide` - GLP-1 drug names for discoverability
-- `injection` - Action term for "injection log" compound
-- `steroids` - Captures steroid tracker searches
-- `reconstitution` - Targets calculator searches (combined with subtitle)
-- `log` - Compounds with testosterone/injection/peptide
-- `protocol` - TRT community terminology
-- `dose` - Utility term for calculator intent
-
-**Words NOT in Keywords (indexed via Name/Subtitle):**
-- regimen, peptide, trt, tracker (from Name)
-- injection, log, calculator (from Subtitle)
+### File to Change
+**File: `supabase/functions/create-checkout/index.ts` (line 6-8)**
 
 ---
 
-### 3. Apple Search Ads Strategy
+## Issue 3: Welcome Email Icons Rendering with Wrong Color
 
-**Campaign Structure:**
+### Root Cause
+Looking at the email template, the SVGs use `stroke="#FF6B6B"` which is your coral color. The issue Mike reported (icons appearing red instead of coral) is likely due to **email client rendering** - some clients don't render inline SVGs correctly.
 
-| Campaign | Status | Daily Budget | Max CPT | Keywords |
-|----------|--------|--------------|---------|----------|
-| Keyword Discovery | ✅ Active | $2.00 | Auto | Search Match ON |
-| TRT - Exact Match | ✅ Active | $3.00 | $2.50 | trt tracker, trt app |
-| Injection - Exact | ✅ Active | $2.50 | $2.50 | injection tracker |
-| High Intent - Exact | ✅ NEW | $5.00 | $2.00 | See below |
-| Peptides - Broad | ⏸️ Paused | - | - | No installs |
+However, `#FF6B6B` IS coral/salmon - it's a red-orange color. If Mike is seeing it as pure red, it may be his email client or display. 
 
-**High Intent - Exact Match Keywords:**
-- trt log (exact)
-- testosterone log (exact)
-- injection log (exact)
-- steroid tracker (exact)
-- peptide log (exact)
-
-**Weekly Optimization Checklist:**
-1. Check CPA across all campaigns
-2. Pause keywords with >$10 spend and 0 installs
-3. Increase bids on keywords with <5% impression share
-4. Extract converting search terms from Discovery → add to Exact campaigns
+### No Changes Needed
+The SVGs already use `#FF6B6B` (coral). The color you want is already there. If you want me to verify this looks correct, I can test it.
 
 ---
 
-### 4. Keyword Inspection Archive
+## Issue 4: Android App Links Not Configured
 
-**Inspections Completed (February 2025):**
+### Root Cause
+iOS Universal Links are configured in `apple-app-site-association`, but **Android App Links are not configured** - there's no `assetlinks.json` file in `public/.well-known/`.
 
-| Keyword | Difficulty | Traffic | KEI | Verdict |
-|---------|------------|---------|-----|---------|
-| trt tracker | 24 (Easy) | 35 | - | ✅ Ranking #4 |
-| testosterone tracker | 31 (Easy) | 41 | - | ✅ Ranking #15 |
-| peptide tracker | 38 (Medium) | 32 | - | 📈 Target |
-| injection tracker | 17 (Very Easy) | 38 | 2.24 | 🎯 High priority |
-| testosterone log | 23 (Easy) | 37 | 1.61 | 🎯 Golden keyword |
-| peptide log | 34 (Easy) | 31 | 0.91 | 📈 Secondary |
-| steroid tracker | 32 (Easy) | 26 | - | 📈 In keywords |
-| shot tracker | - | - | - | ❌ Sports/golf |
-| hormone tracker | - | - | - | ❌ Period/fertility |
-| reconstitution calculator | 40 (Medium) | 46 | 1.16 | 🎯 Best opportunity |
-| peptide dose calculator | 36 (Easy) | 32 | 0.90 | ⚠️ Low traffic |
+Android users clicking email links will ALWAYS open in browser.
+
+### File to Create
+**New file: `public/.well-known/assetlinks.json`**
+
+This file needs your app's SHA256 certificate fingerprint to work. I'll add the structure, but you'll need to provide the signing key fingerprint.
 
 ---
 
-### 5. Content Marketing Strategy
+## Issue 5: Paywall Dismissal Issues on Web
 
-**Priority 1: Fix Existing Content (This Week)**
-- BPC-157 + TB-500 article: 228 impressions, 0% CTR
-- Action: Update title/meta description for click appeal
+### Root Cause
+From the screenshot, your friend was on the **web version** (you can see the URL bar showing `regimen.lovable.app`). The paywall dialog has `hideClose` on DialogContent (line 502), but the X button is inside the dialog.
 
-**Priority 2: Create Calculator Landing Pages**
-- `/calculators/tirzepatide-reconstitution` - Target "tirzepatide calculator"
-- `/calculators/bpc157-dosage` - Target "bpc157 dose"
+The issue is the dialog can scroll but the X button isn't "sticky" - on mobile web, bouncing can make it hard to tap.
 
-**Priority 3: Educational Content**
-- "How to Reconstitute Peptides" guide (targets reconstitution calculator)
-- "TRT Injection Schedule" guide (targets trt log)
+### Changes Required
+**File: `src/components/SubscriptionPaywall.tsx`**
 
-**GSC Performance Baseline:**
-| Page | Impressions | Clicks | CTR |
-|------|-------------|--------|-----|
-| Testosterone Calculator | 70 | 2 | 2.9% |
-| BPC-157 + TB-500 | 228 | 0 | 0% |
-| Reconstitute Peptides | 31 | 1 | 3.2% |
-
----
-
-### 6. Review Acquisition Strategy
-
-**Current State:** 8-9 reviews
-**Target:** 25 reviews (minimum credibility threshold)
-**Stretch Goal:** 50+ reviews (competitive with Shotsy)
-
-**Tactics:**
-1. In-app review prompt after 7-day streak
-2. Personal outreach to beta testers
-3. Reddit community engagement (value-first, not promotional)
-
----
-
-### 7. Growth Milestones
-
-**Phase 1: Foundation (Now - March 2025)**
-- [ ] Reach 25 App Store reviews
-- [ ] Rank top 20 for "testosterone log"
-- [ ] Rank top 50 for "injection tracker"
-- [ ] Launch Android from closed beta
-
-**Phase 2: Expansion (April - June 2025)**
-- [ ] Rank top 10 for "reconstitution calculator"
-- [ ] Create dedicated calculator landing pages
-- [ ] 100 total paying subscribers
-- [ ] Close optimization gap with Shotsy (75+)
-
-**Phase 3: Dominance (Q3-Q4 2025)**
-- [ ] #1 for "trt tracker"
-- [ ] #1 for "peptide tracker"
-- [ ] 50+ App Store reviews
-- [ ] Organic TikTok marketing launch
-
----
-
-### 8. Priority Stack (What To Do First)
-
-**This Week:**
-1. ✅ Create High Intent - Exact Match ASA campaign
-2. ✅ Pause Peptides - Broad campaign
-3. ✅ Unpause Injection - Exact with $2.50 bid
-4. 🔄 Fix BPC-157 article title/meta
-5. 🔄 Request 2-3 more App Store reviews
-
-**Next Release (Build 34/35):**
-1. Update keyword string to new 100-char version
-2. Keep Name and Subtitle unchanged
-
-**Next Month:**
-1. Create tirzepatide calculator landing page
-2. Create BPC-157 dosage calculator landing page
-3. Monitor ASA campaigns - optimize weekly
+1. Make the close button sticky at the top of the scrollable area
+2. Add keyboard escape handler for web users
+3. Ensure the button is always in the viewport
 
 ---
 
 ## Technical Implementation
 
-### File to Create
-`.storage/memory/marketing/aso-playbook-v1.md`
+### File Changes:
 
-This document will serve as the master reference for all ASO decisions and can be updated as rankings change and new opportunities are discovered.
+| File | Change |
+|------|--------|
+| `src/pages/Auth.tsx` | Line 263: Change redirectTo to `https://getregimen.app/auth?mode=reset` |
+| `src/components/settings/AccountSettings.tsx` | Line 142: Same redirectTo change |
+| `supabase/functions/create-checkout/index.ts` | Line 6-8: Add full CORS headers |
+| `public/.well-known/assetlinks.json` | Create new file for Android App Links |
+| `src/components/SubscriptionPaywall.tsx` | Make X button sticky, add escape key handler |
 
+---
+
+## Why This Will Work
+
+1. **Password Reset**: Using `https://getregimen.app` (your production domain with Universal Links configured) ensures iOS intercepts the link and opens the app instead of Safari.
+
+2. **Checkout CORS**: The Supabase JS client sends these extra platform headers automatically. The function will stop returning CORS errors.
+
+3. **Paywall UX**: A sticky close button + escape key ensures users can always exit, even on bouncy mobile web browsers.
+
+4. **Android Links**: Once assetlinks.json is configured, Android users will also get seamless email-to-app transitions.
+
+---
+
+## What You Need to Provide
+
+For Android App Links to work, I need:
+- Your app's **package name** (likely `com.regimen.app` based on iOS config)
+- Your **signing certificate SHA256 fingerprint** (get this from Google Play Console or via `keytool`)
+
+---
+
+## Expected User Experience After Fixes
+
+```text
+Password Reset Flow:
+1. User taps "Forgot Password" in app
+2. Gets email with branded reset link
+3. Taps link → App opens directly to reset screen
+4. Sets new password → Redirected to Today screen
+
+Web Paywall Flow:
+1. User sees paywall on web
+2. Can tap X button (always visible) OR press Escape
+3. Checkout works without CORS errors
+```
