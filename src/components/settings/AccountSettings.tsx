@@ -138,8 +138,10 @@ export const AccountSettings = () => {
         return;
       }
 
+      // Use production domain for Universal Links (iOS) and App Links (Android)
+      // This ensures clicking the reset link opens the native app instead of Safari/Chrome
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth?mode=reset`,
+        redirectTo: 'https://getregimen.app/auth?mode=reset',
       });
 
       if (error) throw error;
