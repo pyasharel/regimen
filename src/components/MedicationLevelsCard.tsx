@@ -5,6 +5,7 @@ import { AreaChart, Area, ResponsiveContainer, ReferenceDot, XAxis, YAxis, Toolt
 import { format, subDays } from 'date-fns';
 import { getHalfLifeData, getTmax } from "@/utils/halfLifeData";
 import { calculateMedicationLevels, calculateCurrentLevel, TakenDose } from "@/utils/halfLifeCalculator";
+import { persistentStorage } from "@/utils/persistentStorage";
 import { formatLevel } from "@/utils/doseUtils";
 import {
   Select,
@@ -108,7 +109,7 @@ export const MedicationLevelsCard = ({
   const [levelAnimating, setLevelAnimating] = useState(false);
   const [previousLevel, setPreviousLevel] = useState<number | null>(null);
   
-  // Collapsible state with localStorage persistence
+  // Collapsible state with localStorage for instant load, Capacitor Preferences for persistence
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem(COLLAPSED_KEY);
     return saved === 'true';
@@ -118,8 +119,24 @@ export const MedicationLevelsCard = ({
     e.stopPropagation();
     const newValue = !isCollapsed;
     setIsCollapsed(newValue);
+    // Write to both: localStorage (instant) and Capacitor Preferences (persistent)
     localStorage.setItem(COLLAPSED_KEY, String(newValue));
+    persistentStorage.set(COLLAPSED_KEY, String(newValue));
   };
+  
+  // Sync collapsed state from Capacitor Preferences on mount
+  useEffect(() => {
+    const syncCollapsedState = async () => {
+      const saved = await persistentStorage.get(COLLAPSED_KEY);
+      if (saved !== null) {
+        const wasCollapsed = saved === 'true';
+        setIsCollapsed(wasCollapsed);
+        // Sync localStorage for next instant load
+        localStorage.setItem(COLLAPSED_KEY, saved);
+      }
+    };
+    syncCollapsedState();
+  }, []);
   // Get compounds that have half-life data
   const compoundsWithHalfLife = useMemo(() => {
     return compounds.filter(c => c.is_active && getHalfLifeData(c.name));
@@ -132,20 +149,9 @@ export const MedicationLevelsCard = ({
   // Priority: 1. Saved preference (always honored if compound exists)
   //           2. Most recently taken dose
   //           3. Alphabetical fallback
-  const getDefaultCompound = (): string | null => {
-    // 1. Honor saved preference if compound still exists with half-life data
-    // We ALWAYS respect user's explicit selection (even if no doses logged)
-    const savedId = localStorage.getItem(STORAGE_KEY);
-    if (savedId) {
-      const savedCompound = compoundsWithHalfLife.find(c => c.id === savedId);
-      if (savedCompound) {
-        return savedCompound.id; // Always respect user's explicit choice
-      }
-      // Only clear if compound no longer exists or lacks half-life data
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    
-    // 2. No saved preference - use most recently taken (smart default for new users)
+  // Fallback default logic (used when no persisted preference exists)
+  const getFallbackCompound = (): string | null => {
+    // 1. Use most recently taken (smart default for new users)
     const takenDoses = doses.filter(d => d.taken && d.taken_at);
     if (takenDoses.length > 0) {
       const sorted = [...takenDoses].sort((a, b) => 
@@ -160,7 +166,7 @@ export const MedicationLevelsCard = ({
       }
     }
     
-    // 3. First active compound with half-life data (alphabetical fallback)
+    // 2. First active compound with half-life data (alphabetical fallback)
     if (compoundsWithHalfLife.length > 0) {
       const sorted = [...compoundsWithHalfLife].sort((a, b) => a.name.localeCompare(b.name));
       return sorted[0].id;
@@ -169,22 +175,59 @@ export const MedicationLevelsCard = ({
     return null;
   };
 
-  // Initialize selected compound ONLY on first mount (not on every dose change)
-  // This prevents the card from switching compounds when user marks a dose
+  // Initialize selected compound from persistent storage on mount
+  // Priority: Capacitor Preferences > localStorage > fallback logic
   useEffect(() => {
-    if (!hasInitialized.current && compoundsWithHalfLife.length > 0) {
-      hasInitialized.current = true;
-      const defaultId = getDefaultCompound();
-      if (defaultId) {
-        setSelectedCompoundId(defaultId);
+    if (hasInitialized.current || compoundsWithHalfLife.length === 0) return;
+    
+    const initializeSelection = async () => {
+      // 1. Try Capacitor Preferences first (survives app updates)
+      const persistedId = await persistentStorage.get(STORAGE_KEY);
+      if (persistedId) {
+        const compound = compoundsWithHalfLife.find(c => c.id === persistedId);
+        if (compound) {
+          hasInitialized.current = true;
+          setSelectedCompoundId(persistedId);
+          // Sync to localStorage for faster next load
+          localStorage.setItem(STORAGE_KEY, persistedId);
+          return;
+        }
+        // Compound no longer exists - clear stale preference
+        persistentStorage.remove(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_KEY);
       }
-    }
+      
+      // 2. Fallback to localStorage (web fast path)
+      const localId = localStorage.getItem(STORAGE_KEY);
+      if (localId) {
+        const compound = compoundsWithHalfLife.find(c => c.id === localId);
+        if (compound) {
+          hasInitialized.current = true;
+          setSelectedCompoundId(localId);
+          // Persist to Capacitor for future sessions
+          persistentStorage.set(STORAGE_KEY, localId);
+          return;
+        }
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      
+      // 3. Use fallback logic for new users
+      hasInitialized.current = true;
+      const fallbackId = getFallbackCompound();
+      if (fallbackId) {
+        setSelectedCompoundId(fallbackId);
+      }
+    };
+    
+    initializeSelection();
   }, [compoundsWithHalfLife, doses]);
 
-  // Handle compound change
+  // Handle compound change - persist to both storages
   const handleCompoundChange = (compoundId: string) => {
     setSelectedCompoundId(compoundId);
+    // Write to both: localStorage (instant) and Capacitor Preferences (persistent across updates)
     localStorage.setItem(STORAGE_KEY, compoundId);
+    persistentStorage.set(STORAGE_KEY, compoundId);
     onCompoundChange?.(compoundId);
   };
 
