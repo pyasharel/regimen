@@ -484,8 +484,23 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
 
           {/* Error message */}
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg animate-in fade-in duration-200">
-              {error}
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
+                {error}
+              </div>
+              
+              {/* Show sign-in option when account already exists */}
+              {error.includes('already has an account') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
+                  }}
+                  className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base"
+                >
+                  Sign in instead
+                </button>
+              )}
             </div>
           )}
         </div>

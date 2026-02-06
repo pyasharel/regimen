@@ -378,7 +378,7 @@ export function OilMlCalculatorEmbed() {
       <div style={{ marginTop: "24px", textAlign: "center" }}>
         <p style={{ color: "#4b5563", marginBottom: "12px" }}>Need to track your doses consistently?</p>
         <a
-          href="https://regimen.lovable.app"
+          href="https://getregimen.app"
           target="_blank"
           rel="noopener noreferrer"
           style={{

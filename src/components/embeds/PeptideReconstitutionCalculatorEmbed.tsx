@@ -121,7 +121,7 @@ export function PeptideReconstitutionCalculatorEmbed() {
           {showFaq && <div style={{ padding: "0 24px 24px", fontSize: "14px", color: "#4b5563" }}><p><strong>What is BAC water?</strong> Sterile water with benzyl alcohol to prevent bacteria.</p><p style={{ marginTop: "8px" }}><strong>Units vs mL?</strong> 100 units = 1mL on standard insulin syringes.</p></div>}
         </div>
       </div>
-      <div style={{ marginTop: "24px", textAlign: "center" }}><p style={{ color: "#4b5563", marginBottom: "12px" }}>Need to track doses?</p><a href="https://regimen.lovable.app" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", backgroundColor: "#f97316", color: "#fff", fontWeight: 600, borderRadius: "12px", textDecoration: "none" }}>Download Regimen →</a></div>
+      <div style={{ marginTop: "24px", textAlign: "center" }}><p style={{ color: "#4b5563", marginBottom: "12px" }}>Need to track doses?</p><a href="https://getregimen.app" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "12px 24px", backgroundColor: "#f97316", color: "#fff", fontWeight: 600, borderRadius: "12px", textDecoration: "none" }}>Download Regimen →</a></div>
     </div>
   );
 }
