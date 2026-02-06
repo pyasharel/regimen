@@ -496,9 +496,9 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
                   onClick={() => {
                     window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
                   }}
-                  className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base"
+                  className="text-primary text-sm font-medium underline underline-offset-2 hover:text-primary/80 transition-colors"
                 >
-                  Sign in instead
+                  Sign in to your account →
                 </button>
               )}
             </div>
