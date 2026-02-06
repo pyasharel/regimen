@@ -1,103 +1,84 @@
 
 
-# Comprehensive Onboarding & Authentication Fixes
+# Refined Onboarding Fix + Android SHA-256 Guide
 
-## Overview
+## Summary
 
-This plan fixes the critical issue where existing users get stuck during onboarding, plus cleans up URLs pointing to the wrong domain. The Android App Links fingerprint will be added once you find it in Google Play Console.
-
----
-
-## Problem 1: Users Get Stuck in Onboarding
-
-**Current Issue**: When someone enters an email that already has an account during onboarding, they see the error "This email already has an account. Try signing in instead." but there's NO button to actually sign in. They're completely stuck.
-
-**Solution**: Add a prominent "Sign in instead" button that:
-- Appears automatically when this error is shown
-- Takes the user to the login screen with their email pre-filled
-- Provides a smooth path to sign in without losing their place
+This plan makes two simple changes:
+1. Makes the "Sign in instead" button **subtle** (not prominent) since it's an edge case
+2. Provides you with the **exact navigation path** to find your SHA-256 fingerprint in Google Play Console
 
 ---
 
-## Problem 2: Calculator Embeds Link to Wrong Domain
+## Code Change: Subtle Sign-In Button
 
-**Current Issue**: The calculator embed components (used on partner sites) link to `regimen.lovable.app` instead of your production domain `getregimen.app`.
+**File**: `src/components/onboarding/screens/AccountCreationScreen.tsx`
 
-**Files affected**:
-- `src/components/embeds/OilMlCalculatorEmbed.tsx`
-- `src/components/embeds/PeptideReconstitutionCalculatorEmbed.tsx`
-
-**Solution**: Update both to use `https://getregimen.app`
-
----
-
-## Problem 3: Android Manifest Missing HTTPS Intent Filter
-
-**Current Issue**: The Android manifest only has the `regimen://` custom URL scheme. It doesn't have an intent-filter for HTTPS URLs, which means Android can't intercept `getregimen.app` links to open the app.
-
-**Solution**: Add an intent-filter in `AndroidManifest.xml` for:
-- Scheme: `https`
-- Host: `getregimen.app`
-- With `android:autoVerify="true"` for automatic verification
-
----
-
-## Technical Changes
-
-### File 1: `src/components/onboarding/screens/AccountCreationScreen.tsx`
-
-Add a "Sign in instead" button that appears when the duplicate email error is shown:
-
+**Current implementation** (from last diff) has a prominent primary-colored button:
 ```tsx
-{/* Error message */}
-{error && (
-  <div className="space-y-3">
-    <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
-      {error}
-    </div>
-    
-    {/* Show sign-in option when account already exists */}
-    {error.includes('already has an account') && (
-      <button
-        type="button"
-        onClick={() => {
-          // Navigate to auth with email pre-filled
-          window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
-        }}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base"
-      >
-        Sign in instead
-      </button>
-    )}
-  </div>
+<button className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base">
+  Sign in instead
+</button>
+```
+
+**Updated to be subtle** - just a text link style:
+```tsx
+{error.includes('already has an account') && (
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = `/auth?email=${encodeURIComponent(email)}&mode=signin`;
+    }}
+    className="text-primary text-sm font-medium underline underline-offset-2 hover:text-primary/80 transition-colors"
+  >
+    Sign in to your account →
+  </button>
 )}
 ```
 
-### File 2: `src/components/embeds/OilMlCalculatorEmbed.tsx`
+This changes it from a big button to a simple underlined text link that doesn't compete visually with the main "Create Account" button.
 
-Change line ~381 from:
-```tsx
-href="https://regimen.lovable.app"
+---
+
+## Finding Your SHA-256 Fingerprint
+
+### The Exact Path (from Google's official docs)
+
+**Navigation**: Left sidebar → **Test and release** → **Setup** → **App signing**
+
+Note: "Test and release" is different from "Testing" - it's a separate section in the sidebar.
+
+### Step-by-Step
+
+1. Go to [Google Play Console](https://play.google.com/console) and select your app
+2. In the **left sidebar**, look for **"Test and release"** (NOT "Testing")
+3. Click to expand it
+4. Click **"Setup"** under "Test and release"
+5. Click **"App signing"**
+6. You'll see **"App signing key certificate"** section
+7. Copy the **SHA-256 certificate fingerprint** (looks like `FA:C6:17:45:DC:09:...`)
+
+### If You Don't See "App signing"
+
+This can happen if:
+- You haven't uploaded any app bundle yet
+- Play App Signing wasn't enabled when you uploaded
+
+**Alternative method** - if you have Android Studio:
+1. Open your project in Android Studio
+2. Go to **Build > Generate Signed Bundle/APK**
+3. Select your keystore file
+4. In terminal, run:
+```bash
+keytool -list -v -keystore your-keystore.jks -alias your-alias
 ```
-To:
-```tsx
-href="https://getregimen.app"
-```
+5. Copy the SHA-256 fingerprint from the output
 
-### File 3: `src/components/embeds/PeptideReconstitutionCalculatorEmbed.tsx`
+---
 
-Change line ~124 from:
-```tsx
-href="https://regimen.lovable.app"
-```
-To:
-```tsx
-href="https://getregimen.app"
-```
+## Android Configuration Already Complete
 
-### File 4: `android/app/src/main/AndroidManifest.xml`
-
-Add new intent-filter for HTTPS App Links:
+The Android manifest already has the correct intent-filter (added in the last change):
 
 ```xml
 <!-- App Links for getregimen.app domain -->
@@ -109,36 +90,29 @@ Add new intent-filter for HTTPS App Links:
 </intent-filter>
 ```
 
----
-
-## File 5: Android assetlinks.json (Separate Step)
-
-The `public/.well-known/assetlinks.json` file already exists with a placeholder. Once you find your SHA-256 fingerprint, I'll update it with the real value.
-
-**Where to find it**: Google Play Console → Your app → Setup → App signing → "App signing key certificate" → SHA-256 certificate fingerprint
+The only missing piece is the SHA-256 fingerprint in `assetlinks.json`.
 
 ---
 
-## Expected User Experience After Fix
+## What I'll Do After Approval
 
-**Existing User in Onboarding**:
-```text
-1. User goes through onboarding flow
-2. Enters email that already has an account
-3. Error shows with message AND a "Sign in instead" button
-4. User taps button → Goes to /auth with email pre-filled
-5. Enters password → Signs in successfully
-6. Redirected to /today screen
+1. Update `AccountCreationScreen.tsx` to use a subtle text link instead of a prominent button
+2. Wait for your SHA-256 fingerprint to update `assetlinks.json`
+
+---
+
+## After You Provide the SHA-256
+
+Once you share the fingerprint (e.g., `FA:C6:17:45:DC:09:A2:B3:...`), I'll update:
+
+**File**: `public/.well-known/assetlinks.json`
+```json
+{
+  "sha256_cert_fingerprints": [
+    "FA:C6:17:45:DC:09:A2:B3:..." // Your actual fingerprint
+  ]
+}
 ```
 
----
-
-## Summary of Changes
-
-| File | Change |
-|------|--------|
-| `AccountCreationScreen.tsx` | Add "Sign in instead" button for existing accounts |
-| `OilMlCalculatorEmbed.tsx` | Fix URL to getregimen.app |
-| `PeptideReconstitutionCalculatorEmbed.tsx` | Fix URL to getregimen.app |
-| `AndroidManifest.xml` | Add HTTPS App Links intent-filter |
+Then Android App Links will be fully functional.
 
