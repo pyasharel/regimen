@@ -37,7 +37,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isMountedRef = useRef(true);
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clear watchdog on unmount or state change
+  // Clear watchdog helper (used by handleRetry)
   const clearWatchdog = useCallback(() => {
     if (watchdogRef.current) {
       clearTimeout(watchdogRef.current);
@@ -191,22 +191,51 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     }
   }, [clearWatchdog, tryFastPath]);
 
-  // Start watchdog on mount
+  // WATCHDOG EFFECT - Completely independent, cannot be killed by hydration flow
+  // This is the safety net that ALWAYS fires if we're stuck in loading state
+  useEffect(() => {
+    // Only run watchdog when in loading state
+    if (hydrationState !== 'loading') return;
+    
+    console.log('[ProtectedRoute] 🐕 Watchdog started, will trigger in', WATCHDOG_TIMEOUT_MS, 'ms');
+    
+    const watchdog = setTimeout(() => {
+      console.warn('[ProtectedRoute] ⏰ Watchdog triggered after', WATCHDOG_TIMEOUT_MS, 'ms - forcing recovery UI');
+      setSupportCode(generateSupportCode());
+      setHydrationState('failed');
+    }, WATCHDOG_TIMEOUT_MS);
+    
+    return () => {
+      console.log('[ProtectedRoute] 🐕 Watchdog cleared (state changed to:', hydrationState, ')');
+      clearTimeout(watchdog);
+    };
+  }, [hydrationState]); // ONLY depends on hydrationState - nothing can accidentally clear it
+
+  // GLOBAL ERROR HANDLER - Catches unhandled promise rejections during auth
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error('[ProtectedRoute] Unhandled rejection during hydration:', event.reason);
+      // Only trigger recovery if we're still in loading state
+      if (hydrationState === 'loading') {
+        console.warn('[ProtectedRoute] Unhandled rejection while loading - triggering recovery');
+        setSupportCode('unhandled-rejection');
+        setHydrationState('failed');
+      }
+      // Prevent the error from showing in console as unhandled
+      event.preventDefault();
+    };
+    
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => window.removeEventListener('unhandledrejection', handleRejection);
+  }, [hydrationState]);
+
+  // HYDRATION EFFECT - Handles actual session restoration
+  // Separated from watchdog so it can't accidentally clear the safety timer
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Start the absolute watchdog timer
-    watchdogRef.current = setTimeout(() => {
-      if (isMountedRef.current && hydrationState === 'loading') {
-        console.warn('[ProtectedRoute] ⏰ Watchdog triggered after', WATCHDOG_TIMEOUT_MS, 'ms');
-        setSupportCode(generateSupportCode());
-        setHydrationState('failed');
-      }
-    }, WATCHDOG_TIMEOUT_MS);
-    
-    // Only attempt hydration on initial mount or when retry is triggered
+    // Skip if we've already attempted on this mount (prevents re-runs)
     if (hydrationAttemptRef.current > 0 && retryCount === 0) {
-      clearWatchdog();
       return;
     }
     hydrationAttemptRef.current++;
@@ -215,9 +244,8 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     
     return () => {
       isMountedRef.current = false;
-      clearWatchdog();
     };
-  }, [attemptHydration, retryCount, clearWatchdog, hydrationState]);
+  }, [attemptHydration, retryCount]);
 
   // Handle soft reload
   const handleReload = useCallback(() => {
