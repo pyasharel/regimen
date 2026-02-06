@@ -10,11 +10,13 @@ import { loadFromMirror, restoreSessionFromMirror } from './authTokenMirror';
 import type { Session } from '@supabase/supabase-js';
 
 // How long to wait for getSession before trying cache hydration
-const GET_SESSION_TIMEOUT_MS = 4000;
+// REDUCED from 4000ms to ensure total hydration stays under 8s watchdog budget
+const GET_SESSION_TIMEOUT_MS = 3000;
 // How long to wait for setSession during hydration
-const SET_SESSION_TIMEOUT_MS = 2000;
+// REDUCED from 2000ms to ensure total hydration stays under 8s watchdog budget
+const SET_SESSION_TIMEOUT_MS = 1500;
 // How long to wait for hasAnyAuthTokens check
-const TOKEN_CHECK_TIMEOUT_MS = 1500;
+const TOKEN_CHECK_TIMEOUT_MS = 1000;
 
 // Stage tracking for diagnostics
 const setHydrationStage = (stage: string) => {
@@ -143,7 +145,7 @@ export const hydrateSessionOrNull = async (
     console.log('[SafeAuth] Final verification getSession...');
     const { data } = await withTimeout(
       supabase.auth.getSession(),
-      1500,
+      1000,  // REDUCED from 1500ms to ensure total stays under watchdog budget
       'getSession-verify'
     );
     

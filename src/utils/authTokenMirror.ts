@@ -15,8 +15,9 @@ import type { Session } from '@supabase/supabase-js';
 const MIRROR_KEY = 'authTokenMirror';
 
 // Timeouts for mirror operations - keep short to fail fast on iOS resume hangs
-const MIRROR_LOAD_TIMEOUT_MS = 1000;
-const MIRROR_RESTORE_TIMEOUT_MS = 2500;
+// REDUCED to ensure total hydration stays under 8s watchdog budget
+const MIRROR_LOAD_TIMEOUT_MS = 800;
+const MIRROR_RESTORE_TIMEOUT_MS = 1500;
 
 interface MirroredSession {
   access_token: string;
