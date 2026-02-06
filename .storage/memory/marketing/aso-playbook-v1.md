@@ -1,7 +1,7 @@
 # ASO Playbook v1 - Comprehensive Strategy Document
 
-**Created:** February 2025  
-**Last Updated:** February 6, 2025  
+**Created:** February 2026  
+**Last Updated:** February 6, 2026  
 **Status:** Active
 
 ---
@@ -92,6 +92,7 @@ testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstituti
 - injection log
 - steroid tracker
 - peptide log
+- reconstitution calculator *(added Feb 6 - highest traffic untapped keyword)*
 
 ### Weekly Optimization Checklist
 
@@ -104,7 +105,7 @@ testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstituti
 
 ## 4. Keyword Inspection Archive
 
-### Inspections Completed (February 2025)
+### Inspections Completed (February 2026)
 
 | Keyword | Difficulty | Traffic | KEI | Verdict |
 |---------|------------|---------|-----|---------|
@@ -149,7 +150,7 @@ Higher KEI = Better opportunity
 - "How to Reconstitute Peptides" guide → targets `reconstitution calculator`
 - "TRT Injection Schedule" guide → targets `trt log`
 
-### GSC Performance Baseline (February 2025)
+### GSC Performance Baseline (February 2026)
 
 | Page | Impressions | Clicks | CTR |
 |------|-------------|--------|-----|
@@ -177,21 +178,21 @@ Higher KEI = Better opportunity
 
 ## 7. Growth Milestones
 
-### Phase 1: Foundation (Now - March 2025)
+### Phase 1: Foundation (Now - March 2026)
 
 - [ ] Reach 25 App Store reviews
 - [ ] Rank top 20 for "testosterone log"
 - [ ] Rank top 50 for "injection tracker"
 - [ ] Launch Android from closed beta
 
-### Phase 2: Expansion (April - June 2025)
+### Phase 2: Expansion (April - June 2026)
 
 - [ ] Rank top 10 for "reconstitution calculator"
 - [ ] Create dedicated calculator landing pages
 - [ ] 100 total paying subscribers
 - [ ] Close optimization gap with Shotsy (75+)
 
-### Phase 3: Dominance (Q3-Q4 2025)
+### Phase 3: Dominance (Q3-Q4 2026)
 
 - [ ] #1 for "trt tracker"
 - [ ] #1 for "peptide tracker"
@@ -244,6 +245,7 @@ Higher KEI = Better opportunity
 
 | Date | Change |
 |------|--------|
-| Feb 6, 2025 | Initial playbook created |
-| Feb 6, 2025 | Added reconstitution calculator + peptide dose calculator inspections |
-| Feb 6, 2025 | Created High Intent - Exact campaign structure |
+| Feb 6, 2026 | Initial playbook created |
+| Feb 6, 2026 | Added reconstitution calculator + peptide dose calculator inspections |
+| Feb 6, 2026 | Created High Intent - Exact campaign structure |
+| Feb 6, 2026 | Added "reconstitution calculator" to High Intent - Exact campaign |
