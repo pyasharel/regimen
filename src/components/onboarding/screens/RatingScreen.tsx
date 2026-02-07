@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { OnboardingButton } from '../OnboardingButton';
 import { Star, Loader2 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
-import { InAppReview } from '@/plugins/InAppReviewPlugin';
-import { trackRatingButtonTapped, trackRatingOutcome } from '@/utils/analytics';
+import { requestRating } from '@/utils/ratingHelper';
+import { toast } from 'sonner';
 
 interface RatingScreenProps {
   onComplete: () => void;
@@ -33,50 +32,25 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
   const [isRequesting, setIsRequesting] = useState(false);
 
   const handleRate = async () => {
-    // Track the button tap immediately - this tells us if users are clicking
-    trackRatingButtonTapped('onboarding');
-    
-    const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
     console.log('[RatingScreen] handleRate called');
-    console.log('[RatingScreen] isNativePlatform:', Capacitor.isNativePlatform());
-    console.log('[RatingScreen] InAppReview plugin available:', isPluginAvailable);
-    
     setIsRequesting(true);
     
-    if (!Capacitor.isNativePlatform()) {
-      console.log('[RatingScreen] Not native platform, skipping review request');
-      trackRatingOutcome('onboarding', 'skipped_web');
-      setIsRequesting(false);
-      onComplete();
-      return;
-    }
-    
-    if (!isPluginAvailable) {
-      console.log('[RatingScreen] Plugin not registered, skipping');
-      trackRatingOutcome('onboarding', 'plugin_not_available');
-      setIsRequesting(false);
-      onComplete();
-      return;
-    }
-    
     try {
-      console.log('[RatingScreen] Requesting review...');
-      // Small delay to ensure UI is settled before showing system dialog
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const result = await requestRating('onboarding');
       
-      await InAppReview.requestReview();
-      console.log('[RatingScreen] Review request completed successfully');
-      trackRatingOutcome('onboarding', 'request_sent');
+      console.log('[RatingScreen] Rating result:', result);
       
-      // IMPORTANT: Give the user time to interact with the rating dialog
-      // Apple's SKStoreReviewController.requestReview() returns immediately
-      // but the dialog stays on screen. We need to wait before navigating.
-      // 2.5 seconds should give enough time for quick star tap + dismiss
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      // Show feedback if we fell back to store
+      if (result.method === 'store_fallback') {
+        toast.success('Opening store page...', {
+          description: 'Leave us a review to help others discover Regimen!',
+          duration: 3000,
+        });
+      } else if (result.method === 'not_available' && result.reason === 'web_platform') {
+        toast.info('Rating is available in the mobile app');
+      }
     } catch (error) {
-      console.error('[RatingScreen] Review request failed:', error);
-      trackRatingOutcome('onboarding', 'request_failed');
-      // Silent failure - continue to next screen
+      console.error('[RatingScreen] Rating error:', error);
     }
     
     setIsRequesting(false);

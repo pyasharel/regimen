@@ -707,7 +707,7 @@ export const trackRatingButtonTapped = (source: 'settings' | 'onboarding') => {
 
 export const trackRatingOutcome = (
   source: 'settings' | 'onboarding',
-  outcome: 'plugin_not_available' | 'request_sent' | 'request_failed' | 'skipped_web'
+  outcome: 'plugin_not_available' | 'request_sent' | 'request_failed' | 'skipped_web' | 'testflight_detected' | 'fallback_store_link'
 ) => {
   const platform = getPlatform();
   ReactGA.event('rating_outcome', {
