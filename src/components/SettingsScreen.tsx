@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { User, Palette, Download, HelpCircle, LogOut, Volume2, Bell, Ruler, Star, Share2, Heart } from "lucide-react";
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
-import { InAppReview } from '@/plugins/InAppReviewPlugin';
 import { Button } from "@/components/ui/button";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -13,7 +12,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { persistentStorage } from "@/utils/persistentStorage";
-import { trackSignOut, trackRatingRequested, trackFeedbackInitiated, trackShareAction, trackThemeChanged, trackSoundToggled } from "@/utils/analytics";
+import { trackSignOut, trackFeedbackInitiated, trackShareAction, trackThemeChanged, trackSoundToggled } from "@/utils/analytics";
+import { requestRating } from "@/utils/ratingHelper";
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
@@ -132,24 +132,20 @@ export const SettingsScreen = () => {
   };
 
   const handleRateApp = async () => {
-    trackRatingRequested('settings');
-    const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
+    console.log('[Settings] Rate button clicked');
     
-    if (Capacitor.isNativePlatform()) {
-      if (!isPluginAvailable) {
-        console.log('[Settings] Rating plugin not registered');
-        return;
-      }
-      try {
-        console.log('[Settings] Requesting rating prompt...');
-        await new Promise(resolve => setTimeout(resolve, 400));
-        await InAppReview.requestReview();
-        console.log('[Settings] Rating prompt completed');
-      } catch (error) {
-        console.error('[Settings] Rating prompt failed:', error);
-      }
-    } else {
-      toast.info('Rating is available in the native app');
+    const result = await requestRating('settings');
+    
+    console.log('[Settings] Rating result:', result);
+    
+    // Show feedback based on result
+    if (result.method === 'store_fallback') {
+      toast.success('Opening store page...', {
+        description: 'Your review helps others discover Regimen!',
+        duration: 3000,
+      });
+    } else if (result.method === 'not_available' && result.reason === 'web_platform') {
+      toast.info('Rating is available in the mobile app');
     }
   };
 
