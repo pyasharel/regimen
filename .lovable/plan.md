@@ -1,9 +1,36 @@
 
 
-# Add Missing Compounds: GLOW, KLOW, Proviron, Telmisartan + Sync
+# Add SARMs, Fat Loss Compounds & Enclomiphene
 
 ## Summary
-Add missing compounds reported by user Cosmin (GLOW, KLOW, Proviron, Telmisartan) and sync compounds that exist in `halfLifeData.ts` but are missing from the autocomplete lists.
+Add the remaining compounds from Cosmin's suggestions (excluding DNP for safety reasons).
+
+---
+
+## Compounds to Add
+
+### SARMs (Selective Androgen Receptor Modulators)
+| Compound | Half-Life | Notes |
+|----------|-----------|-------|
+| LGD-4033 / Ligandrol | 30h | Popular muscle/strength SARM |
+| RAD-140 / Testolone | 60h | Strong muscle/strength SARM |
+| Ostarine / MK-2866 / Enobosarm | 24h | Mild, widely used SARM |
+| YK-11 | 8h | Myostatin inhibitor |
+| Andarine / S4 | 4h | Cutting SARM |
+
+### Fat Loss & Endurance
+| Compound | Half-Life | Notes |
+|----------|-----------|-------|
+| Clenbuterol | 36h | Beta-2 agonist thermogenic |
+| Salbutamol / Albuterol | 5h | Shorter-acting beta-2 agonist |
+| Cardarine / GW-501516 | 20h | PPAR-delta agonist for endurance |
+| Stenabolic / SR9009 | 4h | Rev-ErbA agonist |
+| AICAR | 2h | AMPK activator |
+
+### PCT
+| Compound | Half-Life | Notes |
+|----------|-----------|-------|
+| Enclomiphene | 10h | Pure trans-isomer of Clomid |
 
 ---
 
@@ -11,106 +38,75 @@ Add missing compounds reported by user Cosmin (GLOW, KLOW, Proviron, Telmisartan
 
 | File | Changes |
 |------|---------|
-| `src/components/AddCompoundScreen.tsx` | Add new compounds to `COMMON_PEPTIDES` array |
-| `src/components/onboarding/screens/MedicationSetupScreen.tsx` | Add same compounds to `ALL_COMPOUNDS` array |
-| `src/utils/halfLifeData.ts` | Add half-life data for GLOW, KLOW, Telmisartan |
-| `MEDICATIONS_LIST.md` | Update documentation with new compounds |
-
----
-
-## Compounds to Add
-
-### User-Requested (from Cosmin)
-| Compound | Category | Half-Life | Notes |
-|----------|----------|-----------|-------|
-| **GLOW** | Peptide Blend | ~4h average | BPC-157 + GHK-Cu + Thymosin Beta-4 |
-| **KLOW** | Peptide Blend | ~4h average | BPC-157 + TB-500 + KPV + GHK-Cu |
-| **Proviron** | Steroid | 12h | Already in halfLifeData, missing from autocomplete |
-| **Telmisartan** | Blood Pressure | 24h | ARB medication, popular in TRT community |
-
-### Sync from halfLifeData.ts (missing from autocomplete)
-| Compound | Category | Already Has Half-Life Data |
-|----------|----------|---------------------------|
-| **Halotestin** | Steroid | Yes (9h) |
-| **Superdrol** | Steroid | Yes (8h) |
-| **Turinabol** | Steroid | Yes (16h) |
-| **Mesterolone** | Steroid | Add as alias for Proviron |
-| **Fluoxymesterone** | Steroid | Add as alias for Halotestin |
-| **Methasterone** | Steroid | Add as alias for Superdrol |
-| **Chlorodehydromethyltestosterone** | Steroid | Add as alias for Turinabol (scientific name) |
+| `src/components/AddCompoundScreen.tsx` | Add SARMs, fat loss compounds, Enclomiphene to COMMON_PEPTIDES |
+| `src/components/onboarding/screens/MedicationSetupScreen.tsx` | Add same compounds to ALL_COMPOUNDS |
+| `src/utils/halfLifeData.ts` | Add half-life data for all new compounds |
+| `MEDICATIONS_LIST.md` | Update documentation with new categories |
 
 ---
 
 ## Implementation Details
 
-### 1. Update COMMON_PEPTIDES in AddCompoundScreen.tsx
-
-Add to the **Blends and Stacks** section:
-```typescript
-// Blends and Stacks
-"Wolverine Stack", "GHK-Cu + BPC-157 Blend", "GLOW", "KLOW"
-```
-
-Add to the **Anabolic Steroids** section:
-```typescript
-"Proviron", "Mesterolone", "Halotestin", "Fluoxymesterone", 
-"Superdrol", "Methasterone", "Turinabol", "Chlorodehydromethyltestosterone"
-```
-
-Add to the **Health & Metabolic** section:
-```typescript
-"Telmisartan"
-```
-
-### 2. Update ALL_COMPOUNDS in MedicationSetupScreen.tsx
-
-Add the same compounds in their respective categories:
-- GLOW, KLOW in peptide blends
-- Proviron, Halotestin, Superdrol, Turinabol in steroids
-- Telmisartan in health/metabolic
-
-### 3. Add Half-Life Data for New Compounds
+### 1. AddCompoundScreen.tsx - Add new sections
 
 ```typescript
-// GLOW Peptide Blend
-'glow': {
-  halfLifeHours: 4, // Average of BPC-157 (~5h), GHK-Cu (~5h), Thymosin Beta-4 (~2h)
-  tMaxHours: 0.5,
-  category: 'peptide',
-  displayName: 'GLOW',
-  notes: 'Blend: BPC-157 + GHK-Cu + Thymosin Beta-4'
-}
+// After PCT section, add:
+// SARMs (Selective Androgen Receptor Modulators)
+"LGD-4033", "Ligandrol", "RAD-140", "Testolone", 
+"Ostarine", "MK-2866", "Enobosarm",
+"YK-11", "Andarine", "S4",
 
-// KLOW Peptide Blend
-'klow': {
-  halfLifeHours: 4, // Average of BPC-157 (~5h), TB-500 (~2h), KPV (~4h), GHK-Cu (~5h)
-  tMaxHours: 0.5,
-  category: 'peptide',
-  displayName: 'KLOW',
-  notes: 'Blend: BPC-157 + TB-500 + KPV + GHK-Cu'
-}
+// Fat Loss & Endurance
+"Clenbuterol", "Salbutamol", "Albuterol",
+"Cardarine", "GW-501516", "Stenabolic", "SR9009", "AICAR",
 
-// Telmisartan
-'telmisartan': {
-  halfLifeHours: 24, // FDA label
-  tMaxHours: 1,
-  category: 'other',
-  displayName: 'Telmisartan',
-  notes: 'Micardis - ARB blood pressure medication'
-}
+// Add to PCT section:
+"Enclomiphene"
 ```
 
-### 4. Update MEDICATIONS_LIST.md
+### 2. MedicationSetupScreen.tsx - Add to onboarding
 
-Add new entries to the documentation under appropriate categories.
+```typescript
+// SARMs
+"LGD-4033", "RAD-140", "Ostarine", "MK-2866", "YK-11", "Andarine",
+
+// Fat Loss & Endurance
+"Clenbuterol", "Salbutamol", "Cardarine", "GW-501516", "Stenabolic", "SR9009",
+
+// Add to PCT:
+"Enclomiphene"
+```
+
+### 3. halfLifeData.ts - Add pharmacokinetic data
+
+All compounds will get proper half-life entries with:
+- `halfLifeHours` (from research literature)
+- `tMaxHours` (time to peak)
+- `category` (sarm, other, pct)
+- `displayName` and `notes` for aliases
+
+### 4. MEDICATIONS_LIST.md - Add new sections
+
+- New "SARMs" section
+- New "Fat Loss & Endurance" section
+- Add Enclomiphene to PCT section
+
+---
+
+## Excluded Compound
+
+**DNP (2,4-Dinitrophenol)** - Excluded due to:
+- Narrow therapeutic window (fatal overdose risk)
+- Multiple documented deaths
+- Potential legal/liability concerns for the app
+
+Cosmin can add it as a custom compound if he really wants to track it.
 
 ---
 
 ## Deployment Note
 
-After these changes are published:
-- **Web users**: Will see new compounds immediately
-- **iOS/Android users**: Will need to download an app update from the App Store/Play Store
-
-This is due to the static compound list architecture (compounds are hardcoded in the frontend bundle, not fetched from the database).
+After publishing:
+- **Web users**: See changes immediately
+- **iOS/Android users**: Need app store update
 
