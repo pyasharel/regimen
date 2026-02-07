@@ -59,6 +59,8 @@ const ALL_COMPOUNDS = [
   "Boldenone Undecylenate", "Equipoise",
   "Masteron Propionate", "Masteron Enanthate",
   "Primobolan", "Oxandrolone", "Anavar", "Stanozolol", "Winstrol",
+  "Proviron", "Mesterolone", "Halotestin", "Fluoxymesterone",
+  "Superdrol", "Methasterone", "Turinabol",
   
   // HGH
   "Somatropin", "HGH", "Genotropin", "Humatrope", "Norditropin",
@@ -68,10 +70,13 @@ const ALL_COMPOUNDS = [
   
   // Health & Metabolic
   "Metformin", "Berberine", "DHEA", "Pregnenolone",
-  "Levothyroxine", "Cytomel", "Armour Thyroid",
+  "Levothyroxine", "Cytomel", "Armour Thyroid", "Telmisartan",
   
   // Sexual Health
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
+  
+  // Blends
+  "GLOW", "KLOW",
 ];
 
 const DOSE_UNITS = ['mg', 'mcg', 'mL', 'IU'];
