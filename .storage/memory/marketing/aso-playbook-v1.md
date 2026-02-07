@@ -1,7 +1,7 @@
 # ASO Playbook v1 - Comprehensive Strategy Document
 
 **Created:** February 2026  
-**Last Updated:** February 6, 2026  
+**Last Updated:** February 7, 2026  
 **Status:** Active
 
 ---
@@ -28,24 +28,35 @@
 
 ---
 
-## 2. Metadata Strategy
+## 2. Store URLs
 
-### App Name (30 chars - DO NOT CHANGE)
+| Platform | URL |
+|----------|-----|
+| **iOS App Store** | https://apps.apple.com/app/regimen-peptide-trt-tracker/id6746762847 |
+| **Google Play Store** | https://play.google.com/store/apps/details?id=app.lovable.regimen |
+
+---
+
+## 3. Metadata Strategy
+
+### iOS App Store
+
+#### App Name (30 chars - DO NOT CHANGE)
 ```
 Regimen: Peptide & TRT Tracker
 ```
 
-### Subtitle (30 chars - KEEP CURRENT)
+#### Subtitle (30 chars - KEEP CURRENT)
 ```
 Injection Log & Calculator
 ```
 
-### Keywords (100 chars - UPDATE IN BUILD 34/35)
+#### Keywords (100 chars - UPDATE IN BUILD 34/35)
 ```
 testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstitution,log,protocol,dose
 ```
 
-### Keyword Rationale
+#### Keyword Rationale
 
 | Keyword | Reason |
 |---------|--------|
@@ -60,13 +71,59 @@ testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstituti
 | `protocol` | TRT community terminology |
 | `dose` | Utility term for calculator intent |
 
-### Words NOT in Keywords (indexed via Name/Subtitle)
+#### Words NOT in Keywords (indexed via Name/Subtitle)
 - regimen, peptide, trt, tracker (from Name)
 - injection, log, calculator (from Subtitle)
 
+### Google Play Store
+
+#### App Name (30 chars)
+```
+Regimen: Peptide & TRT Tracker
+```
+
+#### Short Description (80 chars)
+```
+Track TRT, peptides & GLP-1 injections. Reconstitution calculator & reminders.
+```
+
+#### Full Description (First Paragraph - Keyword Optimized)
+```
+Regimen is the all-in-one injection tracker and log for TRT, peptides, and GLP-1 medications like semaglutide and tirzepatide. Whether you're managing a testosterone protocol, cycling research peptides like BPC-157 or TB-500, or tracking your weight loss journey on Ozempic or Mounjaro, Regimen helps you stay consistent with smart reminders, a built-in reconstitution calculator, and detailed logging.
+```
+
 ---
 
-## 3. Apple Search Ads Strategy
+## 4. Google Play ASO Strategy
+
+### Key Differences from iOS
+
+| Aspect | iOS App Store | Google Play |
+|--------|---------------|-------------|
+| Hidden keyword field | ✅ Yes (100 chars) | ❌ No |
+| Title indexed | ✅ Yes | ✅ Yes |
+| Subtitle/Short desc indexed | ✅ Yes | ✅ Yes |
+| Full description indexed | ❌ No | ✅ Yes (critical!) |
+| Keyword density matters | N/A | ✅ Yes |
+
+### Google Play Optimization Tips
+
+1. **Full description is SEO-critical** - Unlike iOS, every word in the full description is indexed by Google Play
+2. **Natural keyword integration** - Include target keywords naturally throughout the description
+3. **First paragraph matters most** - Front-load the most important keywords
+4. **No keyword stuffing** - Google penalizes obvious keyword stuffing
+5. **Update regularly** - Fresh descriptions can boost rankings
+
+### Target Keywords for Google Play
+Include these naturally in the full description:
+- testosterone, TRT, injection tracker, injection log
+- peptide tracker, peptide log, reconstitution calculator
+- semaglutide, tirzepatide, Ozempic, Mounjaro
+- protocol, cycle, reminder, dose
+
+---
+
+## 5. Apple Search Ads Strategy
 
 ### Campaign Structure
 
@@ -103,7 +160,7 @@ testosterone,semaglutide,tirzepatide,retatrutide,injection,steroids,reconstituti
 
 ---
 
-## 4. Keyword Inspection Archive
+## 6. Keyword Inspection Archive
 
 ### Inspections Completed (February 2026)
 
@@ -129,7 +186,7 @@ Higher KEI = Better opportunity
 
 ---
 
-## 5. Content Marketing Strategy
+## 7. Content Marketing Strategy
 
 ### Priority 1: Fix Existing Content (This Week)
 
@@ -160,11 +217,12 @@ Higher KEI = Better opportunity
 
 ---
 
-## 6. Review Acquisition Strategy
+## 8. Review Acquisition Strategy
 
 ### Current State
-- **Reviews:** 8-9
-- **Target:** 25 reviews (minimum credibility threshold)
+- **iOS Reviews:** 8-9
+- **Android Reviews:** 0 (just launched)
+- **Target:** 25 reviews per platform (minimum credibility threshold)
 - **Stretch Goal:** 50+ reviews (competitive with Shotsy)
 
 ### Tactics
@@ -176,14 +234,16 @@ Higher KEI = Better opportunity
 
 ---
 
-## 7. Growth Milestones
+## 9. Growth Milestones
 
 ### Phase 1: Foundation (Now - March 2026)
 
-- [ ] Reach 25 App Store reviews
+- [x] Launch Android from closed beta ✅ (Feb 7, 2026)
+- [ ] Reach 25 iOS App Store reviews
+- [ ] Reach 10 Google Play reviews
 - [ ] Rank top 20 for "testosterone log"
 - [ ] Rank top 50 for "injection tracker"
-- [ ] Launch Android from closed beta
+- [ ] Monitor Google Play Console for early performance data
 
 ### Phase 2: Expansion (April - June 2026)
 
@@ -197,18 +257,21 @@ Higher KEI = Better opportunity
 - [ ] #1 for "trt tracker"
 - [ ] #1 for "peptide tracker"
 - [ ] 50+ App Store reviews
+- [ ] 25+ Google Play reviews
 - [ ] Organic TikTok marketing launch
 
 ---
 
-## 8. Priority Stack (What To Do First)
+## 10. Priority Stack (What To Do First)
 
 ### This Week ✅
 1. ✅ Create High Intent - Exact Match ASA campaign
 2. ✅ Pause Peptides - Broad campaign
 3. ✅ Unpause Injection - Exact with $2.50 bid
-4. 🔄 Fix BPC-157 article title/meta
-5. 🔄 Request 2-3 more App Store reviews
+4. ✅ Launch Android on Google Play (Feb 7, 2026)
+5. 🔄 Fix BPC-157 article title/meta
+6. 🔄 Request 2-3 more iOS App Store reviews
+7. 🔄 Request Google Play reviews from Android beta testers
 
 ### Next Release (Build 34/35)
 1. Update keyword string to new 100-char version
@@ -218,10 +281,12 @@ Higher KEI = Better opportunity
 1. Create tirzepatide calculator landing page
 2. Create BPC-157 dosage calculator landing page
 3. Monitor ASA campaigns - optimize weekly
+4. Monitor Play Console for crashes/ANRs
+5. Cross-promote Android launch to iOS users
 
 ---
 
-## 9. Strategic Insights
+## 11. Strategic Insights
 
 ### Why "Log" Keywords Are Golden
 - Lower competition than "tracker" keywords
@@ -241,10 +306,15 @@ Higher KEI = Better opportunity
 
 ---
 
-## 10. Changelog
+## 12. Changelog
 
 | Date | Change |
 |------|--------|
+| Feb 7, 2026 | Google Play production launch |
+| Feb 7, 2026 | Added Store URLs section with iOS and Android links |
+| Feb 7, 2026 | Added Google Play metadata (app name, short description, full description) |
+| Feb 7, 2026 | Added Google Play ASO Strategy section |
+| Feb 7, 2026 | Updated Growth Milestones with Android-specific goals |
 | Feb 6, 2026 | Initial playbook created |
 | Feb 6, 2026 | Added reconstitution calculator + peptide dose calculator inspections |
 | Feb 6, 2026 | Created High Intent - Exact campaign structure |
