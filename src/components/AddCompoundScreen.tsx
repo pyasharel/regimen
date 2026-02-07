@@ -101,6 +101,8 @@ const COMMON_PEPTIDES = [
   "Primobolan", "Primobolan Depot", "Methenolone Enanthate", "Methenolone Acetate",
   "Oxandrolone", "Anavar", "Stanozolol", "Winstrol",
   "Oxymetholone", "Anadrol", "Methandrostenolone", "Dianabol",
+  "Proviron", "Mesterolone", "Halotestin", "Fluoxymesterone", 
+  "Superdrol", "Methasterone", "Turinabol", "Chlorodehydromethyltestosterone",
   
   // Women's HRT - Estrogen
   "Estradiol", "Estradiol Valerate", "Estradiol Cypionate",
@@ -138,13 +140,13 @@ const COMMON_PEPTIDES = [
   "Levothyroxine", "Synthroid", "Liothyronine", "Cytomel", "Armour Thyroid",
   "Low-dose Aspirin",
   "Atorvastatin", "Rosuvastatin",
-  "Lisinopril", "Losartan", "Amlodipine",
+  "Lisinopril", "Losartan", "Amlodipine", "Telmisartan",
   
   // Sexual Health / ED Medications
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
   
   // Blends and Stacks
-  "Wolverine Stack", "GHK-Cu + BPC-157 Blend"
+  "Wolverine Stack", "GHK-Cu + BPC-157 Blend", "GLOW", "KLOW"
 ];
 
 export const AddCompoundScreen = () => {

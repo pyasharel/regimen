@@ -698,6 +698,31 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Thymalin',
     notes: 'Immune peptide'
   },
+  
+  // Peptide Blends
+  'glow': {
+    halfLifeHours: 4, // Average of BPC-157 (~5h), GHK-Cu (~5h), Thymosin Beta-4 (~2h)
+    tMaxHours: 0.5,
+    category: 'peptide',
+    displayName: 'GLOW',
+    notes: 'Blend: BPC-157 + GHK-Cu + Thymosin Beta-4'
+  },
+  'klow': {
+    halfLifeHours: 4, // Average of BPC-157 (~5h), TB-500 (~2h), KPV (~4h), GHK-Cu (~5h)
+    tMaxHours: 0.5,
+    category: 'peptide',
+    displayName: 'KLOW',
+    notes: 'Blend: BPC-157 + TB-500 + KPV + GHK-Cu'
+  },
+  
+  // Additional Blood Pressure Medications
+  'telmisartan': {
+    halfLifeHours: 24, // FDA label
+    tMaxHours: 1,
+    category: 'other',
+    displayName: 'Telmisartan',
+    notes: 'Micardis - ARB blood pressure medication'
+  },
 };
 
 /**

@@ -45,6 +45,10 @@ This file contains all compounds currently available in the autocomplete databas
 - Tesamorelin / Tesofensine
 - Thymosin Alpha-1 / Thymosin Beta-4 / Thymulin
 
+## Peptide Blends
+- GLOW (BPC-157 + GHK-Cu + Thymosin Beta-4)
+- KLOW (BPC-157 + TB-500 + KPV + GHK-Cu)
+
 ## Select Bioregulators
 - Epitalon
 - Thymalin
@@ -67,12 +71,16 @@ This file contains all compounds currently available in the autocomplete databas
 - Deca / Nandrolone Decanoate
 - Dianabol / Methandrostenolone
 - Equipoise / Boldenone Undecylenate
+- Halotestin / Fluoxymesterone
 - Masteron Propionate / Drostanolone Propionate
 - Masteron Enanthate / Drostanolone Enanthate
 - NPP / Nandrolone Phenylpropionate
 - Primobolan / Primobolan Depot / Methenolone Enanthate
 - Primobolan (Oral) / Methenolone Acetate
+- Proviron / Mesterolone
+- Superdrol / Methasterone
 - Trenbolone Acetate / Enanthate
+- Turinabol / Chlorodehydromethyltestosterone
 - Winstrol / Stanozolol
 
 ## Women's HRT
@@ -126,6 +134,7 @@ This file contains all compounds currently available in the autocomplete databas
 - Lisinopril
 - Losartan
 - Amlodipine
+- Telmisartan (Micardis)
 
 ## Specialty Compounds
 - Wolverine Stack
