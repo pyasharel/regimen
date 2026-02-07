@@ -1,87 +1,57 @@
 
+# Update ASO Playbook with Google Play Strategy
 
-# Persist Medication Levels Selection Across Sessions
+## Overview
+Add Google Play Store information and Android-specific ASO strategies to the existing ASO Playbook document, making it a comprehensive cross-platform ASO reference.
 
-## Summary
+## Changes to Make
 
-Make the selected compound in the Medication Levels card persist reliably across app restarts by using Capacitor Preferences (survives app updates, memory pressure) instead of plain localStorage (which iOS clears aggressively).
+### 1. Add Store URLs Section (New Section after Section 1)
+Insert a new section with both store URLs for easy reference:
+- **iOS App Store**: `https://apps.apple.com/app/regimen-peptide-trt-tracker/id6746762847`
+- **Google Play Store**: `https://play.google.com/store/apps/details?id=app.lovable.regimen`
 
-## Why This is Happening
+### 2. Expand Section 2: Metadata Strategy
+Restructure to include both platforms:
 
-The current implementation uses `localStorage` directly:
-- **Line 138**: `localStorage.getItem(STORAGE_KEY)` 
-- **Line 187**: `localStorage.setItem(STORAGE_KEY, compoundId)`
+**iOS App Store Metadata** (existing content):
+- Name: `Regimen: Peptide & TRT Tracker`
+- Subtitle: `Injection Log & Calculator`
+- Keywords: (existing 100-char string)
 
-On iOS, localStorage lives in the WebView's cache and can be cleared when:
-- Device is low on storage
-- iOS performs memory cleanup
-- WebView is rebuilt during app updates
-- App is backgrounded for extended periods
+**Google Play Metadata** (new):
+- App Name: `Regimen: Peptide & TRT Tracker`
+- Short Description: `Track TRT, peptides & GLP-1 injections. Reconstitution calculator & reminders.`
+- Full Description: Include the keyword-optimized first paragraph you submitted
 
-## Solution
+### 3. Add Google Play ASO Section (New Section)
+Create a dedicated section explaining Google Play ASO differences:
+- No hidden keyword field (all text is indexed)
+- Full description is critical for SEO
+- App name has 30-character limit (same as iOS)
+- Short description has 80-character limit
 
-Switch to the existing `persistentStorage` utility which uses Capacitor Preferences on native platforms. This storage persists across app updates and isn't subject to WebView cache clearing.
+### 4. Update Growth Milestones (Section 7)
+Mark "Launch Android from closed beta" as complete and add Android-specific goals:
+- [x] Launch Android from closed beta
+- [ ] Reach 10 Google Play reviews
+- [ ] Monitor Google Play Console for early performance data
 
-## Implementation
+### 5. Update Priority Stack (Section 8)
+Add new items:
+- Request Google Play reviews from Android beta testers
+- Monitor Play Console for crashes/ANRs
+- Cross-promote Android launch to iOS users
 
-### File: `src/components/MedicationLevelsCard.tsx`
+### 6. Update Changelog (Section 10)
+Add entry for February 7, 2026:
+- Google Play production launch
+- Added Google Play metadata and store URL
+- Added Android-specific ASO strategy
 
-1. **Import the utility**:
-```typescript
-import { persistentStorage } from "@/utils/persistentStorage";
-```
+---
 
-2. **Add async state initialization** - Read from Capacitor Preferences on mount:
-```typescript
-// Load saved preference from persistent storage
-useEffect(() => {
-  const loadSavedPreference = async () => {
-    const saved = await persistentStorage.get(STORAGE_KEY);
-    if (saved && !hasInitialized.current) {
-      const compound = compoundsWithHalfLife.find(c => c.id === saved);
-      if (compound) {
-        setSelectedCompoundId(saved);
-        hasInitialized.current = true;
-      }
-    }
-  };
-  loadSavedPreference();
-}, [compoundsWithHalfLife]);
-```
-
-3. **Update the save function** - Write to Capacitor Preferences:
-```typescript
-const handleCompoundChange = (compoundId: string) => {
-  setSelectedCompoundId(compoundId);
-  persistentStorage.set(STORAGE_KEY, compoundId); // Async but fire-and-forget
-  onCompoundChange?.(compoundId);
-};
-```
-
-4. **Keep localStorage as fast fallback** for immediate render on web.
-
-### File: `src/utils/persistentStorage.ts`
-
-Add the key to the persistent keys list:
-```typescript
-// Medication Levels card preference
-'selectedLevelsCompound',
-'medicationLevelsCollapsed',
-```
-
-## Behavior After Fix
-
-1. User selects "Tirzepatide" in the levels card
-2. Selection saved to both localStorage (instant) and Capacitor Preferences (async, persistent)
-3. User closes app, reopens days later
-4. On mount: Check Capacitor Preferences → finds "Tirzepatide" → shows it
-5. Even after app update, the preference survives
-
-## Performance Impact
-
-- **Read**: ~1-2ms on mount (async, non-blocking)
-- **Write**: ~1-2ms when changed (async, fire-and-forget)
-- **No blocking**: UI renders immediately with localStorage fallback, then syncs
-
-This is the same pattern used for theme persistence, sound settings, and notification preferences - all of which work reliably across sessions.
-
+## Technical Notes
+- The document is located at `.storage/memory/marketing/aso-playbook-v1.md`
+- This is a Markdown file used for project memory/documentation
+- Changes maintain the existing document structure while adding platform-specific subsections
