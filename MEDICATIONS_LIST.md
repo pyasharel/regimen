@@ -140,6 +140,23 @@ This file contains all compounds currently available in the autocomplete databas
 - Wolverine Stack
 - GHK-Cu + BPC-157 Blend
 
+## SARMs (Selective Androgen Receptor Modulators)
+- LGD-4033 / Ligandrol
+- RAD-140 / Testolone
+- Ostarine / MK-2866 / Enobosarm
+- YK-11
+- Andarine / S4
+
+## Fat Loss & Endurance
+- Clenbuterol
+- Salbutamol / Albuterol
+- Cardarine / GW-501516
+- Stenabolic / SR9009
+- AICAR
+
+## Post-Cycle Therapy (PCT) & Ancillaries (Additional)
+- Enclomiphene
+
 ---
 
 **Note**: This list reflects the autocomplete options. Users can also enter custom compound names not on this list.

@@ -77,6 +77,18 @@ const ALL_COMPOUNDS = [
   
   // Blends
   "GLOW", "KLOW",
+  
+  // SARMs (Selective Androgen Receptor Modulators)
+  "LGD-4033", "Ligandrol", "RAD-140", "Testolone",
+  "Ostarine", "MK-2866", "Enobosarm",
+  "YK-11", "Andarine", "S4",
+  
+  // Fat Loss & Endurance
+  "Clenbuterol", "Salbutamol", "Albuterol",
+  "Cardarine", "GW-501516", "Stenabolic", "SR9009", "AICAR",
+  
+  // PCT - additional
+  "Enclomiphene"
 ];
 
 const DOSE_UNITS = ['mg', 'mcg', 'mL', 'IU'];

@@ -723,6 +723,145 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Telmisartan',
     notes: 'Micardis - ARB blood pressure medication'
   },
+  
+  // SARMs (Selective Androgen Receptor Modulators)
+  'lgd-4033': {
+    halfLifeHours: 30, // ~24-36 hours
+    tMaxHours: 1.5, // Peak at 1-2 hours (oral)
+    category: 'other',
+    displayName: 'LGD-4033',
+    notes: 'Ligandrol - muscle/strength SARM'
+  },
+  'ligandrol': {
+    halfLifeHours: 30,
+    tMaxHours: 1.5,
+    category: 'other',
+    displayName: 'Ligandrol',
+    notes: 'LGD-4033'
+  },
+  'rad-140': {
+    halfLifeHours: 60, // ~60 hours
+    tMaxHours: 2, // Peak at 1-2 hours (oral)
+    category: 'other',
+    displayName: 'RAD-140',
+    notes: 'Testolone - muscle/strength SARM'
+  },
+  'testolone': {
+    halfLifeHours: 60,
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'Testolone',
+    notes: 'RAD-140'
+  },
+  'ostarine': {
+    halfLifeHours: 24, // ~24 hours
+    tMaxHours: 1.5, // Peak at ~1.5 hours (oral)
+    category: 'other',
+    displayName: 'Ostarine',
+    notes: 'MK-2866, Enobosarm - mild SARM'
+  },
+  'mk-2866': {
+    halfLifeHours: 24,
+    tMaxHours: 1.5,
+    category: 'other',
+    displayName: 'MK-2866',
+    notes: 'Ostarine, Enobosarm'
+  },
+  'enobosarm': {
+    halfLifeHours: 24,
+    tMaxHours: 1.5,
+    category: 'other',
+    displayName: 'Enobosarm',
+    notes: 'Ostarine, MK-2866'
+  },
+  'yk-11': {
+    halfLifeHours: 8, // ~6-10 hours
+    tMaxHours: 1, // Peak at ~1 hour (oral)
+    category: 'other',
+    displayName: 'YK-11',
+    notes: 'Myostatin inhibitor SARM'
+  },
+  'andarine': {
+    halfLifeHours: 4, // ~4-6 hours
+    tMaxHours: 0.75, // Peak at ~45 min (oral)
+    category: 'other',
+    displayName: 'Andarine',
+    notes: 'S4 - cutting SARM'
+  },
+  's4': {
+    halfLifeHours: 4,
+    tMaxHours: 0.75,
+    category: 'other',
+    displayName: 'S4',
+    notes: 'Andarine - cutting SARM'
+  },
+  
+  // Fat Loss & Endurance Compounds
+  'clenbuterol': {
+    halfLifeHours: 36, // ~35-40 hours
+    tMaxHours: 2.5, // Peak at 2-3 hours
+    category: 'other',
+    displayName: 'Clenbuterol',
+    notes: 'Beta-2 agonist thermogenic'
+  },
+  'salbutamol': {
+    halfLifeHours: 5, // ~4-6 hours
+    tMaxHours: 2, // Peak at 2-3 hours (oral)
+    category: 'other',
+    displayName: 'Salbutamol',
+    notes: 'Albuterol - short-acting beta-2 agonist'
+  },
+  'albuterol': {
+    halfLifeHours: 5,
+    tMaxHours: 2,
+    category: 'other',
+    displayName: 'Albuterol',
+    notes: 'Salbutamol - short-acting beta-2 agonist'
+  },
+  'cardarine': {
+    halfLifeHours: 20, // ~16-24 hours
+    tMaxHours: 1.5, // Peak at 1-2 hours (oral)
+    category: 'other',
+    displayName: 'Cardarine',
+    notes: 'GW-501516 - PPAR-delta agonist for endurance'
+  },
+  'gw-501516': {
+    halfLifeHours: 20,
+    tMaxHours: 1.5,
+    category: 'other',
+    displayName: 'GW-501516',
+    notes: 'Cardarine - PPAR-delta agonist'
+  },
+  'stenabolic': {
+    halfLifeHours: 4, // ~4-5 hours
+    tMaxHours: 0.5, // Peak at ~30 min (oral)
+    category: 'other',
+    displayName: 'Stenabolic',
+    notes: 'SR9009 - Rev-ErbA agonist'
+  },
+  'sr9009': {
+    halfLifeHours: 4,
+    tMaxHours: 0.5,
+    category: 'other',
+    displayName: 'SR9009',
+    notes: 'Stenabolic - Rev-ErbA agonist'
+  },
+  'aicar': {
+    halfLifeHours: 2, // ~2-3 hours
+    tMaxHours: 0.5, // Peak at ~30 min
+    category: 'other',
+    displayName: 'AICAR',
+    notes: 'AMPK activator - endurance peptide'
+  },
+  
+  // PCT - Additional
+  'enclomiphene': {
+    halfLifeHours: 10, // ~10-12 hours
+    tMaxHours: 2, // Peak at 2-3 hours (oral)
+    category: 'other',
+    displayName: 'Enclomiphene',
+    notes: 'Pure trans-isomer of Clomid for PCT'
+  },
 };
 
 /**
