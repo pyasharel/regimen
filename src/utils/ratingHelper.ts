@@ -22,6 +22,11 @@ export interface RatingResult {
   reason?: string;
 }
 
+export interface RatingOptions {
+  /** If true, skip the store fallback and return not_available instead */
+  skipStoreFallback?: boolean;
+}
+
 /**
  * Unified rating helper that:
  * 1. Attempts native In-App Review API first
@@ -31,10 +36,13 @@ export interface RatingResult {
  *    - Native request fails
  * 
  * @param source Where the rating was triggered from (for analytics)
+ * @param options Configuration options
  */
 export async function requestRating(
-  source: 'settings' | 'onboarding'
+  source: 'settings' | 'onboarding',
+  options: RatingOptions = {}
 ): Promise<RatingResult> {
+  const { skipStoreFallback = false } = options;
   // Track the button tap immediately
   trackRatingButtonTapped(source);
 
@@ -60,8 +68,13 @@ export async function requestRating(
       console.log('[RatingHelper] TestFlight detected:', isTestFlight);
       
       if (isTestFlight) {
-        console.log('[RatingHelper] TestFlight build - using store fallback');
+        console.log('[RatingHelper] TestFlight build detected');
         trackRatingOutcome(source, 'testflight_detected');
+        if (skipStoreFallback) {
+          console.log('[RatingHelper] Skipping store fallback (onboarding mode)');
+          trackRatingOutcome(source, 'fallback_skipped');
+          return { success: false, method: 'not_available', reason: 'testflight_fallback_skipped' };
+        }
         return await openStoreFallback(platform, source);
       }
     } catch (error) {
@@ -71,8 +84,13 @@ export async function requestRating(
 
   // Plugin not available - use fallback
   if (!isPluginAvailable) {
-    console.log('[RatingHelper] Plugin not registered, using store fallback');
+    console.log('[RatingHelper] Plugin not registered');
     trackRatingOutcome(source, 'plugin_not_available');
+    if (skipStoreFallback) {
+      console.log('[RatingHelper] Skipping store fallback (onboarding mode)');
+      trackRatingOutcome(source, 'fallback_skipped');
+      return { success: false, method: 'not_available', reason: 'plugin_fallback_skipped' };
+    }
     return await openStoreFallback(platform, source);
   }
 
@@ -95,6 +113,12 @@ export async function requestRating(
   } catch (error) {
     console.error('[RatingHelper] Native review failed:', error);
     trackRatingOutcome(source, 'request_failed');
+    
+    if (skipStoreFallback) {
+      console.log('[RatingHelper] Skipping store fallback after failure (onboarding mode)');
+      trackRatingOutcome(source, 'fallback_skipped');
+      return { success: false, method: 'not_available', reason: 'native_failed_fallback_skipped' };
+    }
     
     // Fall back to store link
     console.log('[RatingHelper] Falling back to store link after failure');
