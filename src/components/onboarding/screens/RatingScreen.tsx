@@ -36,19 +36,16 @@ export function RatingScreen({ onComplete, onSkip }: RatingScreenProps) {
     setIsRequesting(true);
     
     try {
-      const result = await requestRating('onboarding');
+      // Skip store fallback during onboarding to avoid kicking users out of the app
+      const result = await requestRating('onboarding', { skipStoreFallback: true });
       
       console.log('[RatingScreen] Rating result:', result);
       
-      // Show feedback if we fell back to store
-      if (result.method === 'store_fallback') {
-        toast.success('Opening store page...', {
-          description: 'Leave us a review to help others discover Regimen!',
-          duration: 3000,
-        });
-      } else if (result.method === 'not_available' && result.reason === 'web_platform') {
+      // Only show web platform message - no store redirects during onboarding
+      if (result.method === 'not_available' && result.reason === 'web_platform') {
         toast.info('Rating is available in the mobile app');
       }
+      // For native success or graceful skip, just proceed silently
     } catch (error) {
       console.error('[RatingScreen] Rating error:', error);
     }
