@@ -1,162 +1,163 @@
 
-# Fix Plan: Android Cold Start Session Restoration Race Condition
+# Fix Rating & Share: Correct Store URLs
 
-## Problem Summary
+## The Problem
 
-When opening the Regimen app from the Android home screen after being in the background for ~24 hours, the app:
-1. Shows "Restoring your session..." for ~20 seconds
-2. Briefly shows preview mode
-3. Lands on "Connection issue" screen with support code `all_fail`
-4. "Reload App" fixes it
+Both iOS and Android rating/share features are broken because the store URLs in the code point to wrong apps:
 
-This indicates all session hydration attempts in `ProtectedRoute` are timing out despite valid tokens existing.
+| Platform | Current (Wrong) | Correct (Confirmed by You) |
+|----------|-----------------|---------------------------|
+| iOS | `id6753005449` | `id6753905449` |
+| Android | `app.lovable.348ffbbac09744d8bbbea7cee13c09a9` | `com.regimen.app` |
 
-## Root Cause
+Additionally, the share sheet shows the iOS App Store link even when on Android.
 
-A race condition exists between two systems fighting for Supabase auth calls during cold start:
+---
 
-1. **SubscriptionContext's `onAuthStateChange` listener** (lines 1184-1231) receives `INITIAL_SESSION` or `TOKEN_REFRESHED` events and immediately calls `refreshSubscription()`, which internally calls `supabase.auth.getUser()` (line 253)
+## What Will Be Fixed
 
-2. **ProtectedRoute's `hydrateSessionOrNull()`** is simultaneously trying to call `supabase.auth.getSession()` and `supabase.auth.setSession()`
+### 1. Rating Button (Settings -> "Rate")
+When tapped, this tries the native in-app review API first. If that fails or is unavailable, it falls back to opening the store directly. Currently the fallback URLs are wrong.
 
-Since Supabase maintains a global auth lock, these concurrent auth operations contend with each other. On Android (and iOS), the Capacitor WebView's slower networking startup exacerbates this - the first auth call holds the lock while waiting for network, blocking subsequent calls until the timeout (8-12 seconds) is reached.
+### 2. Share Button (Settings -> "Share")  
+Currently always shares the iOS App Store link, even on Android devices.
 
-The result: `ProtectedRoute` exhausts all hydration attempts and shows "Connection issue" because the lock was held by `SubscriptionContext`.
+---
 
-## Solution
+## Implementation
 
-Apply the pattern from the provided Stack Overflow solution: **Separate initial authentication load from ongoing auth changes**. The `onAuthStateChange` listener should NOT trigger heavy async operations that compete with `ProtectedRoute`.
+### Step 1: Create Centralized Store URLs
 
-### Changes to SubscriptionContext.tsx
+Create a new file to keep all store links in one place:
 
-1. **Remove `supabase.auth.getUser()` call from `refreshSubscription()`**
-   - The userId is already available from the session object in auth events
-   - Using `getUserIdWithFallback()` is redundant when called from an auth event
-
-2. **Make `onAuthStateChange` callback fire-and-forget for refresh**
-   - Do NOT await `refreshSubscription()` in the callback
-   - Use `setTimeout(() => refreshSubscription(...), 0)` to defer it off the current tick
-   - This allows `ProtectedRoute` hydration to complete first
-
-3. **Add a boot-gate to delay SubscriptionContext initialization**
-   - Wait for `ProtectedRoute` hydration to complete (or fail) before running the initial subscription check
-   - Use the existing `REGIMEN_BOOT_STATUS` flag or a new `hydrationComplete` signal
-
-4. **Remove redundant `getUser()` call in refreshSubscription**
-   - Line 251-258 calls `supabase.auth.getUser()` even though we already have the userId
-   - This is a lock-contention hotspot - remove it
-
-### Changes to ProtectedRoute.tsx
-
-1. **Set a global flag when hydration completes**
-   - `window.__authHydrationComplete = true` after successful hydration
-   - This allows other systems to wait for it
-
-2. **Expose hydration state for external consumers** (optional)
-   - Could dispatch a custom event like `window.dispatchEvent(new Event('regimen:hydration-complete'))`
-
-## Implementation Details
-
-### SubscriptionContext.tsx - onAuthStateChange fix
+**New file: `src/constants/storeUrls.ts`**
 
 ```typescript
-// Current problematic code (line 1185):
-const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-  // ... calls refreshSubscription() which makes auth calls
-});
+// Centralized store URLs - single source of truth
+// iOS App ID: 6753905449 (confirmed by user)
+// Android Package: com.regimen.app (from Play Store URL)
 
-// Fixed code - fire-and-forget pattern:
-const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  console.log('[SubscriptionContext] Auth event:', event);
+export const STORE_URLS = {
+  ios: {
+    // Full URL with app name for sharing (name can change, ID is permanent)
+    appStore: 'https://apps.apple.com/us/app/regimen-peptide-trt-tracker/id6753905449',
+    // Shorter format for review deep link (internal use only)
+    review: 'https://apps.apple.com/app/id6753905449?action=write-review',
+  },
+  android: {
+    playStore: 'https://play.google.com/store/apps/details?id=com.regimen.app',
+    // market:// URI opens Play Store app directly
+    review: 'market://details?id=com.regimen.app',
+    // Web fallback if market:// doesn't work
+    reviewWeb: 'https://play.google.com/store/apps/details?id=com.regimen.app',
+  },
+  // Landing page for web users
+  web: 'https://getregimen.app',
+};
+```
 
-  // Only synchronous state updates in callback
-  setUser(session?.user ?? null);
+### Step 2: Update Rating Helper
 
-  if (session?.user) {
-    if (event === 'SIGNED_IN') {
-      sessionStorage.removeItem('dismissedBanner');
-    }
-    
-    // Defer refresh to next tick - prevents auth lock contention
-    setTimeout(() => {
-      refreshSubscription(`auth_${event.toLowerCase()}`);
-    }, 0);
-  } else {
-    // Logged out - synchronous state reset
-    setIsSubscribed(false);
-    setSubscriptionStatus('none', 'auth_logout');
-    setSubscriptionProvider(null);
-    setIsLoading(false);
-    sessionStorage.removeItem('dismissedBanner');
-    
-    if (isNativePlatform) {
-      setTimeout(() => logoutRevenueCat(), 0);
-    }
+**File: `src/utils/ratingHelper.ts`**
+
+Replace the hardcoded STORE_URLS (lines 11-17) with import from centralized constants:
+
+```text
+Before:
+  ios: 'https://apps.apple.com/app/id6753005449?action=write-review'
+  android: 'market://details?id=app.lovable.348ffbbac09744d8bbbea7cee13c09a9'
+
+After:
+  Import from @/constants/storeUrls and use correct IDs
+```
+
+### Step 3: Update Share Sheet with Platform Detection
+
+**File: `src/components/SettingsScreen.tsx`**
+
+The `handleShareApp` function (around line 96) currently hardcodes the iOS URL. Update to:
+
+1. Import the centralized store URLs
+2. Detect which platform the user is on using `Capacitor.getPlatform()`
+3. Use the correct store URL for that platform
+
+```typescript
+const handleShareApp = async () => {
+  trackShareAction('app');
+  
+  if (!Capacitor.isNativePlatform()) {
+    toast.info('Sharing is available in the native app');
+    return;
   }
-});
-```
-
-### SubscriptionContext.tsx - Remove redundant getUser call
-
-```typescript
-// In refreshSubscription(), replace lines 251-258:
-// Current code:
-let user: User | null = null;
-try {
-  const { data } = await supabase.auth.getUser();
-  user = data?.user ?? null;
-} catch {
-  user = { id: userId } as User;
-}
-setUser(user);
-
-// Fixed - just use the userId we already have:
-// (Remove the getUser call entirely - it's not needed)
-```
-
-### SubscriptionContext.tsx - Gate initial subscription check
-
-```typescript
-// In initialize() function, wait for boot to be ready:
-const initialize = async () => {
+  
+  const platform = Capacitor.getPlatform();
+  const storeUrl = platform === 'android' 
+    ? STORE_URLS.android.playStore 
+    : STORE_URLS.ios.appStore;
+  
   try {
-    // Wait for boot network ready flag (set by main.tsx after 500ms)
-    if (isNativePlatform && !window.__bootNetworkReady) {
-      await new Promise(resolve => {
-        const check = setInterval(() => {
-          if (window.__bootNetworkReady) {
-            clearInterval(check);
-            resolve(true);
-          }
-        }, 50);
-        setTimeout(() => { clearInterval(check); resolve(true); }, 3000);
-      });
-    }
-    
-    // ... rest of initialization
+    await Share.share({
+      title: 'Check out Regimen',
+      text: 'I use Regimen to track my health protocol. You should try it!',
+      url: storeUrl,
+      dialogTitle: 'Share Regimen',
+    });
+  } catch (error) {
+    console.log('Share cancelled or failed:', error);
   }
 };
 ```
 
-## Files to Modify
+### Step 4: Update PartnerLanding.tsx for Consistency
 
-| File | Changes |
-|------|---------|
-| `src/contexts/SubscriptionContext.tsx` | 1. Make onAuthStateChange callback non-async, use setTimeout for refreshSubscription<br>2. Remove supabase.auth.getUser() call in refreshSubscription<br>3. Add boot-gate to initialize() |
-| `src/components/ProtectedRoute.tsx` | 1. Set `window.__authHydrationComplete = true` after successful hydration |
+**File: `src/pages/PartnerLanding.tsx`**
 
-## Testing Checklist
+Change line 41 to import from the centralized constants instead of hardcoding:
 
-After implementation:
-1. Cold start from app icon after 24+ hours in background
-2. Cold start from notification tap
-3. App resume from app switcher
-4. Sign out and sign in flow
-5. Verify subscription status shows correctly (not preview mode)
-6. Verify no "Connection issue" screen appears
+```typescript
+import { STORE_URLS } from '@/constants/storeUrls';
+
+const APP_STORE_URL = STORE_URLS.ios.appStore;
+```
+
+This ensures if you ever update the App Store URL, you only change it in one place.
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/constants/storeUrls.ts` | **NEW** - Central source of truth for all store URLs |
+| `src/utils/ratingHelper.ts` | Fix iOS ID (6753005449 -> 6753905449), fix Android package ID |
+| `src/components/SettingsScreen.tsx` | Add platform detection for share, import from constants |
+| `src/pages/PartnerLanding.tsx` | Import from constants for consistency |
+
+---
+
+## About App Name Changes
+
+The App Store URL has two parts:
+- **App name slug** (`regimen-peptide-trt-tracker`) - Just for readability, Apple ignores it
+- **App ID** (`id6753905449`) - Permanent identifier, never changes
+
+If you rename your app to "Regimen Pro" or anything else:
+- The ID stays `6753905449` forever
+- Old links continue to work because Apple redirects based on ID
+- You can optionally update the slug in the code for aesthetics, but it's not required
+
+---
 
 ## Technical Notes
 
-- The `noOpLock` fix in the Supabase client prevents navigator.locks deadlocks, but doesn't prevent contention from concurrent auth API calls
-- The 500ms native boot delay in main.tsx helps, but isn't enough when two systems both try auth calls at the same time
-- The fix follows the recommended Supabase pattern of never awaiting async operations in onAuthStateChange callbacks
+### Why the native review API sometimes doesn't show a dialog
+
+Both Apple and Google's in-app review APIs have internal rate limiting:
+- **Apple**: May show the dialog only 3 times per year per user
+- **Google**: Quota-based, may not show if user recently saw it or app was recently installed
+
+The app is designed to fall back to opening the store directly when this happens. Currently those fallback URLs are wrong, which is why nothing happens at all. After this fix:
+
+- **Rating from Settings**: Will either show native dialog OR open the correct store page
+- **Share from Settings**: Will share the correct store link based on platform
+- **Rating during onboarding**: Still uses `skipStoreFallback: true`, so it won't redirect (intentional to not interrupt flow)
