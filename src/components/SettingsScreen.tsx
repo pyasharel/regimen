@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { trackSignOut, trackFeedbackInitiated, trackShareAction, trackThemeChanged, trackSoundToggled } from "@/utils/analytics";
 import { requestRating } from "@/utils/ratingHelper";
+import { STORE_URLS } from "@/constants/storeUrls";
 import { useQueryClient } from "@tanstack/react-query";
 import { SettingsSubscriptionSection } from "@/components/subscription/SettingsSubscriptionSection";
 import { MainHeader } from "@/components/MainHeader";
@@ -111,11 +112,17 @@ export const SettingsScreen = () => {
       return;
     }
     
+    // Use platform-appropriate store URL
+    const platform = Capacitor.getPlatform();
+    const storeUrl = platform === 'android' 
+      ? STORE_URLS.android.playStore 
+      : STORE_URLS.ios.appStore;
+    
     try {
       await Share.share({
         title: 'Check out Regimen',
         text: 'I use Regimen to track my health protocol. You should try it!',
-        url: 'https://apps.apple.com/app/id6753005449',
+        url: storeUrl,
         dialogTitle: 'Share Regimen',
       });
     } catch (error) {

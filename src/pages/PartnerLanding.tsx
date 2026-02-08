@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import appIcon from '@/assets/regimen-app-icon.png';
 import todayPreview from '@/assets/today-screen-preview-dark.png';
+import { STORE_URLS } from '@/constants/storeUrls';
 
 // Partner-specific configurations
 const partnerConfigs: Record<string, {
@@ -38,7 +39,7 @@ const partnerConfigs: Record<string, {
   },
 };
 
-const APP_STORE_URL = 'https://apps.apple.com/app/regimen-peptide-tracker/id6753905449';
+const APP_STORE_URL = STORE_URLS.ios.appStore;
 
 export default function PartnerLanding() {
   const { partnerSlug } = useParams<{ partnerSlug: string }>();

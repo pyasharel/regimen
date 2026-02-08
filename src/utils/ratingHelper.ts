@@ -7,14 +7,7 @@ import {
   trackRatingOutcome, 
   getPlatform 
 } from './analytics';
-
-// Store URLs for direct fallback
-const STORE_URLS = {
-  ios: 'https://apps.apple.com/app/id6753005449?action=write-review',
-  android: 'market://details?id=app.lovable.348ffbbac09744d8bbbea7cee13c09a9',
-  // Fallback web URL for Android if market:// doesn't work
-  androidWeb: 'https://play.google.com/store/apps/details?id=app.lovable.348ffbbac09744d8bbbea7cee13c09a9',
-};
+import { STORE_URLS } from '@/constants/storeUrls';
 
 export interface RatingResult {
   success: boolean;
@@ -137,9 +130,9 @@ async function openStoreFallback(
     let url: string;
     
     if (platform === 'ios') {
-      url = STORE_URLS.ios;
+      url = STORE_URLS.ios.review;
     } else if (platform === 'android') {
-      url = STORE_URLS.android;
+      url = STORE_URLS.android.review;
     } else {
       return { success: false, method: 'not_available', reason: 'unsupported_platform' };
     }
@@ -159,7 +152,7 @@ async function openStoreFallback(
     if (platform === 'android') {
       try {
         console.log('[RatingHelper] Trying Android web fallback URL');
-        await Browser.open({ url: STORE_URLS.androidWeb });
+        await Browser.open({ url: STORE_URLS.android.reviewWeb });
         trackRatingOutcome(source, 'fallback_store_link');
         return { success: true, method: 'store_fallback' };
       } catch (webError) {
