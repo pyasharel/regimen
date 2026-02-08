@@ -81,6 +81,9 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         endBootTrace(true);
         // Mark boot as complete
         localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
+        // Signal to other systems that auth hydration is done
+        (window as any).__authHydrationComplete = true;
+        window.dispatchEvent(new Event('regimen:hydration-complete'));
         // Record success
         try {
           localStorage.setItem('regimen_last_hydration', JSON.stringify({
@@ -125,6 +128,9 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         trace('HYDRATION_SUCCESS', `slow-path, ${elapsed}ms`);
         endBootTrace(true);
         localStorage.setItem('REGIMEN_BOOT_STATUS', 'COMPLETE');
+        // Signal to other systems that auth hydration is done
+        (window as any).__authHydrationComplete = true;
+        window.dispatchEvent(new Event('regimen:hydration-complete'));
         return;
       }
       
