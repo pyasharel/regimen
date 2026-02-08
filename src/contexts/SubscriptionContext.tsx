@@ -246,17 +246,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Get full user object only if needed (for setUser state)
-      // Use a short timeout to prevent hanging
-      let user: User | null = null;
-      try {
-        const { data } = await supabase.auth.getUser();
-        user = data?.user ?? null;
-      } catch {
-        // If getUser fails, create a minimal user object for state
-        user = { id: userId } as User;
-      }
-
+      // REMOVED: supabase.auth.getUser() call - it causes auth lock contention on cold start
+      // We already have the userId from getUserIdWithFallback, that's all we need
+      // The user object in state is only used for the ID, so create a minimal one
+      const user: User = { id: userId } as User;
       setUser(user);
 
       // Native: always ensure RevenueCat is initialized + logged in as the current backend user
@@ -1131,6 +1124,34 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
+        // BOOT GATE: On native, wait for ProtectedRoute hydration to complete first
+        // This prevents auth lock contention between SubscriptionContext and ProtectedRoute
+        if (isNativePlatform && !(window as any).__authHydrationComplete) {
+          console.log('[SubscriptionContext] Waiting for auth hydration to complete...');
+          await new Promise<void>(resolve => {
+            // Check if already complete
+            if ((window as any).__authHydrationComplete) {
+              resolve();
+              return;
+            }
+            
+            // Listen for hydration complete event
+            const handler = () => {
+              window.removeEventListener('regimen:hydration-complete', handler);
+              resolve();
+            };
+            window.addEventListener('regimen:hydration-complete', handler);
+            
+            // Timeout after 5 seconds to avoid indefinite blocking
+            setTimeout(() => {
+              window.removeEventListener('regimen:hydration-complete', handler);
+              console.log('[SubscriptionContext] Boot gate timeout - proceeding anyway');
+              resolve();
+            }, 5000);
+          });
+          console.log('[SubscriptionContext] Auth hydration complete, proceeding with init');
+        }
+
         // On native, avoid awaiting a potentially hanging supabase.auth.getUser() during cold start.
         // Use cached session first + a timed fallback.
         const userId = isNativePlatform ? await getUserIdWithFallback(3000) : null;
@@ -1181,9 +1202,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
 
     initialize();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes - FIRE-AND-FORGET pattern
+    // CRITICAL: Never await async operations in onAuthStateChange to prevent auth lock contention
+    // This allows ProtectedRoute's hydration to complete without being blocked by subscription refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[SubscriptionContext] Auth event:', event);
+
+      // Synchronous state update - safe in callback
+      setUser(session?.user ?? null);
 
       if (session?.user) {
         // Clear any stale banner dismissal from previous user session
@@ -1191,29 +1217,35 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           sessionStorage.removeItem('dismissedBanner');
         }
 
-        // Native: ensure RevenueCat is initialized + user identified before refresh.
-        // IMPORTANT: this must also run on INITIAL_SESSION (app cold start) and TOKEN_REFRESHED,
-        // otherwise we can incorrectly fall back to profile.subscription_status='none' and show preview.
-        if (isNativePlatform) {
-          if (!revenueCatConfiguredRef.current) {
-            await initRevenueCat();
-          }
+        // DEFER all async work to next tick - prevents auth lock contention
+        // This is the key fix: refreshSubscription is called AFTER the auth callback returns
+        setTimeout(() => {
+          console.log('[SubscriptionContext] (deferred) Session available, refreshing subscription...');
+          
+          // Native: ensure RevenueCat is initialized + user identified before refresh.
+          // Wrapped in async IIFE since we can't await in setTimeout directly
+          (async () => {
+            if (isNativePlatform) {
+              if (!revenueCatConfiguredRef.current) {
+                await initRevenueCat();
+              }
 
-          if (revenueCatConfiguredRef.current) {
-            const needsIdentify =
-              !revenueCatIdentifiedRef.current ||
-              revenueCatAppUserIdRef.current !== session.user.id;
+              if (revenueCatConfiguredRef.current) {
+                const needsIdentify =
+                  !revenueCatIdentifiedRef.current ||
+                  revenueCatAppUserIdRef.current !== session.user.id;
 
-            if (needsIdentify) {
-              await identifyRevenueCatUser(session.user.id);
+                if (needsIdentify) {
+                  await identifyRevenueCatUser(session.user.id);
+                }
+              }
             }
-          }
-        }
-
-        console.log('[SubscriptionContext] Session available, refreshing subscription...');
-        refreshSubscription(`auth_${event.toLowerCase()}`);
+            
+            refreshSubscription(`auth_${event.toLowerCase()}`);
+          })();
+        }, 0);
       } else {
-        // ... keep existing code (handled below)
+        // Logged out - synchronous state reset (safe in callback)
         console.log('[SubscriptionContext] No session, resetting state');
         setIsSubscribed(false);
         setSubscriptionStatus('none', 'auth_logout');
@@ -1223,9 +1255,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         // Clear banner dismissal on logout so new users see the banner
         sessionStorage.removeItem('dismissedBanner');
 
-        // Logout from RevenueCat
+        // Defer RevenueCat logout to avoid any potential lock issues
         if (isNativePlatform) {
-          logoutRevenueCat();
+          setTimeout(() => logoutRevenueCat(), 0);
         }
       }
     });
