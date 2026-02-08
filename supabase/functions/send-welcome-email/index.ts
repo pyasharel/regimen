@@ -133,46 +133,26 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 32px 0;">
                 <h2 style="color: #1a1a1a; font-size: 20px; font-weight: 600; margin: 0 0 16px;">Here's what you can do:</h2>
                 <ul style="margin: 0; padding: 0; list-style: none;">
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px; padding-left: 32px; position: relative;">
-                    <svg style="position: absolute; left: 0; top: 2px;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="10" cy="10" r="8" stroke="#FF6B6B" stroke-width="2" fill="none"/>
-                      <path d="M6 10L9 13L14 7" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Track your daily doses with smart reminders
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
+                    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Track your daily doses with smart reminders
                   </li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px; padding-left: 32px; position: relative;">
-                    <svg style="position: absolute; left: 0; top: 2px;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="3" width="14" height="14" rx="2" stroke="#FF6B6B" stroke-width="2" fill="none"/>
-                      <path d="M7 10h6M10 7v6" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Manage multiple compounds with custom schedules
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
+                    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Manage multiple compounds with custom schedules
                   </li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px; padding-left: 32px; position: relative;">
-                    <svg style="position: absolute; left: 0; top: 2px;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="3" width="14" height="14" rx="2" stroke="#FF6B6B" stroke-width="2" fill="none"/>
-                      <circle cx="7.5" cy="7.5" r="1.5" fill="#FF6B6B"/>
-                      <path d="M3 14L7 10L11 12L17 8" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Document progress with photos and metrics
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
+                    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Document progress with photos and metrics
                   </li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px; padding-left: 32px; position: relative;">
-                    <svg style="position: absolute; left: 0; top: 2px;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M10 2L12 7.5L17.5 8.5L13.5 13L14.5 18.5L10 15.5L5.5 18.5L6.5 13L2.5 8.5L8 7.5L10 2Z" stroke="#FF6B6B" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Build streaks and stay motivated
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
+                    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Build streaks and stay motivated
                   </li>
-                  <li style="color: #484848; font-size: 15px; line-height: 1.8; padding-left: 32px; position: relative;">
-                    <svg style="position: absolute; left: 0; top: 2px;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M3 14L7 10L11 12L17 6" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <circle cx="17" cy="6" r="2" stroke="#FF6B6B" stroke-width="2" fill="none"/>
-                    </svg>
-                    Visualize your journey with insights
+                  <li style="color: #484848; font-size: 15px; line-height: 1.8;">
+                    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Visualize your journey with insights
                   </li>
                 </ul>
               </div>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://getregimen.app/today" style="background-color: #FF6B6B; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
+                <a href="https://helloregimen.com" style="background-color: #FF6B6B; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
                   Get Started Now
                 </a>
               </div>
