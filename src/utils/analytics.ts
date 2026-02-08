@@ -8,10 +8,49 @@ const APP_VERSION = appVersion;
 
 /**
  * Detects the current platform (ios, android, or web)
+ * 
+ * IMPORTANT: On iOS cold start, Capacitor's native bridge may not be fully initialized
+ * immediately. This function checks multiple indicators to ensure accurate detection.
  */
 export const getPlatform = (): 'ios' | 'android' | 'web' => {
-  if (!Capacitor.isNativePlatform()) return 'web';
-  return Capacitor.getPlatform() as 'ios' | 'android';
+  // Primary check: Capacitor's official API
+  if (Capacitor.isNativePlatform()) {
+    const platform = Capacitor.getPlatform();
+    console.log('[Analytics] getPlatform native check:', platform);
+    return platform as 'ios' | 'android';
+  }
+  
+  // Fallback: Check user agent for iOS/Android indicators
+  // This catches cases where Capacitor.isNativePlatform() returns false incorrectly
+  const ua = navigator.userAgent.toLowerCase();
+  
+  // Check for Capacitor iOS WebView indicators
+  if (ua.includes('capacitor') && ua.includes('iphone')) {
+    console.log('[Analytics] getPlatform fallback detected iOS via UA');
+    return 'ios';
+  }
+  if (ua.includes('capacitor') && ua.includes('ipad')) {
+    console.log('[Analytics] getPlatform fallback detected iOS (iPad) via UA');
+    return 'ios';
+  }
+  
+  // Check for Capacitor Android WebView indicators
+  if (ua.includes('capacitor') && ua.includes('android')) {
+    console.log('[Analytics] getPlatform fallback detected Android via UA');
+    return 'android';
+  }
+  
+  // Additional iOS check: webkit webview characteristics
+  if (ua.includes('iphone') && ua.includes('applewebkit') && !ua.includes('safari')) {
+    console.log('[Analytics] getPlatform fallback detected iOS WebView (no Safari)');
+    return 'ios';
+  }
+  if (ua.includes('ipad') && ua.includes('applewebkit') && !ua.includes('safari')) {
+    console.log('[Analytics] getPlatform fallback detected iOS WebView (iPad, no Safari)');
+    return 'ios';
+  }
+  
+  return 'web';
 };
 
 /**
