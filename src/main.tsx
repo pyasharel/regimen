@@ -254,9 +254,20 @@ captureAttribution();
 setInstallDate();
 
 // Initialize Google Analytics 4
+// On native platforms, delay GA4 init slightly to ensure Capacitor bridge is ready
+// This prevents incorrect "web" platform detection on iOS cold start
 const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (GA_MEASUREMENT_ID) {
-  initGA(GA_MEASUREMENT_ID);
+  if (Capacitor.isNativePlatform()) {
+    // Delay GA4 init on native to ensure accurate platform detection
+    // The Capacitor bridge needs time to fully initialize on cold start
+    setTimeout(() => {
+      initGA(GA_MEASUREMENT_ID);
+      console.log('[BOOT] GA4 initialized after native bridge ready');
+    }, 100);
+  } else {
+    initGA(GA_MEASUREMENT_ID);
+  }
 }
 
 // ========================================
