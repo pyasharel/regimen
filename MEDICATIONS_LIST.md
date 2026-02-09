@@ -46,6 +46,7 @@ This file contains all compounds currently available in the autocomplete databas
 - Thymosin Alpha-1 / Thymosin Beta-4 / Thymulin
 
 ## Peptide Blends
+- CJC-1295 / Ipamorelin (CJC-1295 no DAC + Ipamorelin)
 - GLOW (BPC-157 + GHK-Cu + Thymosin Beta-4)
 - KLOW (BPC-157 + TB-500 + KPV + GHK-Cu)
 
