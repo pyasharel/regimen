@@ -1,70 +1,42 @@
 
+# Add CJC-1295/Ipamorelin Blend to Compound Catalog
 
-# Fix Welcome Email: Coral Checkmarks & Landing Page CTA
+## What's Changing
 
-## What's Being Fixed
+Adding "CJC-1295 / Ipamorelin" as a recognized blend in the autocomplete database. This is one of the most widely prescribed peptide combinations at compounding pharmacies and clinics, so it belongs in the official catalog.
 
-1. **Missing icons** - Replace broken SVG icons with coral-colored checkmarks (✓)
-2. **Wrong CTA link** - Change from web app (`getregimen.app/today`) to landing page (`helloregimen.com`)
-
----
-
-## Changes to Make
-
-### File: `supabase/functions/send-welcome-email/index.ts`
-
-#### Change 1: Replace SVG Icons with Coral Checkmarks
-
-The current list items (lines ~143-171) have inline SVGs that don't render in most email clients.
-
-Replace with styled checkmarks using your brand coral color (#FF6B6B):
-
-```html
-<ul style="margin: 0; padding: 0; list-style: none;">
-  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
-    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Track your daily doses with smart reminders
-  </li>
-  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
-    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Manage multiple compounds with custom schedules
-  </li>
-  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
-    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Document progress with photos and metrics
-  </li>
-  <li style="color: #484848; font-size: 15px; line-height: 1.8; margin-bottom: 12px;">
-    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Build streaks and stay motivated
-  </li>
-  <li style="color: #484848; font-size: 15px; line-height: 1.8;">
-    <span style="color: #FF6B6B; font-weight: bold;">✓</span> Visualize your journey with insights
-  </li>
-</ul>
-```
-
-#### Change 2: Update CTA Button Link
-
-Line ~175 currently links to the web app:
-```html
-<a href="https://getregimen.app/today" ...>Get Started Now</a>
-```
-
-Change to link to the marketing landing page:
-```html
-<a href="https://helloregimen.com" ...>Get Started Now</a>
-```
+The triple blend (CJC/IPA/Tesamorelin) will NOT be added at this time.
 
 ---
 
-## Summary
+## Files to Update
 
-| What | Before | After |
-|------|--------|-------|
-| Icons | Inline SVGs (broken in most email clients) | Coral checkmarks (✓) |
-| CTA Link | `https://getregimen.app/today` (web app) | `https://helloregimen.com` (landing page) |
+### 1. `src/components/AddCompoundScreen.tsx`
+Add `"CJC-1295 / Ipamorelin"` to the Blends and Stacks section (line ~149), alongside GLOW, KLOW, and other blends.
+
+### 2. `src/components/onboarding/screens/MedicationSetupScreen.tsx`
+Add `"CJC-1295 / Ipamorelin"` to the `ALL_COMPOUNDS` array in the Blends section (line ~82).
+
+### 3. `src/utils/halfLifeData.ts`
+Add a pharmacokinetic entry for the blend. Since blends typically use CJC-1295 without DAC (Mod GRF 1-29) paired with Ipamorelin, the half-life profile will reflect the no-DAC variant (~30 min half-life), with a note explaining the blend composition.
+
+### 4. `MEDICATIONS_LIST.md`
+Add the new blend to the Peptide Blends section for documentation.
 
 ---
 
-## Result
+## Technical Details
 
-After this fix:
-- Checkmarks will render correctly in all email clients with your brand coral color (#FF6B6B)
-- "Get Started Now" takes users to your landing page where they can download the app for their specific platform (iOS or Android)
+The half-life entry will look like:
 
+```typescript
+'cjc-1295 / ipamorelin': {
+  halfLifeHours: 0.5,
+  tMaxHours: 0.1,
+  category: 'peptide',
+  displayName: 'CJC-1295 / Ipamorelin',
+  notes: 'Common blend using CJC-1295 (no DAC) + Ipamorelin'
+},
+```
+
+This follows the existing pattern for blend entries and enables pharmacokinetic tracking (medication levels card) for users who add this compound.
