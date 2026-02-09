@@ -1,42 +1,66 @@
 
-# Add CJC-1295/Ipamorelin Blend to Compound Catalog
+# v1.0.7 Release (Build 35)
 
-## What's Changing
+## What's Included in This Release
 
-Adding "CJC-1295 / Ipamorelin" as a recognized blend in the autocomplete database. This is one of the most widely prescribed peptide combinations at compounding pharmacies and clinics, so it belongs in the official catalog.
+Changes since v1.0.6 that will ship with this update:
 
-The triple blend (CJC/IPA/Tesamorelin) will NOT be added at this time.
-
----
-
-## Files to Update
-
-### 1. `src/components/AddCompoundScreen.tsx`
-Add `"CJC-1295 / Ipamorelin"` to the Blends and Stacks section (line ~149), alongside GLOW, KLOW, and other blends.
-
-### 2. `src/components/onboarding/screens/MedicationSetupScreen.tsx`
-Add `"CJC-1295 / Ipamorelin"` to the `ALL_COMPOUNDS` array in the Blends section (line ~82).
-
-### 3. `src/utils/halfLifeData.ts`
-Add a pharmacokinetic entry for the blend. Since blends typically use CJC-1295 without DAC (Mod GRF 1-29) paired with Ipamorelin, the half-life profile will reflect the no-DAC variant (~30 min half-life), with a note explaining the blend composition.
-
-### 4. `MEDICATIONS_LIST.md`
-Add the new blend to the Peptide Blends section for documentation.
+1. GA4 iOS platform detection fix (users were being tagged as "web" instead of "ios")
+2. CJC-1295 / Ipamorelin blend added to compound catalog
+3. Welcome email fixes (coral checkmarks + landing page CTA link)
 
 ---
 
-## Technical Details
+## Code Change
 
-The half-life entry will look like:
+### File: `capacitor.config.ts`
 
-```typescript
-'cjc-1295 / ipamorelin': {
-  halfLifeHours: 0.5,
-  tMaxHours: 0.1,
-  category: 'peptide',
-  displayName: 'CJC-1295 / Ipamorelin',
-  notes: 'Common blend using CJC-1295 (no DAC) + Ipamorelin'
-},
+Update version and build number:
+
+```
+appVersion = '1.0.7'
+appBuild = '35'
 ```
 
-This follows the existing pattern for blend entries and enables pharmacokinetic tracking (medication levels card) for users who add this compound.
+This is the only code change needed. The welcome email fix (edge function) is already deployed. Everything else is already in the codebase.
+
+---
+
+## After Approval: Your Build Steps
+
+### iOS (TestFlight / App Store)
+1. git pull
+2. ./sync-version.sh
+3. npm run build
+4. npx cap sync ios
+5. Open Xcode: npx cap open ios
+6. Product -> Archive -> Upload to App Store Connect
+7. Submit for review (keep current ASO keywords -- too early to change)
+
+### Android (Google Play)
+1. git pull
+2. ./sync-version.sh
+3. npm run build
+4. npx cap sync android
+5. Open Android Studio: npx cap open android
+6. Build -> Generate Signed Bundle
+7. Upload to Google Play Console -> Production track
+
+---
+
+## ASO Recommendation
+
+Keep current keywords unchanged for this release. Rationale:
+- Only ~5 days since last keyword update -- Apple needs 1-2 weeks minimum to re-index
+- The "testosterone broad" Apple Ads campaign showing 4-6 installs validates your targeting
+- Evaluate keyword rankings with your ASO tool around Feb 16-19 before making changes
+- Consider updating keywords with v1.0.8 if data shows opportunities
+
+---
+
+## Android Monitoring Checklist
+
+After this release, check these to verify Android health:
+- Google Play Console -> Statistics for download/install counts
+- RevenueCat Dashboard -> filter by Google Play store
+- GA4 -> filter by user_platform = "android" (now that platform detection is fixed)
