@@ -714,6 +714,13 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'KLOW',
     notes: 'Blend: BPC-157 + TB-500 + KPV + GHK-Cu'
   },
+  'cjc-1295 / ipamorelin': {
+    halfLifeHours: 0.5,
+    tMaxHours: 0.1,
+    category: 'peptide',
+    displayName: 'CJC-1295 / Ipamorelin',
+    notes: 'Common blend using CJC-1295 (no DAC) + Ipamorelin'
+  },
   
   // Additional Blood Pressure Medications
   'telmisartan': {

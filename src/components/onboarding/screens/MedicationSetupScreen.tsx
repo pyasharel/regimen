@@ -76,7 +76,7 @@ const ALL_COMPOUNDS = [
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
   
   // Blends
-  "GLOW", "KLOW",
+  "GLOW", "KLOW", "CJC-1295 / Ipamorelin",
   
   // SARMs (Selective Androgen Receptor Modulators)
   "LGD-4033", "Ligandrol", "RAD-140", "Testolone",

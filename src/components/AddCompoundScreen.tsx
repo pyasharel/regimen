@@ -146,7 +146,7 @@ const COMMON_PEPTIDES = [
   "Cialis", "Tadalafil", "Viagra", "Sildenafil",
   
   // Blends and Stacks
-  "Wolverine Stack", "GHK-Cu + BPC-157 Blend", "GLOW", "KLOW",
+  "Wolverine Stack", "GHK-Cu + BPC-157 Blend", "GLOW", "KLOW", "CJC-1295 / Ipamorelin",
   
   // SARMs (Selective Androgen Receptor Modulators)
   "LGD-4033", "Ligandrol", "RAD-140", "Testolone",
