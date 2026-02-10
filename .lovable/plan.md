@@ -1,23 +1,31 @@
 
+# Hide Google Sign-In on Android Native
 
-# Hide Boot/Auth Diagnostics from Regular Users
+## What
+A quick, surgical fix: hide the Google Sign-In button only on Android native where it's broken. It stays visible on web and iOS.
 
-## Problem
-The Boot Diagnostics and Login Diagnostics sections in Settings > Help & Support are visible to all users. These are developer-only debugging tools showing raw trace logs that confuse regular users and make the app look unfinished.
-
-## Solution
-Gate the diagnostics sections behind the existing developer access system. Only users whose UUIDs are in the `DEVELOPER_USER_IDS` list will see them.
+## Scope
+One file, two small changes. Should take about 30 seconds.
 
 ## Technical Details
 
-### File: `src/components/settings/HelpSettings.tsx`
+### File: `src/pages/Auth.tsx`
 
-1. Import the developer access check function from `src/utils/developerAccess.ts`
-2. Import `useEffect`/`useState` and the Supabase client to get the current user ID
-3. Add a state variable `isDeveloper` (default `false`)
-4. On mount, check if the current user's UUID is in the developer list
-5. Wrap the three diagnostics sections (Boot Diagnostics, Login Diagnostics, and Copy All Diagnostics button) in a conditional render: only show when `isDeveloper` is `true`
+**Change 1:** Add a platform check near the top of the component (around where other state variables are declared):
+```typescript
+const isAndroidNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+```
 
-Everything else on the Help & Support page (Send Feedback, Contact Support, FAQ, App Version) remains visible to all users.
+**Change 2:** Wrap lines 592-616 (the Google button + "Or continue with email" divider) in:
+```tsx
+{!isAndroidNative && (
+  <>
+    {/* Google Sign In */}
+    ...existing button code...
+    {/* Divider */}
+    ...existing divider code...
+  </>
+)}
+```
 
-No database changes needed. No new dependencies. Just a conditional render gate on existing UI.
+That's it. No other files, no dependencies, no native changes needed. Your beta tester on Android will just see a clean email/password form. Web and iOS users still get the Google option.
