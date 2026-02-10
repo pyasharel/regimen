@@ -251,6 +251,13 @@ const AnalyticsWrapper = () => {
         const url = event.url;
         console.log('[DEEP-LINK] Received URL:', url);
 
+        // Handle password reset deep links (custom scheme: regimen://auth?mode=reset)
+        if (url.includes('auth?mode=reset') || url.includes('/auth')) {
+          console.log('[DEEP-LINK] Password reset link detected:', url);
+          navigate('/auth?mode=reset', { replace: true });
+          return;
+        }
+
         // Handle both universal links (https://getregimen.app/...) and custom scheme (regimen://...)
         let checkoutAction = null;
         let sessionId = null;
