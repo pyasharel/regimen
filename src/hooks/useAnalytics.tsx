@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import ReactGA from 'react-ga4';
-import { trackPageView, trackSessionStart, trackSessionEnd, trackAppOpened, setPlatformUserProperty, setProfileUserProperties } from '@/utils/analytics';
+import { trackPageView, trackSessionStart, trackSessionEnd, trackAppOpened, setPlatformUserProperty, setProfileUserProperties, getPlatform } from '@/utils/analytics';
 import { getDaysSinceInstall, setInstallDate, checkAndTrackVersionUpgrade } from '@/utils/featureTracking';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client';
+import { appVersion } from '../../capacitor.config';
 // Screen name mapping for cleaner GA4 reports
 const SCREEN_MAP: Record<string, string> = {
   '/': 'Landing',
@@ -214,9 +215,9 @@ export const useAnalytics = () => {
     };
   }, []);
 
-  // Set user profile properties (path_type, experience_level) for GA4 segmentation
+  // Set user profile properties and update platform tracking
   useEffect(() => {
-    const setUserProfileProperties = async () => {
+    const updateProfileAndProperties = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -233,18 +234,30 @@ export const useAnalytics = () => {
             experienceLevel: profile.experience_level,
           });
         }
+
+        // Update last_platform and last_app_version on every session
+        const platform = getPlatform();
+        await supabase
+          .from('profiles')
+          .update({
+            last_platform: platform,
+            last_app_version: appVersion,
+            last_active_at: new Date().toISOString(),
+          } as any)
+          .eq('user_id', user.id);
+        console.log('[Analytics] Profile platform updated:', platform, appVersion);
       } catch (err) {
-        console.log('[Analytics] Could not load profile for user properties');
+        console.log('[Analytics] Could not update profile properties');
       }
     };
     
     // Run on initial load
-    setUserProfileProperties();
+    updateProfileAndProperties();
     
     // Also run when auth state changes (login/signup)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        setUserProfileProperties();
+        updateProfileAndProperties();
       }
     });
     
