@@ -25,6 +25,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
+  const isAndroidNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -589,31 +590,35 @@ export default function Auth() {
           </form>
         ) : (
           <form onSubmit={handleAuth} className="space-y-6">
-            {/* Google Sign In - Moved to top */}
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full flex items-center justify-center gap-2 border-border"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-              >
-                <FcGoogle className="h-5 w-5" />
-                Continue with Google
-              </Button>
-            </div>
+            {!isAndroidNative && (
+              <>
+                {/* Google Sign In - Moved to top */}
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2 border-border"
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                  >
+                    <FcGoogle className="h-5 w-5" />
+                    Continue with Google
+                  </Button>
+                </div>
 
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
-            </div>
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">
+                      Or continue with email
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {isSignUp && (
               <div className="space-y-2">
