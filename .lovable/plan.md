@@ -1,66 +1,52 @@
 
-# v1.0.7 Release (Build 35)
 
-## What's Included in This Release
+# Add Platform Tracking to User Profiles
 
-Changes since v1.0.6 that will ship with this update:
+## What We're Adding
 
-1. GA4 iOS platform detection fix (users were being tagged as "web" instead of "ios")
-2. CJC-1295 / Ipamorelin blend added to compound catalog
-3. Welcome email fixes (coral checkmarks + landing page CTA link)
+1. **`signup_platform`** (text) -- Captures which platform the user originally signed up on (ios, android, web). Set once, never changes. Useful for understanding acquisition channels.
 
----
+2. **`last_platform`** (text) -- Captures the most recent platform the user opened the app on. Updated every session. Useful for knowing where your active users are right now.
 
-## Code Change
+3. **`last_app_version`** (text) -- Captures the most recent app version the user is running. Updated every session. Helps you know how many users have upgraded to the latest build.
 
-### File: `capacitor.config.ts`
+## Why Three Columns Instead of One
 
-Update version and build number:
+A single `user_platform` column wouldn't tell the full story. A user might sign up on web but primarily use the iOS app. With `signup_platform` + `last_platform`, you can answer both "where do users come from?" and "where are users active?"
 
+## Will This Require a New App Update?
+
+**No.** Platform detection already works in the current app code via `Capacitor.getPlatform()`. The new columns just need code changes to write the detected platform to the profile table during signup and on each session start. Since these are web-bundle changes (TypeScript/React), they deploy automatically without a new App Store or Play Store binary.
+
+Existing users will get `signup_platform` backfilled as `null` (unknown -- they signed up before tracking), but `last_platform` and `last_app_version` will populate on their very next session.
+
+## Implementation Steps
+
+### Step 1: Database Migration
+Add three new columns to the `profiles` table:
+- `signup_platform` (text, nullable) -- set once on signup
+- `last_platform` (text, nullable) -- updated each session
+- `last_app_version` (text, nullable) -- updated each session
+
+### Step 2: Update Auth.tsx (Signup Flows)
+In all three signup paths (email, Google native, Google web), set `signup_platform` and `last_platform` to the detected platform, and `last_app_version` to the current app version.
+
+### Step 3: Update useAnalytics.tsx (Session Start)
+On each session start (app open, resume from background), update `last_platform` and `last_app_version` on the user's profile. This ensures the values stay current.
+
+### Step 4: Query Android Users
+Once deployed, you'll be able to run a simple query to see platform breakdown:
+
+```text
+SELECT last_platform, COUNT(*) 
+FROM profiles 
+WHERE last_active_at > now() - interval '7 days'
+GROUP BY last_platform
 ```
-appVersion = '1.0.7'
-appBuild = '35'
-```
 
-This is the only code change needed. The welcome email fix (edge function) is already deployed. Everything else is already in the codebase.
+## What You'll Be Able to Answer
 
----
-
-## After Approval: Your Build Steps
-
-### iOS (TestFlight / App Store)
-1. git pull
-2. ./sync-version.sh
-3. npm run build
-4. npx cap sync ios
-5. Open Xcode: npx cap open ios
-6. Product -> Archive -> Upload to App Store Connect
-7. Submit for review (keep current ASO keywords -- too early to change)
-
-### Android (Google Play)
-1. git pull
-2. ./sync-version.sh
-3. npm run build
-4. npx cap sync android
-5. Open Android Studio: npx cap open android
-6. Build -> Generate Signed Bundle
-7. Upload to Google Play Console -> Production track
-
----
-
-## ASO Recommendation
-
-Keep current keywords unchanged for this release. Rationale:
-- Only ~5 days since last keyword update -- Apple needs 1-2 weeks minimum to re-index
-- The "testosterone broad" Apple Ads campaign showing 4-6 installs validates your targeting
-- Evaluate keyword rankings with your ASO tool around Feb 16-19 before making changes
-- Consider updating keywords with v1.0.8 if data shows opportunities
-
----
-
-## Android Monitoring Checklist
-
-After this release, check these to verify Android health:
-- Google Play Console -> Statistics for download/install counts
-- RevenueCat Dashboard -> filter by Google Play store
-- GA4 -> filter by user_platform = "android" (now that platform detection is fixed)
+- How many active users are on Android vs iOS vs web?
+- Which platform are new signups coming from?
+- Are Android users converting to paid at the same rate?
+- What app version are users on by platform?
