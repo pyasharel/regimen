@@ -261,10 +261,16 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // Use production domain for Universal Links (iOS) and App Links (Android)
-      // This ensures clicking the reset link opens the native app instead of Safari/Chrome
+      // For native apps, use custom scheme which is guaranteed to open the app
+      // App Links (https://) are unreliable on Android due to domain verification issues
+      // Custom scheme (regimen://) bypasses this entirely
+      const isNative = Capacitor.isNativePlatform();
+      const redirectUrl = isNative 
+        ? 'regimen://auth?mode=reset'
+        : 'https://getregimen.app/auth?mode=reset';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://getregimen.app/auth?mode=reset',
+        redirectTo: redirectUrl,
       });
 
       if (error) throw error;
