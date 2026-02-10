@@ -1,31 +1,30 @@
 
-# Hide Google Sign-In on Android Native
+
+# Hide Google Sign-In on All Platforms
 
 ## What
-A quick, surgical fix: hide the Google Sign-In button only on Android native where it's broken. It stays visible on web and iOS.
+Remove the Google Sign-In button and "Or continue with email" divider from the login/signup screen on every platform (web, iOS, and Android) until it's properly tested and configured.
+
+## Why
+- Android: confirmed broken (crashes with scope error)
+- iOS: untested, native plugin registration for SocialLogin is missing from MainViewController.swift
+- Web: untested, may or may not work via OAuth redirect
+
+No point showing a button that could fail on any platform. We'll bring it back when it's properly set up.
 
 ## Scope
-One file, two small changes. Should take about 30 seconds.
+One file, one small change. Replacing the Android-only check with a full hide.
 
 ## Technical Details
 
 ### File: `src/pages/Auth.tsx`
 
-**Change 1:** Add a platform check near the top of the component (around where other state variables are declared):
-```typescript
-const isAndroidNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
-```
+**Change:** Replace the `{!isAndroidNative && (...)}` conditional block (lines 593-621) with nothing -- just remove the Google button and divider entirely. Also remove the `isAndroidNative` variable (line 28) since it's no longer needed.
 
-**Change 2:** Wrap lines 592-616 (the Google button + "Or continue with email" divider) in:
-```tsx
-{!isAndroidNative && (
-  <>
-    {/* Google Sign In */}
-    ...existing button code...
-    {/* Divider */}
-    ...existing divider code...
-  </>
-)}
-```
+The `handleGoogleSignIn` function can stay in the code for now (dead code) so we don't lose the logic when we're ready to re-enable it later.
 
-That's it. No other files, no dependencies, no native changes needed. Your beta tester on Android will just see a clean email/password form. Web and iOS users still get the Google option.
+## Impact
+- Zero impact on existing users or accounts
+- Login/signup screen will just show the email/password form on all platforms
+- No one's current sign-in method changes
+
