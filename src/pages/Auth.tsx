@@ -12,8 +12,9 @@ import { FcGoogle } from "react-icons/fc";
 import { Capacitor } from "@capacitor/core";
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { authSignUpSchema, authSignInSchema } from "@/utils/validation";
-import { trackSignup, trackLogin, setUserId } from "@/utils/analytics";
+import { trackSignup, trackLogin, setUserId, getPlatform } from "@/utils/analytics";
 import { getStoredAttribution, clearAttribution } from "@/utils/attribution";
+import { appVersion } from '../../capacitor.config';
 import { withQueryTimeout, withTimeout } from "@/utils/withTimeout";
 import { startAuthTrace, authTrace, endAuthTrace } from "@/utils/authTracer";
 
@@ -325,6 +326,7 @@ export default function Auth() {
           const countryCode = locale.split('-')[1] || null;
           
           if (attribution?.utm_source || attribution?.referrer || countryCode) {
+            const platform = getPlatform();
             await supabase.from('profiles').update({
               utm_source: attribution?.utm_source || null,
               utm_medium: attribution?.utm_medium || null,
@@ -335,8 +337,11 @@ export default function Auth() {
               attributed_at: attribution?.utm_source || attribution?.referrer ? new Date().toISOString() : null,
               country_code: countryCode,
               detected_locale: locale,
-            }).eq('user_id', data.user.id);
-            console.log('[Auth] Google Sign-in attribution and country persisted');
+              signup_platform: platform,
+              last_platform: platform,
+              last_app_version: appVersion,
+            } as any).eq('user_id', data.user.id);
+            console.log('[Auth] Google Sign-in attribution, country, and platform persisted');
           }
           clearAttribution();
         }
@@ -422,6 +427,7 @@ export default function Auth() {
         const countryCode = locale.split('-')[1] || null;
         
         if (signUpData?.user) {
+          const platform = getPlatform();
           await supabase.from('profiles').update({
             utm_source: attribution?.utm_source || null,
             utm_medium: attribution?.utm_medium || null,
@@ -432,8 +438,11 @@ export default function Auth() {
             attributed_at: attribution?.utm_source || attribution?.referrer ? new Date().toISOString() : null,
             country_code: countryCode,
             detected_locale: locale,
-          }).eq('user_id', signUpData.user.id);
-          console.log('[Auth] Attribution and country data persisted to profile');
+            signup_platform: platform,
+            last_platform: platform,
+            last_app_version: appVersion,
+          } as any).eq('user_id', signUpData.user.id);
+          console.log('[Auth] Attribution, country, and platform data persisted to profile');
         }
         // Clear attribution after successful signup
         clearAttribution();

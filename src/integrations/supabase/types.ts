@@ -324,7 +324,9 @@ export type Database = {
           is_lifetime_access: boolean | null
           landing_page: string | null
           last_active_at: string | null
+          last_app_version: string | null
           last_payment_attempt: string | null
+          last_platform: string | null
           notification_permission_asked: boolean | null
           onboarding_completed: boolean | null
           onboarding_completed_at: string | null
@@ -332,6 +334,7 @@ export type Database = {
           path_type: string | null
           preview_mode_compound_added: boolean | null
           referrer: string | null
+          signup_platform: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_end_date: string | null
@@ -373,7 +376,9 @@ export type Database = {
           is_lifetime_access?: boolean | null
           landing_page?: string | null
           last_active_at?: string | null
+          last_app_version?: string | null
           last_payment_attempt?: string | null
+          last_platform?: string | null
           notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
@@ -381,6 +386,7 @@ export type Database = {
           path_type?: string | null
           preview_mode_compound_added?: boolean | null
           referrer?: string | null
+          signup_platform?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_end_date?: string | null
@@ -422,7 +428,9 @@ export type Database = {
           is_lifetime_access?: boolean | null
           landing_page?: string | null
           last_active_at?: string | null
+          last_app_version?: string | null
           last_payment_attempt?: string | null
+          last_platform?: string | null
           notification_permission_asked?: boolean | null
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
@@ -430,6 +438,7 @@ export type Database = {
           path_type?: string | null
           preview_mode_compound_added?: boolean | null
           referrer?: string | null
+          signup_platform?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_end_date?: string | null
