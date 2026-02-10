@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Mail, MessageSquare, ExternalLink, Bug, Copy, Check, LogIn } from "lucide-react";
 import { appVersion, appBuild } from "../../../capacitor.config";
 import { getBootTraceText, getLastBootSummary, clearBootTrace } from "@/utils/bootTracer";
 import { getAuthTraceText, getLastAuthSummary, clearAuthTrace } from "@/utils/authTracer";
+import { isDeveloperUser } from "@/utils/developerAccess";
+import { supabase } from "@/integrations/supabase/client";
 
 // Build-time constant defined in vite.config.ts
 declare const __WEB_BUNDLE_STAMP__: string;
@@ -16,6 +18,13 @@ export const HelpSettings = () => {
   const [copiedAuth, setCopiedAuth] = useState(false);
   const [bootSummary] = useState(() => getLastBootSummary());
   const [authSummary] = useState(() => getLastAuthSummary());
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsDev(isDeveloperUser(data.session?.user?.id ?? null));
+    });
+  }, []);
 
   const faqItems = [
     {
@@ -137,115 +146,72 @@ export const HelpSettings = () => {
           </div>
         </div>
 
-        {/* Boot Trace (Diagnostics) */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <Bug className="h-5 w-5" />
+        {isDev && (
+          <>
+            {/* Boot Trace (Diagnostics) */}
+            <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <Bug className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-semibold">Boot Diagnostics</h2>
+                  <p className="text-xs text-muted-foreground font-mono">{bootSummary}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowBootTrace(!showBootTrace)} className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm">
+                  {showBootTrace ? 'Hide Trace' : 'View Boot Trace'}
+                </button>
+                <button onClick={handleCopyBoot} className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors" title="Copy to clipboard">
+                  {copiedBoot ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+              {showBootTrace && (
+                <div className="mt-2">
+                  <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">{getBootTraceText()}</pre>
+                  <button onClick={() => { clearBootTrace(); setShowBootTrace(false); }} className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors">Clear Boot Trace</button>
+                </div>
+              )}
             </div>
-            <div className="flex-1">
-              <h2 className="font-semibold">Boot Diagnostics</h2>
-              <p className="text-xs text-muted-foreground font-mono">{bootSummary}</p>
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowBootTrace(!showBootTrace)}
-              className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
-            >
-              {showBootTrace ? 'Hide Trace' : 'View Boot Trace'}
-            </button>
-            <button
-              onClick={handleCopyBoot}
-              className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-              title="Copy to clipboard"
-            >
-              {copiedBoot ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-          
-          {showBootTrace && (
-            <div className="mt-2">
-              <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
-                {getBootTraceText()}
-              </pre>
-              <button
-                onClick={() => {
-                  clearBootTrace();
-                  setShowBootTrace(false);
-                }}
-                className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors"
-              >
-                Clear Boot Trace
-              </button>
-            </div>
-          )}
-        </div>
 
-        {/* Auth Trace (Login Diagnostics) */}
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-              <LogIn className="h-5 w-5" />
+            {/* Auth Trace (Login Diagnostics) */}
+            <div className="space-y-4 p-4 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  <LogIn className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-semibold">Login Diagnostics</h2>
+                  <p className="text-xs text-muted-foreground font-mono">{authSummary}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowAuthTrace(!showAuthTrace)} className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm">
+                  {showAuthTrace ? 'Hide Trace' : 'View Auth Trace'}
+                </button>
+                <button onClick={handleCopyAuth} className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors" title="Copy to clipboard">
+                  {copiedAuth ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+              {showAuthTrace && (
+                <div className="mt-2">
+                  <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">{getAuthTraceText()}</pre>
+                  <button onClick={() => { clearAuthTrace(); setShowAuthTrace(false); }} className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors">Clear Auth Trace</button>
+                </div>
+              )}
             </div>
-            <div className="flex-1">
-              <h2 className="font-semibold">Login Diagnostics</h2>
-              <p className="text-xs text-muted-foreground font-mono">{authSummary}</p>
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAuthTrace(!showAuthTrace)}
-              className="flex-1 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
-            >
-              {showAuthTrace ? 'Hide Trace' : 'View Auth Trace'}
-            </button>
-            <button
-              onClick={handleCopyAuth}
-              className="p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-              title="Copy to clipboard"
-            >
-              {copiedAuth ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-          
-          {showAuthTrace && (
-            <div className="mt-2">
-              <pre className="p-3 rounded-lg bg-background text-xs font-mono overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
-                {getAuthTraceText()}
-              </pre>
-              <button
-                onClick={() => {
-                  clearAuthTrace();
-                  setShowAuthTrace(false);
-                }}
-                className="mt-2 w-full p-2 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive text-sm transition-colors"
-              >
-                Clear Auth Trace
-              </button>
-            </div>
-          )}
-        </div>
 
-        {/* Copy All Diagnostics Button */}
-        <button
-          onClick={handleCopyAll}
-          className="w-full p-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2"
-        >
-          {copiedBoot && copiedAuth ? (
-            <>
-              <Check className="h-4 w-4 text-primary" />
-              Copied All Diagnostics
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4" />
-              Copy All Diagnostics
-            </>
-          )}
-        </button>
+            {/* Copy All Diagnostics Button */}
+            <button onClick={handleCopyAll} className="w-full p-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2">
+              {copiedBoot && copiedAuth ? (
+                <><Check className="h-4 w-4 text-primary" />Copied All Diagnostics</>
+              ) : (
+                <><Copy className="h-4 w-4" />Copy All Diagnostics</>
+              )}
+            </button>
+          </>
+        )}
 
         {/* App Version */}
         <div className="text-center text-sm text-muted-foreground">
