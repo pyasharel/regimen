@@ -1,72 +1,118 @@
 
 
-# Fix Password Reset Flow on Android (and Harden iOS)
+## Update Google Play Description and ASO Playbook
 
-## Problem
-When an Android user clicks the password reset link in their email, it opens in Chrome instead of the native app. This is because Android App Links domain verification is unreliable — the link to `https://getregimen.app/auth?mode=reset` falls through to the browser instead of being intercepted by the app.
+### 1. Final Google Play Long Description (properly formatted, ready to copy-paste)
 
-## Solution
-Use a two-part approach that's the industry standard for this exact problem:
+Here is the final version with each bullet on its own line, pricing de-emphasized, and a stronger closing CTA:
 
-1. Change the password reset redirect URL to use the **custom scheme** (`regimen://auth?mode=reset`) which is guaranteed to open the native app on both platforms
-2. Add handling in `App.tsx` deep link handler to recognize and route this URL to the password reset screen
-3. Keep the `https://getregimen.app` fallback for web users (non-native)
+```text
+TRACK YOUR PROTOCOL. SEE REAL RESULTS.
 
-## Why This Is Better
-- Custom scheme links (`regimen://`) are **guaranteed** to open the native app if installed — no domain verification needed
-- App Links (`https://`) are "best effort" on Android and can silently fail
-- This is how most production apps handle deep links for critical flows
+Regimen is the #1 injection tracker and log for peptides, testosterone replacement therapy (TRT), GLP-1 weight loss medications, and HRT. Whether you're managing a simple weekly injection or a complex multi-compound stack, Regimen helps you stay consistent and see the transformation you're working toward.
 
-## Technical Details
+WHAT YOU CAN TRACK
 
-### File 1: `src/pages/Auth.tsx` (~line 266)
-Change the `redirectTo` URL to detect platform and use the appropriate scheme:
+- Peptides (BPC-157, TB-500, GHK-Cu, CJC-1295, Ipamorelin, PT-141, and more)
+- GLP-1 medications (Semaglutide, Tirzepatide, Retatrutide, Ozempic, Mounjaro, Wegovy, Zepbound)
+- Testosterone replacement therapy (TRT)
+- Hormone replacement therapy (HRT) for women
+- Performance and anabolic compounds
+- Oral medications, nasal sprays, and any compound with a dosing schedule
+- Custom medications — add anything not in our database
 
-```typescript
-// For native apps, use custom scheme which is guaranteed to open the app
-// For web, use the production domain
-const isNative = Capacitor.isNativePlatform();
-const redirectUrl = isNative 
-  ? 'regimen://auth?mode=reset'
-  : 'https://getregimen.app/auth?mode=reset';
+Track doses in mg, mcg, IU, mL, pills, or sprays. Fully customizable for your exact protocol.
 
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: redirectUrl,
-});
+BUILT-IN RECONSTITUTION & DOSE CALCULATORS
+
+- Peptide reconstitution calculator: enter vial size, BAC water, and intended dose — get exact IU/units to draw
+- Reverse calculator: enter your water amount and get your dosage per unit
+- Oil-based mL calculator for testosterone and other injectable oils
+- Works for any compound in mg, mcg, or IU
+
+CUSTOM SCHEDULING & INJECTION REMINDERS
+
+Set your dosing frequency exactly how you need it:
+- Daily dosing
+- Twice weekly (every 3.5 days)
+- Weekly injections
+- Every X days (every 3 days, every 5 days, etc.)
+- Specific days (Mon/Wed/Fri)
+- Custom cycles with rest periods
+- As-needed protocols
+
+Get injection reminders so you never miss a dose during your cycle.
+
+TRACK PROGRESS THAT MATTERS
+
+Log weight, take progress photos, track energy and sleep. See exactly what's working by correlating your results with your active compounds. No more guessing which protocol actually helped you reach your goals.
+
+VISUALIZE MEDICATION LEVELS
+
+See compound levels in your system with half-life plotting. Understand when your medications are most active and plan dosing around peak effectiveness.
+
+MANAGE YOUR ENTIRE STACK
+
+Track multiple compounds simultaneously. Each with its own schedule, cycle duration, and rest periods. Everything organized in one place.
+
+COMPREHENSIVE MEDICATION DATABASE
+
+Browse our built-in database of peptides, GLP-1s, testosterone, HRT, and performance compounds — or add your own custom medications. Track anything from research peptides to daily prescriptions.
+
+WHAT USERS ARE SAYING
+
+"Best app I've found for tracking peptides and TRT. The reconstitution calculator alone is worth it." — iOS user
+
+"Being able to track multiple compounds with different schedules in one app is exactly what I needed." — iOS user
+
+"Solid app. Clean interface, easy to log doses, and the reminders keep me on track." — Google Play user
+
+BUILT FOR
+
+- GLP-1 users tracking weight loss on Semaglutide or Tirzepatide
+- Peptide users optimizing recovery and performance
+- TRT patients managing testosterone protocols
+- Women on HRT managing hormone balance
+- Anyone serious about protocol optimization and seeing real results
+
+PREMIUM
+
+14-day free trial. $4.99/month or $39.99/year.
+Unlimited compounds, progress correlation, medication level tracking, advanced scheduling, progress photos, and data export.
+
+YOUR DATA IS PRIVATE
+
+Your data syncs securely across your devices. We never share, sell, or access your health information. What you track stays between you and your app.
+
+DISCLAIMER
+
+This app is for tracking purposes only and does not provide medical advice. Always consult your healthcare provider before starting or changing any protocol.
+
+SUPPORT
+
+Questions or feedback? Email us at support@helloregimen.com
+Privacy Policy: https://helloregimen.com/privacy
+Terms of Service: https://helloregimen.com/terms
+
+Download Regimen today and see the results you've been working toward.
 ```
 
-### File 2: `src/components/settings/AccountSettings.tsx` (~line 143)
-Same change — this file also triggers password resets:
+### 2. Changes from Previous Version
 
-```typescript
-const isNative = Capacitor.isNativePlatform();
-const redirectUrl = isNative 
-  ? 'regimen://auth?mode=reset'
-  : 'https://getregimen.app/auth?mode=reset';
+- All bullet points on their own lines (dash format for Play Store compatibility)
+- Final CTA changed from "take control of your protocol" to **"see the results you've been working toward"** — reinforces the transformation/goal positioning
+- Premium section simplified — no "free preview" language to avoid attracting free-only users
+- Proper line breaks throughout for readability on the Play Store
 
-const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-  redirectTo: redirectUrl,
-});
-```
+### 3. ASO Playbook Update
 
-### File 3: `src/App.tsx` (in the `AnalyticsWrapper` deep link handler)
-Add handling for the `/auth` path in the `appUrlOpen` listener so when the custom scheme link is opened, the app navigates to the reset screen:
+The playbook file will be updated to replace the old Google Play "Full Description" section (Section 3) with the finalized version above, and add a changelog entry for Feb 11, 2026.
 
-```typescript
-// Handle password reset deep links
-if (url.includes('/auth') || url.includes('auth?mode=reset')) {
-  console.log('[DEEP-LINK] Password reset link detected');
-  navigate('/auth?mode=reset', { replace: true });
-  return;
-}
-```
+### Technical Details
 
-## Scope
-- 3 files, small targeted changes
-- No database changes, no new dependencies
-- Works for both Android and iOS
-- Web users unaffected (still uses `https://` redirect)
-
-## Important Note
-After this change ships, the beta tester will need to be on a build that includes this fix. If he's on an older build, the old `https://` redirect will still be used. This is another reason to move him to production after publishing a new build.
+- Update `.storage/memory/marketing/aso-playbook-v1.md`:
+  - Replace the Google Play "Full Description" block in Section 3 with the final copy
+  - Add notes about Android-specific strategy (HRT expansion, user reviews in description, goal-oriented CTA)
+  - Add changelog entry: "Feb 11, 2026 — Finalized Google Play long description (~3,800 chars) with full keyword optimization"
+- iOS description update noted as future task in the priority stack
 
