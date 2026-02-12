@@ -2,6 +2,7 @@ import ReactGA from 'react-ga4';
 import { Capacitor } from '@capacitor/core';
 import { captureAttribution, getStoredAttribution } from './attribution';
 import { appVersion } from '../../capacitor.config';
+import { supabase } from '@/integrations/supabase/client';
 
 // App version synced from capacitor.config.ts
 const APP_VERSION = appVersion;
@@ -806,6 +807,7 @@ export const isInOnboarding = (): boolean => {
  */
 export const trackFirstCompoundAdded = (params: {
   timeSinceSignupHours: number;
+  userId?: string;
 }) => {
   const platform = getPlatform();
   const addedDuringOnboarding = isInOnboarding();
@@ -816,6 +818,27 @@ export const trackFirstCompoundAdded = (params: {
     time_since_signup_hours: params.timeSinceSignupHours,
     added_during_onboarding: addedDuringOnboarding,
   });
+
+  // Dual-track: fire-and-forget DB write for reliable server-side record
+  if (params.userId) {
+    supabase
+      .from('user_activity')
+      .insert({
+        user_id: params.userId,
+        event_type: 'funnel',
+        event_name: 'first_compound_added',
+        metadata: {
+          time_since_signup_hours: params.timeSinceSignupHours,
+          added_during_onboarding: addedDuringOnboarding,
+          platform,
+          app_version: APP_VERSION,
+        },
+      })
+      .then(({ error }) => {
+        if (error) console.error('[Analytics] DB write first_compound_added failed:', error);
+        else console.log('[Analytics] DB write first_compound_added success');
+      });
+  }
   
   console.log('[Analytics] First compound added:', { 
     timeSinceSignupHours: params.timeSinceSignupHours,
@@ -831,6 +854,7 @@ export const trackFirstCompoundAdded = (params: {
 export const trackActivationComplete = (params: {
   timeSinceSignupHours: number;
   timeSinceFirstCompoundHours: number | null;
+  userId?: string;
 }) => {
   const platform = getPlatform();
   const loggedDuringOnboarding = isInOnboarding();
@@ -842,6 +866,28 @@ export const trackActivationComplete = (params: {
     time_since_first_compound_hours: params.timeSinceFirstCompoundHours,
     logged_during_onboarding: loggedDuringOnboarding,
   });
+
+  // Dual-track: fire-and-forget DB write for reliable server-side record
+  if (params.userId) {
+    supabase
+      .from('user_activity')
+      .insert({
+        user_id: params.userId,
+        event_type: 'funnel',
+        event_name: 'activation_complete',
+        metadata: {
+          time_since_signup_hours: params.timeSinceSignupHours,
+          time_since_first_compound_hours: params.timeSinceFirstCompoundHours,
+          logged_during_onboarding: loggedDuringOnboarding,
+          platform,
+          app_version: APP_VERSION,
+        },
+      })
+      .then(({ error }) => {
+        if (error) console.error('[Analytics] DB write activation_complete failed:', error);
+        else console.log('[Analytics] DB write activation_complete success');
+      });
+  }
   
   console.log('[Analytics] Activation complete:', { 
     timeSinceSignupHours: params.timeSinceSignupHours,

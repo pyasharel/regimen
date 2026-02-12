@@ -1488,7 +1488,7 @@ export const AddCompoundScreen = () => {
             const hoursSinceSignup = Math.round((now - signupTime) / (1000 * 60 * 60));
             
             // Fire analytics event
-            trackFirstCompoundAdded({ timeSinceSignupHours: hoursSinceSignup });
+            trackFirstCompoundAdded({ timeSinceSignupHours: hoursSinceSignup, userId: user.id });
             
             // Update profile with timestamp
             await supabase

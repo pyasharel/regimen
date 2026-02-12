@@ -816,6 +816,7 @@ export const TodayScreen = () => {
                   trackActivationComplete({
                     timeSinceSignupHours: hoursSinceSignup,
                     timeSinceFirstCompoundHours: hoursSinceFirstCompound,
+                    userId,
                   });
                   
                   // Update profile with timestamp
