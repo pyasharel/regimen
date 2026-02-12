@@ -150,6 +150,30 @@ export const useAppStateSync = () => {
           console.log('[AppStateSync] Dose reminders disabled - skipping scheduling');
           await cancelAllNotifications();
         } else {
+          // Determine freeCompoundId for non-subscribed users
+          let freeCompoundId: string | undefined;
+          if (!isSubscribed) {
+            try {
+              const { data: oldestCompound } = await withQueryTimeout(
+                dataClient
+                  .from('compounds')
+                  .select('id')
+                  .eq('user_id', userId)
+                  .eq('is_active', true)
+                  .order('created_at', { ascending: true })
+                  .limit(1),
+                'oldestCompound',
+                3000
+              );
+              if (oldestCompound && oldestCompound.length > 0) {
+                freeCompoundId = oldestCompound[0].id;
+                console.log('[AppStateSync] Free compound ID:', freeCompoundId);
+              }
+            } catch (e) {
+              console.warn('[AppStateSync] Failed to get oldest compound:', e);
+            }
+          }
+
           const { data: allDoses } = await withQueryTimeout(
             dataClient
               .from('doses')
@@ -190,8 +214,8 @@ export const useAppStateSync = () => {
               compound_name: dose.compounds?.name || 'Medication'
             }));
             
-            await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
-            console.log('✅ Dose notifications synced with isPremium:', isSubscribed);
+            await scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed, freeCompoundId);
+            console.log('✅ Dose notifications synced with isPremium:', isSubscribed, 'freeCompoundId:', freeCompoundId || 'none');
           }
         }
         

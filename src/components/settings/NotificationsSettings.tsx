@@ -134,6 +134,19 @@ export const NotificationsSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Determine freeCompoundId for non-subscribed users
+      let freeCompoundId: string | undefined;
+      if (!isSubscribed) {
+        const { data: oldest } = await supabase
+          .from('compounds')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (oldest && oldest.length > 0) freeCompoundId = oldest[0].id;
+      }
+
       const { data: allDoses } = await supabase
         .from('doses')
         .select('*, compounds(name, is_active)')
@@ -146,7 +159,7 @@ export const NotificationsSettings = () => {
           ...d,
           compound_name: d.compounds?.name || 'Medication'
         }));
-        await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+        await scheduleAllUpcomingDoses(dosesWithName, isSubscribed, freeCompoundId);
         console.log('[NotificationsSettings] Scheduled notifications after permission grant');
       }
     } catch (error) {
