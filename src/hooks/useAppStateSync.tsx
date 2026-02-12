@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase, recreateSupabaseClient } from '@/integrations/supabase/client';
 import { dataClient, recreateDataClient, abortDataClientRequests } from '@/integrations/supabase/dataClient';
 import { scheduleAllUpcomingDoses, setupNotificationActionHandlers, cancelAllNotifications } from '@/utils/notificationScheduler';
-import { rescheduleAllCycleReminders } from '@/utils/cycleReminderScheduler';
+import { rescheduleAllCycleReminders, cleanupStaleCycleNotifications } from '@/utils/cycleReminderScheduler';
 import { checkAndRegenerateDoses } from '@/utils/doseRegeneration';
 import { runFullCleanup } from '@/utils/doseCleanup';
 import { trackWeeklyEngagementSnapshot } from '@/utils/analytics';
@@ -224,6 +224,8 @@ export const useAppStateSync = () => {
         }
         
         if (cycleRemindersEnabled) {
+          // One-time cleanup of stale notifications from before the cancel bug fix
+          await cleanupStaleCycleNotifications();
           await rescheduleAllCycleReminders();
           console.log('✅ Cycle reminders synced');
         }

@@ -1,6 +1,7 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { safeParseDate, createLocalDate } from "@/utils/dateUtils";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 interface CycleCompound {
   id: string;
@@ -12,9 +13,12 @@ interface CycleCompound {
   cycle_reminders_enabled: boolean;
 }
 
+/** Storage key for persisted notification IDs per compound */
+const notifIdsKey = (compoundId: string) => `cycle_notif_ids_${compoundId}`;
+
 /**
  * Schedule cycle transition reminders for a compound
- * - 1 week before transition (if phase is >= 7 days)
+ * - Advance reminder scaled to phase length
  * - Day of transition
  * Time: 8:00 AM
  */
@@ -37,50 +41,53 @@ export const scheduleCycleReminders = async (compound: CycleCompound): Promise<v
   const daysOff = compound.cycle_weeks_off || 0;
   const now = new Date();
   
-  // One-time cycle (no off period)
+  let notifications: any[];
   if (!daysOff) {
-    await scheduleOneTimeCycleReminders(compound, startDate, daysOn, now);
+    notifications = buildOneTimeCycleNotifications(compound, startDate, daysOn, now);
   } else {
-    // Recurring cycle
-    await scheduleRecurringCycleReminders(compound, startDate, daysOn, daysOff, now);
+    notifications = buildRecurringCycleNotifications(compound, startDate, daysOn, daysOff, now);
+  }
+
+  if (notifications.length > 0) {
+    try {
+      await LocalNotifications.schedule({ notifications });
+      // Persist the scheduled IDs so we can reliably cancel them later
+      const ids = notifications.map(n => n.id);
+      await persistentStorage.setJSON(notifIdsKey(compound.id), ids);
+      console.log(`[CycleReminders] Scheduled ${ids.length} notifications for ${compound.name}, IDs: ${ids.join(',')}`);
+    } catch (error) {
+      console.error('Failed to schedule cycle reminders:', error);
+    }
   }
 };
 
 /**
  * Calculate smart lead time for advance reminders
- * - 7+ days: remind 7 days before
- * - 4-6 days: remind 2 days before  
- * - 2-3 days: remind 1 day before
- * - <2 days: no advance reminder (only day-of)
  */
 const getAdvanceReminderDays = (phaseDays: number): number | null => {
   if (phaseDays >= 7) return 7;
   if (phaseDays >= 4) return 2;
   if (phaseDays >= 2) return 1;
-  return null; // Too short for advance reminder
+  return null;
 };
 
 /**
- * Schedule reminders for one-time cycles (ending permanently)
+ * Build notifications for one-time cycles (ending permanently)
  */
-const scheduleOneTimeCycleReminders = async (
+const buildOneTimeCycleNotifications = (
   compound: CycleCompound,
   startDate: Date,
   daysOn: number,
   now: Date
-): Promise<void> => {
+): any[] => {
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + daysOn);
 
-  // Only schedule if end date is in the future
-  if (endDate <= now) {
-    return;
-  }
+  if (endDate <= now) return [];
 
   const notifications: any[] = [];
   const advanceDays = getAdvanceReminderDays(daysOn);
 
-  // Advance reminder (scaled to cycle length)
   if (advanceDays !== null) {
     const advanceDate = new Date(endDate);
     advanceDate.setDate(advanceDate.getDate() - advanceDays);
@@ -91,59 +98,49 @@ const scheduleOneTimeCycleReminders = async (
       
       notifications.push({
         id: generateNotificationId(compound.id, 'end_advance'),
-        title: `${compound.name}: Cycle Ending Soon`,
-        body: `Your cycle ends in ${advanceDays} day${advanceDays > 1 ? 's' : ''} on ${formatDate(endDate)}.`,
+        title: `${compound.name}: On-Cycle Ending Soon`,
+        body: `Your on-cycle ends in ${advanceDays} day${advanceDays > 1 ? 's' : ''} on ${formatDate(endDate)}.`,
         schedule: { at: advanceAt8AM },
       });
     }
   }
 
-  // Day of end
   if (endDate > now) {
     const endAt8AM = new Date(endDate);
     endAt8AM.setHours(8, 0, 0, 0);
     
     notifications.push({
       id: generateNotificationId(compound.id, 'end_day'),
-      title: `${compound.name}: Cycle Ends Today`,
-      body: `Your cycle ends today.`,
+      title: `${compound.name}: On-Cycle Ends Today`,
+      body: `Your on-cycle ends today.`,
       schedule: { at: endAt8AM },
     });
   }
 
-  if (notifications.length > 0) {
-    try {
-      await LocalNotifications.schedule({ notifications });
-    } catch (error) {
-      console.error('Failed to schedule one-time cycle reminders:', error);
-    }
-  }
+  return notifications;
 };
 
 /**
- * Schedule reminders for recurring cycles
+ * Build notifications for recurring cycles
  * Schedules next 4 transitions (2 complete cycles) to avoid over-scheduling
  */
-const scheduleRecurringCycleReminders = async (
+const buildRecurringCycleNotifications = (
   compound: CycleCompound,
   startDate: Date,
   daysOn: number,
   daysOff: number,
   now: Date
-): Promise<void> => {
+): any[] => {
   const cycleDuration = daysOn + daysOff;
   const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const positionInCycle = daysSinceStart % cycleDuration;
   
   const notifications: any[] = [];
   let notificationCount = 0;
-  const maxNotifications = 8; // 4 transitions × 2 notifications each
+  const maxNotifications = 8;
 
-  // Get smart advance days for each phase
   const onAdvanceDays = getAdvanceReminderDays(daysOn);
   const offAdvanceDays = getAdvanceReminderDays(daysOff);
 
-  // Calculate next few transitions
   for (let cycleOffset = 0; cycleOffset < 3; cycleOffset++) {
     if (notificationCount >= maxNotifications) break;
 
@@ -155,7 +152,6 @@ const scheduleRecurringCycleReminders = async (
     offTransition.setDate(offTransition.getDate() + daysOn);
     
     if (offTransition > now) {
-      // Advance reminder (scaled to ON phase length)
       if (onAdvanceDays !== null) {
         const advanceDate = new Date(offTransition);
         advanceDate.setDate(advanceDate.getDate() - onAdvanceDays);
@@ -166,15 +162,14 @@ const scheduleRecurringCycleReminders = async (
           
           notifications.push({
             id: generateNotificationId(compound.id, `off_advance_${cycleOffset}`),
-            title: `${compound.name}: Cycle Ending Soon`,
-            body: `Your cycle ends in ${onAdvanceDays} day${onAdvanceDays > 1 ? 's' : ''}. Off-phase begins on ${formatDate(offTransition)}.`,
+            title: `${compound.name}: On-Cycle Ending Soon`,
+            body: `Your on-cycle ends in ${onAdvanceDays} day${onAdvanceDays > 1 ? 's' : ''}. Off-phase begins on ${formatDate(offTransition)}.`,
             schedule: { at: advanceAt8AM },
           });
           notificationCount++;
         }
       }
 
-      // Day of OFF transition
       const offAt8AM = new Date(offTransition);
       offAt8AM.setHours(8, 0, 0, 0);
       
@@ -192,7 +187,6 @@ const scheduleRecurringCycleReminders = async (
     onTransition.setDate(onTransition.getDate() + daysOn + daysOff);
     
     if (onTransition > now && notificationCount < maxNotifications) {
-      // Advance reminder (scaled to OFF phase length)
       if (offAdvanceDays !== null) {
         const advanceDate = new Date(onTransition);
         advanceDate.setDate(advanceDate.getDate() - offAdvanceDays);
@@ -211,7 +205,6 @@ const scheduleRecurringCycleReminders = async (
         }
       }
 
-      // Day of ON transition
       const onAt8AM = new Date(onTransition);
       onAt8AM.setHours(8, 0, 0, 0);
       
@@ -225,35 +218,64 @@ const scheduleRecurringCycleReminders = async (
     }
   }
 
-  if (notifications.length > 0) {
-    try {
-      await LocalNotifications.schedule({ notifications });
-    } catch (error) {
-      console.error('Failed to schedule recurring cycle reminders:', error);
+  return notifications;
+};
+
+/**
+ * Cancel all cycle reminders for a compound using persisted notification IDs
+ */
+export const cancelCycleReminders = async (compoundId: string): Promise<void> => {
+  try {
+    const storedIds = await persistentStorage.getJSON<number[]>(notifIdsKey(compoundId));
+    
+    if (storedIds && storedIds.length > 0) {
+      await LocalNotifications.cancel({
+        notifications: storedIds.map(id => ({ id }))
+      });
+      await persistentStorage.remove(notifIdsKey(compoundId));
+      console.log(`[CycleReminders] Cancelled ${storedIds.length} notifications for compound ${compoundId}`);
     }
+  } catch (error) {
+    console.error('Failed to cancel cycle reminders:', error);
   }
 };
 
 /**
- * Cancel all cycle reminders for a compound
+ * One-time cleanup of stale cycle notifications from before the fix.
+ * Cancels ALL pending notifications whose titles match cycle-related patterns,
+ * then sets a flag so it only runs once.
  */
-export const cancelCycleReminders = async (compoundId: string): Promise<void> => {
+export const cleanupStaleCycleNotifications = async (): Promise<void> => {
   try {
-    // Get all pending notifications
+    const alreadyCleaned = await persistentStorage.getBoolean('cycle_notif_cleanup_v1', false);
+    if (alreadyCleaned) return;
+
     const { notifications } = await LocalNotifications.getPending();
-    
-    // Filter to cycle reminder notifications for this compound
-    const cycleNotifications = notifications.filter(n => 
-      n.id.toString().startsWith(`cycle_${compoundId}_`)
-    );
-    
-    if (cycleNotifications.length > 0) {
-      await LocalNotifications.cancel({ 
-        notifications: cycleNotifications.map(n => ({ id: n.id })) 
+    const cyclePatterns = [
+      'Cycle Ending',
+      'On-Cycle Ending',
+      'Off-Phase Begins',
+      'Cycle Begins',
+      'Cycle Resuming',
+      'Cycle Ends Today',
+      'On-Cycle Ends Today',
+    ];
+
+    const stale = notifications.filter(n => {
+      const title = (n as any).title || '';
+      return cyclePatterns.some(p => title.includes(p));
+    });
+
+    if (stale.length > 0) {
+      await LocalNotifications.cancel({
+        notifications: stale.map(n => ({ id: n.id }))
       });
+      console.log(`[CycleReminders] Cleaned up ${stale.length} stale cycle notifications`);
     }
+
+    await persistentStorage.setBoolean('cycle_notif_cleanup_v1', true);
   } catch (error) {
-    console.error('Failed to cancel cycle reminders:', error);
+    console.error('Failed to cleanup stale cycle notifications:', error);
   }
 };
 
@@ -285,13 +307,12 @@ export const rescheduleAllCycleReminders = async (): Promise<void> => {
  * Generate unique notification ID for cycle reminders
  */
 const generateNotificationId = (compoundId: string, type: string): number => {
-  // Create a hash-like ID from compound ID and type
   const str = `cycle_${compoundId}_${type}`;
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return Math.abs(hash);
 };
