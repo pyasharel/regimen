@@ -261,16 +261,14 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // For native apps, use custom scheme which is guaranteed to open the app
-      // App Links (https://) are unreliable on Android due to domain verification issues
-      // Custom scheme (regimen://) bypasses this entirely
       const isNative = Capacitor.isNativePlatform();
-      const redirectUrl = isNative 
-        ? 'regimen://auth?mode=reset'
-        : 'https://getregimen.app/auth?mode=reset';
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+      // Use custom edge function to send branded email via Resend
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email,
+          platform: isNative ? 'native' : 'web',
+        },
       });
 
       if (error) throw error;
