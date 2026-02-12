@@ -1,118 +1,87 @@
 
 
-## Update Google Play Description and ASO Playbook
+## Android Notification Fix + Reminder-Gated Freemium
 
-### 1. Final Google Play Long Description (properly formatted, ready to copy-paste)
+Two independent changes: (1) fix Android notifications, (2) smarter monetization.
 
-Here is the final version with each bullet on its own line, pricing de-emphasized, and a stronger closing CTA:
+---
 
-```text
-TRACK YOUR PROTOCOL. SEE REAL RESULTS.
+### Part 1: Android Notification Fix
 
-Regimen is the #1 injection tracker and log for peptides, testosterone replacement therapy (TRT), GLP-1 weight loss medications, and HRT. Whether you're managing a simple weekly injection or a complex multi-compound stack, Regimen helps you stay consistent and see the transformation you're working toward.
+**The problem:** `notificationScheduler.ts` line 165 sets `sound: 'light_bubble_pop_regimen.m4a'` for all platforms. The `android/app/src/main/res/raw/` directory doesn't exist — there's no sound file for Android. Some Android versions silently fail or produce invisible notifications when a referenced sound resource is missing.
 
-WHAT YOU CAN TRACK
+**The fix:** Make the `sound` property platform-conditional:
+- iOS: keep `'light_bubble_pop_regimen.m4a'` (works today)
+- Android: omit the `sound` property entirely so Android uses its system default notification sound
 
-- Peptides (BPC-157, TB-500, GHK-Cu, CJC-1295, Ipamorelin, PT-141, and more)
-- GLP-1 medications (Semaglutide, Tirzepatide, Retatrutide, Ozempic, Mounjaro, Wegovy, Zepbound)
-- Testosterone replacement therapy (TRT)
-- Hormone replacement therapy (HRT) for women
-- Performance and anabolic compounds
-- Oral medications, nasal sprays, and any compound with a dosing schedule
-- Custom medications — add anything not in our database
+This is a one-line change in `scheduleDoseNotification()` using `Capacitor.getPlatform()`.
 
-Track doses in mg, mcg, IU, mL, pills, or sprays. Fully customizable for your exact protocol.
+---
 
-BUILT-IN RECONSTITUTION & DOSE CALCULATORS
+### Part 2: Monetization — Thinking Through Every User Segment
 
-- Peptide reconstitution calculator: enter vial size, BAC water, and intended dose — get exact IU/units to draw
-- Reverse calculator: enter your water amount and get your dosage per unit
-- Oil-based mL calculator for testosterone and other injectable oils
-- Works for any compound in mg, mcg, or IU
+Here is every permutation and what they experience:
 
-CUSTOM SCHEDULING & INJECTION REMINDERS
+**Segment A: Free user, 1 compound, never trialed (the majority)**
+- Current: sees "Preview Mode — Subscribe for unlimited access" banner, full reminders for their 1 compound
+- Problem: the banner copy is vague — it doesn't tell them WHY they should upgrade
+- Change: Update the PreviewModeBanner subtitle to rotate through specific premium benefits:
+  - "Track multiple compounds with reminders"  
+  - "Unlock progress photos and medication levels"
+  - "Add more compounds to your stack"
+- This educates users on what premium offers, without being pushy
+- Banner still dismisses per session (sessionStorage) and returns on next app open — no change to that behavior
 
-Set your dosing frequency exactly how you need it:
-- Daily dosing
-- Twice weekly (every 3.5 days)
-- Weekly injections
-- Every X days (every 3 days, every 5 days, etc.)
-- Specific days (Mon/Wed/Fri)
-- Custom cycles with rest periods
-- As-needed protocols
+**Segment B: Free user, 0 compounds**
+- No changes. Onboarding guides them to add their first compound. Paywall hits if they try to add a second.
 
-Get injection reminders so you never miss a dose during your cycle.
+**Segment C: Trialed, canceled, has 2+ compounds (the exploit case)**
+- Current: full reminders for ALL compounds forever, just can't add/edit
+- Change: Reminders only fire for their OLDEST compound (first added). Other compounds remain visible, doses can still be logged manually, but no push notifications
+- The preview banner copy becomes contextual: "Reminders for [First Compound] only — Subscribe for all"
+- No new popups, no blocking modals. The natural loss of automation is the conversion lever
 
-TRACK PROGRESS THAT MATTERS
+**Segment D: Trialed, canceled, has 1 compound**
+- Same as Segment A. Full reminders for their 1 compound, preview banner shows. No friction beyond the banner.
 
-Log weight, take progress photos, track energy and sleep. See exactly what's working by correlating your results with your active compounds. No more guessing which protocol actually helped you reach your goals.
+**Segment E: Active subscriber**
+- No changes. Full access, no banners.
 
-VISUALIZE MEDICATION LEVELS
+**Segment F: Past due / canceled with time remaining**
+- No changes. Existing banners for these states already work well.
 
-See compound levels in your system with half-life plotting. Understand when your medications are most active and plan dosing around peak effectiveness.
+#### Where upgrade messaging appears (and where it does NOT)
 
-MANAGE YOUR ENTIRE STACK
+1. **PreviewModeBanner (top of screen)** — already exists, already reappears each session. We just improve the copy to be benefit-specific instead of generic. For users with 2+ compounds, the copy becomes compound-aware.
 
-Track multiple compounds simultaneously. Each with its own schedule, cycle duration, and rest periods. Everything organized in one place.
+2. **No new Today Screen inline card** — after thinking it through, for the majority of free users (1 compound), this card would never show. For the minority with 2+ compounds, the banner copy change + missing reminders is sufficient friction. Adding another UI element would feel cluttered.
 
-COMPREHENSIVE MEDICATION DATABASE
+3. **No periodic popup modals** — this would feel cheap and hurt the premium brand positioning. The persistent-but-dismissable banner is the right balance.
 
-Browse our built-in database of peptides, GLP-1s, testosterone, HRT, and performance compounds — or add your own custom medications. Track anything from research peptides to daily prescriptions.
+4. **Calculator to stack flow** — already gated. When a user tries to add a compound from the calculator and they already have 1, `canAddCompound()` triggers the paywall. No changes needed.
 
-WHAT USERS ARE SAYING
+#### Technical implementation
 
-"Best app I've found for tracking peptides and TRT. The reconstitution calculator alone is worth it." — iOS user
+**File 1: `src/utils/notificationScheduler.ts`**
+- In `scheduleDoseNotification()`: wrap `sound` property with platform check (iOS keeps custom, Android uses default)
+- In `scheduleAllUpcomingDoses()`: accept new optional param `freeCompoundId?: string`. When provided, filter out doses whose `compound_id` doesn't match before scheduling. All existing reconciliation logic stays the same.
 
-"Being able to track multiple compounds with different schedules in one app is exactly what I needed." — iOS user
+**File 2: `src/hooks/useAppStateSync.tsx`**
+- When calling `scheduleAllUpcomingDoses()`, pass `freeCompoundId` if user is not subscribed. Determine the oldest compound by querying compounds ordered by `created_at ASC LIMIT 1`.
 
-"Solid app. Clean interface, easy to log doses, and the reminders keep me on track." — Google Play user
+**File 3: `src/hooks/useNotificationPermissionPrompt.ts`**
+- Same change — pass `freeCompoundId` when calling `scheduleAllUpcomingDoses()` after permission grant.
 
-BUILT FOR
+**File 4: `src/components/PreviewModeBanner.tsx`**
+- Accept optional `compoundCount` and `freeCompoundName` props
+- If `compoundCount > 1`: show "Reminders for [freeCompoundName] only — Subscribe for all [N] compounds"
+- If `compoundCount <= 1` or not provided: rotate through benefit-focused subtitles
 
-- GLP-1 users tracking weight loss on Semaglutide or Tirzepatide
-- Peptide users optimizing recovery and performance
-- TRT patients managing testosterone protocols
-- Women on HRT managing hormone balance
-- Anyone serious about protocol optimization and seeing real results
+**File 5: `src/components/subscription/SubscriptionBanners.tsx`**
+- Fetch compound count and oldest compound name, pass to `PreviewModeBanner`
 
-PREMIUM
+**File 6: Other callers of `scheduleAllUpcomingDoses()`**
+- `DoseEditModal.tsx`, `AddCompoundScreen.tsx`, `TodayScreen.tsx`, `NotificationsSettings.tsx` — pass `freeCompoundId` when applicable
 
-14-day free trial. $4.99/month or $39.99/year.
-Unlimited compounds, progress correlation, medication level tracking, advanced scheduling, progress photos, and data export.
-
-YOUR DATA IS PRIVATE
-
-Your data syncs securely across your devices. We never share, sell, or access your health information. What you track stays between you and your app.
-
-DISCLAIMER
-
-This app is for tracking purposes only and does not provide medical advice. Always consult your healthcare provider before starting or changing any protocol.
-
-SUPPORT
-
-Questions or feedback? Email us at support@helloregimen.com
-Privacy Policy: https://helloregimen.com/privacy
-Terms of Service: https://helloregimen.com/terms
-
-Download Regimen today and see the results you've been working toward.
-```
-
-### 2. Changes from Previous Version
-
-- All bullet points on their own lines (dash format for Play Store compatibility)
-- Final CTA changed from "take control of your protocol" to **"see the results you've been working toward"** — reinforces the transformation/goal positioning
-- Premium section simplified — no "free preview" language to avoid attracting free-only users
-- Proper line breaks throughout for readability on the Play Store
-
-### 3. ASO Playbook Update
-
-The playbook file will be updated to replace the old Google Play "Full Description" section (Section 3) with the finalized version above, and add a changelog entry for Feb 11, 2026.
-
-### Technical Details
-
-- Update `.storage/memory/marketing/aso-playbook-v1.md`:
-  - Replace the Google Play "Full Description" block in Section 3 with the final copy
-  - Add notes about Android-specific strategy (HRT expansion, user reviews in description, goal-oriented CTA)
-  - Add changelog entry: "Feb 11, 2026 — Finalized Google Play long description (~3,800 chars) with full keyword optimization"
-- iOS description update noted as future task in the priority stack
+No database changes needed. No new tables, no schema modifications.
 
