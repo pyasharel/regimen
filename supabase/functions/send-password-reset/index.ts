@@ -11,7 +11,7 @@ const corsHeaders = {
 
 interface PasswordResetRequest {
   email: string;
-  resetLink: string;
+  platform?: string; // 'native' or 'web'
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,61 +20,58 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Verify authentication - user must be logged in
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.error('[PASSWORD-RESET] No authorization header');
+    const { email, platform }: PasswordResetRequest = await req.json();
+
+    if (!email) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({ error: 'Email is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // Create authenticated client to verify the user
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    console.log(`[PASSWORD-RESET] Generating recovery link for: ${email}, platform: ${platform}`);
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
-      console.error('[PASSWORD-RESET] Invalid token:', claimsError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
-    }
-
-    const userId = claimsData.claims.sub;
-    const userEmail = claimsData.claims.email;
-
-    const { email, resetLink }: PasswordResetRequest = await req.json();
-
-    // Create admin client to check admin role
+    // Create admin client to generate recovery link
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    // Security: Verify email matches authenticated user OR user is admin
-    const { data: isAdmin } = await supabaseAdmin.rpc('has_role', {
-      _user_id: userId,
-      _role: 'admin'
+    // Use custom scheme for native apps, https for web
+    const redirectTo = platform === 'native'
+      ? 'regimen://auth?mode=reset'
+      : 'https://getregimen.app/auth?mode=reset';
+
+    // Generate the recovery link via admin API
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: {
+        redirectTo,
+      },
     });
 
-    if (email !== userEmail && !isAdmin) {
-      console.error(`[PASSWORD-RESET] Email mismatch: requested ${email}, authenticated as ${userEmail}`);
+    if (linkError) {
+      console.error('[PASSWORD-RESET] Error generating link:', linkError);
+      // Don't reveal if user exists or not
       return new Response(
-        JSON.stringify({ error: 'Can only send emails to your own address' }),
-        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    console.log(`[PASSWORD-RESET] Sending password reset email to: ${email} (by user: ${userId})`);
+    // The generated link contains the token - extract and build our redirect URL
+    const recoveryLink = linkData?.properties?.action_link;
+    if (!recoveryLink) {
+      console.error('[PASSWORD-RESET] No action_link in response');
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    console.log(`[PASSWORD-RESET] Recovery link generated, sending email`);
 
     const html = `
       <!DOCTYPE html>
@@ -97,13 +94,20 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://getregimen.app/auth" style="background-color: #FF6B6B; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px;">
-                  Reset Password
+                <a href="${recoveryLink}" style="background-color: #FF6B6B; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px; mso-padding-alt: 0; text-underline-color: #FF6B6B;">
+                  <!--[if mso]><i style="letter-spacing: 32px; mso-font-width: -100%; mso-text-raise: 21pt;">&nbsp;</i><![endif]-->
+                  <span style="mso-text-raise: 10pt;">Reset Password</span>
+                  <!--[if mso]><i style="letter-spacing: 32px; mso-font-width: -100%;">&nbsp;</i><![endif]-->
                 </a>
               </div>
 
               <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
                 This link will expire in 1 hour for security reasons.
+              </p>
+
+              <p style="color: #484848; font-size: 13px; line-height: 1.6; margin: 0 0 24px; word-break: break-all;">
+                If the button doesn't work, copy and paste this link into your browser:<br>
+                <a href="${recoveryLink}" style="color: #FF6B6B;">${recoveryLink}</a>
               </p>
 
               <div style="margin: 32px 0; padding: 20px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #f0ad4e;">
@@ -132,21 +136,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("[PASSWORD-RESET] Email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify(emailResponse), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
     console.error("[PASSWORD-RESET] Error:", error);
+    // Always return success to not reveal user existence
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 };
