@@ -117,9 +117,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[PASSWORD-RESET] Code generated, sending email`);
 
-    // Format code with spaces for readability
-    const formattedCode = code.split('').join(' ');
-
     const html = `
       <!DOCTYPE html>
       <html>
@@ -141,9 +138,11 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <div style="text-align: center; margin: 32px 0; padding: 24px; background-color: #f0f0f0; border-radius: 12px;">
-                <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a; font-family: 'Courier New', monospace;">
-                  ${formattedCode}
-                </span>
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <tr>
+                    ${code.split('').map(d => `<td style="padding: 0 6px; font-size: 36px; font-weight: bold; color: #1a1a1a; font-family: 'Courier New', monospace;">${d}</td>`).join('')}
+                  </tr>
+                </table>
               </div>
 
               <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
