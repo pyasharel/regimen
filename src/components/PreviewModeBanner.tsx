@@ -48,13 +48,13 @@ export const PreviewModeBanner = ({ onUpgrade, onDismiss, compoundCount, freeCom
     }
     return (
       <>
+        {BENEFIT_MESSAGES[benefitIndex]} —{' '}
         <button
           onClick={handleSubscribeClick}
           className="text-secondary hover:text-secondary/90 font-medium transition-colors"
         >
           Subscribe
-        </button>{' '}
-        — {BENEFIT_MESSAGES[benefitIndex]}
+        </button>
       </>
     );
   };
