@@ -386,39 +386,6 @@ export default function Auth() {
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email) {
-      toast.error("Please enter your email address");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const isNative = Capacitor.isNativePlatform();
-
-      // Use custom edge function to send branded email via Resend
-      const { error } = await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email,
-          platform: isNative ? 'native' : 'web',
-        },
-      });
-
-      if (error) throw error;
-      
-      toast.success("Password reset email sent! Check your inbox.");
-      setIsForgotPassword(false);
-      setEmail("");
-    } catch (error: any) {
-      console.error("Password reset error:", error);
-      toast.error(error.message || "Failed to send reset email");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     try {

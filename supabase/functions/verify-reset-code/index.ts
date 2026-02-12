@@ -12,6 +12,31 @@ interface VerifyResetCodeRequest {
   new_password: string;
 }
 
+async function findUserByEmail(normalizedEmail: string): Promise<{ id: string } | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  const res = await fetch(
+    `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=1&filter=${encodeURIComponent(normalizedEmail)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    console.error('[VERIFY-RESET] Admin users API error:', res.status);
+    return null;
+  }
+
+  const { users } = await res.json();
+  // The filter is substring-based, so verify exact email match
+  const user = users?.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+  return user ? { id: user.id } : null;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -43,7 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { persistSession: false } }
     );
 
-    // Rate limit: max 5 verification attempts per email per hour
+    // Rate limit: max 10 verification attempts per email per hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: recentAttempts } = await supabaseAdmin
       .from('password_reset_codes')
@@ -84,9 +109,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Find user by email
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(normalizedEmail);
-    const user = userData?.user;
+    // Find user by email via REST API
+    const user = await findUserByEmail(normalizedEmail);
 
     if (!user) {
       console.error('[VERIFY-RESET] User not found for email');
