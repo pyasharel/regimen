@@ -1,71 +1,50 @@
 
 
-## Fix: Android Sign-Out on Phone Unlock and Notification Re-Prompting
+## Dual-Track Activation Event Recording
 
-### Problem 1: Signed out when unlocking phone
-When the user unlocks their Android phone (without tapping a notification), the `visibilitychange` event fires and triggers `handleAppBecameActive()` which calls `recreateSupabaseClient()`. This destroys the authenticated session. On Android, the subsequent session hydration from localStorage can fail due to timing, causing the app to redirect to the sign-in screen.
+### Problem
+Database confirms 10+ users triggered activation, but GA4 only shows 1 event. `ReactGA.event()` calls from Capacitor's native WebView are unreliable -- events may not flush before the app backgrounds.
 
-### Problem 2: Notification permission asked again after re-login
-After being forced to sign back in, the notification permission auto-prompt triggers again because either the throttle timestamp was lost or the OS reports permission as `prompt` again.
+### Solution
+Add a database write to the `user_activity` table alongside every GA4 event call, giving you a reliable server-side record you can query directly.
 
----
+### Changes
 
-### Fix 1: Only recreate clients on genuine cold starts, not resume
+**1. `src/utils/analytics.ts` -- Add database writes inside both tracking functions**
 
-**File: `src/hooks/useAppStateSync.tsx`**
+Update `trackFirstCompoundAdded()` to also insert into `user_activity`:
+- `event_type: 'funnel'`
+- `event_name: 'first_compound_added'`
+- `metadata: { time_since_signup_hours, added_during_onboarding, platform, app_version }`
 
-The `handleAppBecameActive` function currently recreates both Supabase clients on every single resume (including simple screen unlock). This is overkill for Android — the client recreation was designed for iOS hard-close corruption, not normal backgrounding.
+Update `trackActivationComplete()` to also insert into `user_activity`:
+- `event_type: 'funnel'`
+- `event_name: 'activation_complete'`
+- `metadata: { time_since_signup_hours, time_since_first_compound_hours, logged_during_onboarding, platform, app_version }`
 
-Changes:
-- Add a flag to track whether this is a cold start vs. a normal resume
-- On normal resume: skip client recreation, just run the sync
-- On cold start: keep the existing recreation logic
-- Use a "last active timestamp" to distinguish cold start (backgrounded for more than 30 seconds) from quick screen unlock
+Both functions will need the user ID passed in as a new parameter. The database write will be fire-and-forget (no await blocking the UI).
 
-### Fix 2: Guard notification permission prompt with throttle check
+**2. `src/components/TodayScreen.tsx` -- Pass userId to `trackActivationComplete()`**
 
-**File: `src/hooks/useNotificationPermissionPrompt.ts`**
+Add `userId` to the call at ~line 816.
 
-The throttle key is stored in Capacitor `persistentStorage` which should survive, but we should also check localStorage as a fast fallback and ensure the 24-hour throttle is respected even after a forced re-login.
+**3. `src/components/AddCompoundScreen.tsx` -- Pass userId to `trackFirstCompoundAdded()`**
 
-Changes:
-- Add a localStorage mirror of the throttle timestamp for faster/more reliable checks
-- Skip the prompt entirely if permission is already `granted` (this check exists but may be racing)
+Add `userId` to the call at ~line 1491.
 
-### Fix 3: Preserve session across simple resume in ProtectedRoute
+**4. `src/components/onboarding/screens/AccountCreationScreen.tsx` -- Pass userId to `trackFirstCompoundAdded()`**
 
-**File: `src/components/ProtectedRoute.tsx`**
+Add `userId` to the call at ~line 327.
 
-Currently, `ProtectedRoute` only runs hydration on mount. But if the Supabase client is recreated during resume, the cached session in localStorage is still valid — the fast-path should still work. The issue is that `recreateSupabaseClient()` creates a client that hasn't loaded the localStorage session yet, and if any code checks auth state before the client auto-hydrates, it sees "no session."
+### No schema or migration changes needed
+The `user_activity` table already exists with the right columns and RLS policies.
 
-Changes:
-- After client recreation in `handleAppBecameActive`, call `supabase.auth.getSession()` to force the new client to load the localStorage session before any other code runs
-- This ensures the recreated client is immediately hydrated
-
----
-
-### Technical Details
-
-**useAppStateSync.tsx changes:**
-```text
-handleAppBecameActive() will be updated to:
-1. Track lastActiveTimestamp in a ref
-2. On resume, check if backgrounded > 30 seconds
-3. If quick resume (< 30s): skip client recreation, just run sync
-4. If long background (> 30s): recreate clients + force session hydration via getSession()
-5. After recreation, await supabase.auth.getSession() to ensure the new client picks up localStorage tokens
+### Result
+You can query your activation funnel directly:
+```sql
+SELECT event_name, COUNT(*), MIN(created_at), MAX(created_at)
+FROM user_activity
+WHERE event_name IN ('activation_complete', 'first_compound_added')
+GROUP BY event_name
 ```
-
-**useNotificationPermissionPrompt.ts changes:**
-```text
-1. Mirror throttle timestamp to localStorage for fast synchronous check
-2. Add early-exit if localStorage shows prompt was shown recently
-3. Ensures throttle survives even if Capacitor Preferences is slow
-```
-
-### Expected Outcome
-- Unlocking the phone for a quick check will no longer sign the user out
-- Extended backgrounding (> 30s) still gets the safety net of client recreation
-- Notification permission is never re-prompted within 24 hours of the last prompt
-- Beta testers will no longer report being signed out after brief phone locks
 
