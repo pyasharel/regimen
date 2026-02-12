@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Trash2, User, Camera } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Trash2, User, Camera, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { Capacitor } from "@capacitor/core";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
 import { trackAccountDeleted } from "@/utils/analytics";
@@ -28,10 +27,13 @@ export const AccountSettings = () => {
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sendingReset, setSendingReset] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -130,34 +132,28 @@ export const AccountSettings = () => {
     }
   };
 
-  const handlePasswordReset = async () => {
-    setSendingReset(true);
+  const handlePasswordUpdate = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setUpdatingPassword(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) {
-        toast.error("No email found for this account");
-        return;
-      }
-
-      // For native apps, use custom scheme which is guaranteed to open the app
-      // App Links (https://) are unreliable on Android due to domain verification issues
-      const isNative = Capacitor.isNativePlatform();
-      const redirectUrl = isNative 
-        ? 'regimen://auth?mode=reset'
-        : 'https://getregimen.app/auth?mode=reset';
-
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: redirectUrl,
-      });
-
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      
-      toast.success("Password reset email sent! Check your inbox.");
+      toast.success("Password updated successfully!");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (error: any) {
-      console.error("Password reset error:", error);
-      toast.error(error.message || "Failed to send reset email");
+      console.error("Password update error:", error);
+      toast.error(error.message || "Failed to update password");
     } finally {
-      setSendingReset(false);
+      setUpdatingPassword(false);
     }
   };
 
@@ -399,18 +395,36 @@ export const AccountSettings = () => {
               <Lock className="h-4 w-4 text-secondary" />
               <h2 className="text-sm font-semibold">Password</h2>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                For security, we'll send you an email with a link to reset your password.
-              </p>
+            <div className="space-y-3">
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+              />
               <Button 
-                onClick={handlePasswordReset} 
-                disabled={sendingReset} 
+                onClick={handlePasswordUpdate} 
+                disabled={updatingPassword || !newPassword || !confirmPassword} 
                 size="sm" 
                 variant="outline"
                 className="w-full"
               >
-                {sendingReset ? "Sending..." : "Send Password Reset Email"}
+                {updatingPassword ? "Updating..." : "Update Password"}
               </Button>
             </div>
           </div>

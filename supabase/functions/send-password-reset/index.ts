@@ -13,6 +13,30 @@ interface PasswordResetRequest {
   email: string;
 }
 
+async function findUserByEmail(normalizedEmail: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  const res = await fetch(
+    `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=1&filter=${encodeURIComponent(normalizedEmail)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    console.error('[PASSWORD-RESET] Admin users API error:', res.status);
+    return false;
+  }
+
+  const { users } = await res.json();
+  // The filter is substring-based, so verify exact email match
+  return users?.some((u: any) => u.email?.toLowerCase() === normalizedEmail);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,25 +55,23 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.trim().toLowerCase();
     console.log(`[PASSWORD-RESET] Generating code for: ${normalizedEmail}`);
 
-    // Create admin client
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
-    // Check if user exists (don't reveal to client)
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(normalizedEmail);
-    const userExists = !!userData?.user && !userError;
+    // Check if user exists via REST API (don't reveal to client)
+    const userExists = await findUserByEmail(normalizedEmail);
 
     if (!userExists) {
       console.log('[PASSWORD-RESET] User not found, returning success silently');
-      // Always return success to not reveal user existence
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
+
+    // Create admin client for DB operations
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
 
     // Rate limit: max 3 codes per email per hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
