@@ -85,10 +85,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Find user by email
-    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
-    const user = userData?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(normalizedEmail);
+    const user = userData?.user;
 
     if (!user) {
       console.error('[VERIFY-RESET] User not found for email');

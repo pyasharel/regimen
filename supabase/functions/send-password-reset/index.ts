@@ -39,10 +39,8 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Check if user exists (don't reveal to client)
-    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
-    const userExists = userData?.users?.some(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(normalizedEmail);
+    const userExists = !!userData?.user && !userError;
 
     if (!userExists) {
       console.log('[PASSWORD-RESET] User not found, returning success silently');
