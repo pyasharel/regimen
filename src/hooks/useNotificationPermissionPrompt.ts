@@ -8,6 +8,7 @@ import { getUserIdWithFallback } from '@/utils/safeAuth';
 import { withQueryTimeout } from '@/utils/withTimeout';
 
 const PROMPT_THROTTLE_KEY = 'notificationPermissionPromptLastShownAt';
+const PROMPT_THROTTLE_LS_KEY = 'regimen_notification_prompt_last'; // localStorage mirror for fast sync check
 const PROMPT_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours between prompts
 
 /**
@@ -38,6 +39,16 @@ export function useNotificationPermissionPrompt(
       if (!Capacitor.isNativePlatform()) return;
 
       try {
+        // Step 0: Fast synchronous throttle check via localStorage (avoids async Capacitor call)
+        const lsThrottle = localStorage.getItem(PROMPT_THROTTLE_LS_KEY);
+        if (lsThrottle) {
+          const elapsed = Date.now() - parseInt(lsThrottle, 10);
+          if (elapsed < PROMPT_THROTTLE_MS) {
+            console.log('[AutoNotificationPrompt] Fast-throttled via localStorage -', Math.round(elapsed / 1000 / 60), 'min ago');
+            return;
+          }
+        }
+
         // Step 1: Check OS permission status
         const status = await LocalNotifications.checkPermissions();
         const permissionStatus = status.display;
@@ -57,12 +68,14 @@ export function useNotificationPermissionPrompt(
           return;
         }
 
-        // Step 3: Check throttle - don't prompt if we prompted recently
+        // Step 3: Check throttle via persistent storage (fallback)
         const lastPromptedAt = await persistentStorage.get(PROMPT_THROTTLE_KEY);
         if (lastPromptedAt) {
           const elapsed = Date.now() - parseInt(lastPromptedAt, 10);
           if (elapsed < PROMPT_THROTTLE_MS) {
             console.log('[AutoNotificationPrompt] Throttled - prompted', Math.round(elapsed / 1000 / 60), 'minutes ago');
+            // Mirror to localStorage for next fast check
+            localStorage.setItem(PROMPT_THROTTLE_LS_KEY, lastPromptedAt);
             return;
           }
         }
@@ -86,8 +99,10 @@ export function useNotificationPermissionPrompt(
 
         console.log('[AutoNotificationPrompt] Permission result:', granted ? 'granted' : 'denied');
 
-        // Record that we prompted (regardless of outcome) for throttle
-        await persistentStorage.set(PROMPT_THROTTLE_KEY, Date.now().toString());
+        // Record that we prompted (regardless of outcome) for throttle - both stores
+        const nowStr = Date.now().toString();
+        await persistentStorage.set(PROMPT_THROTTLE_KEY, nowStr);
+        localStorage.setItem(PROMPT_THROTTLE_LS_KEY, nowStr);
 
         if (granted) {
           // Schedule notifications immediately after grant

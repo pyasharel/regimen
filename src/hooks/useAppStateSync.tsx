@@ -19,6 +19,10 @@ import { trace } from '@/utils/bootTracer';
 const SYNC_DEBOUNCE_MS = 2000;
 // Delay before starting heavy sync work on resume (lets webview/network stabilize)
 const RESUME_DELAY_MS = 1500;
+// If backgrounded longer than this, treat as cold start and recreate clients
+const COLD_START_THRESHOLD_MS = 30_000;
+// Key to track when app was last active
+const LAST_ACTIVE_KEY = 'regimen_last_active_at';
 
 /**
  * Hook to sync notifications when app comes to foreground
@@ -298,29 +302,59 @@ export const useAppStateSync = () => {
   };
 
   /**
-   * Called when app becomes active - recreates clients and schedules sync
+   * Called when app becomes active - conditionally recreates clients and schedules sync.
+   * Only recreates Supabase/data clients on genuine cold starts (backgrounded >30s).
+   * Quick resumes (phone unlock) skip recreation to preserve the authenticated session.
    * @param source - What triggered this (for tracing/debugging)
    */
   const handleAppBecameActive = useCallback(async (source: string = 'unknown') => {
     trace('RESUME_TRIGGER', source);
-    console.log(`[AppStateSync] 🔄 App became active via ${source} - preparing clients...`);
+    console.log(`[AppStateSync] 🔄 App became active via ${source}`);
     
-    // Step 1: Abort any stuck inflight requests
-    const abortedCount = abortDataClientRequests();
-    if (abortedCount > 0) {
-      console.log(`[AppStateSync] Aborted ${abortedCount} stuck requests`);
+    // Determine if this is a cold start or quick resume
+    const lastActiveStr = localStorage.getItem(LAST_ACTIVE_KEY);
+    const lastActive = lastActiveStr ? parseInt(lastActiveStr, 10) : 0;
+    const elapsed = Date.now() - lastActive;
+    const isColdStart = !lastActiveStr || elapsed > COLD_START_THRESHOLD_MS;
+    
+    // Update last active timestamp
+    localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+    
+    if (isColdStart) {
+      console.log(`[AppStateSync] Cold start detected (${Math.round(elapsed / 1000)}s background) - recreating clients`);
+      
+      // Step 1: Abort any stuck inflight requests
+      const abortedCount = abortDataClientRequests();
+      if (abortedCount > 0) {
+        console.log(`[AppStateSync] Aborted ${abortedCount} stuck requests`);
+      }
+      
+      // Step 2: Recreate BOTH clients to clear corrupted state
+      recreateSupabaseClient();
+      recreateDataClient();
+      trace('CLIENTS_RECREATED_ON_RESUME');
+      console.log('[AppStateSync] ✅ All clients recreated');
+      
+      // Step 3: Force the new client to load the session from localStorage
+      // Without this, the recreated client has no session and ProtectedRoute redirects to /auth
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log('[AppStateSync] ✅ Session re-hydrated after client recreation');
+        } else {
+          console.warn('[AppStateSync] No session found after recreation - user may need to re-login');
+        }
+      } catch (e) {
+        console.warn('[AppStateSync] Session re-hydration failed:', e);
+      }
+    } else {
+      console.log(`[AppStateSync] Quick resume (${Math.round(elapsed / 1000)}s) - skipping client recreation`);
     }
     
-    // Step 2: Recreate BOTH clients to clear corrupted state
-    recreateSupabaseClient();
-    recreateDataClient();
-    trace('CLIENTS_RECREATED_ON_RESUME');
-    console.log('[AppStateSync] ✅ All clients recreated');
-    
-    // Step 3: Wait for network to stabilize, then sync
+    // Wait for network to stabilize, then sync
     await new Promise(resolve => setTimeout(resolve, RESUME_DELAY_MS));
     
-    // Step 4: Run sync
+    // Run sync
     syncNotifications();
   }, [syncNotifications]);
 
@@ -427,11 +461,20 @@ export const useAppStateSync = () => {
 
     // Set up notification action handlers
     setupNotificationActionHandlers();
+    
+    // Track last active timestamp for cold start detection
+    const trackLastActive = () => {
+      if (document.visibilityState === 'hidden') {
+        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+      }
+    };
+    document.addEventListener('visibilitychange', trackLastActive);
 
     return () => {
       isMounted = false;
       listener?.remove();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', trackLastActive);
       window.removeEventListener('regimen:resume', handleCustomResume);
     };
   }, [handleAppBecameActive, syncNotifications]);
