@@ -1,71 +1,73 @@
 
 
-## Complete Password Reset Fix (3 Issues)
+# Fix: Cycle Reminder Notifications Never Cancelled (Stale Alerts)
 
-### Issue 1: Edge functions crash -- `getUserByEmail` doesn't exist
+## Problem
 
-The logs show:
-```
-getUserByEmail is not a function
-```
+A beta tester on Android (v1.0.7, build 35) is receiving "Tesamorelin: Cycle Ending Soon" notifications saying the cycle ends in 2 days, even though the My Stack screen shows the compound is only on Day 27 of a 56-day ON phase.
 
-The supabase-js version imported in the edge functions (`@2.57.2`) does not have `auth.admin.getUserByEmail()`. The error is swallowed by the catch block which returns `{ success: true }`, so the app shows "Code sent!" but nothing actually happens.
+## Root Cause
 
-**Fix:** Replace `getUserByEmail()` with a direct REST API call to the GoTrue admin endpoint, which works regardless of library version:
+There is a critical bug in `cancelCycleReminders()` in `src/utils/cycleReminderScheduler.ts`. The function attempts to identify cycle notifications by checking:
 
-```typescript
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-const res = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-  headers: {
-    Authorization: `Bearer ${serviceRoleKey}`,
-    apikey: serviceRoleKey,
-  },
-});
-const { users } = await res.json();
-const user = users?.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+```text
+n.id.toString().startsWith(`cycle_${compoundId}_`)
 ```
 
-Wait -- this still has the pagination problem. Instead, the proper approach is to use the GoTrue admin user-by-id lookup after first finding the user. But we don't have the ID.
+However, notification IDs are **numeric hashes** produced by `generateNotificationId()`, which converts the string `"cycle_{id}_{type}"` into an integer via a hash function. The resulting ID is a number like `1847293650`, which will **never** start with `"cycle_"`. As a result:
 
-The correct fix: use the **Supabase REST API filter** which supports email filtering server-side:
+- Old notifications are **never cancelled** when cycles are edited or rescheduled
+- Stale notifications from previous cycle configurations continue to fire at incorrect times
+- Every reschedule **adds more** notifications without removing the old ones
 
-```typescript
-const res = await fetch(
-  `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=1&filter=${encodeURIComponent(normalizedEmail)}`,
-  { headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey } }
-);
-const { users } = await res.json();
-```
+## Fix
 
-This filters on the server so pagination doesn't matter. Applied to both `send-password-reset` and `verify-reset-code`.
+### 1. Store scheduled notification IDs for reliable cancellation
 
-### Issue 2: Dead code in Auth.tsx
+Instead of trying to reverse-engineer which notifications belong to a compound, we will track the scheduled notification IDs explicitly using `persistentStorage` (Capacitor Preferences).
 
-There's an old `handleForgotPassword` function (lines 389-421) that uses the old link-based `supabase.auth.resetPasswordForEmail()` flow. It's no longer called from the UI (the new flow uses `handleSendResetCode`), but it should be removed to avoid confusion.
+**File:** `src/utils/cycleReminderScheduler.ts`
 
-### Issue 3: Account Settings still uses the old link-based reset
+- After successfully scheduling notifications, save the array of numeric IDs to persistent storage keyed by compound ID (e.g., `cycle_notif_ids_{compoundId}`)
+- In `cancelCycleReminders()`, read the stored IDs and cancel those exact notifications, then clear the stored key
+- This guarantees all previously scheduled notifications for that compound are removed before new ones are added
 
-In `AccountSettings.tsx`, the "Change Password" button (line 133-161) calls `supabase.auth.resetPasswordForEmail()` which sends the user a link -- the same broken flow. This needs to be updated to use the same OTP code flow, or a simpler inline approach since the user is already authenticated.
+### 2. Notification wording clarity improvement
 
-**For authenticated users (Account Settings):** Since the user is already logged in, we can use `supabase.auth.updateUser({ password })` directly. This is simpler and more secure -- the user enters their new password right in the settings screen without needing an email code at all.
+While investigating, the notification text "Cycle Ending Soon" is ambiguous -- it sounds like the entire cycle (ON + OFF) is ending. The user sees "Day 27 of 56" and reads "cycle ending" as contradictory.
 
-The updated Account Settings password section will show:
-- A "New Password" input field
-- A "Confirm Password" input field  
-- An "Update Password" button
-- Uses `supabase.auth.updateUser({ password })` which works because the user has an active session
+**Improve notification titles:**
+- ON to OFF transition: Change from "Cycle Ending Soon" to "On-Cycle Ending Soon"
+- This makes it clear the ON phase is ending, not the entire protocol
 
-### Summary of changes
+### 3. One-time cleanup of stale notifications
 
-| File | Change |
-|------|--------|
-| `supabase/functions/send-password-reset/index.ts` | Replace `getUserByEmail()` with REST API call using server-side email filter |
-| `supabase/functions/verify-reset-code/index.ts` | Same REST API fix for user lookup |
-| `src/pages/Auth.tsx` | Remove dead `handleForgotPassword` function (lines 389-421) |
-| `src/components/settings/AccountSettings.tsx` | Replace link-based reset with inline password change using `supabase.auth.updateUser()` |
+Since existing users may have accumulated orphaned notifications that can never be cancelled by the current broken logic, add a one-time migration step:
 
-### What you asked about: Do you need a "change password" in settings?
+**File:** `src/hooks/useAppStateSync.tsx`
 
-Yes, and it's actually simpler than the forgot-password flow. Since the user is already signed in, they can change their password directly without any email verification. This is standard practice (Apple, Google, etc. all do this). The implementation uses `supabase.auth.updateUser({ password })` which is a single API call.
+- On app resume/boot, after the cycle reminder reschedule, check a flag like `cycle_notif_migration_v1`
+- If not set, cancel ALL pending notifications that match cycle-related title patterns (e.g., titles containing "Cycle Ending", "Off-Phase Begins", "Cycle Begins", "Cycle Resuming"), then reschedule fresh
+- Set the flag so this only runs once
+
+## Technical Details
+
+### Changes to `src/utils/cycleReminderScheduler.ts`
+
+1. Import `persistentStorage`
+2. `scheduleCycleReminders()`: After `LocalNotifications.schedule()`, save the notification IDs array to `persistentStorage.set('cycle_notif_ids_' + compound.id, JSON.stringify(ids))`
+3. `cancelCycleReminders()`: Read IDs from `persistentStorage.get('cycle_notif_ids_' + compoundId)`, cancel those specific IDs, then remove the storage key
+4. Update notification title strings:
+   - "Cycle Ending Soon" -> "On-Cycle Ending Soon"
+   - Keep "Off-Phase Begins" and "Cycle Begins" as-is (those are already clear)
+
+### Changes to `src/hooks/useAppStateSync.tsx`
+
+1. After `rescheduleAllCycleReminders()`, check `persistentStorage.getBoolean('cycle_notif_cleanup_v1', false)`
+2. If false, get all pending notifications, filter by title patterns containing cycle-related keywords, cancel them all, then set the flag to true
+3. The subsequent `rescheduleAllCycleReminders()` call will repopulate with correct notifications
+
+### Files Modified
+- `src/utils/cycleReminderScheduler.ts` -- fix cancel logic, improve wording
+- `src/hooks/useAppStateSync.tsx` -- one-time stale notification cleanup
+
