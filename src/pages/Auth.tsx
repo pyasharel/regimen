@@ -17,9 +17,18 @@ import { getStoredAttribution, clearAttribution } from "@/utils/attribution";
 import { appVersion } from '../../capacitor.config';
 import { withQueryTimeout, withTimeout } from "@/utils/withTimeout";
 import { startAuthTrace, authTrace, endAuthTrace } from "@/utils/authTracer";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 // Timeout for post-login background tasks (4 seconds)
 const POST_LOGIN_TIMEOUT_MS = 4000;
+// Cooldown for resend code button (60 seconds)
+const RESEND_COOLDOWN_MS = 60000;
+
+type ForgotPasswordStep = 'email' | 'code' | 'newPassword';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -27,6 +36,9 @@ export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState<ForgotPasswordStep>('email');
+  const [resetCode, setResetCode] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [session, setSession] = useState<any>(null);
@@ -36,6 +48,14 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Initialize Google Auth ONCE on native platforms
   useEffect(() => {
@@ -99,13 +119,11 @@ export default function Auth() {
         setUserId(currentSession.user.id);
         
         // CRITICAL FIX: Navigate IMMEDIATELY - don't block on any network calls
-        // This prevents the "stuck loading" issue on iOS
         authTrace('NAVIGATING_NOW', '/today');
         navigate("/today", { replace: true });
         endAuthTrace(true, '/today');
         
         // Fire background tasks without blocking navigation
-        // Use setTimeout(0) to defer per Supabase deadlock prevention guidelines
         setTimeout(() => {
           runPostLoginTasksInBackground(currentSession.user.id, currentSession);
         }, 0);
@@ -168,7 +186,6 @@ export default function Auth() {
       if (!profile.welcome_email_sent) {
         authTrace('WELCOME_EMAIL_ATTEMPT', 'starting');
         
-        // Atomically update only if welcome_email_sent is still false
         const { data: updateResult } = await withQueryTimeout(
           supabase
             .from('profiles')
@@ -180,14 +197,11 @@ export default function Auth() {
           POST_LOGIN_TIMEOUT_MS
         );
 
-        // Only send email if we successfully updated (meaning we won the race)
         if (updateResult && updateResult.length > 0) {
-          // Use email from session instead of calling getUser() - avoids auth lock
           const userEmail = currentSession.user.email;
           if (userEmail) {
             authTrace('WELCOME_EMAIL_SENDING', userEmail);
             
-            // Fire-and-forget with timeout wrapper
             withTimeout(
               supabase.functions.invoke('send-welcome-email', {
                 body: { 
@@ -201,7 +215,6 @@ export default function Auth() {
               authTrace('WELCOME_EMAIL_SUCCESS');
             }).catch((emailError) => {
               authTrace('WELCOME_EMAIL_ERROR', emailError.message);
-              // Reset flag only if email send failed
               supabase
                 .from('profiles')
                 .update({ welcome_email_sent: false })
@@ -250,6 +263,129 @@ export default function Auth() {
     }
   };
 
+  // Step 1: Send 6-digit code to email
+  const handleSendResetCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email },
+      });
+
+      if (error) throw error;
+      
+      // Check for rate limit response
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      
+      toast.success("Reset code sent! Check your email.");
+      setForgotStep('code');
+      setResendCooldown(60);
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast.error(error.message || "Failed to send reset code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resend code
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: { email },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+      
+      toast.success("New code sent!");
+      setResetCode("");
+      setResendCooldown(60);
+    } catch (error: any) {
+      toast.error("Failed to resend code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2+3: Verify code and set new password
+  const handleVerifyAndReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (forgotStep === 'code') {
+      if (resetCode.length !== 6) {
+        toast.error("Please enter the 6-digit code");
+        return;
+      }
+      setForgotStep('newPassword');
+      return;
+    }
+
+    // Step 3: Submit new password
+    if (!password || password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-reset-code', {
+        body: {
+          email,
+          code: resetCode,
+          new_password: password,
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data?.error) {
+        toast.error(data.error);
+        // If code invalid, go back to code step
+        if (data.error.includes('Invalid') || data.error.includes('expired')) {
+          setForgotStep('code');
+          setResetCode("");
+        }
+        return;
+      }
+
+      toast.success("Password updated! You can now sign in.");
+      // Reset all forgot password state
+      setIsForgotPassword(false);
+      setForgotStep('email');
+      setResetCode("");
+      setPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast.error(error.message || "Failed to reset password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -288,12 +424,10 @@ export default function Auth() {
     try {
       setLoading(true);
       
-      // Detect if running on native platform
       const isNative = Capacitor.isNativePlatform();
       console.log('Platform:', isNative ? 'native' : 'web');
       
       if (isNative) {
-        // Native: Use Social Login SDK (already initialized in useEffect)
         console.log('Starting native Google Sign-In with Social Login');
         const result = await SocialLogin.login({
           provider: 'google',
@@ -308,13 +442,11 @@ export default function Auth() {
           throw new Error('Unexpected provider result');
         }
         
-        // Access idToken from the nested result object
         const idToken = (result.result as any)?.idToken;
         if (!idToken) {
           throw new Error('No ID token received from Google');
         }
 
-        // Sign in to Supabase with the Google ID token
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
           token: idToken,
@@ -324,7 +456,6 @@ export default function Auth() {
         console.log('Successfully signed in with Google');
         trackLogin('google');
         
-        // Persist attribution for Google sign-in on native
         if (data?.user) {
           const attribution = getStoredAttribution();
           const locale = navigator.language || 'en-US';
@@ -351,7 +482,6 @@ export default function Auth() {
           clearAttribution();
         }
       } else {
-        // Web: Use OAuth flow with forced account selection
         console.log('Starting web Google Sign-In with account picker');
         const redirectTo = `${window.location.origin}/auth`;
         console.log('[Auth] Starting web Google Sign-In, redirectTo:', redirectTo);
@@ -359,26 +489,21 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            // Redirect back to /auth (unprotected) so the OAuth code exchange can complete
-            // without getting interrupted by ProtectedRoute.
             redirectTo,
             queryParams: {
               access_type: 'offline',
-              prompt: 'select_account', // Force account picker every time
+              prompt: 'select_account',
             },
           },
         });
 
         if (error) throw error;
-        // OAuth will redirect, so we keep loading state
         return;
       }
       
-      // onAuthStateChange will handle navigation for native
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       if (error.message?.includes('popup_closed_by_user') || error.message?.includes('canceled')) {
-        // User cancelled - don't show error
         console.log('User cancelled Google sign-in');
       } else {
         toast.error(error.message || "Failed to sign in with Google");
@@ -390,7 +515,6 @@ export default function Auth() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate inputs with zod schema
     try {
       if (isSignUp) {
         authSignUpSchema.parse({ email, password, fullName });
@@ -422,11 +546,8 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        // Account created - onAuthStateChange will handle navigation
-        // Welcome email will be sent in background task
         trackSignup('email');
         
-        // Persist attribution data and country to the user's profile
         const attribution = getStoredAttribution();
         const locale = navigator.language || 'en-US';
         const countryCode = locale.split('-')[1] || null;
@@ -449,7 +570,6 @@ export default function Auth() {
           } as any).eq('user_id', signUpData.user.id);
           console.log('[Auth] Attribution, country, and platform data persisted to profile');
         }
-        // Clear attribution after successful signup
         clearAttribution();
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -458,7 +578,6 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        // Signed in - onAuthStateChange will handle navigation
         trackLogin('email');
       }
     } catch (error: any) {
@@ -476,7 +595,26 @@ export default function Auth() {
     }
   };
 
-  // No more blocking checkingAuth loader - navigation happens immediately
+  // Determine title and subtitle
+  const getTitle = () => {
+    if (isResettingPassword) return "Reset Password";
+    if (isForgotPassword) {
+      if (forgotStep === 'email') return "Forgot Password";
+      if (forgotStep === 'code') return "Enter Code";
+      return "New Password";
+    }
+    return isSignUp ? "Create Account" : "Welcome Back";
+  };
+
+  const getSubtitle = () => {
+    if (isResettingPassword) return "Enter your new password";
+    if (isForgotPassword) {
+      if (forgotStep === 'email') return "We'll send you a 6-digit code";
+      if (forgotStep === 'code') return `Enter the code sent to ${email}`;
+      return "Choose your new password";
+    }
+    return isSignUp ? "Join thousands optimizing their health" : "Sign in to continue";
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-8 safe-top safe-bottom overflow-y-auto">
@@ -489,30 +627,15 @@ export default function Auth() {
 
           {/* Title */}
           <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold">
-              {isResettingPassword
-                ? "Reset Password"
-                : isForgotPassword
-                ? "Forgot Password"
-                : isSignUp
-                ? "Create Account"
-                : "Welcome Back"}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {isResettingPassword
-                ? "Enter your new password"
-                : isForgotPassword
-                ? "We'll send you a reset link"
-                : isSignUp
-                ? "Join thousands optimizing their health"
-                : "Sign in to continue"}
-            </p>
+            <h1 className="text-2xl font-bold">{getTitle()}</h1>
+            <p className="text-muted-foreground text-sm">{getSubtitle()}</p>
           </div>
 
-          {/* Form Container with internal padding */}
+          {/* Form Container */}
           <div className="space-y-6">
 
         {isResettingPassword ? (
+          /* Legacy reset flow - PASSWORD_RECOVERY event from link */
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
@@ -560,38 +683,152 @@ export default function Auth() {
             </Button>
           </form>
         ) : isForgotPassword ? (
-          <form onSubmit={handleForgotPassword} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                autoComplete="email"
-              />
-            </div>
+          /* New 3-step code-based reset flow */
+          forgotStep === 'email' ? (
+            <form onSubmit={handleSendResetCode} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                />
+              </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Reset Link"
-              )}
-            </Button>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Reset Code"
+                )}
+              </Button>
 
-            <button
-              type="button"
-              onClick={() => setIsForgotPassword(false)}
-              className="w-full text-sm text-muted-foreground hover:text-foreground"
-            >
-              Back to login
-            </button>
-          </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setForgotStep('email');
+                }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+              >
+                Back to login
+              </button>
+            </form>
+          ) : forgotStep === 'code' ? (
+            <form onSubmit={handleVerifyAndReset} className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <InputOTP
+                  maxLength={6}
+                  value={resetCode}
+                  onChange={(value) => setResetCode(value)}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading || resetCode.length !== 6}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={resendCooldown > 0 || loading}
+                  className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                >
+                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setForgotStep('email');
+                    setResetCode("");
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Back to login
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* Step 3: New password */
+            <form onSubmit={handleVerifyAndReset} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="password">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Password"
+                )}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setForgotStep('code')}
+                className="w-full text-sm text-muted-foreground hover:text-foreground"
+              >
+                Back
+              </button>
+            </form>
+          )
         ) : (
           <form onSubmit={handleAuth} className="space-y-6">
 
