@@ -317,10 +317,14 @@ export const useAppStateSync = () => {
     const elapsed = Date.now() - lastActive;
     const isColdStart = !lastActiveStr || elapsed > COLD_START_THRESHOLD_MS;
     
+    // CRITICAL: If resume was triggered by a notification tap, NEVER recreate clients.
+    // The app was alive and the session is valid — recreating clients causes sign-out.
+    const isNotificationResume = source === 'notification_action';
+    
     // Update last active timestamp
     localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
     
-    if (isColdStart) {
+    if (isColdStart && !isNotificationResume) {
       console.log(`[AppStateSync] Cold start detected (${Math.round(elapsed / 1000)}s background) - recreating clients`);
       
       // Step 1: Abort any stuck inflight requests

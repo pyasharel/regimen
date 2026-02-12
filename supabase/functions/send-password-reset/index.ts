@@ -11,7 +11,6 @@ const corsHeaders = {
 
 interface PasswordResetRequest {
   email: string;
-  platform?: string; // 'native' or 'web'
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,7 +19,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, platform }: PasswordResetRequest = await req.json();
+    const { email }: PasswordResetRequest = await req.json();
 
     if (!email) {
       return new Response(
@@ -29,49 +28,77 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`[PASSWORD-RESET] Generating recovery link for: ${email}, platform: ${platform}`);
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log(`[PASSWORD-RESET] Generating code for: ${normalizedEmail}`);
 
-    // Create admin client to generate recovery link
+    // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    // Use custom scheme for native apps, https for web
-    const redirectTo = platform === 'native'
-      ? 'regimen://auth?mode=reset'
-      : 'https://getregimen.app/auth?mode=reset';
+    // Check if user exists (don't reveal to client)
+    const { data: userData } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = userData?.users?.some(
+      (u) => u.email?.toLowerCase() === normalizedEmail
+    );
 
-    // Generate the recovery link via admin API
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo,
-      },
-    });
-
-    if (linkError) {
-      console.error('[PASSWORD-RESET] Error generating link:', linkError);
-      // Don't reveal if user exists or not
+    if (!userExists) {
+      console.log('[PASSWORD-RESET] User not found, returning success silently');
+      // Always return success to not reveal user existence
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // The generated link contains the token - extract and build our redirect URL
-    const recoveryLink = linkData?.properties?.action_link;
-    if (!recoveryLink) {
-      console.error('[PASSWORD-RESET] No action_link in response');
+    // Rate limit: max 3 codes per email per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabaseAdmin
+      .from('password_reset_codes')
+      .select('*', { count: 'exact', head: true })
+      .eq('email', normalizedEmail)
+      .gte('created_at', oneHourAgo);
+
+    if (recentCount && recentCount >= 3) {
+      console.log('[PASSWORD-RESET] Rate limited');
       return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({ error: 'Too many reset attempts. Please try again later.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    console.log(`[PASSWORD-RESET] Recovery link generated, sending email`);
+    // Invalidate any previous unused codes for this email
+    await supabaseAdmin
+      .from('password_reset_codes')
+      .update({ used: true })
+      .eq('email', normalizedEmail)
+      .eq('used', false);
+
+    // Generate secure 6-digit code
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    const code = String(array[0] % 1000000).padStart(6, '0');
+
+    // Store code with 15-minute expiry
+    const { error: insertError } = await supabaseAdmin
+      .from('password_reset_codes')
+      .insert({
+        email: normalizedEmail,
+        code,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      });
+
+    if (insertError) {
+      console.error('[PASSWORD-RESET] Error storing code:', insertError);
+      throw insertError;
+    }
+
+    console.log(`[PASSWORD-RESET] Code generated, sending email`);
+
+    // Format code with spaces for readability
+    const formattedCode = code.split('').join(' ');
 
     const html = `
       <!DOCTYPE html>
@@ -89,25 +116,22 @@ const handler = async (req: Request): Promise<Response> => {
                 We received a request to reset your password for your Regimen account.
               </p>
 
-              <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                Click the button below to create a new password:
+              <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                Your password reset code is:
               </p>
 
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${recoveryLink}" style="background-color: #FF6B6B; border-radius: 8px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; padding: 14px 32px; mso-padding-alt: 0; text-underline-color: #FF6B6B;">
-                  <!--[if mso]><i style="letter-spacing: 32px; mso-font-width: -100%; mso-text-raise: 21pt;">&nbsp;</i><![endif]-->
-                  <span style="mso-text-raise: 10pt;">Reset Password</span>
-                  <!--[if mso]><i style="letter-spacing: 32px; mso-font-width: -100%;">&nbsp;</i><![endif]-->
-                </a>
+              <div style="text-align: center; margin: 32px 0; padding: 24px; background-color: #f0f0f0; border-radius: 12px;">
+                <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a; font-family: 'Courier New', monospace;">
+                  ${formattedCode}
+                </span>
               </div>
 
               <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                This link will expire in 1 hour for security reasons.
+                Enter this code in the Regimen app to set a new password.
               </p>
 
-              <p style="color: #484848; font-size: 13px; line-height: 1.6; margin: 0 0 24px; word-break: break-all;">
-                If the button doesn't work, copy and paste this link into your browser:<br>
-                <a href="${recoveryLink}" style="color: #FF6B6B;">${recoveryLink}</a>
+              <p style="color: #484848; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                This code expires in <strong>15 minutes</strong>.
               </p>
 
               <div style="margin: 32px 0; padding: 20px; background-color: #fff3cd; border-radius: 8px; border-left: 4px solid #f0ad4e;">
@@ -129,8 +153,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "Regimen <hello@mail.helloregimen.com>",
-      to: [email],
-      subject: "Reset Your Regimen Password",
+      to: [normalizedEmail],
+      subject: "Your Regimen Password Reset Code",
       html,
     });
 

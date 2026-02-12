@@ -52,16 +52,25 @@ if (isReallyFailed) {
     'pendingDoseActions',
   ];
   
+  // Keys to NEVER delete — preserves notification prefs across recovery
+  const preserveKeys = new Set([
+    AUTH_TOKEN_KEY,
+    'notificationPermissionPromptLastShownAt',
+    'regimen_notification_prompt_last',
+    'doseReminders',
+    'cycleReminders',
+  ]);
+  
   suspectKeys.forEach(key => {
     try { localStorage.removeItem(key); } catch {}
   });
   
-  // Clear potentially corrupted Supabase keys, but PRESERVE the auth token
+  // Clear potentially corrupted Supabase keys, but PRESERVE critical keys
   const keysToCheck = Object.keys(localStorage);
   keysToCheck.forEach(key => {
-    // CRITICAL: Never delete the auth token - this keeps the user signed in
-    if (key === AUTH_TOKEN_KEY) {
-      console.log('[BOOT] Preserving auth token during recovery');
+    // CRITICAL: Never delete preserved keys
+    if (preserveKeys.has(key)) {
+      console.log(`[BOOT] Preserving key during recovery: ${key}`);
       return;
     }
     
