@@ -1062,6 +1062,9 @@ export const AddCompoundScreen = () => {
             compound_name: dose.compounds?.name || 'Medication'
           }));
           scheduleAllUpcomingDoses(dosesWithCompoundName, isSubscribed);
+          // Note: No freeCompoundId filtering here — user just added/edited a compound,
+          // and the newly saved compound is always active. On next app resume, 
+          // useAppStateSync will apply the proper gating.
         }
       });
   };

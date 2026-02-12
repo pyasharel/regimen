@@ -97,6 +97,23 @@ export function useNotificationPermissionPrompt(
           const userId = await getUserIdWithFallback(3000);
           if (userId) {
             try {
+              // Determine freeCompoundId for non-subscribed users
+              let freeCompoundId: string | undefined;
+              if (!isSubscribed) {
+                const { data: oldest } = await withQueryTimeout(
+                  dataClient
+                    .from('compounds')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: true })
+                    .limit(1),
+                  'notification-prompt-oldest',
+                  3000
+                );
+                if (oldest && oldest.length > 0) freeCompoundId = oldest[0].id;
+              }
+
               // Use dataClient with timeout to avoid hanging on auth issues
               const { data: allDoses } = await withQueryTimeout(
                 dataClient
@@ -114,7 +131,7 @@ export function useNotificationPermissionPrompt(
                   ...d,
                   compound_name: d.compounds?.name || 'Medication'
                 }));
-                await scheduleAllUpcomingDoses(dosesWithName, isSubscribed);
+                await scheduleAllUpcomingDoses(dosesWithName, isSubscribed, freeCompoundId);
                 console.log('[AutoNotificationPrompt] Scheduled', dosesWithName.length, 'notifications');
               }
             } catch (error) {

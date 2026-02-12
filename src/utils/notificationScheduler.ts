@@ -162,7 +162,7 @@ export const scheduleDoseNotification = async (
           title: 'Regimen',
           body: `Time for ${dose.compound_name} (${dose.dose_amount}${dose.dose_unit})`,
           schedule: { at: notificationDate },
-          sound: 'light_bubble_pop_regimen.m4a',
+          sound: Capacitor.getPlatform() === 'ios' ? 'light_bubble_pop_regimen.m4a' : undefined,
           smallIcon: 'ic_stat_icon_config_sample',
           iconColor: '#FF6F61',
           actionTypeId: isPremium ? 'DOSE_ACTIONS' : undefined,
@@ -217,7 +217,7 @@ export const cancelAllNotifications = async () => {
  * Idempotent notification scheduler - reconciles pending vs desired instead of wipe-and-rebuild
  * This prevents duplicate notifications when rescheduling near the fire time
  */
-export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false) => {
+export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean = false, freeCompoundId?: string) => {
   if (!Capacitor.isNativePlatform()) {
     console.log('⚠️ Not on native platform - notifications disabled');
     return;
@@ -257,7 +257,12 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
   // First, dedupe doses by compound + date + resolved time
   const seenDedupeKeys = new Map<string, any>();
   
-  const upcomingDoses = doses.filter(dose => {
+  // If freeCompoundId is set, only schedule for that compound (freemium gating)
+  const filteredDoses = freeCompoundId
+    ? doses.filter(d => d.compound_id === freeCompoundId)
+    : doses;
+
+  const upcomingDoses = filteredDoses.filter(dose => {
     if (dose.taken || dose.skipped) return false;
     
     // Parse the dose date and time

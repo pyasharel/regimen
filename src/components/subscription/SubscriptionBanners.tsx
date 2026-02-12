@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import { useLocation } from "react-router-dom";
+import { getUserIdWithFallback } from "@/utils/safeAuth";
 
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
@@ -17,6 +18,8 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
   const { subscriptionEndDate, isLoading } = useSubscription();
+  const [compoundCount, setCompoundCount] = useState(0);
+  const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
   const [dismissed, setDismissed] = useState<string | null>(() => {
     return sessionStorage.getItem('dismissedBanner');
   });
@@ -28,6 +31,30 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       sessionStorage.removeItem('dismissedBanner');
     }
   }, [dismissed]);
+
+  // Fetch compound count and oldest compound name for contextual banner
+  useEffect(() => {
+    const fetchCompoundData = async () => {
+      if (subscriptionStatus !== 'preview' && subscriptionStatus !== 'none') return;
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
+      try {
+        const { data } = await supabase
+          .from('compounds')
+          .select('name')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+        if (data) {
+          setCompoundCount(data.length);
+          if (data.length > 0) setFreeCompoundName(data[0].name);
+        }
+      } catch (e) {
+        console.warn('[SubscriptionBanners] Failed to fetch compounds:', e);
+      }
+    };
+    fetchCompoundData();
+  }, [subscriptionStatus]);
 
   // Don't show any banners on auth, onboarding, or landing pages
   const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
@@ -200,7 +227,12 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   if (shouldShowPreview) {
     return (
       <div className="fixed top-0 left-0 right-0 z-[100]">
-        <PreviewModeBanner onUpgrade={onUpgrade} onDismiss={() => setDismissed('preview')} />
+        <PreviewModeBanner
+          onUpgrade={onUpgrade}
+          onDismiss={() => setDismissed('preview')}
+          compoundCount={compoundCount}
+          freeCompoundName={freeCompoundName}
+        />
       </div>
     );
   }
