@@ -324,7 +324,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           // Track first compound added (during onboarding = time_since_signup ~0)
           const firstCompoundKey = 'regimen_first_compound_tracked';
           if (!localStorage.getItem(firstCompoundKey)) {
-            trackFirstCompoundAdded({ timeSinceSignupHours: 0 });
+            trackFirstCompoundAdded({ timeSinceSignupHours: 0, userId: authData.user.id });
             
             // Update profile with timestamp
             await supabase
