@@ -73,15 +73,16 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { persistSession: false } }
     );
 
-    // Rate limit: max 3 codes per email per hour
+    // Rate limit: max 5 codes per email per hour (only count unused codes)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count: recentCount } = await supabaseAdmin
       .from('password_reset_codes')
       .select('*', { count: 'exact', head: true })
       .eq('email', normalizedEmail)
+      .eq('used', false)
       .gte('created_at', oneHourAgo);
 
-    if (recentCount && recentCount >= 3) {
+    if (recentCount && recentCount >= 5) {
       console.log('[PASSWORD-RESET] Rate limited');
       return new Response(
         JSON.stringify({ error: 'Too many reset attempts. Please try again later.' }),
