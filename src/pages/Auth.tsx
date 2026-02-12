@@ -694,6 +694,9 @@ export default function Auth() {
                   maxLength={6}
                   value={resetCode}
                   onChange={(value) => setResetCode(value)}
+                  pattern="^[0-9]*$"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                 >
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
