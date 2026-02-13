@@ -98,8 +98,8 @@ const buildOneTimeCycleNotifications = (
       
       notifications.push({
         id: generateNotificationId(compound.id, 'end_advance'),
-        title: `${compound.name}: On-Cycle Ending Soon`,
-        body: `Your on-cycle ends in ${advanceDays} day${advanceDays > 1 ? 's' : ''} on ${formatDate(endDate)}.`,
+        title: `${compound.name}: Cycle Ending Soon`,
+        body: `Your cycle ends in ${advanceDays} day${advanceDays > 1 ? 's' : ''} on ${formatDate(endDate)}.`,
         schedule: { at: advanceAt8AM },
       });
     }
@@ -111,8 +111,8 @@ const buildOneTimeCycleNotifications = (
     
     notifications.push({
       id: generateNotificationId(compound.id, 'end_day'),
-      title: `${compound.name}: On-Cycle Ends Today`,
-      body: `Your on-cycle ends today.`,
+        title: `${compound.name}: Cycle Ends Today`,
+        body: `Your cycle ends today.`,
       schedule: { at: endAt8AM },
     });
   }
@@ -162,8 +162,8 @@ const buildRecurringCycleNotifications = (
           
           notifications.push({
             id: generateNotificationId(compound.id, `off_advance_${cycleOffset}`),
-            title: `${compound.name}: On-Cycle Ending Soon`,
-            body: `Your on-cycle ends in ${onAdvanceDays} day${onAdvanceDays > 1 ? 's' : ''}. Off-phase begins on ${formatDate(offTransition)}.`,
+            title: `${compound.name}: Cycle Ending Soon`,
+            body: `Your cycle ends in ${onAdvanceDays} day${onAdvanceDays > 1 ? 's' : ''}. Off-phase begins on ${formatDate(offTransition)}.`,
             schedule: { at: advanceAt8AM },
           });
           notificationCount++;
@@ -314,7 +314,7 @@ const generateNotificationId = (compoundId: string, type: string): number => {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash;
   }
-  return Math.abs(hash);
+  return Math.abs(hash % 2147483647) + 1;
 };
 
 /**
