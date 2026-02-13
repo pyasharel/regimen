@@ -1,39 +1,28 @@
 
 
-# v1.0.9 Cycle Notification Polish
+# Document Titration Feature for Future Reference
 
 ## Summary
 
-Two small follow-up changes to the cycle notification fix that shipped in this session.
+Create a design document in `.storage/memory/features/` capturing everything we know about the titration feature: what exists in the database, what was never built in the UI, the UX challenges that blocked us, and the manual workaround users can use today.
 
-## Changes
+## What the Document Will Cover
 
-### 1. Revert notification wording back to original style
+1. **Current database state** -- `has_titration` (boolean) and `titration_config` (JSONB) columns already exist on the `compounds` table but are unused by the UI
+2. **Original vision** -- Multi-step titration schedule where users define phases (e.g., Week 1-2 at 0.25mg, Week 3-4 at 0.5mg, etc.)
+3. **UX blockers that stalled the feature**:
+   - What happens when a user edits a phase mid-schedule? Does it shift all future phases?
+   - How do start dates cascade when one phase is modified?
+   - Most users titrate reactively based on results, not on a pre-planned schedule, making a rigid planner feel over-engineered
+4. **Manual workaround** -- Users can simply edit their compound's dose amount whenever they titrate up/down. This covers the majority of real-world use cases.
+5. **When to revisit** -- If multiple users request it, or if a "dose history log" feature is added that would naturally support phase tracking
+6. **Beta tester context** -- User feedback from "No_RealPoint" specifically requested this for Cagrisema titration (2.5mg to 15mg over weeks)
 
-The current code says "On-Cycle Ending Soon" and "On-Cycle Ends Today" which reads awkwardly. Revert to the original clearer phrasing:
+## File Created
 
-**File:** `src/utils/cycleReminderScheduler.ts`
+- `.storage/memory/features/titration-schedule-design-doc.md`
 
-- Line 101: `On-Cycle Ending Soon` --> `Cycle Ending Soon`
-- Line 102: `Your on-cycle ends in...` --> `Your cycle ends in...`
-- Line 114: `On-Cycle Ends Today` --> `Cycle Ends Today`
-- Line 115: `Your on-cycle ends today.` --> `Your cycle ends today.`
-- Line 165: `On-Cycle Ending Soon` --> `Cycle Ending Soon`
-- Line 166: `Your on-cycle ends in...` --> `Your cycle ends in...`
+## No Code Changes
 
-The confusion was never about the wording -- it was about receiving the notification at the wrong time due to the cancellation bug. With the bug fixed, "Cycle Ending Soon" is perfectly clear.
+This is a documentation-only task. No UI or database modifications.
 
-### 2. Add safe integer bound to cycle notification ID generation
-
-The dose notification scheduler caps its hash at `Math.abs(hash % 2147483647) + 1` to stay within the 32-bit signed integer range required by iOS/Android. The cycle reminder scheduler currently only does `Math.abs(hash)` which could theoretically overflow.
-
-**File:** `src/utils/cycleReminderScheduler.ts`
-
-- Line 317: Change `return Math.abs(hash);` to `return Math.abs(hash % 2147483647) + 1;`
-
-### 3. Update stale notification cleanup patterns
-
-Since we are reverting the wording, the cleanup patterns list (line 254-261) already includes both old and new patterns ("Cycle Ending" and "On-Cycle Ending"), so no change needed there -- it will catch both variants.
-
-## Files Modified
-- `src/utils/cycleReminderScheduler.ts` -- revert wording, add ID safety bound
