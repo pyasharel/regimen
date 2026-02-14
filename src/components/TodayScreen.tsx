@@ -296,6 +296,16 @@ export const TodayScreen = () => {
     initializeEngagementNotifications();
   }, []);
 
+  // Listen for doses-updated event (fired after notification "Take Now" actions are processed)
+  useEffect(() => {
+    const handleDosesUpdated = () => {
+      console.log('[TodayScreen] Received regimen:doses-updated event, refreshing doses');
+      loadDoses();
+    };
+    window.addEventListener('regimen:doses-updated', handleDosesUpdated);
+    return () => window.removeEventListener('regimen:doses-updated', handleDosesUpdated);
+  }, [selectedDate]);
+
   // Check if running on TestFlight for migration modal
   useEffect(() => {
     TestFlightDetector.isTestFlight()
@@ -705,6 +715,9 @@ export const TodayScreen = () => {
             .single();
 
           if (insertError) throw insertError;
+          
+          // Refresh doses so a new virtual "as needed" slot appears for another dose
+          setTimeout(() => loadDoses(), 300);
         }
         // Don't allow unchecking "as needed" doses
       } else {
@@ -1058,8 +1071,8 @@ export const TodayScreen = () => {
     }, isStreakMilestone ? 3000 : 2000);
   };
 
-  const playChimeSound = () => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playChimeSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ iosCategory: 'ambient' } as any);
     
     // First tone (ding)
     const osc1 = audioContext.createOscillator();
@@ -1163,7 +1176,13 @@ export const TodayScreen = () => {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioContextClass) return;
         
-        const context = new AudioContextClass();
+        // Use 'playback' category on iOS to mix with other audio (prevents pausing YouTube etc.)
+        const contextOptions: AudioContextOptions & Record<string, any> = {};
+        if (Capacitor.isNativePlatform()) {
+          // @ts-ignore - webkit-specific option for iOS audio session category
+          contextOptions.iosCategory = 'ambient';
+        }
+        const context = new AudioContextClass(contextOptions);
         audioContextRef.current = context;
         
         const response = await fetch(bubblePopSound);
