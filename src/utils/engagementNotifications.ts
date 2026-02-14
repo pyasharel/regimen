@@ -164,7 +164,8 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
 
     const currentStreak = stats.current_streak || 0;
 
-    // Schedule 3-day streak notification at 8 PM today if they just hit 3 days
+    // Schedule 3-day streak notification ONLY if streak is exactly 3
+    // Skip if streak already passed this milestone (e.g. retroactive check-ins jumped past 3)
     if (currentStreak === 3) {
       const today = new Date();
       const notificationTime = new Date(today);
@@ -173,9 +174,14 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
       if (notificationTime > new Date()) {
         await scheduleEngagementNotification('streak_3', notificationTime);
       }
+    } else if (currentStreak > 3) {
+      // Cancel any pending 3-day notification if streak already passed 3
+      try {
+        await LocalNotifications.cancel({ notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.streak_3 }] });
+      } catch (e) { /* ignore */ }
     }
 
-    // Schedule 7-day streak notification at 8 PM today if they just hit 7 days
+    // Schedule 7-day streak notification ONLY if streak is exactly 7
     if (currentStreak === 7) {
       const today = new Date();
       const notificationTime = new Date(today);
@@ -184,6 +190,11 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
       if (notificationTime > new Date()) {
         await scheduleEngagementNotification('streak_7', notificationTime);
       }
+    } else if (currentStreak > 7) {
+      // Cancel any pending 7-day notification if streak already passed 7
+      try {
+        await LocalNotifications.cancel({ notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.streak_7 }] });
+      } catch (e) { /* ignore */ }
     }
   } catch (error) {
     console.error('Failed to check streak notifications:', error);
