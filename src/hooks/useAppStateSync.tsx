@@ -76,6 +76,8 @@ export const useAppStateSync = () => {
         const pendingResult = await processPendingActions(userId);
         if (pendingResult.processed > 0) {
           console.log(`📱 Processed ${pendingResult.processed} pending notification actions`);
+          // Notify TodayScreen to refresh doses so "Take Now" actions reflect immediately
+          window.dispatchEvent(new Event('regimen:doses-updated'));
         }
       } catch (pendingError) {
         console.warn('[AppStateSync] Error processing pending actions:', pendingError);
