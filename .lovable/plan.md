@@ -1,39 +1,23 @@
 
 
-# Fix Plan: Three User-Reported Issues
+# Fix: OTP Code Input Invisible Digits in Dark Mode
 
-## Issue 1: Notification "Take Now" doesn't reflect immediately on Today screen
+## The Problem
+On the password reset "Enter Code" screen in dark mode, the OTP digit slots are nearly invisible. The digits blend into the dark card background because the component doesn't explicitly set a foreground text color. Empty slots also have no visible border/placeholder contrast.
 
-**What's happening:** When you tap "Take Now" on a notification, the medication gets marked as taken in the database, but the Today screen doesn't show it until you navigate away and back. The pending action is processed in the background sync, but the Today screen loads its own data independently and doesn't know to refresh.
+## The Fix
 
-**Fix:** After `processPendingActions` completes with any processed actions, dispatch a custom event that TodayScreen listens for to trigger a `loadDoses()` refresh.
+### File: `src/components/ui/input-otp.tsx`
 
-## Issue 2: YouTube pauses when opening the app
+Update the `InputOTPSlot` styling to explicitly use `text-foreground` for the digit text and improve border contrast in dark mode:
 
-**What's happening:** The app uses the Web Audio API (`AudioContext`) to play sound effects when you check off a dose. On iOS, creating an AudioContext claims the audio session, which forces other apps (like YouTube) to pause. This happens even before you interact with anything.
+- Add `text-foreground` class to ensure digits are always visible regardless of theme
+- Add `bg-background` to give slots a distinct background
+- Increase the slot size slightly (`h-12 w-12` and `text-lg`) for better mobile usability since this is primarily used on phones
 
-**Fix:** Configure the AudioContext with `{ playsInline: true }` and the iOS-specific `webkit-playsinline` category to mix with other audio instead of interrupting it. Specifically, set the audio session category to "ambient" so it doesn't steal focus from background media.
+This is a one-line className change in the `InputOTPSlot` component — very low risk.
 
-## Issue 3: "As Needed" medications can't record a second dose without restarting
+## Response Draft for Daan
 
-**What's happening:** When you check off an "as needed" medication, it creates a real dose record in the database and marks the virtual dose as taken in local state. But there's no mechanism to reset the virtual dose or create a new slot for another dose — the only way to get a fresh checkbox is to reload the screen.
-
-**Fix:** After successfully recording an "as needed" dose, call `loadDoses()` to refresh the list. This will re-create the virtual "as needed" dose (always starts untaken), and the already-recorded dose will show up as a separate taken entry from the database query. This naturally supports multiple doses per day.
-
----
-
-## Technical Details
-
-### File: `src/hooks/useAppStateSync.tsx`
-- After `processPendingActions` returns with `processed > 0`, dispatch a `window.dispatchEvent(new Event('regimen:doses-updated'))` custom event
-
-### File: `src/components/TodayScreen.tsx`
-1. **Notification refetch:** Add an event listener for `regimen:doses-updated` that calls `loadDoses()`, so pending notification actions immediately reflect on screen
-2. **AudioContext fix:** When creating the AudioContext for sound effects, pass the option `{ playsInline: true }` and for iOS, configure it to use the "ambient" mixing category so it doesn't interrupt background audio from other apps
-3. **As Needed refresh:** After successfully inserting an "as needed" dose record (line ~707), call `loadDoses()` to refresh the dose list, which will re-create a fresh virtual dose slot while keeping the recorded dose visible
-
-### Risks
-- All three fixes are low-risk and isolated
-- The AudioContext ambient mode may make the app's sounds slightly quieter relative to other audio, but that's the expected tradeoff
-- The `loadDoses()` call after as-needed recording adds one extra DB query, but it's lightweight
+"Hey Daan! Good catch on the code screen in dark mode — the digits were blending into the background. Fixed that, will be in the next update. Appreciate the feedback man, glad you're liking the site! Let me know how it goes when you start your cycle Thursday."
 
