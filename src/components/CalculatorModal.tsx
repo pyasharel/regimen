@@ -66,6 +66,12 @@ export const CalculatorModal = ({
   const [doseUnit, setDoseUnit] = useState(initialDoseUnit);
   const [syringeSize, setSyringeSize] = useState(100); // 1mL is most common
   
+  // Track whether user is typing in custom "Other" inputs
+  const [isCustomVial, setIsCustomVial] = useState(false);
+  const [isCustomBac, setIsCustomBac] = useState(false);
+  const [isCustomConc, setIsCustomConc] = useState(false);
+  const [isCustomUnits, setIsCustomUnits] = useState(false);
+  
   // Reverse mode state
   const [preferredUnits, setPreferredUnits] = useState('');
   
@@ -242,12 +248,14 @@ export const CalculatorModal = ({
     value, 
     currentValue, 
     onSelect, 
-    suffix 
+    suffix,
+    isCustomActive = false 
   }: { 
     value: number; 
     currentValue: string; 
     onSelect: (val: string) => void;
     suffix: string;
+    isCustomActive?: boolean;
   }) => (
     <button
       onClick={() => {
@@ -255,7 +263,7 @@ export const CalculatorModal = ({
         onSelect(value.toString());
       }}
       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-        currentValue === value.toString()
+        currentValue === value.toString() && !isCustomActive
           ? 'bg-primary text-primary-foreground'
           : 'bg-muted hover:bg-muted/80'
       }`}
@@ -318,11 +326,11 @@ export const CalculatorModal = ({
                 />
               </div>
 
-              {/* Vial Size */}
+              {/* Peptide Amount */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
-                  Vial Size
-                  <InfoTooltip content="The total mg in your peptide vial, shown on the label" />
+                  Peptide Amount
+                  <InfoTooltip content="The total mg of peptide in your vial, shown on the label" />
                 </Label>
                 <div className="flex gap-1.5 flex-wrap items-center">
                   {VIAL_SIZES.map((size) => (
@@ -330,17 +338,24 @@ export const CalculatorModal = ({
                       key={size} 
                       value={size} 
                       currentValue={vialSize} 
-                      onSelect={setVialSize}
+                      onSelect={(val) => { setVialSize(val); setIsCustomVial(false); }}
                       suffix="mg"
+                      isCustomActive={isCustomVial}
                     />
                   ))}
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        min="0.1"
                         placeholder="Other"
-                        value={VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
-                        onChange={(e) => handlePositiveInput(e.target.value, setVialSize, 0)}
+                        value={!isCustomVial && VIAL_SIZES.includes(Number(vialSize)) ? '' : vialSize}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                            setVialSize(v);
+                            setIsCustomVial(true);
+                          }
+                        }}
+                        onClick={() => { if (!isCustomVial) { setVialSize(''); setIsCustomVial(true); } }}
                         className="w-16 h-8 text-xs px-2"
                       />
                     </div>
@@ -360,17 +375,24 @@ export const CalculatorModal = ({
                           key={amount} 
                           value={amount} 
                           currentValue={bacWater} 
-                          onSelect={setBacWater}
+                          onSelect={(val) => { setBacWater(val); setIsCustomBac(false); }}
                           suffix="mL"
+                          isCustomActive={isCustomBac}
                         />
                       ))}
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        min="0.1"
                         placeholder="Other"
-                        value={BAC_WATER_AMOUNTS.includes(Number(bacWater)) ? '' : bacWater}
-                        onChange={(e) => handlePositiveInput(e.target.value, setBacWater, 0)}
+                        value={!isCustomBac && BAC_WATER_AMOUNTS.includes(Number(bacWater)) ? '' : bacWater}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                            setBacWater(v);
+                            setIsCustomBac(true);
+                          }
+                        }}
+                        onClick={() => { if (!isCustomBac) { setBacWater(''); setIsCustomBac(true); } }}
                         className="w-16 h-8 text-xs px-2"
                       />
                     </div>
@@ -450,17 +472,24 @@ export const CalculatorModal = ({
                           key={units} 
                           value={units} 
                           currentValue={preferredUnits} 
-                          onSelect={setPreferredUnits}
+                          onSelect={(val) => { setPreferredUnits(val); setIsCustomUnits(false); }}
                           suffix="u"
+                          isCustomActive={isCustomUnits}
                         />
                       ))}
                       <Input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        min="1"
                         placeholder="Other"
-                        value={[5, 10, 20, 25].includes(Number(preferredUnits)) ? '' : preferredUnits}
-                        onChange={(e) => handlePositiveInput(e.target.value, setPreferredUnits, 1)}
+                        value={!isCustomUnits && [5, 10, 20, 25].includes(Number(preferredUnits)) ? '' : preferredUnits}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                            setPreferredUnits(v);
+                            setIsCustomUnits(true);
+                          }
+                        }}
+                        onClick={() => { if (!isCustomUnits) { setPreferredUnits(''); setIsCustomUnits(true); } }}
                         className="w-16 h-8 text-xs px-2"
                       />
                     </div>
@@ -560,17 +589,24 @@ export const CalculatorModal = ({
                       key={conc} 
                       value={conc} 
                       currentValue={concentration} 
-                      onSelect={setConcentration}
+                      onSelect={(val) => { setConcentration(val); setIsCustomConc(false); }}
                       suffix=""
+                      isCustomActive={isCustomConc}
                     />
                   ))}
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    min="1"
                     placeholder="Other"
-                    value={CONCENTRATION_PRESETS.includes(Number(concentration)) ? '' : concentration}
-                    onChange={(e) => handlePositiveInput(e.target.value, setConcentration, 0)}
+                    value={!isCustomConc && CONCENTRATION_PRESETS.includes(Number(concentration)) ? '' : concentration}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                        setConcentration(v);
+                        setIsCustomConc(true);
+                      }
+                    }}
+                    onClick={() => { if (!isCustomConc) { setConcentration(''); setIsCustomConc(true); } }}
                     className="w-16 h-8 text-xs px-2"
                   />
                   <span className="text-xs text-muted-foreground">mg/mL</span>
