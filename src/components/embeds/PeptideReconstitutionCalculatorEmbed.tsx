@@ -33,6 +33,8 @@ export function PeptideReconstitutionCalculatorEmbed() {
   const [doseMcg, setDoseMcg] = useState("");
   const [copied, setCopied] = useState(false);
   const [showFaq, setShowFaq] = useState(false);
+  const [isCustomVial, setIsCustomVial] = useState(false);
+  const [isCustomBac, setIsCustomBac] = useState(false);
 
   const result = useMemo(() => {
     const vial = parsePositive(vialMg);
@@ -55,9 +57,12 @@ export function PeptideReconstitutionCalculatorEmbed() {
     } catch { /* ignore */ }
   };
 
-  const QuickButton = ({ value, current, onClick, unit }: { value: number; current: string; onClick: () => void; unit: string }) => (
-    <button type="button" onClick={onClick} style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", backgroundColor: current === String(value) ? "#f97316" : "#f3f4f6", color: current === String(value) ? "#fff" : "#374151", boxShadow: current === String(value) ? "0 4px 6px -1px rgba(249,115,22,0.3)" : "none" }}>{value}{unit}</button>
-  );
+  const QuickButton = ({ value, current, onClick, unit, isCustom }: { value: number; current: string; onClick: () => void; unit: string; isCustom?: boolean }) => {
+    const isSelected = !isCustom && current === String(value);
+    return (
+      <button type="button" onClick={onClick} style={{ padding: "8px 16px", borderRadius: "8px", fontSize: "14px", fontWeight: 500, border: "none", cursor: "pointer", backgroundColor: isSelected ? "#f97316" : "#f3f4f6", color: isSelected ? "#fff" : "#374151", boxShadow: isSelected ? "0 4px 6px -1px rgba(249,115,22,0.3)" : "none" }}>{value}{unit}</button>
+    );
+  };
 
   return (
     <div style={{ width: "100%", maxWidth: "672px", margin: "0 auto" }}>
@@ -81,15 +86,15 @@ export function PeptideReconstitutionCalculatorEmbed() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <label style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>Vial Size (mg)</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {PRESET_VIAL.map((v) => <QuickButton key={v} value={v} current={vialMg} onClick={() => setVialMg(String(v))} unit="mg" />)}
-              <input type="number" min={0} placeholder="Other" value={PRESET_VIAL.includes(Number(vialMg)) ? "" : vialMg} onChange={(e) => setVialMg(e.target.value)} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
+              {PRESET_VIAL.map((v) => <QuickButton key={v} value={v} current={vialMg} onClick={() => { setVialMg(String(v)); setIsCustomVial(false); }} unit="mg" isCustom={isCustomVial} />)}
+              <input type="text" inputMode="decimal" placeholder="Other" value={isCustomVial ? vialMg : (PRESET_VIAL.includes(Number(vialMg)) ? "" : vialMg)} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d*$/.test(v)) { setVialMg(v); setIsCustomVial(true); } }} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <label style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>BAC Water (mL)</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {PRESET_BAC.map((b) => <QuickButton key={b} value={b} current={bacMl} onClick={() => setBacMl(String(b))} unit="mL" />)}
-              <input type="number" min={0} placeholder="Other" value={PRESET_BAC.includes(Number(bacMl)) ? "" : bacMl} onChange={(e) => setBacMl(e.target.value)} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
+              {PRESET_BAC.map((b) => <QuickButton key={b} value={b} current={bacMl} onClick={() => { setBacMl(String(b)); setIsCustomBac(false); }} unit="mL" isCustom={isCustomBac} />)}
+              <input type="text" inputMode="decimal" placeholder="Other" value={isCustomBac ? bacMl : (PRESET_BAC.includes(Number(bacMl)) ? "" : bacMl)} onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d*$/.test(v)) { setBacMl(v); setIsCustomBac(true); } }} style={{ width: "96px", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "14px" }} />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

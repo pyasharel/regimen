@@ -49,6 +49,7 @@ export function OilMlCalculatorEmbed() {
   const [doseMg, setDoseMg] = useState("");
   const [copied, setCopied] = useState(false);
   const [showFaq, setShowFaq] = useState(false);
+  const [isCustomConc, setIsCustomConc] = useState(false);
 
   const result = useMemo(() => {
     const conc = parsePositive(concentrationMgPerMl);
@@ -92,9 +93,9 @@ export function OilMlCalculatorEmbed() {
         transition: "all 0.2s",
         border: "none",
         cursor: "pointer",
-        backgroundColor: current === String(value) ? "#3b82f6" : "#f3f4f6",
-        color: current === String(value) ? "#ffffff" : "#374151",
-        boxShadow: current === String(value) ? "0 4px 6px -1px rgba(59, 130, 246, 0.3)" : "none",
+        backgroundColor: !isCustomConc && current === String(value) ? "#3b82f6" : "#f3f4f6",
+        color: !isCustomConc && current === String(value) ? "#ffffff" : "#374151",
+        boxShadow: !isCustomConc && current === String(value) ? "0 4px 6px -1px rgba(59, 130, 246, 0.3)" : "none",
       }}
     >
       {value}
@@ -173,16 +174,15 @@ export function OilMlCalculatorEmbed() {
                   key={c}
                   value={c}
                   current={concentrationMgPerMl}
-                  onClick={() => setConcentrationMgPerMl(String(c))}
+                  onClick={() => { setConcentrationMgPerMl(String(c)); setIsCustomConc(false); }}
                 />
               ))}
               <input
-                type="number"
+                type="text"
                 inputMode="decimal"
-                min={0}
                 placeholder="Other"
-                value={PRESET_CONC.includes(Number(concentrationMgPerMl)) ? "" : concentrationMgPerMl}
-                onChange={(e) => setConcentrationMgPerMl(e.target.value)}
+                value={isCustomConc ? concentrationMgPerMl : (PRESET_CONC.includes(Number(concentrationMgPerMl)) ? "" : concentrationMgPerMl)}
+                onChange={(e) => { const v = e.target.value; if (v === "" || /^\d*\.?\d*$/.test(v)) { setConcentrationMgPerMl(v); setIsCustomConc(true); } }}
                 style={{
                   width: "96px",
                   padding: "8px 12px",
