@@ -57,7 +57,7 @@ interface SubscriptionContextType {
   setMockState: (state: 'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled') => void;
   // RevenueCat-specific
   offerings: PurchasesOfferings | null;
-  purchasePackage: (pkg: PurchasesPackage, promotionalOffer?: PromotionalOfferParams) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
+  purchasePackage: (pkg: PurchasesPackage, promotionalOffer?: PromotionalOfferParams, googleSubscriptionOption?: any) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   restorePurchases: () => Promise<{ success: boolean; isPro?: boolean; error?: string }>;
   isNativePlatform: boolean;
   // Tracks which payment provider the subscription came from
@@ -895,7 +895,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   // Purchase a package (optionally with a promotional offer for partner codes)
   const purchasePackage = useCallback(async (
     packageToPurchase: PurchasesPackage, 
-    promotionalOffer?: PromotionalOfferParams
+    promotionalOffer?: PromotionalOfferParams,
+    googleSubscriptionOption?: any
   ): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
     if (!isNativePlatform) {
       return { success: false, error: 'Purchases only available on native platforms' };
@@ -958,6 +959,11 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           aPackage: packageToPurchase,
           discount: promoOffer
         });
+        customerInfo = result.customerInfo;
+      } else if (googleSubscriptionOption && Capacitor.getPlatform() === 'android') {
+        // Google Play developer-determined offer (partner promo codes)
+        console.log('[RevenueCat] Purchasing with Google subscription option:', googleSubscriptionOption);
+        const result = await Purchases.purchaseSubscriptionOption({ subscriptionOption: googleSubscriptionOption });
         customerInfo = result.customerInfo;
       } else {
         console.log('[RevenueCat] Purchasing package:', packageToPurchase);

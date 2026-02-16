@@ -125,15 +125,34 @@ serve(async (req) => {
         });
       }
       
-      // For Android/Web: Fall back to backend beta access (no subscription, instant access)
-      console.log(`[VALIDATE-PROMO] Non-iOS platform (${platform}) - returning beta access fallback`);
+      // For Android: Use Google Play developer-determined offer (native subscription)
+      if (platform === 'android') {
+        console.log(`[VALIDATE-PROMO] Android platform - returning Google Play offer flow`);
+        return new Response(JSON.stringify({
+          valid: true,
+          type: 'partner_code',
+          isPartnerCode: true,
+          useNativePurchase: true,
+          googleOfferId: 'partner-1mo-free',
+          planType: partnerCode.plan_type,
+          partnerName: partnerCode.partner_name,
+          partnerCodeId: partnerCode.id,
+          description: partnerCode.description
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      // For Web: Fall back to backend beta access (no Google Play billing on web)
+      console.log(`[VALIDATE-PROMO] Web platform - returning beta access fallback`);
       return new Response(JSON.stringify({
         valid: true,
         type: 'beta_access',
         duration: partnerCode.free_days,
         discount: 100,
         planType: 'both',
-        isBackendCode: true, // Triggers activate-beta-access flow
+        isBackendCode: true,
         partnerName: partnerCode.partner_name,
         partnerCodeId: partnerCode.id,
         description: partnerCode.description

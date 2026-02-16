@@ -16,6 +16,7 @@ interface PartnerPromo {
   code: string;
   partnerName: string;
   partnerCodeId: string;
+  googleOfferId?: string;  // Google Play offer ID for Android partner codes
 }
 
 // Apple Offer Code promo state for Safari redirect flow
@@ -206,7 +207,8 @@ export const SubscriptionPaywall = ({
         setPartnerPromo({
           code,
           partnerName: validateData.partnerName || 'Partner',
-          partnerCodeId: validateData.partnerCodeId
+          partnerCodeId: validateData.partnerCodeId,
+          googleOfferId: validateData.googleOfferId,
         });
         
         // Show VIP welcome message
@@ -385,6 +387,52 @@ export const SubscriptionPaywall = ({
 
         console.log('[PAYWALL] Purchasing package:', selectedPackage.identifier);
         trackSubscriptionStarted(selectedPlan);
+
+        // Check if this is an Android partner promo with a Google Play offer
+        if (partnerPromo?.googleOfferId && Capacitor.getPlatform() === 'android') {
+          console.log('[PAYWALL] Android partner promo - looking for Google Play offer:', partnerPromo.googleOfferId);
+          
+          // Force annual package for partner offer (it's on the annual base plan)
+          const annualPackage = packages.find(p => p.identifier === '$rc_annual');
+          if (!annualPackage) {
+            console.error('[PAYWALL] Annual package not found for partner offer');
+            toast.error('Annual plan not available. Please try again.');
+            setIsLoading(false);
+            return;
+          }
+
+          // Find the subscription option matching the partner offer
+          const product = annualPackage.product as any;
+          const subscriptionOptions = product?.subscriptionOptions || product?.googleProduct?.subscriptionOptions || [];
+          console.log('[PAYWALL] Available subscription options:', JSON.stringify(subscriptionOptions.map((opt: any) => ({ id: opt.id, offerId: opt.offerId })), null, 2));
+          
+          const partnerOption = subscriptionOptions.find(
+            (opt: any) => opt.id?.includes(partnerPromo.googleOfferId!) || opt.offerId === partnerPromo.googleOfferId
+          );
+
+          if (partnerOption) {
+            console.log('[PAYWALL] Found partner subscription option:', partnerOption.id);
+            const result = await purchasePackage(annualPackage, undefined, partnerOption);
+            
+            if (result.success) {
+              console.log('[PAYWALL] Partner offer purchase successful!');
+              toast.success('Welcome to Regimen Premium! 🎉');
+              trackSubscriptionSuccess('annual', 'revenuecat');
+              onOpenChange(false);
+            } else if (result.cancelled) {
+              console.log('[PAYWALL] Partner offer purchase cancelled by user');
+            } else {
+              console.error('[PAYWALL] Partner offer purchase failed:', result.error);
+              trackSubscriptionFailed('annual', result.error || 'Unknown error');
+              toast.error(result.error || 'Purchase failed. Please try again.');
+            }
+            setIsLoading(false);
+            return;
+          } else {
+            console.warn('[PAYWALL] Partner subscription option not found, falling back to standard purchase');
+            // Fall through to standard purchase below
+          }
+        }
 
         // Standard purchase without promotional offer
         const result = await purchasePackage(selectedPackage);
