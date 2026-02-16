@@ -210,6 +210,7 @@ export const SubscriptionPaywall = ({
           partnerCodeId: validateData.partnerCodeId,
           googleOfferId: validateData.googleOfferId,
         });
+        setSelectedPlan('annual'); // Partner promos lock to annual
         
         // Show VIP welcome message
         setAppliedPromo({ 
@@ -520,7 +521,7 @@ export const SubscriptionPaywall = ({
 
   const getButtonText = () => {
     if (partnerPromo) {
-      return "Start My 14-Day Free Trial";
+      return "Get My 1 Month Free";
     }
     if (appliedPromo) {
       return `Start Free Access`;
@@ -529,7 +530,10 @@ export const SubscriptionPaywall = ({
   };
 
   const getPriceText = () => {
-    if (appliedPromo && !partnerPromo) {
+    if (partnerPromo) {
+      return "1 month free, then $39.99/year ($3.33/month)";
+    }
+    if (appliedPromo) {
       return appliedPromo.discount;
     }
     return selectedPlan === 'annual'
@@ -562,15 +566,6 @@ export const SubscriptionPaywall = ({
         <div className="-mt-8 bg-background border border-border rounded-2xl shadow-[var(--shadow-elevated)] overflow-hidden">
           {/* Header */}
           <div className="relative p-6 pb-4">
-            {/* VIP Partner Welcome Message */}
-            {partnerPromo && !appleOfferPromo && (
-              <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mb-4 mt-6">
-                <p className="text-center text-sm font-medium text-primary">
-                  Welcome from {partnerPromo.partnerName}! 🎉
-                </p>
-              </div>
-            )}
-            
             {/* Apple Offer Code Safari Flow */}
             {appleOfferPromo ? (
               <div className="mt-6 space-y-4">
@@ -621,7 +616,7 @@ export const SubscriptionPaywall = ({
               </div>
             ) : (
               <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
-                Start your {getTrialPeriodText()} FREE trial
+                {partnerPromo ? 'Get 1 month FREE' : `Start your ${getTrialPeriodText()} FREE trial`}
               </h1>
             )}
           </div>
@@ -640,7 +635,9 @@ export const SubscriptionPaywall = ({
                 <div>
                   <h3 className="font-bold text-[16px] text-foreground">TODAY</h3>
                   <p className="text-[14px] text-muted-foreground mt-1">
-                    Unlock all features like compound tracking, dose calculations & reminders
+                    {partnerPromo 
+                      ? `Unlock all features — 1 month free from ${partnerPromo.partnerName}`
+                      : 'Unlock all features like compound tracking, dose calculations & reminders'}
                   </p>
                 </div>
               </div>
@@ -650,9 +647,11 @@ export const SubscriptionPaywall = ({
                   <div className="w-3 h-3 rounded-full bg-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[16px] text-foreground">IN 13 DAYS</h3>
+                  <h3 className="font-bold text-[16px] text-foreground">{partnerPromo ? 'IN 29 DAYS' : 'IN 13 DAYS'}</h3>
                   <p className="text-[14px] text-muted-foreground mt-1">
-                    We'll send a reminder that your trial is ending soon
+                    {partnerPromo 
+                      ? "We'll send a reminder that your free month is ending"
+                      : "We'll send a reminder that your trial is ending soon"}
                   </p>
                 </div>
               </div>
@@ -662,16 +661,19 @@ export const SubscriptionPaywall = ({
                   <div className="w-3 h-3 rounded-full bg-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[16px] text-foreground">IN 14 DAYS - BILLING STARTS</h3>
+                  <h3 className="font-bold text-[16px] text-foreground">{partnerPromo ? 'IN 30 DAYS' : 'IN 14 DAYS'} — BILLING STARTS</h3>
                   <p className="text-[14px] text-muted-foreground mt-1">
-                    You'll be charged {selectedPlan === 'annual' ? '$39.99/year' : '$4.99/month'}. Cancel anytime.
+                    {partnerPromo 
+                      ? 'Billing starts at $39.99/year. Cancel anytime.'
+                      : `You'll be charged ${selectedPlan === 'annual' ? '$39.99/year' : '$4.99/month'}. Cancel anytime.`}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid gap-3 ${partnerPromo ? 'grid-cols-1 max-w-[200px] mx-auto' : 'grid-cols-2'}`}>
+              {!partnerPromo && (
               <button
                 onClick={() => setSelectedPlan('monthly')}
                 className={`p-4 rounded-xl border-2 transition-all min-h-[180px] flex flex-col ${
@@ -695,6 +697,7 @@ export const SubscriptionPaywall = ({
                   </div>
                 </div>
               </button>
+              )}
 
               <button
                 onClick={() => setSelectedPlan('annual')}
@@ -704,14 +707,16 @@ export const SubscriptionPaywall = ({
                     : 'border-border bg-card'
                 }`}
               >
+                {!partnerPromo && (
                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-primary rounded-full text-primary-foreground text-[11px] font-semibold whitespace-nowrap">
                   BEST VALUE
                 </div>
+                )}
                 <div className="flex-1 space-y-2 mt-2">
                   <p className="text-[14px] text-muted-foreground">Annual</p>
                   <p className="text-[24px] font-bold text-foreground">$39.99/yr</p>
                   <p className="text-[16px] font-medium text-primary">$3.33/mo</p>
-                  <p className="text-[14px] font-medium text-[#8B5CF6]">Save 33%</p>
+                  {!partnerPromo && <p className="text-[14px] font-medium text-[#8B5CF6]">Save 33%</p>}
                 </div>
                 <div className="flex justify-center">
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -780,6 +785,14 @@ export const SubscriptionPaywall = ({
                   >
                     Remove
                   </button>
+                </div>
+              )}
+              {/* VIP Partner Welcome Message - shown next to promo input */}
+              {partnerPromo && !appleOfferPromo && (
+                <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2">
+                  <p className="text-center text-sm font-medium text-primary">
+                    Welcome from {partnerPromo.partnerName}! 🎉
+                  </p>
                 </div>
               )}
             </div>
