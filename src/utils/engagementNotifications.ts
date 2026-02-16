@@ -5,20 +5,28 @@ export type EngagementNotificationType =
   | 'first_dose'
   | 'streak_3'
   | 'streak_7'
+  | 'streak_14'
+  | 'streak_30'
   | 'missed_dose'
   | 'weekly_checkin'
   | 'reengage'
-  | 'photo_reminder';
+  | 'photo_reminder'
+  | 'all_done'
+  | 'first_week';
 
 // Fixed notification IDs for each type to prevent duplicates
 const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = {
   first_dose: 90001,
   streak_3: 90003,
   streak_7: 90007,
+  streak_14: 90014,
+  streak_30: 90031,
   missed_dose: 90010,
   weekly_checkin: 90020,
   reengage: 90030,
   photo_reminder: 90040,
+  all_done: 90050,
+  first_week: 90060,
 };
 
 // LocalStorage keys for throttling
@@ -26,10 +34,14 @@ const THROTTLE_KEYS: Record<EngagementNotificationType, string> = {
   first_dose: 'regimen_notif_first_dose',
   streak_3: 'regimen_notif_streak_3',
   streak_7: 'regimen_notif_streak_7',
+  streak_14: 'regimen_notif_streak_14',
+  streak_30: 'regimen_notif_streak_30',
   missed_dose: 'regimen_notif_missed_dose',
   weekly_checkin: 'regimen_notif_weekly_checkin',
   reengage: 'regimen_notif_reengage',
   photo_reminder: 'regimen_notif_photo_reminder',
+  all_done: 'regimen_notif_all_done',
+  first_week: 'regimen_notif_first_week',
 };
 
 // How often each notification type can be sent (in days)
@@ -37,13 +49,17 @@ const THROTTLE_DAYS: Record<EngagementNotificationType, number> = {
   first_dose: 9999, // Only once ever
   streak_3: 30,     // Once per month (streak resets)
   streak_7: 30,     // Once per month
+  streak_14: 60,    // Once every 2 months
+  streak_30: 90,    // Once every 3 months
   missed_dose: 3,   // Every 3 days max
   weekly_checkin: 7, // Once per week
   reengage: 3,       // Every 3 days max
   photo_reminder: 7, // Once per week
+  all_done: 1,       // Once per day
+  first_week: 9999,  // Only once ever
 };
 
-const ENGAGEMENT_NOTIFICATIONS = {
+const ENGAGEMENT_NOTIFICATIONS: Record<EngagementNotificationType, { title: string; body: string }> = {
   first_dose: {
     title: "✅ Great start!",
     body: "You've logged your first dose. You're on your way to transformation!",
@@ -55,6 +71,14 @@ const ENGAGEMENT_NOTIFICATIONS = {
   streak_7: {
     title: "🎯 One Week Strong!",
     body: "Seven days of dedication! You're unstoppable.",
+  },
+  streak_14: {
+    title: "💪 Two Weeks Strong!",
+    body: "14 days of consistency — you're building a real habit!",
+  },
+  streak_30: {
+    title: "🏆 30 Days! Champion Status!",
+    body: "One month of dedication. You're in the top tier.",
   },
   missed_dose: {
     title: "💪 Quick check-in?",
@@ -71,6 +95,14 @@ const ENGAGEMENT_NOTIFICATIONS = {
   photo_reminder: {
     title: "📸 Track your transformation!",
     body: "A quick progress photo helps you see how far you've come.",
+  },
+  all_done: {
+    title: "🎉 All doses complete!",
+    body: "Everything checked off for today. Consistency builds results.",
+  },
+  first_week: {
+    title: "🎂 One Week Anniversary!",
+    body: "It's been one week since you started. Great commitment!",
   },
 };
 
@@ -125,7 +157,7 @@ export const scheduleEngagementNotification = async (
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: notificationId, // Use fixed ID to prevent duplicates
+          id: notificationId,
           title: notification.title,
           body: notification.body,
           schedule: { at: scheduledTime },
@@ -147,7 +179,68 @@ export const scheduleEngagementNotification = async (
 };
 
 /**
- * Check and schedule streak notifications (3-day, 7-day)
+ * Cancel the missed dose notification (ID 90010)
+ * Call this when all scheduled doses for the day are marked as taken.
+ */
+export const cancelMissedDoseNotification = async (): Promise<void> => {
+  try {
+    await LocalNotifications.cancel({ 
+      notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.missed_dose }] 
+    });
+    console.log('Cancelled missed_dose notification');
+  } catch (error) {
+    console.error('Failed to cancel missed_dose notification:', error);
+  }
+};
+
+/**
+ * Schedule the "all done" celebration notification 30 minutes from now
+ */
+export const scheduleAllDoneCelebration = async (): Promise<void> => {
+  try {
+    const scheduledTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
+    await scheduleEngagementNotification('all_done', scheduledTime);
+  } catch (error) {
+    console.error('Failed to schedule all_done celebration:', error);
+  }
+};
+
+/**
+ * Reschedule re-engagement notification 3 days from now.
+ * Call this each time the user logs a dose to keep pushing it forward.
+ */
+export const rescheduleReengagement = async (): Promise<void> => {
+  try {
+    const notificationId = ENGAGEMENT_NOTIFICATION_IDS.reengage;
+    
+    // Cancel any existing re-engagement notification
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
+    } catch (e) { /* ignore */ }
+    
+    // Schedule 3 days from now at 2 PM
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 3);
+    futureDate.setHours(14, 0, 0, 0);
+    
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: notificationId,
+        title: ENGAGEMENT_NOTIFICATIONS.reengage.title,
+        body: ENGAGEMENT_NOTIFICATIONS.reengage.body,
+        schedule: { at: futureDate },
+        extra: { type: 'engagement', subType: 'reengage' },
+      }],
+    });
+    
+    console.log(`Rescheduled re-engagement notification to ${futureDate}`);
+  } catch (error) {
+    console.error('Failed to reschedule re-engagement:', error);
+  }
+};
+
+/**
+ * Check and schedule streak notifications (3, 7, 14, 30 day milestones)
  */
 export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
   try {
@@ -164,37 +257,30 @@ export const checkAndScheduleStreakNotifications = async (): Promise<void> => {
 
     const currentStreak = stats.current_streak || 0;
 
-    // Schedule 3-day streak notification ONLY if streak is exactly 3
-    // Skip if streak already passed this milestone (e.g. retroactive check-ins jumped past 3)
-    if (currentStreak === 3) {
-      const today = new Date();
-      const notificationTime = new Date(today);
-      notificationTime.setHours(20, 0, 0, 0); // 8 PM
-      
-      if (notificationTime > new Date()) {
-        await scheduleEngagementNotification('streak_3', notificationTime);
-      }
-    } else if (currentStreak > 3) {
-      // Cancel any pending 3-day notification if streak already passed 3
-      try {
-        await LocalNotifications.cancel({ notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.streak_3 }] });
-      } catch (e) { /* ignore */ }
-    }
+    const milestones: { streak: number; type: EngagementNotificationType }[] = [
+      { streak: 3, type: 'streak_3' },
+      { streak: 7, type: 'streak_7' },
+      { streak: 14, type: 'streak_14' },
+      { streak: 30, type: 'streak_30' },
+    ];
 
-    // Schedule 7-day streak notification ONLY if streak is exactly 7
-    if (currentStreak === 7) {
-      const today = new Date();
-      const notificationTime = new Date(today);
-      notificationTime.setHours(20, 0, 0, 0); // 8 PM
-      
-      if (notificationTime > new Date()) {
-        await scheduleEngagementNotification('streak_7', notificationTime);
+    for (const { streak, type } of milestones) {
+      if (currentStreak === streak) {
+        const today = new Date();
+        const notificationTime = new Date(today);
+        notificationTime.setHours(20, 0, 0, 0); // 8 PM
+        
+        if (notificationTime > new Date()) {
+          await scheduleEngagementNotification(type, notificationTime);
+        }
+      } else if (currentStreak > streak) {
+        // Cancel any pending milestone notification if streak already passed it
+        try {
+          await LocalNotifications.cancel({ 
+            notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS[type] }] 
+          });
+        } catch (e) { /* ignore */ }
       }
-    } else if (currentStreak > 7) {
-      // Cancel any pending 7-day notification if streak already passed 7
-      try {
-        await LocalNotifications.cancel({ notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.streak_7 }] });
-      } catch (e) { /* ignore */ }
     }
   } catch (error) {
     console.error('Failed to check streak notifications:', error);
@@ -219,8 +305,13 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
+    // If it's already past 3 PM, don't schedule (it would fire immediately or in the past)
+    if (today.getHours() >= 15) {
+      console.log('Skipping missed dose notification - already past 3 PM');
+      return;
+    }
+
     // Check if there are unchecked doses for today
-    // We need to handle skipped being null (old doses) or false
     const { data: doses } = await supabase
       .from('doses')
       .select('id, scheduled_time, skipped')
@@ -229,7 +320,7 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
       .eq('taken', false);
 
     if (doses && doses.length > 0) {
-      // Filter out skipped doses (including handling null values from old doses)
+      // Filter out skipped doses
       const unskippedDoses = doses.filter(dose => dose.skipped !== true);
       
       if (unskippedDoses.length === 0) {
@@ -261,13 +352,32 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
 
 /**
  * Schedule weekly check-in notification (Sunday 7 PM)
+ * Skips if user already logged doses today (they're engaged)
  */
 export const scheduleWeeklyCheckin = async (): Promise<void> => {
   try {
-    // Check throttle first - no need to calculate if already sent this week
+    // Check throttle first
     if (isThrottled('weekly_checkin')) {
       console.log('Skipping weekly check-in - already scheduled this week');
       return;
+    }
+
+    // Check if user has logged any doses today — if so, skip
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: todayDoses } = await supabase
+        .from('doses')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('scheduled_date', todayStr)
+        .eq('taken', true)
+        .limit(1);
+      
+      if (todayDoses && todayDoses.length > 0) {
+        console.log('Skipping weekly check-in - user already active today');
+        return;
+      }
     }
     
     const today = new Date();
@@ -279,6 +389,36 @@ export const scheduleWeeklyCheckin = async (): Promise<void> => {
     const nextSunday = new Date(today);
     nextSunday.setDate(today.getDate() + daysUntilSunday);
     nextSunday.setHours(19, 0, 0, 0); // 7 PM
+
+    // Try to build a dynamic message with stats
+    if (user) {
+      const { data: stats } = await supabase
+        .from('user_stats')
+        .select('current_streak, total_doses_logged')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (stats && stats.current_streak && stats.current_streak > 0) {
+        // Schedule with dynamic body
+        const notificationId = ENGAGEMENT_NOTIFICATION_IDS.weekly_checkin;
+        try {
+          await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
+        } catch (e) { /* ignore */ }
+        
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: notificationId,
+            title: "📊 Weekly Check-in",
+            body: `${stats.current_streak}-day streak! You've logged ${stats.total_doses_logged || 0} total doses. Keep it up! 🔥`,
+            schedule: { at: nextSunday },
+            extra: { type: 'engagement', subType: 'weekly_checkin' },
+          }],
+        });
+        markAsSent('weekly_checkin');
+        console.log(`Scheduled dynamic weekly check-in for ${nextSunday}`);
+        return;
+      }
+    }
 
     await scheduleEngagementNotification('weekly_checkin', nextSunday);
   } catch (error) {
@@ -308,16 +448,14 @@ export const schedulePhotoReminder = async (): Promise<void> => {
       .eq('user_id', user.id)
       .not('photo_url', 'is', null);
 
-    // Only send reminder to users who have taken at least 1 photo
     if (!count || count < 1) {
       console.log('User has no photos - skipping photo reminder');
       return;
     }
 
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayOfWeek = today.getDay();
     
-    // Calculate days until next Saturday
     const daysUntilSaturday = dayOfWeek === 6 ? 7 : (6 - dayOfWeek);
     
     const nextSaturday = new Date(today);
@@ -331,36 +469,55 @@ export const schedulePhotoReminder = async (): Promise<void> => {
 };
 
 /**
- * Schedule re-engagement notification (2 PM, 3 days after last activity)
+ * Schedule re-engagement notification proactively 3 days from now.
+ * This replaces the old "check if 3+ days inactive" approach.
  */
 export const scheduleReengagementNotification = async (): Promise<void> => {
   try {
+    // Simply schedule 3 days from now at 2 PM
+    // Each time the user opens the app, this gets rescheduled further out
+    await rescheduleReengagement();
+  } catch (error) {
+    console.error('Failed to schedule re-engagement notification:', error);
+  }
+};
+
+/**
+ * Schedule first week anniversary notification
+ */
+export const scheduleFirstWeekAnniversary = async (): Promise<void> => {
+  try {
+    const alreadySent = localStorage.getItem(THROTTLE_KEYS.first_week);
+    if (alreadySent) return;
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: stats } = await supabase
-      .from('user_stats')
-      .select('last_check_in_date')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('created_at')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (!stats || !stats.last_check_in_date) return;
+    if (!profile?.created_at) return;
 
-    const lastCheckIn = new Date(stats.last_check_in_date);
-    const today = new Date();
-    const daysSinceLastCheckIn = Math.floor((today.getTime() - lastCheckIn.getTime()) / (1000 * 60 * 60 * 24));
+    const signupDate = new Date(profile.created_at);
+    const now = new Date();
+    const daysSinceSignup = Math.floor((now.getTime() - signupDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Schedule re-engagement if it's been 3+ days since last check-in
-    if (daysSinceLastCheckIn >= 3) {
-      const notificationTime = new Date();
-      notificationTime.setHours(14, 0, 0, 0); // 2 PM
-      
-      if (notificationTime > new Date()) {
-        await scheduleEngagementNotification('reengage', notificationTime);
+    if (daysSinceSignup < 7) {
+      // Schedule for exactly 7 days after signup at 10 AM
+      const anniversaryDate = new Date(signupDate);
+      anniversaryDate.setDate(signupDate.getDate() + 7);
+      anniversaryDate.setHours(10, 0, 0, 0);
+
+      if (anniversaryDate > now) {
+        await scheduleEngagementNotification('first_week', anniversaryDate);
       }
     }
+    // If already past 7 days, don't send retroactively
   } catch (error) {
-    console.error('Failed to schedule re-engagement notification:', error);
+    console.error('Failed to schedule first week anniversary:', error);
   }
 };
 
@@ -376,11 +533,14 @@ export const initializeEngagementNotifications = async (): Promise<void> => {
     // Check for missed doses (throttled to once every 3 days)
     await scheduleMissedDoseNotification();
     
-    // Check for re-engagement (throttled to once every 3 days)
+    // Schedule re-engagement 3 days from now (resets on each app open)
     await scheduleReengagementNotification();
     
     // Schedule photo reminder (throttled to once per week, only for users with 1+ photos)
     await schedulePhotoReminder();
+
+    // Schedule first week anniversary (once ever)
+    await scheduleFirstWeekAnniversary();
     
     // Streak notifications are triggered on dose completion
   } catch (error) {
