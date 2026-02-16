@@ -92,12 +92,15 @@ const savePartnerAttribution = async (
   console.log('[VALIDATE-PROMO] Partner attribution saved for user:', userId);
 
   // Increment redemption_count on the partner code
-  const { error: incError } = await supabaseClient.rpc('increment_redemption_count', {
-    code_id_param: partnerCodeId,
-  }).catch(() => {
-    // Fallback: manual increment if RPC doesn't exist
-    return { error: 'rpc_not_found' };
-  });
+  let incError = null;
+  try {
+    const result = await supabaseClient.rpc('increment_redemption_count', {
+      code_id_param: partnerCodeId,
+    });
+    incError = result.error;
+  } catch {
+    incError = 'rpc_not_found';
+  }
 
   // Fallback: direct update if RPC not available
   if (incError) {

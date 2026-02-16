@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.verify-reset-code]
 verify_jwt = false
+
+[functions.validate-promo-code]
+verify_jwt = false
