@@ -30,7 +30,7 @@ import { formatDose } from "@/utils/doseUtils";
 import { calculateCycleStatus } from "@/utils/cycleUtils";
 import { StreakBadge } from "@/components/StreakBadge";
 import { useStreaks } from "@/hooks/useStreaks";
-import { checkAndScheduleStreakNotifications, initializeEngagementNotifications } from "@/utils/engagementNotifications";
+import { checkAndScheduleStreakNotifications, initializeEngagementNotifications, cancelMissedDoseNotification, scheduleAllDoneCelebration, rescheduleReengagement } from "@/utils/engagementNotifications";
 import { useEngagementTracking } from "@/hooks/useEngagementTracking";
 import { useQueryClient } from "@tanstack/react-query";
 import { MainHeader } from "@/components/MainHeader";
@@ -787,10 +787,19 @@ export const TodayScreen = () => {
           setTimeout(() => {
             triggerLastDoseCelebration();
           }, 600);
+          
+          // Bug fix: cancel stale missed_dose notification since all doses are done
+          cancelMissedDoseNotification();
+          
+          // Schedule "all done" celebration 30 min from now
+          scheduleAllDoneCelebration();
         }
         
         // Check and schedule streak notifications
         await checkAndScheduleStreakNotifications();
+        
+        // Reschedule re-engagement 3 days from now (keeps pushing forward while active)
+        rescheduleReengagement();
         
         // Track activation (first dose ever) - fires ONCE per user lifetime
         const activationKey = 'regimen_activation_tracked';
