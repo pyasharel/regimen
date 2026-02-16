@@ -52,7 +52,7 @@ const savePartnerAttribution = async (
   // Check for duplicate redemption
   const { data: existing, error: checkError } = await supabaseClient
     .from('partner_code_redemptions')
-    .select('id')
+    .select('id, offer_applied')
     .eq('user_id', userId)
     .eq('code_id', partnerCodeId)
     .maybeSingle();
@@ -62,8 +62,16 @@ const savePartnerAttribution = async (
   }
 
   if (existing) {
-    console.log('[VALIDATE-PROMO] User already redeemed this partner code');
-    return { error: 'You have already used this promo code' };
+    if (existing.offer_applied) {
+      console.log('[VALIDATE-PROMO] User already completed purchase with this partner code');
+      return { error: 'You have already used this promo code' };
+    }
+    // Stale record (offer never completed) — delete it so user can retry
+    console.log('[VALIDATE-PROMO] Deleting stale redemption record (offer_applied=false)');
+    await supabaseClient
+      .from('partner_code_redemptions')
+      .delete()
+      .eq('id', existing.id);
   }
 
   // Insert redemption record
