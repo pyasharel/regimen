@@ -85,7 +85,22 @@ const trackGA4Event = async (
 };
 
 /**
- * Calculates days between two dates from millisecond timestamps.
+ * Detects subscription type from product_id.
+ * Handles various naming conventions across iOS and Google Play:
+ * - iOS: "regimen_premium_annual", "regimen_premium_monthly"
+ * - Android: may use ":annual-base", ":yearly-base", ":monthly-base"
+ */
+const detectSubscriptionType = (productId: string | undefined): "annual" | "monthly" => {
+  if (!productId) return "monthly";
+  const pid = productId.toLowerCase();
+  console.log("[REVENUECAT-WEBHOOK] Detecting subscription type from product_id:", productId);
+  if (pid.includes("annual") || pid.includes("yearly") || pid.includes("year")) {
+    return "annual";
+  }
+  return "monthly";
+};
+
+/**
  */
 const calculateDaysActive = (startMs: number | undefined, endMs: number | undefined): number => {
   if (!startMs || !endMs) return 0;
@@ -324,7 +339,7 @@ serve(async (req) => {
         // Check if this is a trial or paid subscription
         const isTrial = event.period_type === "TRIAL" || event.period_type === "INTRO";
         subscriptionStatus = isTrial ? "trialing" : "active";
-        subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
+        subscriptionType = detectSubscriptionType(event.product_id);
         subscriptionStartDate = event.purchased_at_ms 
           ? new Date(event.purchased_at_ms).toISOString() 
           : new Date().toISOString();
@@ -370,7 +385,7 @@ serve(async (req) => {
       case "RENEWAL": {
         // Renewals always mean the user is now paying (trial converted or continued subscription)
         subscriptionStatus = "active";
-        subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
+        subscriptionType = detectSubscriptionType(event.product_id);
         subscriptionStartDate = event.purchased_at_ms 
           ? new Date(event.purchased_at_ms).toISOString() 
           : new Date().toISOString();
@@ -437,7 +452,7 @@ serve(async (req) => {
       case "PRODUCT_CHANGE":
       case "UNCANCELLATION":
         subscriptionStatus = "active";
-        subscriptionType = event.product_id?.includes("annual") ? "annual" : "monthly";
+        subscriptionType = detectSubscriptionType(event.product_id);
         subscriptionStartDate = event.purchased_at_ms 
           ? new Date(event.purchased_at_ms).toISOString() 
           : new Date().toISOString();
@@ -461,7 +476,7 @@ serve(async (req) => {
         
         // Track cancellation with engagement data in GA4 including platform
         await trackGA4Event(userId, "subscription_cancelled", {
-          plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
+          plan_type: detectSubscriptionType(event.product_id),
           cancel_reason: event.cancel_reason || "unknown",
           days_active: daysActive,
           was_trial: event.period_type === "TRIAL",
@@ -483,7 +498,7 @@ serve(async (req) => {
         
         // Track expiration in GA4 with platform
         await trackGA4Event(userId, "subscription_expired", {
-          plan_type: event.product_id?.includes("annual") ? "annual" : "monthly",
+          plan_type: detectSubscriptionType(event.product_id),
           was_trial: event.period_type === "TRIAL",
           days_active: daysActive,
           expiration_reason: event.type === "BILLING_ISSUE" ? "billing_issue" : "natural_expiration",

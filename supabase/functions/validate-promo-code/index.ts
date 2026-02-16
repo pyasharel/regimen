@@ -8,15 +8,110 @@ const corsHeaders = {
 };
 
 // Backend promo codes (synced with activate-beta-access)
-// These provide beta access when validated through this function
 const BACKEND_PROMO_CODES: Record<string, { days: number; description: string }> = {
   'BETATESTER': { days: 90, description: '3 months free' },
   'REDDIT30': { days: 30, description: '1 month free' },
   'ANDROID90': { days: 90, description: '3 months free' },
 };
 
-// Apple App ID for Regimen
 const APPLE_APP_ID = '6753905449';
+
+/**
+ * Extract user_id from the Authorization header (JWT).
+ * Returns null if no valid auth header is present.
+ */
+const extractUserId = async (req: Request, supabaseClient: any): Promise<string | null> => {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const { data: { user }, error } = await supabaseClient.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Save partner attribution server-side (bypasses RLS via service role).
+ * Also increments redemption_count and checks for duplicate redemptions.
+ */
+const savePartnerAttribution = async (
+  supabaseClient: any,
+  userId: string | null,
+  partnerCodeId: string,
+  platform: string | null
+): Promise<{ error?: string }> => {
+  if (!userId) {
+    console.log('[VALIDATE-PROMO] No user_id available, skipping attribution save');
+    return {};
+  }
+
+  // Check for duplicate redemption
+  const { data: existing, error: checkError } = await supabaseClient
+    .from('partner_code_redemptions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('code_id', partnerCodeId)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('[VALIDATE-PROMO] Error checking duplicate redemption:', checkError);
+  }
+
+  if (existing) {
+    console.log('[VALIDATE-PROMO] User already redeemed this partner code');
+    return { error: 'You have already used this promo code' };
+  }
+
+  // Insert redemption record
+  const { error: insertError } = await supabaseClient
+    .from('partner_code_redemptions')
+    .insert({
+      code_id: partnerCodeId,
+      user_id: userId,
+      platform: platform || 'unknown',
+      offer_applied: false,
+    });
+
+  if (insertError) {
+    console.error('[VALIDATE-PROMO] Error saving attribution:', insertError);
+    return {};
+  }
+
+  console.log('[VALIDATE-PROMO] Partner attribution saved for user:', userId);
+
+  // Increment redemption_count on the partner code
+  const { error: incError } = await supabaseClient.rpc('increment_redemption_count', {
+    code_id_param: partnerCodeId,
+  }).catch(() => {
+    // Fallback: manual increment if RPC doesn't exist
+    return { error: 'rpc_not_found' };
+  });
+
+  // Fallback: direct update if RPC not available
+  if (incError) {
+    const { data: currentCode } = await supabaseClient
+      .from('partner_promo_codes')
+      .select('redemption_count')
+      .eq('id', partnerCodeId)
+      .single();
+
+    if (currentCode) {
+      await supabaseClient
+        .from('partner_promo_codes')
+        .update({ redemption_count: (currentCode.redemption_count || 0) + 1 })
+        .eq('id', partnerCodeId);
+      console.log('[VALIDATE-PROMO] Incremented redemption_count (fallback)');
+    }
+  } else {
+    console.log('[VALIDATE-PROMO] Incremented redemption_count (rpc)');
+  }
+
+  return {};
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -35,6 +130,16 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
     
+    // Extract user_id from auth header for attribution
+    // Create a separate client with the anon key for auth verification
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    const userId = await extractUserId(req, anonClient);
+    console.log(`[VALIDATE-PROMO] User ID from auth: ${userId || 'not authenticated'}`);
+    
     // FIRST: Check if this is a VIP lifetime code
     const { data: lifetimeCode, error: lifetimeError } = await supabaseClient
       .from('lifetime_codes')
@@ -47,7 +152,6 @@ serve(async (req) => {
     }
     
     if (lifetimeCode) {
-      // Check if already redeemed
       if (lifetimeCode.redeemed_at) {
         console.log(`[VALIDATE-PROMO] Lifetime code already redeemed: ${upperCode}`);
         return new Response(JSON.stringify({
@@ -63,7 +167,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         valid: true,
         type: 'lifetime',
-        duration: 0, // Lifetime = forever
+        duration: 0,
         discount: 100,
         planType: 'both',
         isBackendCode: true,
@@ -106,6 +210,20 @@ serve(async (req) => {
         });
       }
       
+      // Check for duplicate redemption by this user
+      if (userId) {
+        const attrResult = await savePartnerAttribution(supabaseClient, userId, partnerCode.id, platform);
+        if (attrResult.error) {
+          return new Response(JSON.stringify({
+            valid: false,
+            message: attrResult.error
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      }
+      
       // For iOS: Use Safari redirect flow with Apple Offer Code
       if (platform === 'ios') {
         console.log(`[VALIDATE-PROMO] iOS platform - returning Safari redirect flow`);
@@ -113,7 +231,7 @@ serve(async (req) => {
           valid: true,
           type: 'partner_code',
           isPartnerCode: true,
-          useNativePurchase: false, // Use Safari redirect for Apple Offer Code redemption
+          useNativePurchase: false,
           redemptionUrl: `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${upperCode}`,
           planType: partnerCode.plan_type,
           partnerName: partnerCode.partner_name,
@@ -125,7 +243,7 @@ serve(async (req) => {
         });
       }
       
-      // For Android: Use Google Play developer-determined offer (native subscription)
+      // For Android: Use Google Play developer-determined offer
       if (platform === 'android') {
         console.log(`[VALIDATE-PROMO] Android platform - returning Google Play offer flow`);
         return new Response(JSON.stringify({
@@ -144,7 +262,7 @@ serve(async (req) => {
         });
       }
       
-      // For Web: Fall back to backend beta access (no Google Play billing on web)
+      // For Web: Fall back to backend beta access
       console.log(`[VALIDATE-PROMO] Web platform - returning beta access fallback`);
       return new Response(JSON.stringify({
         valid: true,
@@ -162,7 +280,7 @@ serve(async (req) => {
       });
     }
     
-    // THIRD: Check if this is a backend promo code (for backwards compatibility)
+    // THIRD: Check if this is a backend promo code
     if (BACKEND_PROMO_CODES[upperCode]) {
       const promoConfig = BACKEND_PROMO_CODES[upperCode];
       console.log(`[VALIDATE-PROMO] Found backend promo code: ${upperCode}`, promoConfig);
@@ -203,7 +321,6 @@ serve(async (req) => {
     const promoCode = promoCodes.data[0];
     const coupon = promoCode.coupon;
     
-    // Determine which plan this promo applies to based on the price ID
     const applicablePrices = promoCode.restrictions?.applicable_products || [];
     const monthlyPriceId = "price_1SOtyVCSTxWkewOuVMpDVjQ3";
     const annualPriceId = "price_1SOtzeCSTxWkewOutkH2RmTq";

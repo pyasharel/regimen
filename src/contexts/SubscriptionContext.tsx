@@ -756,17 +756,48 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           });
           console.log('[RevenueCat] Platform and app_version set:', platform, appVersion);
           
-          // Set country/locale from browser for geo tracking
+          // Set country/locale for geo tracking
           // IMPORTANT: Use 'country_code' NOT '$countryCode' - the $ prefix is reserved by RevenueCat
-          // and causes BackendError that blocks initialization on cold starts
+          // Primary: IP geolocation for accurate country. Fallback: navigator.language (unreliable for country)
           try {
             const locale = navigator.language || 'en-US';
-            const countryCode = locale.split('-')[1] || 'Unknown';
+            let countryCode = locale.split('-')[1] || 'Unknown';
+            
+            // Try IP-based geolocation first (more accurate than device locale)
+            try {
+              const geoController = new AbortController();
+              const geoTimeout = setTimeout(() => geoController.abort(), 3000);
+              const geoRes = await fetch('https://ipapi.co/json/', { signal: geoController.signal });
+              clearTimeout(geoTimeout);
+              if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                if (geoData.country_code) {
+                  countryCode = geoData.country_code;
+                  console.log('[RevenueCat] IP geolocation country:', countryCode);
+                }
+              }
+            } catch (geoErr) {
+              console.warn('[RevenueCat] IP geolocation failed, using locale fallback:', geoErr);
+            }
+            
             await Purchases.setAttributes({
               country_code: countryCode,
               locale: locale,
             });
             console.log('[RevenueCat] Country/locale set:', countryCode, locale);
+            
+            // Also update the profile with accurate country
+            try {
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                await supabase.from('profiles').update({ 
+                  country_code: countryCode, 
+                  detected_locale: locale 
+                }).eq('user_id', currentUser.id);
+              }
+            } catch (profileErr) {
+              console.warn('[RevenueCat] Could not update profile country:', profileErr);
+            }
           } catch (localeError) {
             console.warn('[RevenueCat] Could not set country/locale:', localeError);
           }

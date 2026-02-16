@@ -81,29 +81,8 @@ export const SubscriptionPaywall = ({
     }
   }, [open]);
 
-  // Save partner attribution to database
-  const savePartnerAttribution = async (partnerCodeId: string, userId: string) => {
-    try {
-      console.log('[PAYWALL] Saving partner attribution:', { partnerCodeId, userId });
-      
-      const { error } = await supabase
-        .from('partner_code_redemptions')
-        .insert({
-          code_id: partnerCodeId,
-          user_id: userId,
-          platform: Capacitor.isNativePlatform() ? Capacitor.getPlatform() : 'web',
-          offer_applied: false // Will be set to true by webhook on INITIAL_PURCHASE
-        });
-      
-      if (error) {
-        console.error('[PAYWALL] Failed to save partner attribution:', error);
-      } else {
-        console.log('[PAYWALL] Partner attribution saved successfully');
-      }
-    } catch (err) {
-      console.error('[PAYWALL] Error saving partner attribution:', err);
-    }
-  };
+  // Partner attribution is now saved server-side in validate-promo-code edge function
+  // No client-side savePartnerAttribution needed
 
   // Copy promo code to clipboard
   const copyToClipboard = async (code: string) => {
@@ -121,12 +100,7 @@ export const SubscriptionPaywall = ({
   // Open Safari for Apple Offer Code redemption
   const openSafariRedemption = async (promo: AppleOfferCodePromo) => {
     try {
-      // Save attribution before redirecting
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await savePartnerAttribution(promo.partnerCodeId, user.id);
-      }
-      
+      // Attribution is already saved server-side during validation
       console.log('[PAYWALL] Opening Safari for redemption:', promo.redemptionUrl);
       
       // Open Safari for Apple Offer Code redemption
@@ -344,20 +318,15 @@ export const SubscriptionPaywall = ({
       if (isNativePlatform) {
         console.log('[PAYWALL] Native platform - using RevenueCat standard flow');
         
-        // Save partner attribution BEFORE purchase if applicable
+        // Attribution is already saved server-side during validation
+        // Just set RevenueCat attribute for tracking if partner promo
         if (partnerPromo) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await savePartnerAttribution(partnerPromo.partnerCodeId, user.id);
-            
-            // Also set partner attribute in RevenueCat for tracking
-            try {
-              const { Purchases } = await import('@revenuecat/purchases-capacitor');
-              await Purchases.setAttributes({ partner_code: partnerPromo.code });
-              console.log('[PAYWALL] Set RevenueCat partner_code attribute:', partnerPromo.code);
-            } catch (attrError) {
-              console.warn('[PAYWALL] Could not set RevenueCat attribute:', attrError);
-            }
+          try {
+            const { Purchases } = await import('@revenuecat/purchases-capacitor');
+            await Purchases.setAttributes({ partner_code: partnerPromo.code });
+            console.log('[PAYWALL] Set RevenueCat partner_code attribute:', partnerPromo.code);
+          } catch (attrError) {
+            console.warn('[PAYWALL] Could not set RevenueCat attribute:', attrError);
           }
         }
         
@@ -417,6 +386,21 @@ export const SubscriptionPaywall = ({
             
             if (result.success) {
               console.log('[PAYWALL] Partner offer purchase successful!');
+              
+              // Update profile with correct subscription_type for partner annual purchase
+              try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await supabase.from('profiles').update({
+                    subscription_type: 'annual',
+                    subscription_status: 'trialing',
+                  }).eq('user_id', user.id);
+                  console.log('[PAYWALL] Profile updated with annual/trialing for partner purchase');
+                }
+              } catch (profileErr) {
+                console.warn('[PAYWALL] Could not update profile after partner purchase:', profileErr);
+              }
+              
               toast.success('Welcome to Regimen Premium! 🎉');
               trackSubscriptionSuccess('annual', 'revenuecat');
               onOpenChange(false);
