@@ -765,7 +765,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, created_at, onboarding_completed, experience_level, path_type')
+            .select('full_name, created_at, onboarding_completed, experience_level, path_type, last_active_at')
             .eq('user_id', userId)
             .single();
           
@@ -874,6 +874,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
               }
               if (profile.path_type) {
                 engagementAttrs.path_type = profile.path_type;
+              }
+              if (profile.last_active_at) {
+                engagementAttrs.last_active_date = profile.last_active_at.split('T')[0]; // YYYY-MM-DD
               }
             }
             
