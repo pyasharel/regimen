@@ -112,6 +112,7 @@ export const TodayScreen = () => {
     refreshSubscription,
     previewModeCompoundAdded,
     isFreeCompound,
+    refreshFreeCompound,
   } = useSubscription();
   const { openPaywall } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
@@ -617,6 +618,8 @@ export const TodayScreen = () => {
       setConnectionStuck(false);
       trace('TODAY_DOSES_LOADED', `${sortedDoses.length} doses in ${Date.now() - startTime}ms`);
       setDoses(sortedDoses);
+      // Refresh free compound ID so lock state is always current after loading
+      refreshFreeCompound();
       console.log('[TodayScreen] ⏱️ Total loadDoses took:', Date.now() - startTime, 'ms');
     } catch (error) {
       trace('TODAY_LOAD_ERROR', String(error));

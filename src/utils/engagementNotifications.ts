@@ -10,7 +10,10 @@ export type EngagementNotificationType =
   | 'missed_dose'
   | 'weekly_checkin'
   | 'reengage'
-  | 'photo_reminder';
+  | 'photo_reminder'
+  | 'nudge_add_compound'
+  | 'nudge_add_compound_2'
+  | 'encourage_add_more';
 
 // Fixed notification IDs for each type to prevent duplicates
 const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = {
@@ -23,6 +26,9 @@ const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = 
   weekly_checkin: 90020,
   reengage: 90030,
   photo_reminder: 90040,
+  nudge_add_compound: 90050,
+  nudge_add_compound_2: 90051,
+  encourage_add_more: 90052,
 };
 
 // LocalStorage keys for throttling
@@ -36,6 +42,9 @@ const THROTTLE_KEYS: Record<EngagementNotificationType, string> = {
   weekly_checkin: 'regimen_notif_weekly_checkin',
   reengage: 'regimen_notif_reengage',
   photo_reminder: 'regimen_notif_photo_reminder',
+  nudge_add_compound: 'regimen_notif_nudge_add_compound',
+  nudge_add_compound_2: 'regimen_notif_nudge_add_compound_2',
+  encourage_add_more: 'regimen_notif_encourage_add_more',
 };
 
 // How often each notification type can be sent (in days)
@@ -49,6 +58,9 @@ const THROTTLE_DAYS: Record<EngagementNotificationType, number> = {
   weekly_checkin: 7, // Once per week
   reengage: 3,       // Every 3 days max
   photo_reminder: 7, // Once per week
+  nudge_add_compound: 9999, // Only once ever
+  nudge_add_compound_2: 9999, // Only once ever
+  encourage_add_more: 30, // Once per month
 };
 
 const ENGAGEMENT_NOTIFICATIONS: Record<EngagementNotificationType, { title: string; body: string }> = {
@@ -87,6 +99,18 @@ const ENGAGEMENT_NOTIFICATIONS: Record<EngagementNotificationType, { title: stri
   photo_reminder: {
     title: "📸 Track your transformation!",
     body: "A quick progress photo helps you see how far you've come.",
+  },
+  nudge_add_compound: {
+    title: "💊 Your protocol tracker is ready",
+    body: "Add your first compound to start tracking.",
+  },
+  nudge_add_compound_2: {
+    title: "⚡ It takes 30 seconds",
+    body: "Add a compound and never miss a dose.",
+  },
+  encourage_add_more: {
+    title: "📋 Track your full protocol",
+    body: "You can track unlimited compounds on your plan. Add another to get the full experience.",
   },
 };
 
@@ -551,5 +575,130 @@ export const initializeEngagementNotifications = async (): Promise<void> => {
     // Streak notifications are triggered on dose completion
   } catch (error) {
     console.error('Failed to initialize engagement notifications:', error);
+  }
+};
+
+/**
+ * Schedule "Add Your First Compound" nudge notifications.
+ * Called at end of onboarding when user has 0 compounds.
+ * 
+ * Nudge 1: Next day at 11 AM
+ * Nudge 2: 3 days later at 7 PM
+ * Both are cancelled when user adds their first compound.
+ */
+export const scheduleCompoundNudges = async (): Promise<void> => {
+  try {
+    // Nudge 1: Tomorrow at 11 AM
+    if (!isThrottled('nudge_add_compound')) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(11, 0, 0, 0);
+      
+      const notificationId = ENGAGEMENT_NOTIFICATION_IDS.nudge_add_compound;
+      try { await LocalNotifications.cancel({ notifications: [{ id: notificationId }] }); } catch (e) { /* ignore */ }
+      
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: notificationId,
+          title: ENGAGEMENT_NOTIFICATIONS.nudge_add_compound.title,
+          body: ENGAGEMENT_NOTIFICATIONS.nudge_add_compound.body,
+          schedule: { at: tomorrow },
+          extra: { type: 'engagement', subType: 'nudge_add_compound' },
+        }],
+      });
+      markAsSent('nudge_add_compound');
+      console.log(`[Engagement] Scheduled nudge_add_compound for ${tomorrow}`);
+    }
+
+    // Nudge 2: 3 days from now at 7 PM
+    if (!isThrottled('nudge_add_compound_2')) {
+      const threeDays = new Date();
+      threeDays.setDate(threeDays.getDate() + 3);
+      threeDays.setHours(19, 0, 0, 0);
+      
+      const notificationId2 = ENGAGEMENT_NOTIFICATION_IDS.nudge_add_compound_2;
+      try { await LocalNotifications.cancel({ notifications: [{ id: notificationId2 }] }); } catch (e) { /* ignore */ }
+      
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: notificationId2,
+          title: ENGAGEMENT_NOTIFICATIONS.nudge_add_compound_2.title,
+          body: ENGAGEMENT_NOTIFICATIONS.nudge_add_compound_2.body,
+          schedule: { at: threeDays },
+          extra: { type: 'engagement', subType: 'nudge_add_compound_2' },
+        }],
+      });
+      markAsSent('nudge_add_compound_2');
+      console.log(`[Engagement] Scheduled nudge_add_compound_2 for ${threeDays}`);
+    }
+  } catch (error) {
+    console.error('Failed to schedule compound nudges:', error);
+  }
+};
+
+/**
+ * Cancel compound nudge notifications.
+ * Called when user adds their first compound.
+ */
+export const cancelCompoundNudges = async (): Promise<void> => {
+  try {
+    await LocalNotifications.cancel({
+      notifications: [
+        { id: ENGAGEMENT_NOTIFICATION_IDS.nudge_add_compound },
+        { id: ENGAGEMENT_NOTIFICATION_IDS.nudge_add_compound_2 },
+      ]
+    });
+    console.log('[Engagement] Cancelled compound nudge notifications');
+  } catch (error) {
+    console.error('Failed to cancel compound nudges:', error);
+  }
+};
+
+/**
+ * Schedule "Add More Compounds" encouragement for trial users with 1 compound.
+ * Fires 2 days after first compound is added, at 11 AM.
+ */
+export const scheduleAddMoreEncouragement = async (): Promise<void> => {
+  try {
+    if (isThrottled('encourage_add_more')) {
+      console.log('[Engagement] Skipping encourage_add_more - throttled');
+      return;
+    }
+
+    const twoDays = new Date();
+    twoDays.setDate(twoDays.getDate() + 2);
+    twoDays.setHours(11, 0, 0, 0);
+
+    const notificationId = ENGAGEMENT_NOTIFICATION_IDS.encourage_add_more;
+    try { await LocalNotifications.cancel({ notifications: [{ id: notificationId }] }); } catch (e) { /* ignore */ }
+
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: notificationId,
+        title: ENGAGEMENT_NOTIFICATIONS.encourage_add_more.title,
+        body: ENGAGEMENT_NOTIFICATIONS.encourage_add_more.body,
+        schedule: { at: twoDays },
+        extra: { type: 'engagement', subType: 'encourage_add_more' },
+      }],
+    });
+    markAsSent('encourage_add_more');
+    console.log(`[Engagement] Scheduled encourage_add_more for ${twoDays}`);
+  } catch (error) {
+    console.error('Failed to schedule add more encouragement:', error);
+  }
+};
+
+/**
+ * Cancel "Add More Compounds" encouragement notification.
+ * Called when user adds a 2nd compound.
+ */
+export const cancelAddMoreEncouragement = async (): Promise<void> => {
+  try {
+    await LocalNotifications.cancel({
+      notifications: [{ id: ENGAGEMENT_NOTIFICATION_IDS.encourage_add_more }]
+    });
+    console.log('[Engagement] Cancelled encourage_add_more notification');
+  } catch (error) {
+    console.error('Failed to cancel add more encouragement:', error);
   }
 };

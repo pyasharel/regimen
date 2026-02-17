@@ -36,6 +36,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { requestNotificationPermissions, scheduleAllUpcomingDoses } from "@/utils/notificationScheduler";
 import { scheduleCycleReminders } from "@/utils/cycleReminderScheduler";
+import { cancelCompoundNudges, scheduleAddMoreEncouragement, cancelAddMoreEncouragement } from "@/utils/engagementNotifications";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 
 // Oil-based compounds that commonly use weekly dosing protocols
@@ -239,9 +240,12 @@ export const AddCompoundScreen = () => {
   const { 
     canAddCompound, 
     canEditCompound,
-    isSubscribed, 
+    isSubscribed,
+    subscriptionStatus,
     markPreviewCompoundAdded,
-    previewModeCompoundAdded 
+    previewModeCompoundAdded,
+    refreshFreeCompound,
+    getCompoundCount,
   } = useSubscription();
   
   const { openPaywall } = usePaywall();
@@ -1427,6 +1431,25 @@ export const AddCompoundScreen = () => {
         if (!isSubscribed) {
           console.log('[AddCompound] ✅ Marking preview compound as added');
           await markPreviewCompoundAdded();
+        }
+
+        // Refresh free compound ID so lock state updates immediately
+        refreshFreeCompound();
+
+        // Cancel "add your first compound" nudge notifications
+        cancelCompoundNudges();
+
+        // If trial user just added their first compound, schedule "add more" encouragement
+        // If they already have 1+ and are adding a 2nd, cancel the encouragement
+        if (subscriptionStatus === 'trialing') {
+          const count = await getCompoundCount();
+          if (count === 1) {
+            // Just added their first compound on trial
+            scheduleAddMoreEncouragement();
+          } else if (count >= 2) {
+            // Adding 2nd+ compound - cancel encouragement
+            cancelAddMoreEncouragement();
+          }
         }
 
         // Schedule cycle reminders if enabled

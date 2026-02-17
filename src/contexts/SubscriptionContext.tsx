@@ -66,6 +66,7 @@ interface SubscriptionContextType {
   // Free compound gating: the oldest compound is the "free" one
   freeCompoundId: string | null;
   isFreeCompound: (compoundId: string) => boolean;
+  refreshFreeCompound: () => void;
 
   // Diagnostics
   revenueCatAppUserId: string | null;
@@ -97,6 +98,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   
   // Free compound gating: track the oldest compound ID
   const [freeCompoundId, setFreeCompoundId] = useState<string | null>(null);
+  const [freeCompoundRefreshKey, setFreeCompoundRefreshKey] = useState(0);
   
   const isFreeCompound = useCallback((compoundId: string) => {
     if (!freeCompoundId) return true; // No data yet, allow
@@ -584,7 +586,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setPreviewModeCompoundAdded(true);
   };
 
-  // Fetch the oldest compound ID (the "free" compound) whenever subscription changes
+  // Refresh free compound ID manually (call after adding a compound)
+  const refreshFreeCompound = useCallback(() => {
+    setFreeCompoundRefreshKey(k => k + 1);
+  }, []);
+
+  // Fetch the oldest compound ID (the "free" compound) whenever subscription or refresh key changes
   useEffect(() => {
     const fetchFreeCompound = async () => {
       const userId = await getUserIdWithFallback(3000);
@@ -599,13 +606,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           .limit(1);
         if (data && data.length > 0) {
           setFreeCompoundId(data[0].id);
+        } else {
+          setFreeCompoundId(null);
         }
       } catch (e) {
         console.warn('[SubscriptionContext] Failed to fetch free compound:', e);
       }
     };
     fetchFreeCompound();
-  }, [isSubscribed, subscriptionStatus]);
+  }, [isSubscribed, subscriptionStatus, freeCompoundRefreshKey]);
 
 
 
@@ -1474,6 +1483,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         // Free compound gating
         freeCompoundId,
         isFreeCompound,
+        refreshFreeCompound,
         // Diagnostics
         revenueCatAppUserId: revenueCatAppUserIdRef.current,
         revenueCatEntitlement: revenueCatEntitlementRef.current,

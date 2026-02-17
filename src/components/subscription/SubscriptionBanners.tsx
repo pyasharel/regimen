@@ -17,7 +17,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const { isPaywallOpen } = usePaywall();
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
-  const { subscriptionEndDate, isLoading } = useSubscription();
+  const { subscriptionEndDate, isLoading, freeCompoundId } = useSubscription();
   const [compoundCount, setCompoundCount] = useState(0);
   const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
   const [dismissed, setDismissed] = useState<string | null>(() => {
@@ -56,7 +56,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       }
     };
     fetchCompoundData();
-  }, [subscriptionStatus]);
+  }, [subscriptionStatus, freeCompoundId]);
 
   // Don't show any banners on auth, onboarding, or landing pages
   const hideOnRoutes = ['/', '/auth', '/landing', '/onboarding'];
