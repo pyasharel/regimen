@@ -175,8 +175,8 @@ const buildRecurringCycleNotifications = (
       
       notifications.push({
         id: generateNotificationId(compound.id, `off_day_${cycleOffset}`),
-        title: `${compound.name}: Off-Phase Begins`,
-        body: `Off-phase begins today. Next cycle resumes on ${formatDate(new Date(offTransition.getTime() + daysOff * 24 * 60 * 60 * 1000))}.`,
+        title: `${compound.name}: Cycle Off-Phase Begins`,
+        body: `Your off-phase starts today. Next cycle resumes on ${formatDate(new Date(offTransition.getTime() + daysOff * 24 * 60 * 60 * 1000))}.`,
         schedule: { at: offAt8AM },
       });
       notificationCount++;

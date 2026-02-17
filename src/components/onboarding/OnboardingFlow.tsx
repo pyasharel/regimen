@@ -4,6 +4,7 @@ import { OnboardingLayout } from './OnboardingLayout';
 import { useOnboardingState, PathType, PathRouting, ExperienceLevel } from './hooks/useOnboardingState';
 import { supabase } from '@/integrations/supabase/client';
 import { trackOnboardingStep, trackOnboardingComplete, trackOnboardingSkip } from '@/utils/analytics';
+import { scheduleCompoundNudges } from '@/utils/engagementNotifications';
 
 // Screen imports
 import { SplashScreen } from './screens/SplashScreen';
@@ -219,6 +220,14 @@ export function OnboardingFlow() {
     // Force light mode for all users completing onboarding
     localStorage.setItem('vite-ui-theme', 'light');
     document.documentElement.classList.remove('dark');
+    
+    // Schedule "add your first compound" nudge notifications
+    // These will be cancelled if the user adds a compound before they fire
+    if (!data.medication?.name) {
+      // User skipped medication setup — nudge them to add one
+      scheduleCompoundNudges();
+    }
+    
     clearState();
     navigate('/today', { replace: true });
   };
