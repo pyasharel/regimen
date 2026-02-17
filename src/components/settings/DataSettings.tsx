@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { trackDataExported, trackDataCleared } from "@/utils/analytics";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 export const DataSettings = () => {
   const navigate = useNavigate();
@@ -53,19 +57,31 @@ export const DataSettings = () => {
         )
       ].join("\n");
 
-      // Download file
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `regimen-data-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      trackDataExported();
-      toast.success("Data exported successfully");
+      // Export the CSV
+      if (Capacitor.isNativePlatform()) {
+        const fileName = `regimen-data-${new Date().toISOString().split('T')[0]}.csv`;
+        const fileResult = await Filesystem.writeFile({
+          path: fileName,
+          data: csvContent,
+          directory: Directory.Cache,
+          encoding: 'utf8' as any,
+        });
+        await Share.share({ url: fileResult.uri });
+        trackDataExported();
+        toast.success("Data ready to share");
+      } else {
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `regimen-data-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        trackDataExported();
+        toast.success("Data exported successfully");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to export data");
     } finally {
@@ -125,38 +141,37 @@ export const DataSettings = () => {
           </Button>
         </div>
 
-        {/* Clear Data Section */}
-        <div className="space-y-4 p-6 rounded-xl border-2 border-destructive/20 bg-destructive/5 shadow-[var(--shadow-card)]">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-destructive/10">
-              <Trash2 className="h-6 w-6 text-destructive" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
-              <p className="text-sm text-muted-foreground">Delete all compounds and doses (this cannot be undone)</p>
-            </div>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
-                Clear All Data
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all your compounds, doses, and tracking data. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearData}>
+        {/* Clear Data Section - de-emphasized */}
+        <div className="pt-4">
+          <Separator className="mb-6" />
+          <div className="space-y-3 px-1">
+            <h3 className="text-sm font-medium text-muted-foreground">Clear All Data</h3>
+            <p className="text-xs text-muted-foreground">
+              Permanently delete all compounds and doses. This cannot be undone.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive">
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                   Clear All Data
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all your compounds, doses, and tracking data. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearData}>
+                    Clear All Data
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>
