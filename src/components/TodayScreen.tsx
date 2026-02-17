@@ -1409,7 +1409,7 @@ export const TodayScreen = () => {
 
         <div className="px-4 pt-4 pb-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
               {greeting.text}{userName ? `, ${userName}` : ''}
             </h2>

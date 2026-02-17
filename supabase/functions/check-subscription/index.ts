@@ -58,7 +58,35 @@ serve(async (req) => {
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
       if (customers.data.length === 0) {
-        logStep("No customer found, updating unsubscribed state");
+        logStep("No customer found, checking for manually-granted trial");
+
+        // Check if profile has an active manually-granted trial before overwriting
+        const { data: currentProfile } = await supabaseClient
+          .from('profiles')
+          .select('subscription_status, trial_end_date, subscription_type')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (
+          currentProfile?.subscription_status === 'trialing' &&
+          currentProfile?.trial_end_date &&
+          new Date(currentProfile.trial_end_date) > new Date()
+        ) {
+          logStep("Preserving manually-granted trial", {
+            trial_end_date: currentProfile.trial_end_date,
+          });
+          return new Response(JSON.stringify({
+            subscribed: true,
+            status: 'trialing',
+            subscription_type: currentProfile.subscription_type || 'monthly',
+            trial_end: currentProfile.trial_end_date,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        logStep("No active trial found, updating unsubscribed state");
 
         // Don't touch beta_access_end_date - only update Stripe-related fields
         await supabaseClient
@@ -108,7 +136,35 @@ serve(async (req) => {
       .sort((a, b) => b.created - a.created);
 
     if (allSubs.length === 0) {
-      logStep("No active or trialing subscription found");
+      logStep("No active or trialing Stripe subscription, checking for manually-granted trial");
+
+      // Check if profile has an active manually-granted trial before overwriting
+      const { data: currentProfile } = await supabaseClient
+        .from('profiles')
+        .select('subscription_status, trial_end_date, subscription_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (
+        currentProfile?.subscription_status === 'trialing' &&
+        currentProfile?.trial_end_date &&
+        new Date(currentProfile.trial_end_date) > new Date()
+      ) {
+        logStep("Preserving manually-granted trial", {
+          trial_end_date: currentProfile.trial_end_date,
+        });
+        return new Response(JSON.stringify({
+          subscribed: true,
+          status: 'trialing',
+          subscription_type: currentProfile.subscription_type || 'monthly',
+          trial_end: currentProfile.trial_end_date,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      logStep("No active trial found, updating unsubscribed state");
       
       // Don't touch beta_access_end_date - only update Stripe-related fields
       await supabaseClient
