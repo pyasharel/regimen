@@ -40,6 +40,7 @@ import { LogTodayDrawerContent } from "@/components/LogTodayDrawerContent";
 import { trackDoseLogged, trackDoseSkipped, trackPaywallShown, trackActivationComplete } from "@/utils/analytics";
 import { useTheme } from "@/components/ThemeProvider";
 import { useNotificationPermissionPrompt } from "@/hooks/useNotificationPermissionPrompt";
+import { useAutoRatingPrompt } from "@/hooks/useAutoRatingPrompt";
 import {
   Drawer,
   DrawerContent,
@@ -82,6 +83,7 @@ export const TodayScreen = () => {
   // Track engagement for first dose notification
   useEngagementTracking();
   const { data: streakData } = useStreaks();
+  const { triggerIfEligible: triggerRatingIfEligible } = useAutoRatingPrompt();
   // Build 26: Using window.__bootNetworkReady flag instead of hook
   const [loading, setLoading] = useState(true);
   const [connectionStuck, setConnectionStuck] = useState(false);
@@ -808,6 +810,12 @@ export const TodayScreen = () => {
         
         // Reschedule re-engagement 3 days from now (keeps pushing forward while active)
         rescheduleReengagement();
+        
+        // Auto-rating prompt: trigger 2s after dose log (positive moment)
+        const currentCompoundCount = compoundsForLevels.length;
+        setTimeout(() => {
+          triggerRatingIfEligible(currentCompoundCount);
+        }, 2000);
         
         // Track activation (first dose ever) - fires ONCE per user lifetime
         const activationKey = 'regimen_activation_tracked';
