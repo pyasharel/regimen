@@ -10,9 +10,7 @@ export type EngagementNotificationType =
   | 'missed_dose'
   | 'weekly_checkin'
   | 'reengage'
-  | 'photo_reminder'
-  | 'all_done'
-  | 'first_week';
+  | 'photo_reminder';
 
 // Fixed notification IDs for each type to prevent duplicates
 const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = {
@@ -25,8 +23,6 @@ const ENGAGEMENT_NOTIFICATION_IDS: Record<EngagementNotificationType, number> = 
   weekly_checkin: 90020,
   reengage: 90030,
   photo_reminder: 90040,
-  all_done: 90050,
-  first_week: 90060,
 };
 
 // LocalStorage keys for throttling
@@ -40,8 +36,6 @@ const THROTTLE_KEYS: Record<EngagementNotificationType, string> = {
   weekly_checkin: 'regimen_notif_weekly_checkin',
   reengage: 'regimen_notif_reengage',
   photo_reminder: 'regimen_notif_photo_reminder',
-  all_done: 'regimen_notif_all_done',
-  first_week: 'regimen_notif_first_week',
 };
 
 // How often each notification type can be sent (in days)
@@ -55,8 +49,6 @@ const THROTTLE_DAYS: Record<EngagementNotificationType, number> = {
   weekly_checkin: 7, // Once per week
   reengage: 3,       // Every 3 days max
   photo_reminder: 7, // Once per week
-  all_done: 1,       // Once per day
-  first_week: 9999,  // Only once ever
 };
 
 const ENGAGEMENT_NOTIFICATIONS: Record<EngagementNotificationType, { title: string; body: string }> = {
@@ -95,14 +87,6 @@ const ENGAGEMENT_NOTIFICATIONS: Record<EngagementNotificationType, { title: stri
   photo_reminder: {
     title: "📸 Track your transformation!",
     body: "A quick progress photo helps you see how far you've come.",
-  },
-  all_done: {
-    title: "🎉 All doses complete!",
-    body: "Everything checked off for today. Consistency builds results.",
-  },
-  first_week: {
-    title: "🎂 One Week Anniversary!",
-    body: "It's been one week since you started. Great commitment!",
   },
 };
 
@@ -194,19 +178,80 @@ export const cancelMissedDoseNotification = async (): Promise<void> => {
 };
 
 /**
- * Schedule the "all done" celebration notification 30 minutes from now
+ * Calculate the longest expected gap (in days) between doses based on user's compounds.
+ * Returns the max gap across all active compounds, capped at 10 days.
+ * Falls back to 3 days if no compounds or query fails.
  */
-export const scheduleAllDoneCelebration = async (): Promise<void> => {
+const calculateLongestDosingGap = async (): Promise<number> => {
   try {
-    const scheduledTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
-    await scheduleEngagementNotification('all_done', scheduledTime);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 3;
+
+    const { data: compounds } = await supabase
+      .from('compounds')
+      .select('schedule_type, interval_days, schedule_days')
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    if (!compounds || compounds.length === 0) return 3;
+
+    let longestGap = 1; // daily default
+
+    for (const compound of compounds) {
+      let gap = 1;
+      
+      switch (compound.schedule_type) {
+        case 'daily':
+          gap = 1;
+          break;
+        case 'weekly':
+          gap = 7;
+          break;
+        case 'interval':
+          gap = compound.interval_days || 3;
+          break;
+        case 'specific_days':
+          // Calculate max gap between scheduled days of the week
+          if (compound.schedule_days && compound.schedule_days.length > 0) {
+            const dayIndices = compound.schedule_days
+              .map(d => ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf(d.toLowerCase()))
+              .filter(i => i >= 0)
+              .sort((a, b) => a - b);
+            
+            if (dayIndices.length === 1) {
+              gap = 7; // once a week
+            } else {
+              let maxDayGap = 0;
+              for (let i = 1; i < dayIndices.length; i++) {
+                maxDayGap = Math.max(maxDayGap, dayIndices[i] - dayIndices[i - 1]);
+              }
+              // Wrap-around gap (last day to first day of next week)
+              const wrapGap = 7 - dayIndices[dayIndices.length - 1] + dayIndices[0];
+              maxDayGap = Math.max(maxDayGap, wrapGap);
+              gap = maxDayGap;
+            }
+          } else {
+            gap = 3;
+          }
+          break;
+        default:
+          gap = 3;
+      }
+      
+      longestGap = Math.max(longestGap, gap);
+    }
+
+    // Cap at 10 days
+    return Math.min(longestGap, 10);
   } catch (error) {
-    console.error('Failed to schedule all_done celebration:', error);
+    console.error('Failed to calculate dosing gap:', error);
+    return 3;
   }
 };
 
 /**
- * Reschedule re-engagement notification 3 days from now.
+ * Reschedule re-engagement notification based on user's dosing schedule.
+ * Fires longest_gap + 1 day from now (capped at 10 days).
  * Call this each time the user logs a dose to keep pushing it forward.
  */
 export const rescheduleReengagement = async (): Promise<void> => {
@@ -218,9 +263,12 @@ export const rescheduleReengagement = async (): Promise<void> => {
       await LocalNotifications.cancel({ notifications: [{ id: notificationId }] });
     } catch (e) { /* ignore */ }
     
-    // Schedule 3 days from now at 2 PM
+    // Calculate schedule-aware delay
+    const longestGap = await calculateLongestDosingGap();
+    const daysOut = longestGap + 1; // 1 day buffer after expected next dose
+    
     const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 3);
+    futureDate.setDate(futureDate.getDate() + daysOut);
     futureDate.setHours(14, 0, 0, 0);
     
     await LocalNotifications.schedule({
@@ -233,7 +281,7 @@ export const rescheduleReengagement = async (): Promise<void> => {
       }],
     });
     
-    console.log(`Rescheduled re-engagement notification to ${futureDate}`);
+    console.log(`Rescheduled re-engagement notification to ${futureDate} (${daysOut} days out, gap=${longestGap})`);
   } catch (error) {
     console.error('Failed to reschedule re-engagement:', error);
   }
@@ -483,45 +531,6 @@ export const scheduleReengagementNotification = async (): Promise<void> => {
 };
 
 /**
- * Schedule first week anniversary notification
- */
-export const scheduleFirstWeekAnniversary = async (): Promise<void> => {
-  try {
-    const alreadySent = localStorage.getItem(THROTTLE_KEYS.first_week);
-    if (alreadySent) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('created_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!profile?.created_at) return;
-
-    const signupDate = new Date(profile.created_at);
-    const now = new Date();
-    const daysSinceSignup = Math.floor((now.getTime() - signupDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (daysSinceSignup < 7) {
-      // Schedule for exactly 7 days after signup at 10 AM
-      const anniversaryDate = new Date(signupDate);
-      anniversaryDate.setDate(signupDate.getDate() + 7);
-      anniversaryDate.setHours(10, 0, 0, 0);
-
-      if (anniversaryDate > now) {
-        await scheduleEngagementNotification('first_week', anniversaryDate);
-      }
-    }
-    // If already past 7 days, don't send retroactively
-  } catch (error) {
-    console.error('Failed to schedule first week anniversary:', error);
-  }
-};
-
-/**
  * Initialize all engagement notifications
  * Uses throttling to prevent duplicate scheduling
  */
@@ -533,14 +542,11 @@ export const initializeEngagementNotifications = async (): Promise<void> => {
     // Check for missed doses (throttled to once every 3 days)
     await scheduleMissedDoseNotification();
     
-    // Schedule re-engagement 3 days from now (resets on each app open)
+    // Schedule re-engagement based on dosing schedule (resets on each app open)
     await scheduleReengagementNotification();
     
     // Schedule photo reminder (throttled to once per week, only for users with 1+ photos)
     await schedulePhotoReminder();
-
-    // Schedule first week anniversary (once ever)
-    await scheduleFirstWeekAnniversary();
     
     // Streak notifications are triggered on dose completion
   } catch (error) {
