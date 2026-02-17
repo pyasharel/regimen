@@ -71,7 +71,8 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   // Expose a single source of truth for screen top padding (fixed screens use .app-top-padding)
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--app-banner-height', shouldReserveBannerSpace ? '56px' : '0px');
+    const bannerHeight = 'calc(56px + env(safe-area-inset-top, 0px))';
+    root.style.setProperty('--app-banner-height', shouldReserveBannerSpace ? bannerHeight : '0px');
     return () => root.style.setProperty('--app-banner-height', '0px');
   }, [shouldReserveBannerSpace]);
 
