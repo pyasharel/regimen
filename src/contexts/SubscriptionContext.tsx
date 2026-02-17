@@ -63,6 +63,10 @@ interface SubscriptionContextType {
   // Tracks which payment provider the subscription came from
   subscriptionProvider: 'stripe' | 'revenuecat' | null;
 
+  // Free compound gating: the oldest compound is the "free" one
+  freeCompoundId: string | null;
+  isFreeCompound: (compoundId: string) => boolean;
+
   // Diagnostics
   revenueCatAppUserId: string | null;
   revenueCatEntitlement: RevenueCatEntitlementSnapshot | null;
@@ -90,6 +94,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [mockState, setMockState] = useState<'none' | 'preview' | 'trialing' | 'active' | 'past_due' | 'canceled'>('none');
+  
+  // Free compound gating: track the oldest compound ID
+  const [freeCompoundId, setFreeCompoundId] = useState<string | null>(null);
+  
+  const isFreeCompound = useCallback((compoundId: string) => {
+    if (!freeCompoundId) return true; // No data yet, allow
+    return compoundId === freeCompoundId;
+  }, [freeCompoundId]);
   
   // Track source of last status change for diagnostics
   const lastStatusSourceRef = useRef<string>('init');
@@ -572,7 +584,30 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setPreviewModeCompoundAdded(true);
   };
 
-  // ==================== RevenueCat Functions ====================
+  // Fetch the oldest compound ID (the "free" compound) whenever subscription changes
+  useEffect(() => {
+    const fetchFreeCompound = async () => {
+      const userId = await getUserIdWithFallback(3000);
+      if (!userId) return;
+      try {
+        const { data } = await supabase
+          .from('compounds')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (data && data.length > 0) {
+          setFreeCompoundId(data[0].id);
+        }
+      } catch (e) {
+        console.warn('[SubscriptionContext] Failed to fetch free compound:', e);
+      }
+    };
+    fetchFreeCompound();
+  }, [isSubscribed, subscriptionStatus]);
+
+
 
   // Helper to save entitlement to persistent storage
   const saveEntitlementToCache = useCallback(async (
@@ -1436,6 +1471,9 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         restorePurchases,
         isNativePlatform,
         subscriptionProvider,
+        // Free compound gating
+        freeCompoundId,
+        isFreeCompound,
         // Diagnostics
         revenueCatAppUserId: revenueCatAppUserIdRef.current,
         revenueCatEntitlement: revenueCatEntitlementRef.current,
