@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash, Lock } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -7,6 +7,7 @@ import { MedicationLevelsCard } from "@/components/MedicationLevelsCard";
 import { ComponentErrorBoundary } from "@/components/ui/ComponentErrorBoundary";
 
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { usePaywall } from "@/contexts/PaywallContext";
 import { PreviewModeTimer } from "@/components/subscription/PreviewModeTimer";
 import { TestFlightMigrationModal } from "@/components/TestFlightMigrationModal";
 import { TestFlightDetector } from "@/plugins/TestFlightDetectorPlugin";
@@ -109,8 +110,10 @@ export const TodayScreen = () => {
     isSubscribed, 
     isLoading: subscriptionLoading, 
     refreshSubscription,
-    previewModeCompoundAdded 
+    previewModeCompoundAdded,
+    isFreeCompound,
   } = useSubscription();
+  const { openPaywall } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
   const [verifyingSubscription, setVerifyingSubscription] = useState(false);
   const [showPreviewTimer, setShowPreviewTimer] = useState(false);
@@ -672,6 +675,11 @@ export const TodayScreen = () => {
       const dose = doses.find(d => d.id === doseId);
       if (!dose) return;
       
+      // Gate: non-subscribed users can only toggle doses for their free (oldest) compound
+      if (!isSubscribed && !isFreeCompound(dose.compound_id)) {
+        openPaywall({ message: 'Subscribe to log doses on all your compounds' });
+        return;
+      }
       // Haptic rhythm: add 60ms minimum delay between haptics for rapid tapping
       const now = Date.now();
       const timeSinceLastHaptic = now - lastHapticTime.current;
@@ -935,6 +943,12 @@ export const TodayScreen = () => {
     try {
       const dose = doses.find(d => d.id === doseId);
       if (!dose) return;
+
+      // Gate: non-subscribed users can only skip doses for their free compound
+      if (!isSubscribed && !isFreeCompound(dose.compound_id)) {
+        openPaywall({ message: 'Subscribe to log doses on all your compounds' });
+        return;
+      }
 
       // Don't allow skipping "as needed" doses
       if (dose.schedule_type === 'As Needed') {
@@ -1644,6 +1658,7 @@ export const TodayScreen = () => {
               const renderDoseCard = (dose: typeof doses[0]) => {
                 const isSkipped = dose.skipped === true;
                 const isHandled = dose.taken || isSkipped;
+                const isLocked = !isSubscribed && !isFreeCompound(dose.compound_id);
                 
                 // Check if dose is within "take now" window (±30 minutes of scheduled time)
                 const isWithinTakeNowWindow = () => {
@@ -1704,7 +1719,7 @@ export const TodayScreen = () => {
                     }}
                     className={`overflow-hidden rounded-2xl transition-all relative shadow-[var(--shadow-card)] dark:border dark:border-border/50 ${getCardBackground()} active:scale-[0.97]`}
                     style={{
-                      opacity: isHandled ? 0.65 : 1,
+                      opacity: isLocked && !isHandled ? 0.55 : isHandled ? 0.65 : 1,
                       transform: isHandled ? 'scale(0.98)' : 'scale(1)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       ...(isHandled || isRefinedMode ? {} : {
@@ -1837,11 +1852,18 @@ export const TodayScreen = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                         
-                        {/* Check button / Skip indicator */}
+                        {/* Check button / Skip indicator / Lock indicator */}
                         {isSkipped ? (
                           <div className="flex-shrink-0 h-7 w-7 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center">
                             <CircleSlash className="h-4 w-4 text-muted-foreground/40" />
                           </div>
+                        ) : isLocked && !dose.taken ? (
+                          <button
+                            onClick={() => openPaywall({ message: 'Subscribe to log doses on all your compounds' })}
+                            className="flex-shrink-0 h-6 w-6 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center transition-colors hover:border-muted-foreground/50"
+                          >
+                            <Lock className="h-3 w-3 text-muted-foreground/50" />
+                          </button>
                         ) : (
                           <button
                             onClick={() => toggleDose(dose.id, dose.taken)}

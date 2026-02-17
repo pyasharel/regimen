@@ -12,9 +12,13 @@ export const PreviewModeBanner = ({ onUpgrade, onDismiss, compoundCount }: Previ
     onUpgrade?.();
   };
 
+  const title = 'Free Plan — Track 1 Compound';
+  
   const subtitle = compoundCount && compoundCount > 1
-    ? `for reminders on all ${compoundCount} compounds`
-    : 'to unlock all features';
+    ? `Subscribe to track all ${compoundCount} compounds with reminders`
+    : compoundCount === 1
+    ? 'Subscribe for reminders and unlimited compounds'
+    : 'Add your first compound to get started';
 
   return (
     <div className="safe-top">
@@ -23,7 +27,7 @@ export const PreviewModeBanner = ({ onUpgrade, onDismiss, compoundCount }: Previ
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="flex-shrink-0 w-1 h-8 bg-secondary rounded-full" />
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-foreground/90">Free Plan</p>
+              <p className="text-[13px] font-medium text-foreground/90">{title}</p>
               <p className="text-[12px] text-muted-foreground">
                 <button
                   onClick={handleSubscribeClick}
@@ -31,7 +35,7 @@ export const PreviewModeBanner = ({ onUpgrade, onDismiss, compoundCount }: Previ
                 >
                   Subscribe
                 </button>{' '}
-                {subtitle}
+                — {subtitle}
               </p>
             </div>
           </div>
