@@ -1,51 +1,71 @@
 
+## Fix Trial Status Override + Streak Badge Cutoff
 
-## Fix Banner Overlap + Trial User Test Setup
+### Problem 1: Trial status keeps getting overwritten
 
-### Part 1: Fix Banner Overlapping Header
+The `check-subscription` edge function queries Stripe, finds no subscription for TestyTester, and writes `subscription_status: 'none'`, `trial_end_date: null` back to the profile. This happens every time the app loads or resumes. So even after we set the profile to `trialing`, the next edge function call wipes it.
 
-The banner is `fixed top-0` and the TodayScreen applies `paddingTop: var(--app-banner-height, 0px)` with `--app-banner-height: 56px`. But on iOS, the `.safe-top` class adds the status bar inset on top of the banner's own height, making the total taller than 56px. The header slides under the banner.
+**Fix:** Update the edge function to NOT overwrite `subscription_status` and `trial_end_date` when the profile already has an active trial that hasn't expired. Before writing `none`, it will check if the profile has `subscription_status = 'trialing'` with a `trial_end_date` in the future. If so, it preserves that status and returns `subscribed: true, status: 'trialing'`.
 
-**Fix:** Change `--app-banner-height` from a hardcoded `56px` to a value that accounts for the safe area. Since the banner already uses `.safe-top` for the inset, the CSS variable should be `calc(56px + env(safe-area-inset-top, 0px))`. This way, on web it's just 56px, on iOS it adds the notch space.
+This also enables a general-purpose "manual trial grant" workflow: set the profile fields in the database and the edge function respects them.
 
 | File | Change |
 |------|--------|
-| `src/components/subscription/SubscriptionBanners.tsx` | Change `--app-banner-height` from `'56px'` to `'calc(56px + env(safe-area-inset-top, 0px))'` |
+| `supabase/functions/check-subscription/index.ts` | Before writing `none` (in both the "no customer" and "no active subscription" branches), check if profile has `subscription_status = 'trialing'` AND `trial_end_date > now()`. If so, return the trial status instead of overwriting to `none`. |
 
-### Part 2: Set Up Trial User for Testing
-
-Update the TestyTester profile (`user_id: 70681d52-53c2-41d4-a147-6848e056993e`) to simulate a 7-day trial:
+After deploying, re-apply the trial status to TestyTester's profile:
 - `subscription_status` = `'trialing'`
-- `trial_start_date` = today
 - `trial_end_date` = 7 days from now
-- `subscription_start_date` = today
+- `subscription_type` = `'monthly'`
 
-This gives you a live trial account to test all the states.
+### Problem 2: Streak badge getting cut off
 
-### Part 3: Test Matrix
+The greeting row layout doesn't constrain the left side properly. The name text pushes outward and the StreakBadge overflows off-screen.
 
-After the trial is set up, here's what to test:
+**Fix:** Add `min-w-0` and `overflow-hidden` to the inner greeting div so the `truncate` on the h2 actually works, and add `flex-shrink-0` to the StreakBadge wrapper so it never gets squeezed.
 
-| State | How to get there | What to check |
-|---|---|---|
-| **Free, 0 compounds** | Delete all compounds | Banner: "Free Plan: Track 1 Compound" / "Add your first compound to get started". No lock icons. |
-| **Free, 1 compound** | Add one compound | Banner: "Subscribe for unlimited compounds". Dose card: fully interactive, NO lock icon. |
-| **Free, 2+ compounds** | Add a second compound | Banner: "Subscribe to track all 2 compounds". Second compound's doses show lock icon. Tapping lock opens paywall. |
-| **Trialing, 1 compound** | I'll set your profile to trialing | No free-tier banner. Full access. Push notification scheduled for 2 days later encouraging more compounds. |
-| **Trialing, 2+ compounds** | Add more while trialing | No banners, full access, no locks. |
-| **Banner dismissed** | Tap the X on the banner | Banner disappears. Content slides up (no gap). Reappears on next session. |
-| **Banner overlap** | Check header with banner visible | "Today" and "REGIMEN" should be fully visible below the banner, not covered. |
+| File | Change |
+|------|--------|
+| `src/components/TodayScreen.tsx` (line ~1412) | Add `min-w-0` to the inner `div.flex.items-center.gap-3` so the truncated name respects boundaries |
 
-To cycle through free vs trial states, I'll provide instructions after setting up the trial. You can also use the Dev toggle (bottom right in development mode) to preview different states without changing the database.
+### Test Plan
 
-### No changes for paid users
-
-Paid users with 1 compound will not receive any encouragement notifications or banners. They made their choice and the app respects it. The "Add Compound" flow is always accessible from the My Stack tab if they want it.
+After these changes:
+1. Reload the app -- TestyTester should show as "trialing" (no free plan banner)
+2. The streak badge should be fully visible next to the greeting, even with a long name
+3. The edge function will no longer wipe manually-set trial statuses
 
 ### Technical Details
 
-| File | Change |
-|------|--------|
-| `src/components/subscription/SubscriptionBanners.tsx` | Update `--app-banner-height` to include safe-area-inset-top |
-| Database | Update TestyTester profile to trialing status with 7-day trial window |
+**Edge function change (check-subscription/index.ts):**
 
+In both "no Stripe customer found" and "no active subscription found" code paths, before updating the profile to `none`, add a check:
+
+```text
+// Fetch current profile status
+const { data: currentProfile } = await supabaseClient
+  .from('profiles')
+  .select('subscription_status, trial_end_date')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+// Preserve manually-granted trials
+if (currentProfile?.subscription_status === 'trialing' && 
+    currentProfile?.trial_end_date && 
+    new Date(currentProfile.trial_end_date) > new Date()) {
+  // Don't overwrite -- return the existing trial status
+  return Response with { subscribed: true, status: 'trialing', ... }
+}
+```
+
+**TodayScreen.tsx layout fix (line ~1412):**
+
+```text
+// Before:
+<div className="flex items-center gap-3">
+
+// After:
+<div className="flex items-center gap-3 min-w-0">
+```
+
+This ensures CSS truncation works on the greeting text and the streak badge stays visible.
