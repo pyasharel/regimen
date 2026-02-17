@@ -599,9 +599,19 @@ export const SubscriptionPaywall = ({
                 </p>
               </div>
             ) : (
-              <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
-                {partnerPromo ? 'Get 1 month FREE' : `Start your ${getTrialPeriodText()} FREE trial`}
-              </h1>
+              <>
+                <h1 className="text-center text-[28px] font-bold text-foreground mt-6">
+                  {partnerPromo ? 'Get 1 month FREE' : `Start your ${getTrialPeriodText()} FREE trial`}
+                </h1>
+                {/* VIP Partner Welcome Message - shown at top below header */}
+                {partnerPromo && (
+                  <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 mt-3">
+                    <p className="text-center text-sm font-medium text-primary">
+                      Welcome from {partnerPromo.partnerName}! 🎉
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -771,14 +781,7 @@ export const SubscriptionPaywall = ({
                   </button>
                 </div>
               )}
-              {/* VIP Partner Welcome Message - shown next to promo input */}
-              {partnerPromo && !appleOfferPromo && (
-                <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2">
-                  <p className="text-center text-sm font-medium text-primary">
-                    Welcome from {partnerPromo.partnerName}! 🎉
-                  </p>
-                </div>
-              )}
+              {/* VIP Partner Welcome Message moved to top header area */}
             </div>
 
             {/* CTA Button */}
