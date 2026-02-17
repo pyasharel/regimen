@@ -21,16 +21,20 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const [compoundCount, setCompoundCount] = useState(0);
   const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
   const [dismissed, setDismissed] = useState<string | null>(() => {
-    return sessionStorage.getItem('dismissedBanner');
-  });
-
-  useEffect(() => {
-    if (dismissed) {
-      sessionStorage.setItem('dismissedBanner', dismissed);
-    } else {
-      sessionStorage.removeItem('dismissedBanner');
+    // Check localStorage for cooldown-based dismissal
+    const stored = localStorage.getItem('bannerDismissedUntil');
+    if (stored) {
+      try {
+        const { banner, until } = JSON.parse(stored);
+        if (until && Date.now() < until) return banner;
+        // Cooldown expired — clear it
+        localStorage.removeItem('bannerDismissedUntil');
+      } catch {
+        localStorage.removeItem('bannerDismissedUntil');
+      }
     }
-  }, [dismissed]);
+    return null;
+  });
 
   // Fetch compound count and oldest compound name for contextual banner
   useEffect(() => {
@@ -232,7 +236,14 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       <div className="fixed top-0 left-0 right-0 z-[100]">
         <PreviewModeBanner
           onUpgrade={onUpgrade}
-          onDismiss={() => setDismissed('preview')}
+          onDismiss={() => {
+            const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+            localStorage.setItem('bannerDismissedUntil', JSON.stringify({
+              banner: 'preview',
+              until: Date.now() + THREE_DAYS_MS
+            }));
+            setDismissed('preview');
+          }}
           compoundCount={compoundCount}
           freeCompoundName={freeCompoundName}
         />
