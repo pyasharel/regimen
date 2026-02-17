@@ -144,27 +144,37 @@ export const MedicationLevelsCard = ({
 
   // Track whether we've initialized the selection (prevents re-running on dose changes)
   const hasInitialized = useRef(false);
+  // Track if current selection is a temporary auto-switch (not the user's saved preference)
+  const isTemporaryDefault = useRef(false);
 
-  // Get default compound using tiered logic
-  // Priority: 1. Saved preference (always honored if compound exists)
-  //           2. Most recently taken dose
-  //           3. Alphabetical fallback
+  // Helper: check if a compound has any taken doses
+  const compoundHasTakenDoses = (compoundId: string): boolean => {
+    return doses.some(d => d.compound_id === compoundId && d.taken && d.taken_at);
+  };
+
+  // Find the best compound that actually has taken doses (most recent dose wins)
+  const findCompoundWithDoses = (): string | null => {
+    const takenDoses = doses.filter(d => d.taken && d.taken_at);
+    if (takenDoses.length === 0) return null;
+    
+    const sorted = [...takenDoses].sort((a, b) => 
+      new Date(b.taken_at!).getTime() - new Date(a.taken_at!).getTime()
+    );
+    
+    for (const dose of sorted) {
+      if (dose.compound_id) {
+        const compound = compoundsWithHalfLife.find(c => c.id === dose.compound_id);
+        if (compound) return compound.id;
+      }
+    }
+    return null;
+  };
+
   // Fallback default logic (used when no persisted preference exists)
   const getFallbackCompound = (): string | null => {
     // 1. Use most recently taken (smart default for new users)
-    const takenDoses = doses.filter(d => d.taken && d.taken_at);
-    if (takenDoses.length > 0) {
-      const sorted = [...takenDoses].sort((a, b) => 
-        new Date(b.taken_at!).getTime() - new Date(a.taken_at!).getTime()
-      );
-      const recentCompoundId = sorted[0].compound_id;
-      if (recentCompoundId) {
-        const compound = compounds.find(c => c.id === recentCompoundId);
-        if (compound && getHalfLifeData(compound.name)) {
-          return recentCompoundId;
-        }
-      }
-    }
+    const withDoses = findCompoundWithDoses();
+    if (withDoses) return withDoses;
     
     // 2. First active compound with half-life data (alphabetical fallback)
     if (compoundsWithHalfLife.length > 0) {
@@ -176,54 +186,70 @@ export const MedicationLevelsCard = ({
   };
 
   // Initialize selected compound from persistent storage on mount
-  // Priority: Capacitor Preferences > localStorage > fallback logic
+  // Priority: Saved pref (if has doses) > auto-switch to compound with doses > saved pref anyway > fallback
   useEffect(() => {
     if (hasInitialized.current || compoundsWithHalfLife.length === 0) return;
     
     const initializeSelection = async () => {
       // 1. Try Capacitor Preferences first (survives app updates)
-      const persistedId = await persistentStorage.get(STORAGE_KEY);
-      if (persistedId) {
-        const compound = compoundsWithHalfLife.find(c => c.id === persistedId);
-        if (compound) {
-          hasInitialized.current = true;
-          setSelectedCompoundId(persistedId);
-          // Sync to localStorage for faster next load
-          localStorage.setItem(STORAGE_KEY, persistedId);
-          return;
-        }
-        // Compound no longer exists - clear stale preference
-        persistentStorage.remove(STORAGE_KEY);
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      let savedId: string | null = await persistentStorage.get(STORAGE_KEY);
       
       // 2. Fallback to localStorage (web fast path)
-      const localId = localStorage.getItem(STORAGE_KEY);
-      if (localId) {
-        const compound = compoundsWithHalfLife.find(c => c.id === localId);
-        if (compound) {
-          hasInitialized.current = true;
-          setSelectedCompoundId(localId);
-          // Persist to Capacitor for future sessions
-          persistentStorage.set(STORAGE_KEY, localId);
-          return;
-        }
-        localStorage.removeItem(STORAGE_KEY);
+      if (!savedId) {
+        savedId = localStorage.getItem(STORAGE_KEY);
       }
       
-      // 3. Use fallback logic for new users
+      // Validate saved compound still exists with half-life data
+      if (savedId) {
+        const compound = compoundsWithHalfLife.find(c => c.id === savedId);
+        if (!compound) {
+          // Compound no longer exists - clear stale preference
+          persistentStorage.remove(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_KEY);
+          savedId = null;
+        }
+      }
+      
       hasInitialized.current = true;
-      const fallbackId = getFallbackCompound();
-      if (fallbackId) {
-        setSelectedCompoundId(fallbackId);
+      
+      if (savedId) {
+        // Saved preference exists and compound is valid
+        if (compoundHasTakenDoses(savedId)) {
+          // Has doses - use it directly
+          isTemporaryDefault.current = false;
+          setSelectedCompoundId(savedId);
+        } else {
+          // Saved pref has NO doses - try to temporarily show one that does
+          const withDoses = findCompoundWithDoses();
+          if (withDoses) {
+            // Temporarily show compound with data, but DON'T overwrite saved preference
+            isTemporaryDefault.current = true;
+            setSelectedCompoundId(withDoses);
+          } else {
+            // No compound has doses - just show saved pref
+            isTemporaryDefault.current = false;
+            setSelectedCompoundId(savedId);
+          }
+        }
+        // Sync to both storages
+        localStorage.setItem(STORAGE_KEY, savedId);
+        persistentStorage.set(STORAGE_KEY, savedId);
+      } else {
+        // No saved preference - use fallback logic
+        isTemporaryDefault.current = false;
+        const fallbackId = getFallbackCompound();
+        if (fallbackId) {
+          setSelectedCompoundId(fallbackId);
+        }
       }
     };
     
     initializeSelection();
   }, [compoundsWithHalfLife, doses]);
 
-  // Handle compound change - persist to both storages
+  // Handle compound change - explicit user selection, always persist
   const handleCompoundChange = (compoundId: string) => {
+    isTemporaryDefault.current = false; // User made an explicit choice
     setSelectedCompoundId(compoundId);
     // Write to both: localStorage (instant) and Capacitor Preferences (persistent across updates)
     localStorage.setItem(STORAGE_KEY, compoundId);
@@ -386,7 +412,7 @@ export const MedicationLevelsCard = ({
                 value={selectedCompoundId || ''} 
                 onValueChange={handleCompoundChange}
               >
-                <SelectTrigger className="w-auto h-7 px-2 py-0.5 text-xs font-medium bg-transparent border-none hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
+                <SelectTrigger className="w-auto h-7 px-2.5 py-0.5 text-xs font-medium bg-muted/50 border border-border/40 rounded-full hover:bg-muted transition-colors [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3">
                   <div className="flex items-center gap-1.5">
                     <Activity className="w-3.5 h-3.5 text-primary" />
                     <SelectValue placeholder="Select medication" />
