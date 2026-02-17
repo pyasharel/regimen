@@ -1294,7 +1294,7 @@ export const TodayScreen = () => {
   // and allow retries for data loads.
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
+      <div className="fixed inset-0 bg-background flex flex-col app-top-padding" style={{ paddingTop: 'var(--app-banner-height, 0px)' }}>
         <div className="flex-1 min-h-0 scroll-container pb-32">
           <MainHeader title="Today" />
           {/* Match the greeting block spacing exactly */}
@@ -1314,7 +1314,7 @@ export const TodayScreen = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
+    <div className="fixed inset-0 bg-background flex flex-col app-top-padding" style={{ paddingTop: 'var(--app-banner-height, 0px)' }}>
       {/* Subscription Verification Overlay */}
       {verifyingSubscription && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">

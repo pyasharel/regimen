@@ -45,9 +45,11 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
           .eq('user_id', userId)
           .eq('is_active', true)
           .order('created_at', { ascending: true });
-        if (data) {
-          setCompoundCount(data.length);
-          if (data.length > 0) setFreeCompoundName(data[0].name);
+        setCompoundCount(data?.length ?? 0);
+        if (data && data.length > 0) {
+          setFreeCompoundName(data[0].name);
+        } else {
+          setFreeCompoundName(undefined);
         }
       } catch (e) {
         console.warn('[SubscriptionBanners] Failed to fetch compounds:', e);
