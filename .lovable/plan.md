@@ -1,78 +1,46 @@
 
 
-## Free Tier Messaging + Post-Cancellation Restrictions
+## Fix Free Tier Banner: Count Bug, Overlap, Messaging
 
-### 1. Update the Free Plan Banner (PreviewModeBanner)
+### 1. Fix Stale Compound Count
 
-**Current messaging** (what you see now):
-- Title: "Free Plan"  
-- Subtitle: "Subscribe for reminders on all X compounds" or "Subscribe to unlock all features"
+The banner showed "6 compounds" for a user with 0. The `SubscriptionBanners` component fetches compound count via `getUserIdWithFallback` which can return a cached/stale user ID. Fix: reset `compoundCount` to 0 when query returns empty data, and ensure the fetch re-runs on auth changes.
 
-**Problem:** Doesn't communicate what free users actually get, and doesn't clearly show the value gap.
+### 2. Fix Banner Overlapping Header
 
-**Proposed messaging options:**
+The banner is `fixed top-0` with `--app-banner-height: 56px`, but the TodayScreen container doesn't account for this. Fix: apply `padding-top: var(--app-banner-height)` to the TodayScreen's outermost container so content shifts below the banner. When dismissed, padding resets to 0.
 
-**Option A (Recommended - Clear value statement):**
-- Title: "Free Plan -- Track 1 Compound"
-- For users with 1 compound: "Subscribe to add more compounds and unlock reminders"
-- For users with 2+ compounds (post-cancellation): "Subscribe to track all [X] compounds with reminders"
+### 3. Tighten Messaging (No Em Dashes, No "Reminders")
 
-**Option B (Shorter):**
-- Title: "Free Plan"
-- Subtitle: "Tracking 1 compound free. Subscribe for unlimited compounds + reminders"
+**Title:** "Free Plan: Track 1 Compound" (colon replaces em dash)
 
-The key change: lead with what the free tier includes ("1 compound free") rather than just saying "Subscribe."
+**Subtitles (after tappable "Subscribe" link):**
+- 0 compounds: "Add your first compound to get started"
+- 1 compound: "for unlimited compounds"
+- 2+ compounds: "to track all X compounds"
 
----
+No mention of reminders. "Track" covers the full experience. Each subtitle fits on one line.
 
-### 2. Post-Cancellation Compound Restrictions
+### 4. Edge Case Review
 
-**Current behavior:** When a subscription expires, users keep ALL compounds active. They can log doses on all of them. Only push notifications are gated (oldest compound only).
+| Scenario | Banner shown? | Dose logging | Notes |
+|----------|--------------|--------------|-------|
+| Subscribed (active/trialing) | No | All compounds | Completely unaffected |
+| 0 compounds, not subscribed | Yes, "Add your first compound" | N/A | No doses to log |
+| 1 compound, not subscribed | Yes, "for unlimited compounds" | Allowed (free compound) | Full access to their one compound |
+| 2+ compounds, not subscribed | Yes, "to track all X compounds" | Only oldest compound | Others show lock icon, tap opens paywall |
+| Past due | Past due banner instead | All compounds (grace period) | Existing behavior, unchanged |
+| Canceled with days remaining | Canceled banner instead | All compounds until expiry | Existing behavior, unchanged |
+| Banner dismissed | No | Unchanged | Session-scoped dismissal |
+| Paywall open | No | N/A | Banner hides when paywall is visible |
 
-**Proposed behavior:** When a user's subscription lapses and they have multiple compounds, deactivate all but their oldest compound (by `created_at`). This means:
-
-- Their data is preserved (nothing deleted)
-- They can still VIEW all compounds in My Stack (greyed out / locked indicator)
-- They can only LOG DOSES on their oldest (free) compound
-- The dose toggle button on non-free compounds shows a lock icon that triggers the paywall
-- They can reactivate everything by subscribing
-
-**Implementation approach:**
-
-1. **TodayScreen `toggleDose` gate:** Before allowing a dose to be marked taken/skipped, check if the compound is the user's "free" compound (oldest active). If not and user isn't subscribed, open the paywall instead.
-
-2. **Visual indicator on locked doses:** Show a small lock icon or muted styling on dose cards for non-free compounds, with a tap-to-upgrade interaction.
-
-3. **No automatic `is_active` changes:** Rather than bulk-deactivating compounds in the database (which is destructive and hard to reverse), enforce the restriction at the UI level. The compounds stay active in the DB, but the app prevents dose logging on non-free ones.
-
-4. **Banner update:** When the user has locked compounds, the banner message becomes more specific: "Subscribe to log doses on all [X] compounds"
-
----
-
-### 3. Win-Back / Retention Messaging
-
-**Assessment:** This requires setting up scheduled backend jobs, email templates, and notification logic. It's a 2-4 hour project minimum. 
-
-**Recommendation:** Save for a separate session. The compound restriction (item 2 above) is itself a strong win-back mechanism -- when users can't log their other compounds, that friction drives conversion naturally.
-
----
+No changes affect paid or trialing users. The restriction logic only activates when `subscriptionStatus` is `preview` or `none`.
 
 ### Technical Details
 
-**Files to modify:**
-
 | File | Change |
 |------|--------|
-| `src/components/PreviewModeBanner.tsx` | Update title and subtitle messaging to communicate free tier value |
-| `src/components/TodayScreen.tsx` | Add subscription + compound ownership check in `toggleDose` to block non-free compounds |
-| `src/components/TodayScreen.tsx` | Add visual lock indicator on dose cards for non-free compounds |
-| `src/contexts/SubscriptionContext.tsx` | Add helper `isFreeCompound(compoundId)` that checks if a compound is the user's oldest |
-| `src/components/subscription/SubscriptionBanners.tsx` | Update subtitle logic to reflect new messaging |
-
-**No database changes needed.** The restriction is enforced client-side by comparing compound `created_at` dates. The oldest compound (first created) is always the "free" one.
-
-**Edge case handling:**
-- User with 0 compounds: Banner says "Free Plan -- Track 1 Compound" with "Add your first compound to get started" or similar
-- User with exactly 1 compound: Full access, banner says "Subscribe for reminders and unlimited compounds"
-- User with 2+ compounds, not subscribed: Only oldest compound is unlockable; others show lock icon on dose cards
+| `src/components/PreviewModeBanner.tsx` | Replace em dash with colon in title. Remove em dash from subtitle. Update subtitle copy for all 3 states (no "reminders"). |
+| `src/components/subscription/SubscriptionBanners.tsx` | Reset `compoundCount` to 0 on empty data. Adjust `--app-banner-height` to match actual banner height. |
+| `src/components/TodayScreen.tsx` | Add `paddingTop: var(--app-banner-height)` to the outermost container so content pushes below the fixed banner. |
 
