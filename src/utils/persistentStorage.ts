@@ -140,6 +140,10 @@ export const PERSISTENT_STORAGE_KEYS = [
   // Medication Levels card preferences
   'selectedLevelsCompound',
   'medicationLevelsCollapsed',
+  
+  // Auto-rating prompt tracking
+  'lastRatingPromptDate',
+  'lastRatingPromptVersion',
 ];
 
 // Cached entitlement interface for subscription persistence

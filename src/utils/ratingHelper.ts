@@ -32,7 +32,7 @@ export interface RatingOptions {
  * @param options Configuration options
  */
 export async function requestRating(
-  source: 'settings' | 'onboarding',
+  source: 'settings' | 'onboarding' | 'auto_prompt',
   options: RatingOptions = {}
 ): Promise<RatingResult> {
   const { skipStoreFallback = false } = options;
@@ -124,7 +124,7 @@ export async function requestRating(
  */
 async function openStoreFallback(
   platform: 'ios' | 'android' | 'web',
-  source: 'settings' | 'onboarding'
+  source: 'settings' | 'onboarding' | 'auto_prompt'
 ): Promise<RatingResult> {
   try {
     let url: string;

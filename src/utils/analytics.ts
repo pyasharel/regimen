@@ -725,7 +725,7 @@ export const trackSignOut = () => {
 };
 
 // Engagement
-export const trackRatingRequested = (source: 'settings' | 'onboarding') => {
+export const trackRatingRequested = (source: 'settings' | 'onboarding' | 'auto_prompt') => {
   const platform = getPlatform();
   ReactGA.event('rating_requested', {
     source,
@@ -735,7 +735,7 @@ export const trackRatingRequested = (source: 'settings' | 'onboarding') => {
   console.log('[Analytics] Rating requested:', { source, platform });
 };
 
-export const trackRatingButtonTapped = (source: 'settings' | 'onboarding') => {
+export const trackRatingButtonTapped = (source: 'settings' | 'onboarding' | 'auto_prompt') => {
   const platform = getPlatform();
   ReactGA.event('rating_button_tapped', {
     source,
@@ -746,7 +746,7 @@ export const trackRatingButtonTapped = (source: 'settings' | 'onboarding') => {
 };
 
 export const trackRatingOutcome = (
-  source: 'settings' | 'onboarding',
+  source: 'settings' | 'onboarding' | 'auto_prompt',
   outcome: 'plugin_not_available' | 'request_sent' | 'request_failed' | 'skipped_web' | 'testflight_detected' | 'fallback_store_link' | 'fallback_skipped'
 ) => {
   const platform = getPlatform();
