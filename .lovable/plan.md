@@ -1,34 +1,78 @@
 
 
-# Fix Stale Closure Bug in useSwipeBack Hook
+# Native Polish: Pull-to-Refresh, Skeleton Loading, and Web Safety Fix
 
-## The Problem
+## 1. Gate Swipe-Back to Native Only
 
-There is a bug in `useSwipeBack` that will cause unreliable behavior. The `handleTouchEnd` callback reads `state.translateX` from React state, but because `useCallback` captures the value at render time, it often sees `0` instead of the actual drag distance. This means the user could swipe far enough but the gesture won't trigger navigation.
+**Problem**: The `useSwipeBack` hook currently runs on all platforms, including mobile web browsers. On iOS Safari, the left-edge swipe zone overlaps with the browser's own back gesture, which could cause weird double-navigation or gesture conflicts.
 
-## The Fix
+**Fix**: Add an early return in `useSwipeBack` if `Capacitor.isNativePlatform()` is false. The hook will be a no-op on web. No changes needed to any of the 11 screens that use it.
 
-Use a `useRef` to track the current `translateX` value in real-time, alongside the existing state (which is still needed for rendering the overlay). The `handleTouchEnd` reads from the ref instead of state.
+**File**: `src/hooks/useSwipeBack.ts`
 
-## Technical Details
+---
 
-### File: `src/hooks/useSwipeBack.ts`
+## 2. Pull-to-Refresh
 
-Changes:
-- Add a `translateXRef` that gets updated every time `translateX` changes
-- In `handleTouchEnd`, read from `translateXRef.current` instead of `state.translateX`
-- This removes `state.translateX` from the `handleTouchEnd` dependency array, which also eliminates unnecessary re-registration of event listeners on every drag frame
+Add native-feeling pull-to-refresh on the three main content screens:
+- **Today screen** -- refreshes compounds, doses, and streak data
+- **My Stack screen** -- refreshes the compound list
+- **Progress screen** -- refreshes metrics and photos
 
-The fix is about 5 lines of code. No other files need to change.
+### How it works
+- A new `usePullToRefresh` hook listens for touch-start at the top of the scroll container, tracks a downward drag, and triggers a refresh callback when the user pulls past a threshold (~60px)
+- Shows a small spinner/indicator at the top during the pull and while refreshing
+- Uses existing React Query `refetch()` calls to reload data (no new API calls needed)
+- Haptic feedback on pull threshold (native only)
 
-### Why this matters
+### New files
+- `src/hooks/usePullToRefresh.ts` -- reusable hook
+- `src/components/ui/PullToRefreshIndicator.tsx` -- the visual spinner/arrow component
 
-Without this fix, the swipe-back gesture will feel broken roughly 50% of the time -- the user drags far enough, releases, and nothing happens. That's worse than not having the feature at all. With the fix, it works reliably every time.
+### Modified files
+- `src/components/TodayScreen.tsx` -- wrap scrollable area, connect to data refetch
+- `src/components/MyStackScreen.tsx` -- same
+- `src/components/ProgressScreen.tsx` -- same
 
-### Risk assessment
+---
 
-- Very low risk change (adding a ref, reading from it instead of state)
-- No changes to any other component
-- All the Drawer conversions and overlay rendering remain untouched
-- The gesture parameters (edge zone, threshold, max drag) stay the same
+## 3. Skeleton Loading
+
+Replace the loading spinners/blank states with skeleton placeholders that match the shape of the actual content. This eliminates the "flash" feeling when switching tabs or loading data.
+
+### Skeleton screens to create
+- **TodayScreenSkeleton** -- mimics the Today layout (banner placeholder, dose cards, streak card)
+- **MyStackScreenSkeleton** -- mimics the stack list (compound card shapes)
+- **ProgressScreenSkeleton** -- mimics the chart area and stats row
+
+### Approach
+- Use the existing `Skeleton` component from `src/components/ui/skeleton.tsx` (already has shimmer animation)
+- Each skeleton is a simple component that renders placeholder rectangles matching the real layout dimensions
+- Replace the current loading states (spinners or empty divs) with these skeleton components
+
+### New files
+- `src/components/skeletons/TodayScreenSkeleton.tsx`
+- `src/components/skeletons/MyStackScreenSkeleton.tsx`
+- `src/components/skeletons/ProgressScreenSkeleton.tsx`
+
+### Modified files
+- `src/components/TodayScreen.tsx` -- show skeleton while data loads
+- `src/components/MyStackScreen.tsx` -- show skeleton while data loads
+- `src/components/ProgressScreen.tsx` -- show skeleton while data loads
+
+---
+
+## Risk Assessment
+
+- **Pull-to-refresh**: Low risk. It's additive (new hook + indicator). Only fires on intentional downward drag from top of scroll. Won't interfere with normal scrolling because it checks scroll position before activating.
+- **Skeleton loading**: Very low risk. It's purely visual, swapping one loading indicator for another. Uses an existing component.
+- **Web safety gate**: Zero risk. One-line early return.
+
+## Summary of all changes
+
+| Change | New Files | Modified Files | Risk |
+|--------|-----------|----------------|------|
+| Gate swipe-back to native | 0 | 1 | Zero |
+| Pull-to-refresh | 2 | 3 | Low |
+| Skeleton loading | 3 | 3 | Very low |
 
