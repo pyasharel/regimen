@@ -427,7 +427,7 @@ export const MedicationLevelsCard = ({
         onClick={handleCardTap}
       >
         {/* Single header row with compound selector, current level (when collapsed), and chevron */}
-        <div className="flex items-center justify-between px-3 pt-1.5 pb-0">
+        <div className={`flex items-center justify-between px-3 pt-1.5 ${isCollapsed ? 'pb-1.5' : 'pb-0'}`}>
           <div 
             className="flex-shrink-0 flex items-center gap-2" 
             onClick={(e) => e.stopPropagation()}
