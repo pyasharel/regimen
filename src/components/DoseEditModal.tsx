@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,7 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
   const { isSubscribed } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [showScopeChoice, setShowScopeChoice] = useState(false);
+  const savingRef = useRef(false); // Guard against rapid double-saves
 
   // Helper to reschedule notifications after any dose edit
   const rescheduleNotificationsAfterEdit = async () => {
@@ -123,6 +124,8 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
 
   const saveDoseOnly = async () => {
     if (!dose || !selectedDate) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     
     setLoading(true);
     try {
@@ -160,11 +163,14 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
     } finally {
       setLoading(false);
       setShowScopeChoice(false);
+      savingRef.current = false;
     }
   };
 
   const saveAndUpdateSchedule = async () => {
     if (!dose || !selectedDate) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
     
     setLoading(true);
     try {
@@ -212,6 +218,7 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
       if (updateError) throw updateError;
 
       // Update all future untaken doses with the new time and amount
+      // Use gt (strictly greater than) for future dates to avoid re-updating current dose
       const { error: futureDosesError } = await supabase
         .from('doses')
         .update({
@@ -220,9 +227,42 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
         })
         .eq('compound_id', dose.compound_id)
         .eq('taken', false)
+        .neq('id', dose.id) // Exclude current dose (already updated above)
         .gte('scheduled_date', dateStr);
 
       if (futureDosesError) throw futureDosesError;
+
+      // Deduplicate: remove any duplicate untaken doses for the same compound + date + time
+      const { data: potentialDupes } = await supabase
+        .from('doses')
+        .select('id, scheduled_date')
+        .eq('compound_id', dose.compound_id)
+        .eq('taken', false)
+        .eq('scheduled_time', selectedTime)
+        .gte('scheduled_date', dateStr)
+        .order('created_at', { ascending: true });
+
+      if (potentialDupes && potentialDupes.length > 0) {
+        // Group by date, keep oldest, delete rest
+        const byDate = new Map<string, string[]>();
+        potentialDupes.forEach(d => {
+          const existing = byDate.get(d.scheduled_date) || [];
+          existing.push(d.id);
+          byDate.set(d.scheduled_date, existing);
+        });
+        
+        const idsToDelete: string[] = [];
+        byDate.forEach(ids => {
+          if (ids.length > 1) {
+            idsToDelete.push(...ids.slice(1)); // Keep first, delete rest
+          }
+        });
+        
+        if (idsToDelete.length > 0) {
+          console.log('[DoseEdit] Removing', idsToDelete.length, 'duplicate doses');
+          await supabase.from('doses').delete().in('id', idsToDelete);
+        }
+      }
 
       toast({
         title: "Schedule updated",
@@ -245,6 +285,7 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
     } finally {
       setLoading(false);
       setShowScopeChoice(false);
+      savingRef.current = false;
     }
   };
 
@@ -328,13 +369,13 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
           {/* Time Picker */}
           <div className="space-y-2">
             <Label>Time</Label>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative overflow-hidden rounded-md">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 type="time"
                 value={selectedTime}
                 onChange={(e) => handleTimeChange(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full box-border"
               />
             </div>
           </div>
