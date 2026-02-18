@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -121,8 +121,8 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden">
+    <Drawer open={open} onOpenChange={onClose}>
+      <DrawerContent className="max-h-[95vh] p-0 overflow-hidden">
         <div className="relative">
           {/* Close button */}
           <button
@@ -229,7 +229,7 @@ export const PhotoPreviewModal = ({ open, onClose, photoUrl, entryId, onDelete, 
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };

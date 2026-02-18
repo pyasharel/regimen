@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { format } from "date-fns";
 import { safeFormatDate, createLocalDate } from "@/utils/dateUtils";
@@ -27,6 +27,8 @@ import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { trackPhotoCompareUsed, trackShareAction } from "@/utils/analytics";
 import { trackFeatureFirstUse } from "@/utils/featureTracking";
+import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 
 interface PhotoEntry {
   id: string;
@@ -37,6 +39,7 @@ interface PhotoEntry {
 
 export default function PhotoCompareScreen() {
   const navigate = useNavigate();
+  const swipeBack = useSwipeBack();
   const [selectedPhotos, setSelectedPhotos] = useState<{ 
     before: { url: string; date: string } | null; 
     after: { url: string; date: string } | null;
@@ -581,6 +584,7 @@ export default function PhotoCompareScreen() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-4 mt-5">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
@@ -751,13 +755,13 @@ export default function PhotoCompareScreen() {
       </div>
 
       {/* Photo Selector Dialog */}
-      <Dialog open={showPhotoSelector !== null} onOpenChange={() => setShowPhotoSelector(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+      <Drawer open={showPhotoSelector !== null} onOpenChange={() => setShowPhotoSelector(null)}>
+        <DrawerContent className="max-h-[80vh] overflow-y-auto px-4 pb-6">
+          <DrawerHeader>
+            <DrawerTitle>
               Select {showPhotoSelector === 'before' ? 'Before' : 'After'} Photo
-            </DialogTitle>
-          </DialogHeader>
+            </DrawerTitle>
+          </DrawerHeader>
           <div className="grid grid-cols-2 gap-4 mt-4">
             {availablePhotos
               .filter(photo => {
@@ -800,8 +804,8 @@ export default function PhotoCompareScreen() {
               <p>No photos available. Upload photos from the Progress screen first.</p>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {/* Share Sheet */}
       <Sheet open={showShareSheet} onOpenChange={setShowShareSheet}>
@@ -860,11 +864,11 @@ export default function PhotoCompareScreen() {
       )}
 
       {/* All Photos View Dialog */}
-      <Dialog open={showAllPhotosView} onOpenChange={setShowAllPhotosView}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>All Photos</DialogTitle>
-          </DialogHeader>
+      <Drawer open={showAllPhotosView} onOpenChange={setShowAllPhotosView}>
+        <DrawerContent className="max-h-[85vh] overflow-y-auto px-4 pb-6">
+          <DrawerHeader>
+            <DrawerTitle>All Photos</DrawerTitle>
+          </DrawerHeader>
           <div className="grid grid-cols-3 gap-4 mt-4">
             {availablePhotos.map((photo) => {
               const localDate = createLocalDate(photo.entry_date);
@@ -928,8 +932,8 @@ export default function PhotoCompareScreen() {
               <p>No photos yet. Add photos from the Progress screen to get started.</p>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

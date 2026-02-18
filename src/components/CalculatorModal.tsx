@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -273,13 +273,13 @@ export const CalculatorModal = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" hideClose>
-        <DialogHeader className="flex flex-row items-center justify-between">
-          <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[90vh] overflow-y-auto px-4 pb-6">
+        <DrawerHeader className="flex flex-row items-center justify-between">
+          <DrawerTitle className="flex items-center gap-2 text-lg font-semibold">
             <Calculator className="w-5 h-5 text-primary" />
             {activeTab === 'reconstitution' ? 'Peptides' : 'Oil-Based'}
-          </DialogTitle>
+          </DrawerTitle>
           <div className="flex items-center gap-2">
             {/* Switch calculator type */}
             <button
@@ -300,7 +300,7 @@ export const CalculatorModal = ({
               <X size={20} />
             </button>
           </div>
-        </DialogHeader>
+        </DrawerHeader>
 
         <div className="space-y-4 pt-2 border border-primary/20 rounded-xl p-4 bg-muted/30">
 
@@ -663,7 +663,7 @@ export const CalculatorModal = ({
         >
           Done
         </Button>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };

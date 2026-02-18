@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -200,11 +200,11 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl">{getTitle()}</DialogTitle>
-        </DialogHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="px-4 pb-6">
+        <DrawerHeader>
+          <DrawerTitle className="text-xl">{getTitle()}</DrawerTitle>
+        </DrawerHeader>
         <div className="space-y-6">
           {metricType === "weight" && (
             <div className="flex gap-2 items-center">
@@ -296,7 +296,7 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
             {loading ? 'Saving...' : 'Save Entry'}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };
