@@ -20,6 +20,9 @@ export function useSwipeBack() {
   const translateXRef = useRef(0);
   const [state, setState] = useState<SwipeBackState>({ active: false, translateX: 0 });
 
+  // Gate to native only — on web, browser handles its own back gesture
+  const isNative = Capacitor.isNativePlatform();
+
   const handleTouchStart = useCallback((e: TouchEvent) => {
     const touch = e.touches[0];
     if (touch.clientX <= EDGE_ZONE) {
@@ -82,6 +85,9 @@ export function useSwipeBack() {
   }, [navigate]);
 
   useEffect(() => {
+    // No-op on web — browser handles its own gestures
+    if (!isNative) return;
+
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd, { passive: true });
@@ -93,7 +99,7 @@ export function useSwipeBack() {
       document.removeEventListener('touchend', handleTouchEnd);
       document.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [isNative, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   return state;
 }
