@@ -17,6 +17,7 @@ export function useSwipeBack() {
   const startXRef = useRef<number | null>(null);
   const startYRef = useRef<number | null>(null);
   const isHorizontalRef = useRef<boolean | null>(null);
+  const translateXRef = useRef(0);
   const [state, setState] = useState<SwipeBackState>({ active: false, translateX: 0 });
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
@@ -55,6 +56,7 @@ export function useSwipeBack() {
     if (dx > 0) {
       e.preventDefault();
       const translateX = Math.min(dx, MAX_DRAG);
+      translateXRef.current = translateX;
       setState({ active: true, translateX });
     }
   }, []);
@@ -62,10 +64,9 @@ export function useSwipeBack() {
   const handleTouchEnd = useCallback(() => {
     if (startXRef.current === null) return;
     
-    const finalTranslate = state.translateX;
+    const finalTranslate = translateXRef.current;
     
     if (finalTranslate >= TRIGGER_THRESHOLD) {
-      // Trigger navigation
       if (Capacitor.isNativePlatform()) {
         Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
       }
@@ -76,8 +77,9 @@ export function useSwipeBack() {
     startXRef.current = null;
     startYRef.current = null;
     isHorizontalRef.current = null;
+    translateXRef.current = 0;
     setState({ active: false, translateX: 0 });
-  }, [state.translateX, navigate]);
+  }, [navigate]);
 
   useEffect(() => {
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
