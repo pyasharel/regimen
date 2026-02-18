@@ -1,3 +1,6 @@
+import { TodayScreenSkeleton } from "@/components/skeletons/TodayScreenSkeleton";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash, Lock, Trash2 } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
@@ -90,6 +93,12 @@ export const TodayScreen = () => {
   const { designVariant } = useTheme();
   const isRefinedMode = designVariant === 'refined';
   
+  // Pull-to-refresh
+  const pullToRefresh = usePullToRefresh(async () => {
+    await Promise.all([loadDoses(), checkCompounds(), loadLevelsData()]);
+    queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+  });
+
   // Track engagement for first dose notification
   useEngagementTracking();
   const { data: streakData } = useStreaks();
@@ -1358,24 +1367,7 @@ export const TodayScreen = () => {
   // Subscription checks can hang on mobile (connection interrupted). The UI should still render
   // and allow retries for data loads.
   if (loading) {
-    return (
-      <div className="fixed inset-0 bg-background flex flex-col app-top-padding" style={{ paddingTop: 'var(--app-banner-height, 0px)' }}>
-        <div className="flex-1 min-h-0 scroll-container pb-32">
-          <MainHeader title="Today" />
-          {/* Match the greeting block spacing exactly */}
-          <div className="px-4 pt-4 pb-4 flex-shrink-0">
-            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-          </div>
-          {/* Rest of skeleton content */}
-          <div className="px-4 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
-            ))}
-          </div>
-        </div>
-        <BottomNavigation />
-      </div>
-    );
+    return <TodayScreenSkeleton />;
   }
 
   return (
@@ -1465,7 +1457,8 @@ export const TodayScreen = () => {
       `}</style>
       
       {/* Scrollable Content - Header inside scroll area */}
-      <div className="flex-1 min-h-0 scroll-container pb-40">
+      <div className="flex-1 min-h-0 scroll-container pb-40" {...pullToRefresh.handlers}>
+        <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} />
         {/* Header */}
         <MainHeader title="Today" />
 

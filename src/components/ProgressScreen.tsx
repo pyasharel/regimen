@@ -1,3 +1,6 @@
+import { ProgressScreenSkeleton } from "@/components/skeletons/ProgressScreenSkeleton";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +80,11 @@ export const ProgressScreen = () => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoDate, setPhotoDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
+  
+  // Pull-to-refresh
+  const pullToRefresh = usePullToRefresh(async () => {
+    await refetchEntries();
+  });
   const { isSubscribed } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
@@ -544,25 +552,13 @@ export const ProgressScreen = () => {
   const selectedCompound = compounds.find(c => c.id === selectedCompoundId);
   
   if (dataLoading) {
-    return (
-      <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
-        <div className="flex-1 min-h-0 scroll-container pb-24">
-          <MainHeader title="Progress" />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <Skeleton className="w-12 h-12 rounded-full mx-auto" />
-              <p className="text-sm text-muted-foreground">Loading your progress...</p>
-            </div>
-          </div>
-        </div>
-        <BottomNavigation />
-      </div>
-    );
+    return <ProgressScreenSkeleton />;
   }
   
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
-      <div className="flex-1 min-h-0 scroll-container pb-24">
+      <div className="flex-1 min-h-0 scroll-container pb-24" {...pullToRefresh.handlers}>
+        <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} />
         <MainHeader title="Progress" />
 
         <div className="p-4 space-y-6 max-w-2xl mx-auto w-full">
