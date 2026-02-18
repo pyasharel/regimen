@@ -141,6 +141,9 @@ export const PERSISTENT_STORAGE_KEYS = [
   'selectedLevelsCompound',
   'medicationLevelsCollapsed',
   
+  // Visual Progress card preference
+  'visualProgressExpanded',
+  
   // Auto-rating prompt tracking
   'lastRatingPromptDate',
   'lastRatingPromptVersion',

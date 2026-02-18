@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash, Lock } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash, Lock, Trash2 } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { TodayBanner } from "@/components/TodayBanner";
@@ -55,6 +55,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Dose {
   id: string;
@@ -106,6 +116,7 @@ export const TodayScreen = () => {
   const [editingDose, setEditingDose] = useState<Dose | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLogTodayModal, setShowLogTodayModal] = useState(false);
+  const [deletingDoseId, setDeletingDoseId] = useState<string | null>(null);
   
   // Subscription state
   const { 
@@ -1016,6 +1027,43 @@ export const TodayScreen = () => {
     }
   };
 
+  const deleteDose = async (doseId: string) => {
+    try {
+      const dose = doses.find(d => d.id === doseId);
+      if (!dose) return;
+
+      triggerHaptic('medium');
+
+      const { error } = await supabase
+        .from('doses')
+        .delete()
+        .eq('id', doseId);
+
+      if (error) throw error;
+
+      // Update local state
+      setDoses(doses.filter(d => d.id !== doseId));
+
+      // Cancel any pending notification for this dose
+      await cancelDoseNotification(doseId);
+
+      // Invalidate streak query to refresh
+      queryClient.invalidateQueries({ queryKey: ['user-stats'] });
+
+      toast({
+        title: "Dose Deleted",
+        description: `${dose.compound_name || 'Dose'} entry has been removed`,
+      });
+    } catch (error) {
+      console.error('Error deleting dose:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete dose",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Rotating success messages for variety
   const celebrationMessages = [
     "Perfect Day!",
@@ -1860,6 +1908,18 @@ export const TodayScreen = () => {
                                 Skip Dose
                               </DropdownMenuItem>
                             )}
+                            {(dose.taken || isSkipped) && (
+                              <DropdownMenuItem 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
+                                  setDeletingDoseId(dose.id);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Entry
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                         
@@ -2105,6 +2165,32 @@ export const TodayScreen = () => {
 
       {/* TestFlight Migration Modal */}
       <TestFlightMigrationModal isTestFlight={isTestFlight} />
+
+      {/* Delete Dose Confirmation */}
+      <AlertDialog open={!!deletingDoseId} onOpenChange={(open) => !open && setDeletingDoseId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this dose log. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deletingDoseId) {
+                  deleteDose(deletingDoseId);
+                  setDeletingDoseId(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

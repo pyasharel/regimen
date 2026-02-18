@@ -82,6 +82,7 @@ export const ProgressScreen = () => {
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [visualProgressExpanded, setVisualProgressExpanded] = useState(true);
   const [showGoalModal, setShowGoalModal] = useState(false);
   
   // User settings for weight unit and goal
@@ -93,6 +94,10 @@ export const ProgressScreen = () => {
     const loadSettings = async () => {
       const savedUnit = await persistentStorage.get('weightUnit');
       const savedGoal = await persistentStorage.get('goalWeight');
+      const savedVisualProgress = await persistentStorage.get('visualProgressExpanded');
+      if (savedVisualProgress !== null) {
+        setVisualProgressExpanded(savedVisualProgress !== 'false');
+      }
       
       // If local storage has both values, use them
       if (savedUnit && savedGoal) {
@@ -686,86 +691,108 @@ export const ProgressScreen = () => {
             )}
         </div>
 
-        {/* Visual Progress */}
-        <Card className="p-4 bg-card shadow-[var(--shadow-card)] space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
-            <Button 
-              onClick={() => isSubscribed ? setShowPhotoModal(true) : setShowPaywall(true)} 
-              size="sm" 
-              variant="ghost"
-              className="text-primary hover:text-primary hover:bg-primary/10"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add Photo
-            </Button>
-          </div>
-
-          {photoEntries.length > 0 ? (
-            <>
-              <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth">
-                {photoEntries.map((entry) => {
-                  const localDate = createLocalDate(entry.entry_date);
-                  if (!localDate) return null;
-                  
-                  return (
-                    <div key={entry.id} className="flex-shrink-0 text-center">
-                      <div 
-                        className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setPreviewPhoto({ url: photoUrls[entry.photo_url!] || '', id: entry.id })}
-                      >
-                        {photoUrls[entry.photo_url!] ? (
-                          <img
-                            src={photoUrls[entry.photo_url!]}
-                            alt={`Progress ${entry.entry_date}`}
-                            className="w-full h-full object-cover animate-fade-in"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full animate-pulse bg-muted" />
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {safeFormatDate(localDate, 'MMM d')}
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Visual Progress - Collapsible */}
+        <Collapsible 
+          open={visualProgressExpanded} 
+          onOpenChange={(open) => {
+            setVisualProgressExpanded(open);
+            persistentStorage.set('visualProgressExpanded', String(open));
+          }}
+        >
+          <Card className="bg-card shadow-[var(--shadow-card)] overflow-hidden">
+            <CollapsibleTrigger className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+              <h2 className="text-lg font-semibold text-foreground">Visual Progress</h2>
+              <div className="flex items-center gap-2">
+                {visualProgressExpanded && (
+                  <Button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      isSubscribed ? setShowPhotoModal(true) : setShowPaywall(true);
+                    }} 
+                    size="sm" 
+                    variant="ghost"
+                    className="text-primary hover:text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Add Photo
+                  </Button>
+                )}
+                {visualProgressExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate("/progress/compare")}
-              >
-                View All & Compare
-              </Button>
-            </>
-          ) : (
-            <div className="space-y-4">
-              {/* Coral placeholder photo frames */}
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {['Week 1', 'Week 4', 'Week 8'].map((label, index) => (
-                  <div key={index} className="flex-shrink-0 text-center">
-                    <div 
-                      className="w-24 h-32 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 relative cursor-pointer group hover:from-primary/30 hover:to-primary/20 transition-all"
-                      onClick={() => setShowPhotoModal(true)}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-4">
+                {photoEntries.length > 0 ? (
+                  <>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth">
+                      {photoEntries.map((entry) => {
+                        const localDate = createLocalDate(entry.entry_date);
+                        if (!localDate) return null;
+                        
+                        return (
+                          <div key={entry.id} className="flex-shrink-0 text-center">
+                            <div 
+                              className="w-24 h-32 rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setPreviewPhoto({ url: photoUrls[entry.photo_url!] || '', id: entry.id })}
+                            >
+                              {photoUrls[entry.photo_url!] ? (
+                                <img
+                                  src={photoUrls[entry.photo_url!]}
+                                  alt={`Progress ${entry.entry_date}`}
+                                  className="w-full h-full object-cover animate-fade-in"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="w-full h-full animate-pulse bg-muted" />
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-2">
+                              {safeFormatDate(localDate, 'MMM d')}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => navigate("/progress/compare")}
                     >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <CameraIcon className="w-7 h-7 text-primary/60 group-hover:text-primary group-hover:scale-110 transition-all" />
-                      </div>
+                      View All & Compare
+                    </Button>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {['Week 1', 'Week 4', 'Week 8'].map((label, index) => (
+                        <div key={index} className="flex-shrink-0 text-center">
+                          <div 
+                            className="w-24 h-32 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 relative cursor-pointer group hover:from-primary/30 hover:to-primary/20 transition-all"
+                            onClick={() => setShowPhotoModal(true)}
+                          >
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <CameraIcon className="w-7 h-7 text-primary/60 group-hover:text-primary group-hover:scale-110 transition-all" />
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground/60 mt-2">
+                            {label}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="text-xs text-muted-foreground/60 mt-2">
-                      {label}
-                    </div>
+                    <p className="text-center text-sm text-muted-foreground">
+                      Tap to add your first progress photo
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
-              <p className="text-center text-sm text-muted-foreground">
-                Tap to add your first progress photo
-              </p>
-            </div>
-          )}
-        </Card>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Collapsible Medication Timeline */}
         {compounds.length > 0 && (

@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Scale, Zap, Moon, NotebookPen, Utensils } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -14,6 +13,7 @@ import { toast } from "sonner";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackProgressEntryAdded, trackWeightLogged } from "@/utils/analytics";
+import { persistentStorage } from "@/utils/persistentStorage";
 
 interface LogTodayDrawerContentProps {
   onSuccess: () => void;
@@ -68,6 +68,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const [entryDate, setEntryDate] = useState<Date>(new Date());
   const [weight, setWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [weightUnitLoaded, setWeightUnitLoaded] = useState(false);
   const [energy, setEnergy] = useState<number | null>(null);
   const [sleep, setSleep] = useState<number | null>(null);
   const [cravings, setCravings] = useState<number | null>(null);
@@ -76,6 +77,39 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
   const [loadingEntry, setLoadingEntry] = useState(false);
   const [notesKeyboardOpen, setNotesKeyboardOpen] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load user's preferred weight unit from persistent storage
+  useEffect(() => {
+    const loadWeightUnit = async () => {
+      const savedUnit = await persistentStorage.get('weightUnit');
+      if (savedUnit === 'kg' || savedUnit === 'lbs') {
+        setWeightUnit(savedUnit);
+        console.log('[LogToday] Loaded weight unit from storage:', savedUnit);
+      } else {
+        // Fallback to database
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('current_weight_unit')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (profile?.current_weight_unit) {
+              const unit = profile.current_weight_unit === 'kg' ? 'kg' as const : 'lbs' as const;
+              setWeightUnit(unit);
+              await persistentStorage.set('weightUnit', unit);
+              console.log('[LogToday] Synced weight unit from database:', unit);
+            }
+          }
+        } catch (err) {
+          console.error('[LogToday] Error loading weight unit:', err);
+        }
+      }
+      setWeightUnitLoaded(true);
+    };
+    loadWeightUnit();
+  }, []);
 
   // Load existing entry when date changes
   useEffect(() => {
@@ -109,7 +143,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
             if (typeof metrics.weight === 'number') {
               const displayWeight = weightUnit === 'kg' 
                 ? (metrics.weight / 2.20462).toFixed(1) 
-                : metrics.weight.toString();
+                : parseFloat(metrics.weight.toFixed(1)).toString();
               setWeight(displayWeight);
             }
             if (typeof metrics.energy === 'number') {
@@ -230,7 +264,7 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
           <Scale className="w-4 h-4 text-primary" />
           Weight
         </Label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Input
             type="number"
             step="0.1"
@@ -240,15 +274,9 @@ export const LogTodayDrawerContent = ({ onSuccess }: LogTodayDrawerContentProps)
             className="w-28 h-11"
             disabled={loadingEntry}
           />
-          <Select value={weightUnit} onValueChange={(v: "lbs" | "kg") => setWeightUnit(v)}>
-            <SelectTrigger className="w-20 h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="lbs">lbs</SelectItem>
-              <SelectItem value="kg">kg</SelectItem>
-            </SelectContent>
-          </Select>
+          <span className="text-base font-medium text-muted-foreground w-12 text-center">
+            {weightUnit}
+          </span>
         </div>
       </div>
 
