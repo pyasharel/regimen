@@ -157,6 +157,7 @@ export const TodayScreen = () => {
   }
   const [compoundsForLevels, setCompoundsForLevels] = useState<CompoundForLevels[]>([]);
   const [dosesForLevels, setDosesForLevels] = useState<DoseForLevels[]>([]);
+  const [levelsCompoundOverride, setLevelsCompoundOverride] = useState<string | null>(null);
   
   // Generate week days - keep the current week stable (Monday start)
   const getWeekDays = () => {
@@ -886,6 +887,11 @@ export const TodayScreen = () => {
         }
       }
       
+      // Auto-switch medication levels card to this compound (only when marking as taken)
+      if (!currentStatus) {
+        setLevelsCompoundOverride(dose.compound_id);
+      }
+
       // Update dosesForLevels state for real-time levels chart (no network call)
       if (!currentStatus) {
         // Dose was just marked as taken - add/update in levels data
@@ -1584,6 +1590,7 @@ export const TodayScreen = () => {
           <MedicationLevelsCard 
             compounds={compoundsForLevels}
             doses={dosesForLevels}
+            switchToCompoundId={levelsCompoundOverride}
           />
         </ComponentErrorBoundary>
       )}

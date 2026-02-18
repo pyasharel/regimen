@@ -37,6 +37,7 @@ interface MedicationLevelsCardProps {
   compounds: Compound[];
   doses: Dose[];
   onCompoundChange?: (compoundId: string) => void;
+  switchToCompoundId?: string | null;
 }
 
 const STORAGE_KEY = 'selectedLevelsCompound';
@@ -102,7 +103,8 @@ const parseTakenAt = (takenAt: string | null): Date | null => {
 export const MedicationLevelsCard = ({ 
   compounds, 
   doses,
-  onCompoundChange 
+  onCompoundChange,
+  switchToCompoundId
 }: MedicationLevelsCardProps) => {
   const navigate = useNavigate();
   const [selectedCompoundId, setSelectedCompoundId] = useState<string | null>(null);
@@ -256,6 +258,29 @@ export const MedicationLevelsCard = ({
     persistentStorage.set(STORAGE_KEY, compoundId);
     onCompoundChange?.(compoundId);
   };
+
+  // External switch: when a dose is marked as taken, auto-switch to that compound
+  useEffect(() => {
+    if (!switchToCompoundId) return;
+    
+    // Only switch if the compound has half-life data
+    const exists = compoundsWithHalfLife.find(c => c.id === switchToCompoundId);
+    if (!exists) return;
+    
+    // Already selected - no jarring switch needed
+    if (selectedCompoundId === switchToCompoundId) return;
+    
+    // Switch to the compound (don't persist - this is a temporary contextual switch)
+    isTemporaryDefault.current = true;
+    setSelectedCompoundId(switchToCompoundId);
+    
+    // Auto-expand if collapsed
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      localStorage.setItem(COLLAPSED_KEY, 'false');
+      persistentStorage.set(COLLAPSED_KEY, 'false');
+    }
+  }, [switchToCompoundId, compoundsWithHalfLife, selectedCompoundId, isCollapsed]);
 
   // Get selected compound data
   const selectedCompound = useMemo(() => {
