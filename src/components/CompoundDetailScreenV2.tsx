@@ -19,6 +19,8 @@ import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/util
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ChartWatermark } from "@/components/ui/ChartWatermark";
+import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -86,6 +88,7 @@ export const CompoundDetailScreenV2 = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const swipeBack = useSwipeBack();
   const [compound, setCompound] = useState<Compound | null>(null);
   const [doses, setDoses] = useState<Dose[]>([]);
   const [loading, setLoading] = useState(true);
@@ -477,6 +480,7 @@ export const CompoundDetailScreenV2 = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8">
+      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>

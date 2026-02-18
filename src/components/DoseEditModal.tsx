@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -294,11 +294,11 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
   // Scope choice dialog
   if (showScopeChoice) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Update scope</DialogTitle>
-          </DialogHeader>
+      <Drawer open={isOpen} onOpenChange={onClose}>
+        <DrawerContent className="px-4 pb-6">
+          <DrawerHeader>
+            <DrawerTitle>Update scope</DrawerTitle>
+          </DrawerHeader>
           <p className="text-sm text-muted-foreground">
             You changed the time. Apply this change to:
           </p>
@@ -326,17 +326,17 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
           >
             Back
           </Button>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
     );
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Edit {dose.compound_name || 'Dose'}</DialogTitle>
-        </DialogHeader>
+    <Drawer open={isOpen} onOpenChange={onClose}>
+      <DrawerContent className="px-4 pb-6">
+        <DrawerHeader>
+          <DrawerTitle>Edit {dose.compound_name || 'Dose'}</DrawerTitle>
+        </DrawerHeader>
         
         <div className="space-y-4 pt-4">
           {/* Date Picker */}
@@ -415,7 +415,7 @@ export const DoseEditModal = ({ isOpen, onClose, dose, onDoseUpdated }: DoseEdit
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };

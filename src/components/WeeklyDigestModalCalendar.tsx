@@ -1,6 +1,6 @@
 import { X, Share2, TrendingDown, TrendingUp, Calendar, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Share } from "@capacitor/share";
 import { useToast } from "@/hooks/use-toast";
 
@@ -64,12 +64,12 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
   });
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md h-[90vh] p-0 gap-0 overflow-hidden">
-        <DialogTitle className="sr-only">Weekly Digest</DialogTitle>
-        <DialogDescription className="sr-only">
+    <Drawer open={open} onOpenChange={onClose}>
+      <DrawerContent className="max-h-[90vh] p-0 gap-0 overflow-hidden">
+        <DrawerTitle className="sr-only">Weekly Digest</DrawerTitle>
+        <DrawerDescription className="sr-only">
           Your weekly progress summary including regimen adherence, weight tracking, and progress photos
-        </DialogDescription>
+        </DrawerDescription>
         
         {/* Header */}
         <div className="sticky top-0 z-10 bg-gradient-to-br from-primary/10 to-primary/5 border-b border-border px-6 py-4">
@@ -250,7 +250,7 @@ export const WeeklyDigestModal = ({ open, onClose, weekData }: WeeklyDigestModal
             Share Progress
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </DrawerContent>
+    </Drawer>
   );
 };

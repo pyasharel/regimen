@@ -16,11 +16,14 @@ import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 import { scheduleAllUpcomingDoses, ensureDoseActionTypesRegistered } from "@/utils/notificationScheduler";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { trackNotificationToggled } from "@/utils/analytics";
+import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 
 type PermissionStatus = 'granted' | 'prompt' | 'denied' | 'unknown';
 
 export const NotificationsSettings = () => {
   const navigate = useNavigate();
+  const swipeBack = useSwipeBack();
   const { isSubscribed } = useSubscription();
   
   // Notification states
@@ -361,6 +364,7 @@ export const NotificationsSettings = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm safe-top">
         <div className="flex items-center justify-between max-w-2xl mx-auto px-4 py-4">
