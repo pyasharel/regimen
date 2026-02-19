@@ -1,100 +1,74 @@
 
 
-# Fix Native Polish Issues -- Remove/Refine Features That Don't Feel Right
+# Persistent Tabs + Fresh Device Sync
 
 ## Summary
 
-Several recently added "native feel" features are actually making the app feel worse. This plan removes or tones down the ones that aren't working while keeping what does.
+The changes from the last round (header fix, skeleton removal, overlay removal, pull-to-refresh removal) are already in the codebase but not on your phone yet. This plan adds persistent tabs on top of those changes so tab switching is instant, then gives you a clean sync command.
 
-## Changes
+## What's Already Done (just needs syncing)
 
-### 1. Fix Header Bleeding Into Status Bar
+- Header border removed (no more line bleeding into status bar)
+- Skeleton screens removed from Today and My Stack
+- Coral swipe-back overlay removed from all screens
+- Pull-to-refresh removed from Today and My Stack (kept on Progress)
 
-The `border-b border-border` on MainHeader creates a visible line that collides with the iOS status bar area.
+## New Change: Persistent Tabs
 
-**Fix:** Remove the `border-b` from the header. The header was clean before without it.
+### The Problem
 
-**File:** `src/components/MainHeader.tsx` (line 16)
+Right now, React Router unmounts the Today screen when you tap "My Stack", then rebuilds it from scratch when you tap back. That triggers a fresh data fetch and any loading state, even if brief, causes a flash.
 
----
+### The Solution
 
-### 2. Remove Skeleton Screens From Tab Switches
+Render all four tab screens (Today, My Stack, Progress, Settings) simultaneously and toggle their visibility with CSS `display: none` vs `display: flex`. The bottom navigation updates which one is visible. Non-tab routes (settings sub-pages, compound details, add compound) still use normal React Router.
 
-The Today and My Stack skeletons flash for a fraction of a second every time you switch tabs because the components unmount/remount and `loading` starts as `true`. This looks worse than what we had before.
+### Architecture
 
-**Fix:** Instead of showing a full skeleton screen during the loading state, just show nothing (or the previous content). The simplest approach: change the skeleton return to show the actual screen layout with invisible/transparent content rather than gray blocks, OR skip the skeleton entirely and just let the content pop in.
-
-The cleanest fix: remove the skeleton returns from TodayScreen and MyStackScreen. Instead, let the screens render their shell (header, nav, empty content area) immediately, and only show a subtle inline loader if data takes more than ~300ms. Progress screen already works fine as you noted.
-
-**Files:**
-- `src/components/TodayScreen.tsx` (line 1369-1371) -- remove skeleton, render the shell immediately
-- `src/components/MyStackScreen.tsx` (line 453-455) -- same treatment
-
----
-
-### 3. Remove Swipe Back Overlay (Coral Glow + Chevron)
-
-The coral edge glow and arrow chevron don't feel premium. On iOS, the native back swipe has no visible indicator -- it just slides the view. Since our WebView can't do a true view-slide animation, the overlay just draws attention to the fact that it's not native.
-
-**Fix:** Remove the SwipeBackOverlay component rendering from all screens. Keep the `useSwipeBack` hook (it still triggers `navigate(-1)` which is useful), but stop rendering the visual overlay.
-
-**Files to update (remove `<SwipeBackOverlay ... />` JSX):**
-- `src/components/settings/DataSettings.tsx`
-- `src/components/settings/DisplaySettings.tsx`
-- `src/components/settings/NotificationsSettings.tsx`
-- `src/components/settings/HelpSettings.tsx`
-- `src/components/settings/TermsSettings.tsx`
-- `src/components/settings/PrivacySettings.tsx`
-- `src/components/settings/AccountSettings.tsx`
-- `src/components/CompoundDetailScreen.tsx`
-- `src/components/CompoundDetailScreenV2.tsx`
-- `src/components/AddCompoundScreen.tsx`
-- `src/components/PhotoCompareScreen.tsx`
-
----
-
-### 4. Remove Pull to Refresh From Today and My Stack
-
-The pull-to-refresh gesture doesn't add clear value on these screens since data loads automatically. It also adds visual noise (the spinner indicator at top).
-
-**Fix:** Remove the `usePullToRefresh` hook usage, the `PullToRefreshIndicator` component, and the touch handlers from TodayScreen and MyStackScreen. Keep the code files around in case we want them later, just stop using them.
-
-**Files:**
-- `src/components/TodayScreen.tsx` -- remove pull-to-refresh hook, indicator, and touch handlers
-- `src/components/MyStackScreen.tsx` -- same
-
-The Progress screen can keep pull-to-refresh if it works well there (you said it loads nicely).
-
----
-
-## What We Keep
-
-- **Haptic feedback** on dose checkmarks and other interactions -- this works well
-- **Swipe back navigation** (the `useSwipeBack` hook) -- the gesture itself works, just no visual overlay
-- **Progress screen skeleton** -- you said this one looks good
-- **Pull to refresh on Progress** -- if it's working well there, keep it
-
-## Technical Details
-
-### Skeleton removal approach
-
-In TodayScreen, instead of:
-```typescript
-if (loading) {
-  return <TodayScreenSkeleton />;
-}
+```text
+AppContent
+  |
+  +-- PersistentTabContainer (always mounted)
+  |     +-- TodayScreen       (visible when path = /today)
+  |     +-- MyStackScreen      (visible when path = /stack)
+  |     +-- ProgressScreen     (visible when path = /progress)
+  |     +-- SettingsScreen     (visible when path = /settings)
+  |
+  +-- <Routes> (for non-tab pages only)
+        +-- /auth, /onboarding, /add-compound, /stack/:id, 
+        +-- /settings/account, /settings/notifications, etc.
 ```
 
-Change to render the real screen shell immediately with the header and nav, and just show an empty content area while loading. The data will pop in within milliseconds on a warm cache, so users won't even notice.
+### Files to Change
 
-### SwipeBackOverlay removal
+1. **New: `src/components/PersistentTabContainer.tsx`**
+   - Renders all 4 tab screens simultaneously
+   - Uses `useLocation()` to determine which is visible
+   - Wraps each screen in a div with `display: none` when inactive
+   - Only renders when user is authenticated (checks same auth state as ProtectedRoute)
 
-Each settings screen currently has:
-```tsx
-const swipeBack = useSwipeBack();
-// ... in JSX:
-<SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+2. **Modified: `src/App.tsx`**
+   - Remove individual `/today`, `/stack`, `/progress`, `/settings` routes from `<Routes>`
+   - Add `<PersistentTabContainer />` alongside `<Routes>` inside AppContent
+   - Non-tab routes remain unchanged in `<Routes>`
+
+3. **Modified: `src/components/BottomNavigation.tsx`**
+   - Change from `navigate(path)` to using a context or callback that toggles the active tab
+   - Actually, since we use `useLocation()` in the container, navigate still works fine. When you tap "My Stack", `navigate('/stack')` updates the URL, and the container reacts by showing MyStackScreen. No changes needed here.
+
+### Downsides
+
+- Slightly higher memory usage since all 4 screens stay mounted (roughly 5-10MB extra, negligible)
+- All 4 screens will fetch their data on first load rather than on-demand. This means the initial load takes slightly longer, but every subsequent tab switch is instant with zero loading.
+- We need to make sure each screen's `useEffect` data-fetching doesn't re-run unnecessarily when the screen becomes visible again (should already be fine since the component stays mounted and effects only run on mount)
+
+### How to Sync to Your Phone
+
+After this is implemented, run:
+
+```bash
+git pull && npm install && npm run build && npx cap sync ios && npx cap run ios
 ```
 
-We keep the `useSwipeBack()` call (so the gesture still triggers navigation) but remove the `<SwipeBackOverlay>` line and its import.
+No need to delete the app first. This will overwrite the existing build with fresh code.
 
