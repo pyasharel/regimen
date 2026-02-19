@@ -311,6 +311,7 @@ export const MetricChart = ({
             fill={`url(#${metricType}Gradient)`}
             dot={(props: any) => <CustomDot {...props} color={metricColor.stroke} />}
             activeDot={(props: any) => <CustomActiveDot {...props} color={metricColor.stroke} />}
+            isAnimationActive={false}
           />
         </AreaChart>
         </ResponsiveContainer>
@@ -353,6 +354,7 @@ export const MetricChart = ({
           strokeWidth={3}
           dot={<CustomDot />}
           activeDot={<CustomActiveDot />}
+          isAnimationActive={false}
         />
       </LineChart>
       </ResponsiveContainer>
