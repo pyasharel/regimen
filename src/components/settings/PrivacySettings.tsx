@@ -1,15 +1,14 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
 import { Card } from "@/components/ui/card";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 export const PrivacySettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <SwipeBackContainer className="min-h-screen bg-background pb-24">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -116,6 +115,6 @@ export const PrivacySettings = () => {
           </div>
         </Card>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };

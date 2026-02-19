@@ -20,11 +20,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
 import { trackAccountDeleted } from "@/utils/analytics";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 export const AccountSettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -279,7 +278,7 @@ export const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <SwipeBackContainer className="min-h-screen bg-background pb-8">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -458,6 +457,6 @@ export const AccountSettings = () => {
           </AlertDialog>
         </div>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };

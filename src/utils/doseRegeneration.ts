@@ -325,17 +325,19 @@ const generateDoses = (compound: any, fromDateStr?: string) => {
       times = compound.time_of_day || ['08:00'];
     }
     
-    times.forEach((time: string) => {
-      doses.push({
-        compound_id: compound.id,
-        user_id: compound.user_id,
-        scheduled_date: date.toISOString().split('T')[0],
-        scheduled_time: time,
-        dose_amount: compound.intended_dose,
-        dose_unit: compound.dose_unit,
-        taken: false,
+      // Use local date formatting to avoid UTC shift for non-UTC timezones (e.g. Australia UTC+11)
+      const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      times.forEach((time: string) => {
+        doses.push({
+          compound_id: compound.id,
+          user_id: compound.user_id,
+          scheduled_date: localDateStr,
+          scheduled_time: time,
+          dose_amount: compound.intended_dose,
+          dose_unit: compound.dose_unit,
+          taken: false,
+        });
       });
-    });
   }
   
   return doses;

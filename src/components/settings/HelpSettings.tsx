@@ -6,14 +6,13 @@ import { getBootTraceText, getLastBootSummary, clearBootTrace } from "@/utils/bo
 import { getAuthTraceText, getLastAuthSummary, clearAuthTrace } from "@/utils/authTracer";
 import { isDeveloperUser } from "@/utils/developerAccess";
 import { supabase } from "@/integrations/supabase/client";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 // Build-time constant defined in vite.config.ts
 declare const __WEB_BUNDLE_STAMP__: string;
 
 export const HelpSettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
   const [showBootTrace, setShowBootTrace] = useState(false);
   const [showAuthTrace, setShowAuthTrace] = useState(false);
   const [copiedBoot, setCopiedBoot] = useState(false);
@@ -72,7 +71,7 @@ export const HelpSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <SwipeBackContainer className="min-h-screen bg-background pb-20">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -225,6 +224,6 @@ export const HelpSettings = () => {
           <p className="mt-1">© 2025 All rights reserved</p>
         </div>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };

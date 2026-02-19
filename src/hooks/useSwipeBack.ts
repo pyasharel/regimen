@@ -6,10 +6,14 @@ import { Capacitor } from '@capacitor/core';
 const EDGE_ZONE = 20; // px from left edge
 const TRIGGER_THRESHOLD = 80; // min px to trigger navigation
 const MAX_DRAG = 300; // max visual drag distance
+const ANIMATE_OUT_DURATION = 200; // ms for slide-out animation
+const SNAP_BACK_DURATION = 150; // ms for snap-back animation
 
-interface SwipeBackState {
+export interface SwipeBackState {
   active: boolean;
   translateX: number;
+  isAnimatingOut: boolean;
+  transition: string;
 }
 
 export function useSwipeBack() {
@@ -18,7 +22,13 @@ export function useSwipeBack() {
   const startYRef = useRef<number | null>(null);
   const isHorizontalRef = useRef<boolean | null>(null);
   const translateXRef = useRef(0);
-  const [state, setState] = useState<SwipeBackState>({ active: false, translateX: 0 });
+  const hapticFiredRef = useRef(false);
+  const [state, setState] = useState<SwipeBackState>({
+    active: false,
+    translateX: 0,
+    isAnimatingOut: false,
+    transition: 'none',
+  });
 
   // Gate to native only — on web, browser handles its own back gesture
   const isNative = Capacitor.isNativePlatform();
@@ -29,12 +39,13 @@ export function useSwipeBack() {
       startXRef.current = touch.clientX;
       startYRef.current = touch.clientY;
       isHorizontalRef.current = null;
+      hapticFiredRef.current = false;
     }
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (startXRef.current === null || startYRef.current === null) return;
-    
+
     const touch = e.touches[0];
     const dx = touch.clientX - startXRef.current;
     const dy = touch.clientY - startYRef.current;
@@ -60,28 +71,61 @@ export function useSwipeBack() {
       e.preventDefault();
       const translateX = Math.min(dx, MAX_DRAG);
       translateXRef.current = translateX;
-      setState({ active: true, translateX });
+
+      // Fire haptic at threshold moment
+      if (translateX >= TRIGGER_THRESHOLD && !hapticFiredRef.current) {
+        hapticFiredRef.current = true;
+        if (Capacitor.isNativePlatform()) {
+          Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+        }
+      }
+
+      setState({ active: true, translateX, isAnimatingOut: false, transition: 'none' });
     }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (startXRef.current === null) return;
-    
-    const finalTranslate = translateXRef.current;
-    
-    if (finalTranslate >= TRIGGER_THRESHOLD) {
-      if (Capacitor.isNativePlatform()) {
-        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
-      }
-      navigate(-1);
-    }
 
-    // Reset
-    startXRef.current = null;
-    startYRef.current = null;
-    isHorizontalRef.current = null;
-    translateXRef.current = 0;
-    setState({ active: false, translateX: 0 });
+    const finalTranslate = translateXRef.current;
+
+    if (finalTranslate >= TRIGGER_THRESHOLD) {
+      // Animate off-screen, then navigate
+      setState({
+        active: true,
+        translateX: window.innerWidth,
+        isAnimatingOut: true,
+        transition: `transform ${ANIMATE_OUT_DURATION}ms ease-out`,
+      });
+
+      setTimeout(() => {
+        navigate(-1);
+        // Reset after navigation
+        startXRef.current = null;
+        startYRef.current = null;
+        isHorizontalRef.current = null;
+        translateXRef.current = 0;
+        setState({ active: false, translateX: 0, isAnimatingOut: false, transition: 'none' });
+      }, ANIMATE_OUT_DURATION);
+    } else {
+      // Snap back
+      setState({
+        active: true,
+        translateX: 0,
+        isAnimatingOut: false,
+        transition: `transform ${SNAP_BACK_DURATION}ms ease-out`,
+      });
+
+      setTimeout(() => {
+        setState({ active: false, translateX: 0, isAnimatingOut: false, transition: 'none' });
+      }, SNAP_BACK_DURATION);
+
+      // Reset refs
+      startXRef.current = null;
+      startYRef.current = null;
+      isHorizontalRef.current = null;
+      translateXRef.current = 0;
+    }
   }, [navigate]);
 
   useEffect(() => {

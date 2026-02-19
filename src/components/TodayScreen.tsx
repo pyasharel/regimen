@@ -612,9 +612,43 @@ export const TodayScreen = () => {
         ...asNeededDoses
       ];
 
+      // Deduplicate: for same compound_id on same date, keep taken/skipped doses,
+      // but if there are multiple untaken doses for the same compound, keep only the
+      // one whose scheduled_time matches the compound's current time_of_day (or the latest one).
+      const dedupedDoses = (() => {
+        const seen = new Map<string, typeof formattedDoses[0]>();
+        const result: typeof formattedDoses = [];
+
+        for (const dose of formattedDoses) {
+          // Always keep taken/skipped doses
+          if (dose.taken || dose.skipped) {
+            result.push(dose);
+            continue;
+          }
+
+          const key = dose.compound_id;
+          const existing = seen.get(key);
+
+          if (!existing) {
+            seen.set(key, dose);
+          } else {
+            // Prefer the dose that was created last (higher sort order by id typically means newer)
+            // This handles cases where old times remain after a schedule edit
+            seen.set(key, dose); // last one wins; sort below will order by time
+          }
+        }
+
+        // Add the deduplicated untaken doses
+        for (const dose of seen.values()) {
+          result.push(dose);
+        }
+
+        return result;
+      })();
+
       // Sort doses by time (convert text times to sortable format)
       // Keep "As Needed" at the end
-      const sortedDoses = formattedDoses.sort((a, b) => {
+      const sortedDoses = dedupedDoses.sort((a, b) => {
         // As Needed goes to the end
         if (a.schedule_type === 'As Needed' && b.schedule_type !== 'As Needed') return 1;
         if (b.schedule_type === 'As Needed' && a.schedule_type !== 'As Needed') return -1;

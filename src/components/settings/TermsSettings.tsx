@@ -1,13 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 export const TermsSettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <SwipeBackContainer className="min-h-screen bg-background pb-20">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -137,6 +136,6 @@ export const TermsSettings = () => {
           </p>
         </div>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };
