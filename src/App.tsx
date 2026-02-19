@@ -21,12 +21,9 @@ import { persistentStorage, PERSISTENT_STORAGE_KEYS } from "@/utils/persistentSt
 import { initAuthTokenMirror } from "@/utils/authTokenMirror";
 import { Onboarding } from "./components/Onboarding";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
-import { TodayScreen } from "./components/TodayScreen";
 import { AddCompoundScreen } from "./components/AddCompoundScreen";
-import { MyStackScreen } from "./components/MyStackScreen";
-import { ProgressScreen } from "./components/ProgressScreen";
-import { SettingsScreen } from "./components/SettingsScreen";
 import PhotoCompareScreen from "./components/PhotoCompareScreen";
+import { PersistentTabContainer } from "./components/PersistentTabContainer";
 import { AccountSettings } from "./components/settings/AccountSettings";
 import { NotificationsSettings } from "./components/settings/NotificationsSettings";
 import { DisplaySettings } from "./components/settings/DisplaySettings";
@@ -73,6 +70,9 @@ const AppContent = () => {
         {isOpen && weekData && (
           <WeeklyDigestModal open={isOpen} onClose={closeDigest} weekData={weekData} />
         )}
+        {/* Persistent tab screens - always mounted, toggled via CSS */}
+        <PersistentTabContainer />
+        
         <Routes>
             <Route path="/" element={<Splash />} />
             <Route path="/auth" element={<Auth />} />
@@ -82,14 +82,15 @@ const AppContent = () => {
             <Route path="/checkout/success" element={<CheckoutSuccess />} />
             <Route path="/checkout/cancel" element={<CheckoutCancel />} />
             <Route path="/partners/:partnerSlug" element={<PartnerLanding />} />
-            <Route path="/today" element={<ProtectedRoute><TodayScreen /></ProtectedRoute>} />
+            {/* Tab routes render nothing - handled by PersistentTabContainer */}
+            <Route path="/today" element={null} />
+            <Route path="/stack" element={null} />
+            <Route path="/progress" element={null} />
+            <Route path="/settings" element={null} />
             <Route path="/add-compound" element={<ProtectedRoute><AddCompoundScreen /></ProtectedRoute>} />
-            <Route path="/stack" element={<ProtectedRoute><MyStackScreen /></ProtectedRoute>} />
             <Route path="/stack/:id" element={<ProtectedRoute><CompoundDetailScreen /></ProtectedRoute>} />
             <Route path="/stack-v2/:id" element={<ProtectedRoute><CompoundDetailScreenV2 /></ProtectedRoute>} />
-            <Route path="/progress" element={<ProtectedRoute><ProgressScreen /></ProtectedRoute>} />
             <Route path="/progress/compare" element={<ProtectedRoute><PhotoCompareScreen /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
             <Route path="/settings/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
             <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
             <Route path="/settings/display" element={<ProtectedRoute><DisplaySettings /></ProtectedRoute>} />
