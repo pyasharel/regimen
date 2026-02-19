@@ -535,7 +535,7 @@ export const MyStackScreen = () => {
               return (
               <div
                 key={compound.id}
-                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 hover:shadow-[var(--shadow-elevated)] transition-all cursor-pointer animate-slide-up"
+                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 hover:shadow-[var(--shadow-elevated)] transition-all cursor-pointer"
                 onClick={() => {
                   triggerHaptic();
                   navigate(`/stack/${compound.id}`);
