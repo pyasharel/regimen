@@ -9,13 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { trackPreferenceSet } from "@/utils/analytics";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 type UnitSystem = 'imperial' | 'metric';
 
 export const DisplaySettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
 
   const [unitSystem, setUnitSystem] = useState<UnitSystem>("imperial");
   const [heightFeet, setHeightFeet] = useState("");
@@ -210,7 +209,7 @@ export const DisplaySettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <SwipeBackContainer className="min-h-screen bg-background pb-20">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -349,6 +348,6 @@ export const DisplaySettings = () => {
           </div>
         </div>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };

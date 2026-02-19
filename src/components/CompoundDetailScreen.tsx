@@ -19,7 +19,7 @@ import { shareElementAsImage } from "@/utils/visualShare";
 import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/utils/analytics";
 import { trackFeatureFirstUse } from "@/utils/featureTracking";
 import { ChartWatermark } from "@/components/ui/ChartWatermark";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 interface Compound {
   id: string;
@@ -74,7 +74,7 @@ export const CompoundDetailScreen = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const swipeBack = useSwipeBack();
+  
   const [compound, setCompound] = useState<Compound | null>(null);
   const [doses, setDoses] = useState<Dose[]>([]);
   const [loading, setLoading] = useState(true);
@@ -396,7 +396,7 @@ export const CompoundDetailScreen = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <SwipeBackContainer className="min-h-screen bg-background pb-8">
       
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -816,6 +816,6 @@ export const CompoundDetailScreen = () => {
           />
         </div>
       )}
-    </div>
+    </SwipeBackContainer>
   );
 };

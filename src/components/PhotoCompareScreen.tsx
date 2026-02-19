@@ -27,7 +27,7 @@ import { PhotoPreviewModal } from "@/components/PhotoPreviewModal";
 import { getBatchSignedUrls } from "@/utils/storageUtils";
 import { trackPhotoCompareUsed, trackShareAction } from "@/utils/analytics";
 import { trackFeatureFirstUse } from "@/utils/featureTracking";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 interface PhotoEntry {
   id: string;
@@ -38,7 +38,7 @@ interface PhotoEntry {
 
 export default function PhotoCompareScreen() {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
+  
   const [selectedPhotos, setSelectedPhotos] = useState<{ 
     before: { url: string; date: string } | null; 
     after: { url: string; date: string } | null;
@@ -582,7 +582,7 @@ export default function PhotoCompareScreen() {
 
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <SwipeBackContainer className="min-h-screen bg-background pb-24">
       
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-4 mt-5">
@@ -933,6 +933,6 @@ export default function PhotoCompareScreen() {
           )}
         </DrawerContent>
       </Drawer>
-    </div>
+    </SwipeBackContainer>
   );
 }

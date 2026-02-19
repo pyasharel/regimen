@@ -28,7 +28,7 @@ import {
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 import { format } from "date-fns";
 import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
 import { cn } from "@/lib/utils";
@@ -166,7 +166,7 @@ const COMMON_PEPTIDES = [
 export const AddCompoundScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const swipeBack = useSwipeBack();
+  
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   
@@ -1558,7 +1558,7 @@ export const AddCompoundScreen = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <SwipeBackContainer className="flex h-screen flex-col bg-background">
       
       {/* Header */}
       <header className="border-b border-border px-4 flex-shrink-0" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
@@ -2887,6 +2887,6 @@ export const AddCompoundScreen = () => {
         onResponse={handleNotificationResponse}
         medicationName={savedCompoundName}
       />
-    </div>
+    </SwipeBackContainer>
   );
 };

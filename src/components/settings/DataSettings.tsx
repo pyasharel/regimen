@@ -17,14 +17,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { trackDataExported, trackDataCleared } from "@/utils/analytics";
-import { useSwipeBack } from "@/hooks/useSwipeBack";
+import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 
 export const DataSettings = () => {
   const navigate = useNavigate();
-  const swipeBack = useSwipeBack();
   const [loading, setLoading] = useState(false);
 
   const handleExportData = async () => {
@@ -112,7 +111,7 @@ export const DataSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <SwipeBackContainer className="min-h-screen bg-background pb-20">
       
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -177,6 +176,6 @@ export const DataSettings = () => {
           </div>
         </div>
       </div>
-    </div>
+    </SwipeBackContainer>
   );
 };
