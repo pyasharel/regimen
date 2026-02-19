@@ -1,70 +1,70 @@
 
-# Performance Fixes: My Stack Animation + Date Lag
+# Compound Detail Screen — Shimmer Skeleton
 
-Two issues identified from Jay's feedback:
-
----
-
-## Issue 1: My Stack Animates on Every Tab Switch
-
-**Root cause (line 538 in MyStackScreen.tsx):**
-```
-className="... animate-slide-up"
-```
-Every active compound card has `animate-slide-up` applied unconditionally. Because the app uses `PersistentTabContainer` (tabs stay mounted), this animation still fires every time the user switches to My Stack — because CSS animations re-trigger when the tab becomes visible again (switching from `display:none` to `display:block`).
-
-**Fix:**
-- Remove `animate-slide-up` from the compound card `className` entirely.
-- The cards don't need a per-visit entrance animation — they should just be there instantly, like a native app list.
-- The existing `hasAnimatedProgress` session-guard pattern already exists for the progress bar, so we just remove the redundant card animation that wasn't gated the same way.
+Replace the two generic grey blobs on the compound detail loading state with a high-fidelity shimmer skeleton that mirrors the actual screen layout. This applies to both `/stack/:id` (CompoundDetailScreen) and `/stack-v2/:id` (CompoundDetailScreenV2).
 
 ---
 
-## Issue 2: Date Changing is Very Laggy
+## What's broken now
 
-**Root cause (line 286-307 in TodayScreen.tsx):**
-```js
-useEffect(() => {
-  // On native, wait for the 2s boot delay to complete
-  if (Capacitor.isNativePlatform() && !window.__bootNetworkReady) {
-    const checkReady = setInterval(() => { ... }, 100);
-    ...
-  }
-  loadDoses();
-  ...
-}, [selectedDate]);
+In `CompoundDetailScreenV2.tsx` lines 484–492:
+
+```
+if (loading) {
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="p-4 space-y-4">
+        <div className="h-12 bg-muted animate-pulse rounded-lg" />
+        <div className="h-48 bg-muted animate-pulse rounded-xl" />
+      </div>
+    </div>
+  );
+}
 ```
 
-The `useEffect` that loads doses runs **every time `selectedDate` changes**. This is intentional — but the problem is that `loadDoses` is a full async function that:
-1. Calls `getUserIdWithFallback(3000)` — can take up to 3 seconds
-2. Makes **two sequential database queries** (doses + as-needed compounds)
-3. Only sets `loading = false` when both finish
+Two blobs. Doesn't look like the screen at all. Visible for ~300ms on every tap into a compound.
 
-When the user taps a different date, they have to wait for this whole chain before the UI updates. There's no optimistic UI feedback, no loading indicator for the date change, and no caching between date switches.
-
-**Fixes:**
-1. **Optimistic empty state**: When `selectedDate` changes, immediately clear `doses` to `[]` and show a lightweight "loading" indicator instead of keeping stale previous-day doses visible while the new fetch runs.
-2. **Separate the boot guard from date-change loads**: The `setInterval` boot-wait check (for `__bootNetworkReady`) should only run on initial mount — not on every subsequent date change. On date changes after boot, call `loadDoses()` directly without the boot guard check.
-3. **Add a `isDateLoading` state** that's set to `true` immediately when date changes and `false` when doses finish loading, so the UI can show a subtle spinner on the date strip instead of appearing frozen.
+`CompoundDetailScreen.tsx` has the same pattern.
 
 ---
 
-## Files to Change
+## The fix
 
-**`src/components/MyStackScreen.tsx`** (line 538):
-- Remove `animate-slide-up` from active compound card `className`
+### 1. Create `src/components/skeletons/CompoundDetailSkeleton.tsx`
 
-**`src/components/TodayScreen.tsx`**:
-- Split the `useEffect([selectedDate])` into two:
-  - One effect runs only on **mount** with the `__bootNetworkReady` guard
-  - A second effect runs on **date changes** (skipping the boot guard since the app is already ready) and clears doses first for instant feedback
-- Add `isDateLoading` state to show a visual indicator when switching dates
-- Show a subtle spinner or skeleton on the dose list area while `isDateLoading` is true instead of stale cards
+A new component that mirrors the real screen layout section by section:
+
+- **Sticky header bar**: back-arrow placeholder (circle) + centered title bar + edit icon placeholder
+- **Two gradient stat cards** side by side: "Current Dose" label + value placeholder + sub-label
+- **Three small info chips** in a row: schedule, start date, cycle status
+- **Tall chart card**: label + chart area block (mimics the medication levels area chart)
+- **Dose history section**: section header + 3 dose row skeletons (icon + two text lines + checkbox)
+
+All use the existing `Skeleton` component (`src/components/ui/skeleton.tsx`) with `shimmer={true}` (default), which uses the `animate-shimmer` keyframe already in `tailwind.config.ts`. No new dependencies.
+
+### 2. Replace loading state in `CompoundDetailScreenV2.tsx`
+
+Swap lines 484–492 with `<CompoundDetailSkeleton />`.
+
+### 3. Replace loading state in `CompoundDetailScreen.tsx`
+
+Find the equivalent loading return block and swap it with `<CompoundDetailSkeleton />`.
 
 ---
 
-## Technical Notes
+## Files to change
 
-- The `getUserIdWithFallback(3000)` call on every date change may be slow. After the initial load, the userId is almost certainly cached. We can short-circuit with a module-level cache (already partially implemented via `authSessionCache.ts`) — but the biggest win is the immediate UI clear + separate boot guard, which will make it *feel* instant even if the network round trip takes 500ms.
-- No database schema changes required.
-- No new dependencies required.
+- **Create** `src/components/skeletons/CompoundDetailSkeleton.tsx`
+- **Edit** `src/components/CompoundDetailScreenV2.tsx` — replace 2-blob loader
+- **Edit** `src/components/CompoundDetailScreen.tsx` — replace equivalent loader
+
+---
+
+## Technical notes
+
+- Uses existing `Skeleton` + `animate-shimmer` — zero new dependencies
+- No changes to data fetching, auth, routing, or boot sequence
+- No effect on PersistentTabContainer or Today screen changes
+- No effect on the My Stack animation change
+- Both V1 and V2 updated for consistency
+- The skeleton includes a sticky header bar with safe-area padding to match the real screen exactly — prevents layout shift when content loads in
