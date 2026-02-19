@@ -1,113 +1,100 @@
 
 
-## Plan: Fix Next Dose Bug + HealthKit Integration Spec
+# Fix Native Polish Issues -- Remove/Refine Features That Don't Feel Right
 
-### Part 1: Fix Next Dose / Schedule Mismatch Bug
+## Summary
 
-**Root Cause**: The "Next Dose" display in `CompoundDetailScreen.tsx` and `CompoundDetailScreenV2.tsx` queries untaken doses from the database but:
-1. Does not filter out skipped doses (`skipped: true`)
-2. Trusts stale dose records that may not match the current schedule (e.g., leftover doses from before a schedule edit)
+Several recently added "native feel" features are actually making the app feel worse. This plan removes or tones down the ones that aren't working while keeping what does.
 
-**Fix Strategy**: Rather than just filtering the database query, calculate the next scheduled date dynamically from the compound's schedule configuration. This guarantees accuracy regardless of database state.
+## Changes
 
-**Files to modify:**
+### 1. Fix Header Bleeding Into Status Bar
 
-1. **`src/components/CompoundDetailScreenV2.tsx`** (lines 361-365) and **`src/components/CompoundDetailScreen.tsx`** (lines 251-255):
-   - Replace the current `nextScheduledDose` logic that queries from `doses` array
-   - Add a `getNextScheduledDate()` helper function that calculates the next valid dose date based on the compound's `schedule_type`, `schedule_days`, and `time_of_day`
-   - For "Specific day(s)" schedule type: find the next day-of-week that matches `schedule_days` from today forward
-   - For "Weekly": find the next occurrence of `schedule_days[0]`
-   - For "Daily": next dose is today (if not yet taken) or tomorrow
-   - For "Every X Days": calculate based on `start_date` and interval
-   - Fall back to the database query only for "As Needed" or edge cases
+The `border-b border-border` on MainHeader creates a visible line that collides with the iOS status bar area.
 
-2. **`src/components/ShareCard.tsx`**: Update if it uses the same pattern (it receives `nextDose` as a prop, so no change needed there)
+**Fix:** Remove the `border-b` from the header. The header was clean before without it.
 
-**The helper function logic:**
-```text
-getNextScheduledDate(compound):
-  today = current day of week (0-6)
-  
-  if schedule_type is "Specific day(s)":
-    parse schedule_days as integers [1, 3, 5]
-    find the nearest future day that matches
-    if today matches AND today's dose not taken -> return today
-    else -> return next matching day
-    
-  if schedule_type is "Weekly":
-    similar but single day
-    
-  if schedule_type is "Daily":
-    return today (or tomorrow if taken)
-    
-  if schedule_type matches "Every X Days":
-    calculate from start_date using modulo
-```
+**File:** `src/components/MainHeader.tsx` (line 16)
 
-### Part 2: HealthKit Integration Spec Document
+---
 
-Create a comprehensive spec file at **`HEALTHKIT_INTEGRATION_SPEC.md`** that serves as a complete guide for implementing HealthKit/Health Connect in Cursor or Claude Code. This document will include:
+### 2. Remove Skeleton Screens From Tab Switches
 
-**Section 1: Prerequisites and Setup**
-- Install Xcode command line tools
-- Clone the repo from GitHub
-- Run `npm install` and `npx cap sync`
-- Open in Xcode: `npx cap open ios`
+The Today and My Stack skeletons flash for a fraction of a second every time you switch tabs because the components unmount/remount and `loading` starts as `true`. This looks worse than what we had before.
 
-**Section 2: Getting Started with Cursor**
-- How to open the project in Cursor
-- How to use Claude/AI in Cursor (Cmd+K for inline edits, Cmd+L for chat)
-- Tips for prompting effectively
+**Fix:** Instead of showing a full skeleton screen during the loading state, just show nothing (or the previous content). The simplest approach: change the skeleton return to show the actual screen layout with invisible/transparent content rather than gray blocks, OR skip the skeleton entirely and just let the content pop in.
 
-**Section 3: Plugin Installation**
-- Which Capacitor HealthKit plugin to use (`@perfood/capacitor-healthkit`)
-- Android equivalent: Health Connect (`@nicoritschel/capacitor-healthconnect`)
-- NPM install commands
+The cleanest fix: remove the skeleton returns from TodayScreen and MyStackScreen. Instead, let the screens render their shell (header, nav, empty content area) immediately, and only show a subtle inline loader if data takes more than ~300ms. Progress screen already works fine as you noted.
 
-**Section 4: iOS Configuration**
-- Add HealthKit capability in Xcode (step-by-step with screenshots description)
-- Update `Info.plist` with `NSHealthShareUsageDescription` and `NSHealthUpdateUsageDescription`
-- Update `ios/App/App/App.entitlements`
+**Files:**
+- `src/components/TodayScreen.tsx` (line 1369-1371) -- remove skeleton, render the shell immediately
+- `src/components/MyStackScreen.tsx` (line 453-455) -- same treatment
 
-**Section 5: Android Configuration**
-- Add Health Connect permissions to `AndroidManifest.xml`
-- Required activity declarations
+---
 
-**Section 6: React Hook Implementation**
-- Create `src/hooks/useHealthKit.ts`
-- Functions: `requestPermission()`, `readWeight()`, `readBodyFat()`, `readSteps()`, `syncToProgress()`
-- Data types to read: weight, body fat %, steps, workouts
-- How to map HealthKit data into the existing `progress_entries` table (category: "weight", "body_fat", etc.)
-- Sync strategy: on app open, pull last 30 days of data, upsert into progress_entries
+### 3. Remove Swipe Back Overlay (Coral Glow + Chevron)
 
-**Section 7: UI Integration Points**
-- Settings screen toggle for HealthKit sync
-- Progress screen auto-populated metrics
-- Onboarding permission request screen
+The coral edge glow and arrow chevron don't feel premium. On iOS, the native back swipe has no visible indicator -- it just slides the view. Since our WebView can't do a true view-slide animation, the overlay just draws attention to the fact that it's not native.
 
-**Section 8: Testing**
-- HealthKit does NOT work in iOS Simulator - must use physical device
-- How to add test data via the Health app on device
-- Android testing with Health Connect test data
+**Fix:** Remove the SwipeBackOverlay component rendering from all screens. Keep the `useSwipeBack` hook (it still triggers `navigate(-1)` which is useful), but stop rendering the visual overlay.
 
-**Section 9: Database Schema**
-- No schema changes needed - existing `progress_entries` table already supports weight, body_fat, steps via the `metrics` JSONB column and `category` field
-- Add a `source` field convention in metrics to distinguish manual vs HealthKit entries
+**Files to update (remove `<SwipeBackOverlay ... />` JSX):**
+- `src/components/settings/DataSettings.tsx`
+- `src/components/settings/DisplaySettings.tsx`
+- `src/components/settings/NotificationsSettings.tsx`
+- `src/components/settings/HelpSettings.tsx`
+- `src/components/settings/TermsSettings.tsx`
+- `src/components/settings/PrivacySettings.tsx`
+- `src/components/settings/AccountSettings.tsx`
+- `src/components/CompoundDetailScreen.tsx`
+- `src/components/CompoundDetailScreenV2.tsx`
+- `src/components/AddCompoundScreen.tsx`
+- `src/components/PhotoCompareScreen.tsx`
 
-**Section 10: Exact Prompts for Cursor**
-- Pre-written prompts to paste into Cursor for each step of the implementation
-- Example: "Create a Capacitor plugin wrapper for HealthKit that reads weight, body fat, and step data. Use @perfood/capacitor-healthkit. Create a React hook at src/hooks/useHealthKit.ts..."
+---
 
-### Technical Details
+### 4. Remove Pull to Refresh From Today and My Stack
 
-**Next Dose fix - specific code change:**
+The pull-to-refresh gesture doesn't add clear value on these screens since data loads automatically. It also adds visual noise (the spinner indicator at top).
 
-In both `CompoundDetailScreen.tsx` and `CompoundDetailScreenV2.tsx`, replace:
+**Fix:** Remove the `usePullToRefresh` hook usage, the `PullToRefreshIndicator` component, and the touch handlers from TodayScreen and MyStackScreen. Keep the code files around in case we want them later, just stop using them.
+
+**Files:**
+- `src/components/TodayScreen.tsx` -- remove pull-to-refresh hook, indicator, and touch handlers
+- `src/components/MyStackScreen.tsx` -- same
+
+The Progress screen can keep pull-to-refresh if it works well there (you said it loads nicely).
+
+---
+
+## What We Keep
+
+- **Haptic feedback** on dose checkmarks and other interactions -- this works well
+- **Swipe back navigation** (the `useSwipeBack` hook) -- the gesture itself works, just no visual overlay
+- **Progress screen skeleton** -- you said this one looks good
+- **Pull to refresh on Progress** -- if it's working well there, keep it
+
+## Technical Details
+
+### Skeleton removal approach
+
+In TodayScreen, instead of:
 ```typescript
-const nextScheduledDose = doses
-  .filter(d => !d.taken && d.scheduled_date >= todayStr)
-  .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))[0];
+if (loading) {
+  return <TodayScreenSkeleton />;
+}
 ```
 
-With a new function that computes the next valid scheduled date from the compound's configuration, then finds the matching dose record (or constructs a virtual one for display). This ensures the "Next Dose" always reflects the actual schedule, not stale database records.
+Change to render the real screen shell immediately with the header and nav, and just show an empty content area while loading. The data will pop in within milliseconds on a warm cache, so users won't even notice.
+
+### SwipeBackOverlay removal
+
+Each settings screen currently has:
+```tsx
+const swipeBack = useSwipeBack();
+// ... in JSX:
+<SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+```
+
+We keep the `useSwipeBack()` call (so the gesture still triggers navigation) but remove the `<SwipeBackOverlay>` line and its import.
 
