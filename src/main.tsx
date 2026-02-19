@@ -11,15 +11,69 @@ startBootTrace();
 import { recreateSupabaseClient } from './integrations/supabase/client';
 import { recreateDataClient } from './integrations/supabase/dataClient';
 import { Capacitor } from '@capacitor/core';
+import { Preferences } from '@capacitor/preferences';
+
+// Build 44: Pre-hydrate localStorage from Capacitor Preferences BEFORE client creation
+// Android WebView can wipe localStorage after extended idle, causing sign-outs.
+// This restores the auth token blob so the recreated client finds it immediately.
+const SUPABASE_AUTH_TOKEN_KEY = 'sb-ywxhjnwaogsxtjwulyci-auth-token';
+const MIRROR_KEY = 'authTokenMirror';
+
+const preHydrateAuthFromMirror = async (): Promise<void> => {
+  try {
+    // Skip if localStorage already has a valid token
+    const existing = localStorage.getItem(SUPABASE_AUTH_TOKEN_KEY);
+    if (existing) {
+      try {
+        const parsed = JSON.parse(existing);
+        if (parsed?.refresh_token) {
+          console.log('[BOOT] localStorage auth token intact, skipping mirror restore');
+          return;
+        }
+      } catch { /* invalid JSON, overwrite */ }
+    }
+
+    // Read from native Preferences with a 600ms timeout
+    const result = await Promise.race([
+      Preferences.get({ key: MIRROR_KEY }),
+      new Promise<{ value: null }>((resolve) => setTimeout(() => resolve({ value: null }), 600))
+    ]);
+
+    const blob = result.value;
+    if (!blob) {
+      console.log('[BOOT] No mirror blob available');
+      return;
+    }
+
+    // Validate it has a refresh token
+    try {
+      const parsed = JSON.parse(blob);
+      if (!parsed?.refresh_token) return;
+    } catch { return; }
+
+    localStorage.setItem(SUPABASE_AUTH_TOKEN_KEY, blob);
+    console.log('[BOOT] ✅ Auth token restored from mirror to localStorage');
+    trace('AUTH_MIRROR_RESTORED');
+  } catch (e) {
+    console.warn('[BOOT] Mirror pre-hydration failed:', e);
+  }
+};
 
 // ALWAYS recreate BOTH Supabase clients on native cold start
-// iOS hard-close corrupts the client's internal state (stale connections, locked auth)
-// This runs BEFORE any auth operations to ensure fresh clients
+// But FIRST restore auth tokens from mirror if localStorage was wiped
 if (Capacitor.isNativePlatform()) {
-  console.log('[BOOT] Native platform detected - recreating ALL Supabase clients for fresh start');
-  recreateSupabaseClient();
-  recreateDataClient();
-  trace('SUPABASE_CLIENTS_RECREATED_NATIVE');
+  console.log('[BOOT] Native platform detected - pre-hydrating auth and recreating clients');
+  // Note: We use top-level await pattern via .then() since main.tsx is a module
+  // The client recreation happens synchronously after the async mirror restore
+  preHydrateAuthFromMirror().finally(() => {
+    recreateSupabaseClient();
+    recreateDataClient();
+    trace('SUPABASE_CLIENTS_RECREATED_NATIVE');
+    console.log('[BOOT] ✅ All clients recreated after mirror pre-hydration');
+  });
+} else {
+  // Web doesn't need mirror restore
+  trace('SUPABASE_CLIENTS_WEB_SKIP');
 }
 
 // ========================================
@@ -244,8 +298,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { initGA } from './utils/analytics';
 import { captureAttribution } from './utils/attribution';
 import { setInstallDate } from './utils/featureTracking';
-// Capacitor already imported at top of file for client recreation
-import { Preferences } from '@capacitor/preferences';
+// Capacitor and Preferences already imported at top of file for client recreation
 
 window.updateBootStage?.('imports-done');
 
