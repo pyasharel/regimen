@@ -1743,7 +1743,7 @@ export const TodayScreen = () => {
                 const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
                 if (timeMatch) {
                   const hours = parseInt(timeMatch[1]);
-                  return hours >= 6 && hours < 12;
+                  return hours >= 0 && hours < 12;
                 }
                 return false;
               });
@@ -1761,11 +1761,11 @@ export const TodayScreen = () => {
 
               const eveningDoses = scheduledDoses.filter(d => {
                 const time = d.scheduled_time;
-                if (time === 'Evening') return true;
+                if (time === 'Evening' || time === 'Bedtime') return true;
                 const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
                 if (timeMatch) {
                   const hours = parseInt(timeMatch[1]);
-                  return hours >= 18 || hours < 6;
+                  return hours >= 18;
                 }
                 return false;
               });
