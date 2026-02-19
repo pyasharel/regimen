@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { CompoundDetailSkeleton } from "@/components/skeletons/CompoundDetailSkeleton";
 import { getNextScheduledDate } from "@/utils/nextDoseCalculator";
 import { toLocalDateString } from "@/utils/dateUtils";
 import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash, FlaskConical, ChevronDown, ChevronUp, FileText, RefreshCw } from "lucide-react";
@@ -482,14 +483,7 @@ export const CompoundDetailScreenV2 = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="p-4 space-y-4">
-          <div className="h-12 bg-muted animate-pulse rounded-lg" />
-          <div className="h-48 bg-muted animate-pulse rounded-xl" />
-        </div>
-      </div>
-    );
+    return <CompoundDetailSkeleton />;
   }
 
   if (!compound) {
