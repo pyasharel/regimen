@@ -4,6 +4,7 @@ import { persistentStorage } from '@/utils/persistentStorage';
 import { requestRating } from '@/utils/ratingHelper';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserIdWithFallback } from '@/utils/safeAuth';
+import { TestFlightDetector } from '@/plugins/TestFlightDetectorPlugin';
 import { appVersion } from '../../capacitor.config';
 
 // Eligibility thresholds
@@ -35,6 +36,19 @@ export function useAutoRatingPrompt() {
     if (promptedThisSession.current) {
       console.log(tag, 'Skip: already prompted this session');
       return;
+    }
+
+    // Guard: TestFlight builds (dialog shows but Submit is a no-op)
+    if (Capacitor.getPlatform() === 'ios') {
+      try {
+        const { isTestFlight } = await TestFlightDetector.isTestFlight();
+        if (isTestFlight) {
+          console.log(tag, 'Skip: TestFlight build');
+          return;
+        }
+      } catch (e) {
+        console.log(tag, 'TestFlight detection failed, continuing:', e);
+      }
     }
 
     // Guard: compound count

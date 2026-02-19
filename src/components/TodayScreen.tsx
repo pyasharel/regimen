@@ -1362,7 +1362,7 @@ export const TodayScreen = () => {
   // Skip skeleton — render shell immediately to avoid flash on tab switch
 
   return (
-    <div className="fixed inset-0 bg-background flex flex-col app-top-padding" style={{ paddingTop: 'var(--app-banner-height, 0px)' }}>
+    <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
       {/* Subscription Verification Overlay */}
       {verifyingSubscription && (
         <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center">
