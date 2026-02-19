@@ -528,7 +528,7 @@ export const MedicationLevelsCard = ({
                           </linearGradient>
                           <filter id="currentPointGlowCard" x="-100%" y="-100%" width="300%" height="300%">
                             <feGaussianBlur stdDeviation="4" result="coloredBlur">
-                              <animate attributeName="stdDeviation" values="3;6;3" dur="2s" repeatCount="indefinite" />
+                              <animate attributeName="stdDeviation" values="3.5;5;3.5" dur="4s" repeatCount="indefinite" />
                             </feGaussianBlur>
                             <feMerge>
                               <feMergeNode in="coloredBlur"/>
@@ -554,6 +554,7 @@ export const MedicationLevelsCard = ({
                           tickMargin={4}
                         />
                         <Tooltip
+                          defaultIndex={undefined}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               const data = payload[0].payload;
@@ -617,8 +618,8 @@ export const MedicationLevelsCard = ({
                           >
                             <animate
                               attributeName="opacity"
-                              values="1;0.7;1"
-                              dur="2s"
+                              values="1;0.85;1"
+                              dur="4s"
                               repeatCount="indefinite"
                             />
                           </ReferenceDot>
