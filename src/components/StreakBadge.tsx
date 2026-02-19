@@ -9,6 +9,18 @@ export const StreakBadge = () => {
   const prevStreak = useRef<number>(0);
   const { designVariant } = useTheme();
   const isRefinedMode = designVariant === 'refined';
+  
+  // One-time scale-in animation on first appearance
+  const hasScaledIn = useRef(false);
+  const [showScaleIn, setShowScaleIn] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && stats && (stats.current_streak || 0) >= 1 && !hasScaledIn.current) {
+      hasScaledIn.current = true;
+      setShowScaleIn(true);
+      setTimeout(() => setShowScaleIn(false), 400);
+    }
+  }, [isLoading, stats]);
 
   useEffect(() => {
     const currentStreak = stats?.current_streak || 0;
@@ -30,7 +42,9 @@ export const StreakBadge = () => {
   if (currentStreak < 1) return null;
 
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border ${
+    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border transition-transform duration-300 ${
+      showScaleIn ? 'animate-scale-in' : ''
+    } ${
       isRefinedMode 
         ? 'bg-[hsl(var(--streak-fire)/0.15)] border-[hsl(var(--streak-fire)/0.3)]' 
         : 'bg-gradient-to-br from-orange-500/20 to-red-500/20 border-orange-500/30'
