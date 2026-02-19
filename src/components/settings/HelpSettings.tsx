@@ -7,7 +7,6 @@ import { getAuthTraceText, getLastAuthSummary, clearAuthTrace } from "@/utils/au
 import { isDeveloperUser } from "@/utils/developerAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
-import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 
 // Build-time constant defined in vite.config.ts
 declare const __WEB_BUNDLE_STAMP__: string;
@@ -74,7 +73,7 @@ export const HelpSettings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+      
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
           <button

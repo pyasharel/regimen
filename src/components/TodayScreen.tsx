@@ -1,6 +1,4 @@
 import { TodayScreenSkeleton } from "@/components/skeletons/TodayScreenSkeleton";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Calendar as CalendarIcon, Sun, Moon, CheckCircle, MoreVertical, Pencil, ClipboardList, CircleSlash, Lock, Trash2 } from "lucide-react";
 import { SunriseIcon } from "@/components/ui/icons/SunriseIcon";
@@ -93,11 +91,6 @@ export const TodayScreen = () => {
   const { designVariant } = useTheme();
   const isRefinedMode = designVariant === 'refined';
   
-  // Pull-to-refresh
-  const pullToRefresh = usePullToRefresh(async () => {
-    await Promise.all([loadDoses(), checkCompounds(), loadLevelsData()]);
-    queryClient.invalidateQueries({ queryKey: ['user-stats'] });
-  });
 
   // Track engagement for first dose notification
   useEngagementTracking();
@@ -1366,9 +1359,7 @@ export const TodayScreen = () => {
   // IMPORTANT: Do not block the entire Today screen on subscription refresh.
   // Subscription checks can hang on mobile (connection interrupted). The UI should still render
   // and allow retries for data loads.
-  if (loading) {
-    return <TodayScreenSkeleton />;
-  }
+  // Skip skeleton — render shell immediately to avoid flash on tab switch
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding" style={{ paddingTop: 'var(--app-banner-height, 0px)' }}>
@@ -1457,8 +1448,8 @@ export const TodayScreen = () => {
       `}</style>
       
       {/* Scrollable Content - Header inside scroll area */}
-      <div className="flex-1 min-h-0 scroll-container pb-40" {...pullToRefresh.handlers}>
-        <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} />
+      <div className="flex-1 min-h-0 scroll-container pb-40">
+        {/* Header */}
         {/* Header */}
         <MainHeader title="Today" />
 

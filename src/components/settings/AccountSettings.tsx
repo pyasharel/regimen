@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { getSignedUrl } from "@/utils/storageUtils";
 import { trackAccountDeleted } from "@/utils/analytics";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
-import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 
 export const AccountSettings = () => {
   const navigate = useNavigate();
@@ -281,7 +280,7 @@ export const AccountSettings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+      
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
           <button

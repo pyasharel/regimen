@@ -20,7 +20,6 @@ import { trackLevelsViewed, trackShareAction, trackCompoundViewed } from "@/util
 import { trackFeatureFirstUse } from "@/utils/featureTracking";
 import { ChartWatermark } from "@/components/ui/ChartWatermark";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
-import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 
 interface Compound {
   id: string;
@@ -398,7 +397,7 @@ export const CompoundDetailScreen = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+      
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>

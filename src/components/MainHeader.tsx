@@ -13,7 +13,7 @@ export const MainHeader = ({ title, rightSlot, showDesignToggle = false }: MainH
   const isRefinedMode = designVariant === 'refined';
 
   return (
-    <header className="border-b border-border bg-background flex-shrink-0">
+    <header className="bg-background flex-shrink-0">
       {/* Header content - CSS Grid for perfect centering */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full h-14 px-4 gap-2">
         {/* Left: Page title + Design Toggle */}
