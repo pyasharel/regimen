@@ -18,7 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { trackDataExported, trackDataCleared } from "@/utils/analytics";
 import { useSwipeBack } from "@/hooks/useSwipeBack";
-import { SwipeBackOverlay } from "@/components/ui/SwipeBackOverlay";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
@@ -114,7 +113,7 @@ export const DataSettings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <SwipeBackOverlay active={swipeBack.active} translateX={swipeBack.translateX} />
+      
       <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur-sm safe-top">
         <div className="flex items-center gap-3 px-4 py-4">
           <button

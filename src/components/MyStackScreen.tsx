@@ -1,6 +1,4 @@
 import { MyStackScreenSkeleton } from "@/components/skeletons/MyStackScreenSkeleton";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, ChevronDown, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
@@ -55,10 +53,6 @@ export const MyStackScreen = () => {
   const [compounds, setCompounds] = useState<Compound[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Pull-to-refresh
-  const pullToRefresh = usePullToRefresh(async () => {
-    await Promise.all([loadCompounds(), loadWeeklyStats()]);
-  });
   const [weeklyDoses, setWeeklyDoses] = useState(0);
   const [adherenceRate, setAdherenceRate] = useState(0);
   const shareCardRef = useRef<HTMLDivElement>(null);
@@ -450,16 +444,13 @@ export const MyStackScreen = () => {
     }
   }, [inactiveCompounds.length]);
 
-  if (loading) {
-    return <MyStackScreenSkeleton />;
-  }
+  // Skip skeleton — render shell immediately to avoid flash on tab switch
  
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
       {/* Scrollable Content - Header inside scroll area */}
-      <div className="flex-1 min-h-0 scroll-container pb-24" {...pullToRefresh.handlers}>
-        <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} />
-        <MainHeader 
+      <div className="flex-1 min-h-0 scroll-container pb-24">
+        <MainHeader
           title="My Stack" 
           rightSlot={
             <button
