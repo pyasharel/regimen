@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { getNextScheduledDate } from "@/utils/nextDoseCalculator";
 import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash, FlaskConical, ChevronDown, ChevronUp, FileText, RefreshCw } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -360,8 +361,29 @@ export const CompoundDetailScreenV2 = () => {
   
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
-  const nextScheduledDose = doses
-    .filter(d => !d.taken && d.scheduled_date >= todayStr)
+  
+  // Calculate next dose dynamically from schedule config (not stale DB records)
+  const computedNextDose = compound ? getNextScheduledDate(
+    {
+      schedule_type: compound.schedule_type,
+      schedule_days: compound.schedule_days,
+      time_of_day: compound.time_of_day,
+      start_date: compound.start_date,
+      interval_days: null,
+    },
+    doses.filter(d => d.scheduled_date === todayStr)
+  ) : null;
+  
+  // Build a virtual dose object for display compatibility
+  const nextScheduledDose = computedNextDose ? {
+    scheduled_date: computedNextDose.date,
+    scheduled_time: computedNextDose.time,
+    taken: false,
+    skipped: false,
+    dose_amount: compound?.intended_dose || 0,
+    dose_unit: compound?.dose_unit || '',
+  } : doses
+    .filter(d => !d.taken && !d.skipped && d.scheduled_date >= todayStr)
     .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))[0];
 
   const formatTime = (time: string) => {
