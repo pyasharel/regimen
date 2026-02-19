@@ -1,104 +1,115 @@
 
-# Fix: 3 Bugs from Jay's Feedback
+# Three Fixes: Haptics, Android Gate, and Remaining Timezone Bugs
 
-## Bug Summary
+## What Jay actually said
 
-Jay identified 3 separate issues:
+Looking at his messages:
+- "Def prefer no haptics on nav"
+- "Maybe an option to disable in settings"
 
-1. **TB-500 duplicate** — appears twice on Today screen (8:00 AM untaken + 9:00 AM taken)
-2. **Testosterone on wrong day** — appears on Feb 19 (Thursday) when it should be Feb 20 (Friday). Jay is in Australia (UTC+11), so this is a timezone bug.
-3. **Swipe navigation not visual** — gesture works but the screen just swaps instantly instead of sliding with the finger
-
----
-
-## Bug 1: TB-500 Duplicate
-
-**Root cause:** In `doseRegeneration.ts`, when regenerating doses for today, the system checks `existingTodayTimes` (a Set of `scheduled_time` strings) to avoid inserting duplicates. But if the compound's time was previously changed — for example from 8:00 AM to 9:00 AM — the old 8:00 AM slot may still exist in the database (taken or not) while a new regeneration adds a fresh 8:00 AM dose, creating two entries.
-
-**Fix:** Add a deduplication guard in `TodayScreen.tsx` when loading doses. For the same compound, if there are multiple untaken doses on the same date, only display one (prefer the one matching the compound's current schedule). Also tighten the regeneration logic in `doseRegeneration.ts` to check by `compound_id + date` (not just time) before inserting today's doses.
-
-**File:** `src/utils/doseRegeneration.ts` + `src/components/TodayScreen.tsx`
+Re-reading this: he's saying he doesn't want haptics on nav gestures, and is suggesting a settings toggle as one option to handle that. My read is the same as yours — the right fix is to just remove the haptic entirely. Native iOS back gestures have no haptic. The mid-swipe vibration feels unnatural and intrusive. A settings toggle to disable it would add clutter for something that just shouldn't be there. Removing it is the cleaner call.
 
 ---
 
-## Bug 2: Testosterone Enanthate on Wrong Day (Timezone)
+## Change 1: Remove the navigation haptic
 
-**Root cause:** In `doseRegeneration.ts` line 332:
-```js
-scheduled_date: date.toISOString().split('T')[0]
-```
-`toISOString()` converts to UTC. Jay is in Australia (AEST = UTC+11), so a local Thursday midnight is Wednesday 1 PM UTC — which produces the previous day's date string.
+In `src/hooks/useSwipeBack.ts`, lines 76-81:
 
-This is the same pattern already fixed in `TodayScreen.tsx` which uses:
-```js
-const year = selectedDate.getFullYear();
-const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-const day = String(selectedDate.getDate()).padStart(2, '0');
+```ts
+if (translateX >= TRIGGER_THRESHOLD && !hapticFiredRef.current) {
+  hapticFiredRef.current = true;
+  if (Capacitor.isNativePlatform()) {
+    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+  }
+}
 ```
 
-**Fix:** Replace `date.toISOString().split('T')[0]` with local date formatting in `generateDoses()` in `doseRegeneration.ts`.
-
-**File:** `src/utils/doseRegeneration.ts`
+This entire block gets deleted. Also remove `hapticFiredRef` and the `Haptics`/`ImpactStyle` imports since nothing else uses them.
 
 ---
 
-## Bug 3: Swipe Navigation — No Visual Slide
+## Change 2: Lock swipe-back to iOS only
 
-**Root cause:** `useSwipeBack` tracks `translateX` state and the `SwipeBackOverlay` shows a subtle glow/chevron effect, but the actual page content never moves. React Router's `navigate(-1)` fires immediately, causing an instant screen swap with no slide animation.
+Currently the gesture is gated to `Capacitor.isNativePlatform()`, which includes Android. That's a problem because Android 10+ has its own system-level left-edge swipe for navigation, and it conflicts directly with this touch listener. They fight each other and the result is erratic.
 
-Jay's expectation (correct for iOS): the view physically follows the finger as you drag, then when you release past the threshold, it slides off to the right before the new screen appears.
+On iOS there's no conflict because the app runs inside a Capacitor WebView that doesn't participate in `UINavigationController`'s native gesture stack.
 
-**Fix:** Update `useSwipeBack` to expose `translateX` and `active` state, then apply a `transform: translateX()` CSS property to the page's outer wrapper div in screens that use swipe-back. On release:
-- If threshold met: animate `translateX` to `100vw` (slide off screen), then call `navigate(-1)` after the animation completes (~200ms)
-- If threshold not met: animate `translateX` back to `0` (snap back)
+Change:
+```ts
+// Before
+const isNative = Capacitor.isNativePlatform();
 
-This gives the full native-feeling physical slide behavior Jay described.
+// After
+const isIOS = Capacitor.getPlatform() === 'ios';
+```
 
-**Files:** `src/hooks/useSwipeBack.ts`, and the screens that use it: `CompoundDetailScreen.tsx`, `AddCompoundScreen.tsx`, `PhotoCompareScreen.tsx`, and all settings sub-screens (`AccountSettings.tsx`, `DataSettings.tsx`, `DisplaySettings.tsx`, `HelpSettings.tsx`, `NotificationsSettings.tsx`, `PrivacySettings.tsx`, `TermsSettings.tsx`)
-
-The simplest way to do this without touching every screen: create a `<SwipeBackContainer>` wrapper component that handles the transform and transition internally, then wrap the root `<div>` in each screen with it.
+And update both references (`if (!isNative) return;` and the `[isNative, ...]` dependency array) to use `isIOS`.
 
 ---
 
-## Technical Plan
+## Change 3: Fix remaining UTC timezone bugs (targeted, not blanket)
 
-### Files to Change
+After auditing all 12 files with `toISOString().split('T')[0]`, here's the honest triage:
+
+**Actually fix these** — directly user-facing date matching:
+
+| File | Line(s) | Impact |
+|------|---------|--------|
+| `engagementNotifications.ts` | 378, 440 | Queries doses by "today's date" — wrong date means missed or double notifications |
+| `CompoundDetailScreen.tsx` | 252 | "Next injection" date display shown to user |
+| `CompoundDetailScreenV2.tsx` | 362 | Same as above |
+| `MyStackScreen.tsx` | 148, 190 | Future dose deletion and recent dose query — wrong date could delete wrong doses |
+| `AddCompoundScreen.tsx` | 1011 | Same future dose deletion logic |
+| `doseCleanup.ts` | 64, 113 | Cleanup filter uses "today" — could miss or wrongly include doses |
+| `AccountCreationScreen.tsx` | 312, 390 | Start date stored at onboarding (creates all future doses from this) |
+
+**Leave alone** — these are fine:
+
+| File | Reason |
+|------|--------|
+| `DataSettings.tsx` | Used for export filename only — cosmetic |
+| `notificationScheduler.ts` | Uses a full `Date` object derived from local time, the split is secondary |
+| `useWeeklyDigest.tsx` | Week-range queries, 1-day drift at boundary is negligible |
+| `TodayScreen.tsx` | Already fixed in previous pass |
+| `doseRegeneration.ts` | Already fixed in previous pass |
+
+**The fix for all of them:** Add a `toLocalDateString` helper to the existing `src/utils/dateUtils.ts`:
+
+```ts
+export function toLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+```
+
+Then import and use it in each affected file instead of `.toISOString().split('T')[0]`.
+
+---
+
+## Files changing
 
 | File | Change |
 |------|--------|
-| `src/utils/doseRegeneration.ts` | Fix UTC date bug; tighten today-dose dedup |
-| `src/components/TodayScreen.tsx` | Add client-side dedup for doses by compound_id |
-| `src/hooks/useSwipeBack.ts` | Add animate-then-navigate logic; expose isAnimatingOut |
-| `src/components/ui/SwipeBackContainer.tsx` | New wrapper component that applies translateX transform |
-| `src/components/CompoundDetailScreen.tsx` | Wrap with SwipeBackContainer |
-| `src/components/AddCompoundScreen.tsx` | Wrap with SwipeBackContainer |
-| `src/components/PhotoCompareScreen.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/AccountSettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/DataSettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/DisplaySettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/HelpSettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/NotificationsSettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/PrivacySettings.tsx` | Wrap with SwipeBackContainer |
-| `src/components/settings/TermsSettings.tsx` | Wrap with SwipeBackContainer |
+| `src/hooks/useSwipeBack.ts` | Remove haptic block + refs + unused imports; change `isNative` to `isIOS` |
+| `src/utils/dateUtils.ts` | Add `toLocalDateString()` helper |
+| `src/utils/engagementNotifications.ts` | Use `toLocalDateString()` at lines 378, 440 |
+| `src/components/CompoundDetailScreen.tsx` | Use `toLocalDateString()` at line 252 |
+| `src/components/CompoundDetailScreenV2.tsx` | Use `toLocalDateString()` at line 362 |
+| `src/components/MyStackScreen.tsx` | Use `toLocalDateString()` at lines 148, 190 |
+| `src/components/AddCompoundScreen.tsx` | Use `toLocalDateString()` at line 1011 |
+| `src/utils/doseCleanup.ts` | Use `toLocalDateString()` at lines 64, 113 |
+| `src/components/onboarding/screens/AccountCreationScreen.tsx` | Use `toLocalDateString()` at lines 312, 390 |
 
-### SwipeBackContainer behavior
+---
 
-```text
-touchstart (left edge)
-  → track startX
+## Draft reply to Jay
 
-touchmove
-  → translateX follows finger (no transition)
-  → page physically slides right
+Here's a casual note you can send:
 
-touchend
-  if translateX >= 80px:
-    → CSS transition: translateX → 100vw (200ms ease-out)
-    → wait 200ms
-    → navigate(-1)
-  else:
-    → CSS transition: translateX → 0 (150ms ease-out)
-    → snap back
-```
-
-The `ImpactStyle.Medium` haptic fires at the threshold moment (when the swipe commits), which is more natural than firing on release.
+> yeah totally agree, removed the haptic entirely. native iOS back gesture doesn't have one so it was always gonna feel a bit off. no toggle needed, just cleaner without it
+>
+> also went through and fixed the timezone thing in a bunch of other spots in the app while I was at it. same root cause showing up in a few different places, all patched now
+>
+> will push it all out on the next TestFlight build, keep an eye out!
