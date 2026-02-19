@@ -1,6 +1,4 @@
 import { ProgressScreenSkeleton } from "@/components/skeletons/ProgressScreenSkeleton";
-import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -81,10 +79,6 @@ export const ProgressScreen = () => {
   const [photoDate, setPhotoDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   
-  // Pull-to-refresh
-  const pullToRefresh = usePullToRefresh(async () => {
-    await refetchEntries();
-  });
   const { isSubscribed } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; id: string } | null>(null);
@@ -557,8 +551,7 @@ export const ProgressScreen = () => {
   
   return (
     <div className="fixed inset-0 bg-background flex flex-col app-top-padding">
-      <div className="flex-1 min-h-0 scroll-container pb-24" {...pullToRefresh.handlers}>
-        <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} />
+      <div className="flex-1 min-h-0 scroll-container pb-24">
         <MainHeader title="Progress" />
 
         <div className="p-4 space-y-6 max-w-2xl mx-auto w-full">
