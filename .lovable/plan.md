@@ -1,46 +1,67 @@
 
-# Fix Tab Switch Animations + Remove Progress Pull-to-Refresh
 
-## Problems
+# Fix Deployment Sync + Restore Premium Animations + Black Screen Fix
 
-1. **Today header still bleeding** -- The code fix is already in place (inline style removed). You need to sync the latest build to your phone. Run: `npm run build && npx cap sync ios && npx cap run ios`
+## Issue 1: Deployment Not Syncing
 
-2. **My Stack "shifts up" on every tab switch** -- Each compound card has an `animate-slide-up` CSS class that plays a 0.4s slide-up animation. With persistent tabs, switching from Today to My Stack changes the wrapper from `display: none` to `display: flex`, which re-triggers CSS animations. This makes cards visually "jump up" every time you switch to My Stack.
+**Root cause:** The sync command is missing `git pull`. Lovable edits live in the git repo, but the local machine still has old code. All commands going forward should start with `git pull`.
 
-3. **Progress graph rebuilds on every tab switch** -- Recharts charts animate on mount by default. The `display: none` to `display: flex` transition causes the chart to re-measure its container and replay its entrance animation. The chart needs `isAnimationActive={false}` to prevent this.
-
-4. **Pull-to-refresh on Progress** -- Currently functional but unnecessary since data loads automatically. Removing it simplifies the UI.
-
-## Changes
-
-### 1. `src/components/MyStackScreen.tsx`
-- Remove `animate-slide-up` from compound card divs (line 537)
-- This prevents the slide animation from replaying on every tab switch
-- Cards will appear instantly, which is the correct behavior for persistent tabs
-
-### 2. `src/components/progress/MetricChart.tsx` (or wherever Recharts is used in Progress)
-- Add `isAnimationActive={false}` to chart components to prevent animation replay on tab switch
-- Charts will render instantly with data already in place
-
-### 3. `src/components/ProgressScreen.tsx`
-- Remove `usePullToRefresh` hook and `PullToRefreshIndicator` component
-- Remove `{...pullToRefresh.handlers}` from the scroll container div
-- Data loads on mount and stays cached via persistent tabs -- no manual refresh needed
-
-## Technical Detail
-
-The root cause of issues 2 and 3 is how CSS and the browser handle `display: none` to `display: flex` transitions. When an element goes from hidden to visible:
-- CSS animations replay from their start state
-- Layout-dependent components (charts) re-measure and re-animate
-
-The fix is straightforward: disable entrance animations on components that are meant to stay mounted persistently.
-
-## Sync Command
-
-After these changes, sync to your phone:
-
+**Correct sync command:**
 ```text
-npm run build && npx cap sync ios && npx cap run ios
+git pull && npm run build && npx cap sync ios && npx cap run ios
 ```
 
-The Today header fix from the previous round will also be included in this sync.
+## Issue 2: Restore One-Time Animations (Premium Feel)
+
+The slide-up on My Stack and chart draw-in on Progress both feel premium. The problem is only that they replay on every tab switch due to persistent tabs toggling `display: none` to `display: flex`.
+
+**Fix approach:** Use a React ref to track whether the component has already rendered once. On first render, apply the animation class. On subsequent renders (tab switches), skip it.
+
+### MyStackScreen.tsx
+- Add a `hasAnimated` ref that starts `false` and flips to `true` after first render
+- Conditionally apply `animate-slide-up` only when `!hasAnimated.current`
+- Set `hasAnimated.current = true` in a `useEffect` on mount
+
+### MetricChart.tsx  
+- Revert `isAnimationActive={false}` back to `isAnimationActive={true}` (or remove the prop entirely)
+- Add a `hasAnimated` ref, same pattern
+- Pass `isAnimationActive={!hasAnimated.current}` so charts animate on first view only
+
+### Additional Premium Animations (New)
+- **Today screen dose cards**: Add a subtle staggered fade-in on first load (each card fades in 50ms after the previous one). Use the same one-time ref pattern.
+- **Streak badge**: Add a gentle scale-in animation when it first appears
+
+## Issue 3: Black Screen After Fresh Install Sign-In
+
+**Root cause:** After signing in on a fresh install, the Auth page navigates to `/today`, which mounts ProtectedRoute. The fast-path cache check fails because the Supabase auth state change writes the session token to localStorage asynchronously -- there's a brief window where the navigate has fired but the cache key hasn't been written yet. The slow path then starts, but if there's any contention (e.g., the auth client is still processing the sign-in), it can hang briefly, producing the black screen.
+
+**Fix:** In Auth.tsx, after the `SIGNED_IN` event fires, explicitly write the session to the cache key BEFORE navigating. This seeds the fast-path so ProtectedRoute's cache check will hit immediately.
+
+### Auth.tsx changes
+- On `SIGNED_IN` event, before calling `navigate("/today")`:
+  - Write the session data to `localStorage` under the standard Supabase cache key (`sb-{projectId}-auth-token`)
+  - This ensures ProtectedRoute's fast-path always finds the session on fresh login
+
+## Issue 4: Bump Build Number
+
+- Update `capacitor.config.ts`: change `appBuild` from `'41'` to `'43'`
+- The user manually used 42 for a TestFlight upload, so the next available is 43
+
+## Summary of Changes
+
+| File | Change |
+|------|--------|
+| `src/components/MyStackScreen.tsx` | Restore `animate-slide-up` with one-time-only ref guard |
+| `src/components/progress/MetricChart.tsx` | Restore chart animation with one-time-only ref guard |
+| `src/components/TodayScreen.tsx` | Add staggered fade-in on dose cards (one-time only) |
+| `src/pages/Auth.tsx` | Seed session cache before navigating on SIGNED_IN |
+| `capacitor.config.ts` | Bump appBuild to '43' |
+
+## Sync Command (After Implementation)
+
+```text
+git pull && npm run build && npx cap sync ios && npx cap run ios
+```
+
+Note: this time the command includes `git pull` so the latest code actually reaches the phone.
+
