@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { getNextScheduledDate } from "@/utils/nextDoseCalculator";
+import { toLocalDateString } from "@/utils/dateUtils";
 import { ArrowLeft, Calendar, Clock, TrendingDown, Pencil, Syringe, BarChart3, Share2, CircleSlash, FlaskConical, ChevronDown, ChevronUp, FileText, RefreshCw } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -359,7 +360,7 @@ export const CompoundDetailScreenV2 = () => {
   const totalDosesTaken = uniqueTakenDoses.length;
   
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toLocalDateString(today);
   
   // Calculate next dose dynamically from schedule config (not stale DB records)
   const computedNextDose = compound ? getNextScheduledDate(

@@ -8,6 +8,7 @@ import { trackSignup, trackFirstCompoundAdded } from '@/utils/analytics';
 import { getStoredAttribution, clearAttribution } from '@/utils/attribution';
 import { persistentStorage } from '@/utils/persistentStorage';
 import { withQueryTimeout } from '@/utils/withTimeout';
+import { toLocalDateString } from '@/utils/dateUtils';
 
 // Timeout for welcome email (4 seconds)
 const WELCOME_EMAIL_TIMEOUT_MS = 4000;
@@ -309,7 +310,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
             schedule_type: scheduleType,
             schedule_days: scheduleDays,
             time_of_day: [timeOfDay],
-            start_date: new Date().toISOString().split('T')[0],
+            start_date: toLocalDateString(),
             interval_days: intervalValue, // Store the actual interval for "Every X days"
           })
           .select()
@@ -387,7 +388,7 @@ export function AccountCreationScreen({ data, onSuccess }: AccountCreationScreen
           ? data.currentWeight * 2.20462 
           : data.currentWeight;
         
-        const today = new Date().toISOString().split('T')[0];
+        const today = toLocalDateString();
         
         const { error: progressError } = await supabase
           .from('progress_entries')

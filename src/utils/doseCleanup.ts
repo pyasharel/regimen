@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { toLocalDateString } from '@/utils/dateUtils';
 
 /**
  * Clean up duplicate doses for a specific user
@@ -61,7 +62,7 @@ export const cleanupStaleDoses = async (userId: string): Promise<number> => {
       }
       
       // Get all future untaken doses for this compound
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDateString();
       const { data: doses, error: dosesError } = await supabase
         .from('doses')
         .select('id, scheduled_date')
@@ -110,7 +111,7 @@ export const cleanupStaleDoses = async (userId: string): Promise<number> => {
  */
 export const cleanupOrphanDosesFromInactiveCompounds = async (userId: string): Promise<number> => {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toLocalDateString();
     
     // Get all inactive compound IDs for this user
     const { data: inactiveCompounds, error: compoundsError } = await supabase
