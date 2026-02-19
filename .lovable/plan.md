@@ -1,115 +1,70 @@
 
-# Three Fixes: Haptics, Android Gate, and Remaining Timezone Bugs
+# Performance Fixes: My Stack Animation + Date Lag
 
-## What Jay actually said
-
-Looking at his messages:
-- "Def prefer no haptics on nav"
-- "Maybe an option to disable in settings"
-
-Re-reading this: he's saying he doesn't want haptics on nav gestures, and is suggesting a settings toggle as one option to handle that. My read is the same as yours — the right fix is to just remove the haptic entirely. Native iOS back gestures have no haptic. The mid-swipe vibration feels unnatural and intrusive. A settings toggle to disable it would add clutter for something that just shouldn't be there. Removing it is the cleaner call.
+Two issues identified from Jay's feedback:
 
 ---
 
-## Change 1: Remove the navigation haptic
+## Issue 1: My Stack Animates on Every Tab Switch
 
-In `src/hooks/useSwipeBack.ts`, lines 76-81:
+**Root cause (line 538 in MyStackScreen.tsx):**
+```
+className="... animate-slide-up"
+```
+Every active compound card has `animate-slide-up` applied unconditionally. Because the app uses `PersistentTabContainer` (tabs stay mounted), this animation still fires every time the user switches to My Stack — because CSS animations re-trigger when the tab becomes visible again (switching from `display:none` to `display:block`).
 
-```ts
-if (translateX >= TRIGGER_THRESHOLD && !hapticFiredRef.current) {
-  hapticFiredRef.current = true;
-  if (Capacitor.isNativePlatform()) {
-    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+**Fix:**
+- Remove `animate-slide-up` from the compound card `className` entirely.
+- The cards don't need a per-visit entrance animation — they should just be there instantly, like a native app list.
+- The existing `hasAnimatedProgress` session-guard pattern already exists for the progress bar, so we just remove the redundant card animation that wasn't gated the same way.
+
+---
+
+## Issue 2: Date Changing is Very Laggy
+
+**Root cause (line 286-307 in TodayScreen.tsx):**
+```js
+useEffect(() => {
+  // On native, wait for the 2s boot delay to complete
+  if (Capacitor.isNativePlatform() && !window.__bootNetworkReady) {
+    const checkReady = setInterval(() => { ... }, 100);
+    ...
   }
-}
+  loadDoses();
+  ...
+}, [selectedDate]);
 ```
 
-This entire block gets deleted. Also remove `hapticFiredRef` and the `Haptics`/`ImpactStyle` imports since nothing else uses them.
+The `useEffect` that loads doses runs **every time `selectedDate` changes**. This is intentional — but the problem is that `loadDoses` is a full async function that:
+1. Calls `getUserIdWithFallback(3000)` — can take up to 3 seconds
+2. Makes **two sequential database queries** (doses + as-needed compounds)
+3. Only sets `loading = false` when both finish
+
+When the user taps a different date, they have to wait for this whole chain before the UI updates. There's no optimistic UI feedback, no loading indicator for the date change, and no caching between date switches.
+
+**Fixes:**
+1. **Optimistic empty state**: When `selectedDate` changes, immediately clear `doses` to `[]` and show a lightweight "loading" indicator instead of keeping stale previous-day doses visible while the new fetch runs.
+2. **Separate the boot guard from date-change loads**: The `setInterval` boot-wait check (for `__bootNetworkReady`) should only run on initial mount — not on every subsequent date change. On date changes after boot, call `loadDoses()` directly without the boot guard check.
+3. **Add a `isDateLoading` state** that's set to `true` immediately when date changes and `false` when doses finish loading, so the UI can show a subtle spinner on the date strip instead of appearing frozen.
 
 ---
 
-## Change 2: Lock swipe-back to iOS only
+## Files to Change
 
-Currently the gesture is gated to `Capacitor.isNativePlatform()`, which includes Android. That's a problem because Android 10+ has its own system-level left-edge swipe for navigation, and it conflicts directly with this touch listener. They fight each other and the result is erratic.
+**`src/components/MyStackScreen.tsx`** (line 538):
+- Remove `animate-slide-up` from active compound card `className`
 
-On iOS there's no conflict because the app runs inside a Capacitor WebView that doesn't participate in `UINavigationController`'s native gesture stack.
-
-Change:
-```ts
-// Before
-const isNative = Capacitor.isNativePlatform();
-
-// After
-const isIOS = Capacitor.getPlatform() === 'ios';
-```
-
-And update both references (`if (!isNative) return;` and the `[isNative, ...]` dependency array) to use `isIOS`.
+**`src/components/TodayScreen.tsx`**:
+- Split the `useEffect([selectedDate])` into two:
+  - One effect runs only on **mount** with the `__bootNetworkReady` guard
+  - A second effect runs on **date changes** (skipping the boot guard since the app is already ready) and clears doses first for instant feedback
+- Add `isDateLoading` state to show a visual indicator when switching dates
+- Show a subtle spinner or skeleton on the dose list area while `isDateLoading` is true instead of stale cards
 
 ---
 
-## Change 3: Fix remaining UTC timezone bugs (targeted, not blanket)
+## Technical Notes
 
-After auditing all 12 files with `toISOString().split('T')[0]`, here's the honest triage:
-
-**Actually fix these** — directly user-facing date matching:
-
-| File | Line(s) | Impact |
-|------|---------|--------|
-| `engagementNotifications.ts` | 378, 440 | Queries doses by "today's date" — wrong date means missed or double notifications |
-| `CompoundDetailScreen.tsx` | 252 | "Next injection" date display shown to user |
-| `CompoundDetailScreenV2.tsx` | 362 | Same as above |
-| `MyStackScreen.tsx` | 148, 190 | Future dose deletion and recent dose query — wrong date could delete wrong doses |
-| `AddCompoundScreen.tsx` | 1011 | Same future dose deletion logic |
-| `doseCleanup.ts` | 64, 113 | Cleanup filter uses "today" — could miss or wrongly include doses |
-| `AccountCreationScreen.tsx` | 312, 390 | Start date stored at onboarding (creates all future doses from this) |
-
-**Leave alone** — these are fine:
-
-| File | Reason |
-|------|--------|
-| `DataSettings.tsx` | Used for export filename only — cosmetic |
-| `notificationScheduler.ts` | Uses a full `Date` object derived from local time, the split is secondary |
-| `useWeeklyDigest.tsx` | Week-range queries, 1-day drift at boundary is negligible |
-| `TodayScreen.tsx` | Already fixed in previous pass |
-| `doseRegeneration.ts` | Already fixed in previous pass |
-
-**The fix for all of them:** Add a `toLocalDateString` helper to the existing `src/utils/dateUtils.ts`:
-
-```ts
-export function toLocalDateString(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-```
-
-Then import and use it in each affected file instead of `.toISOString().split('T')[0]`.
-
----
-
-## Files changing
-
-| File | Change |
-|------|--------|
-| `src/hooks/useSwipeBack.ts` | Remove haptic block + refs + unused imports; change `isNative` to `isIOS` |
-| `src/utils/dateUtils.ts` | Add `toLocalDateString()` helper |
-| `src/utils/engagementNotifications.ts` | Use `toLocalDateString()` at lines 378, 440 |
-| `src/components/CompoundDetailScreen.tsx` | Use `toLocalDateString()` at line 252 |
-| `src/components/CompoundDetailScreenV2.tsx` | Use `toLocalDateString()` at line 362 |
-| `src/components/MyStackScreen.tsx` | Use `toLocalDateString()` at lines 148, 190 |
-| `src/components/AddCompoundScreen.tsx` | Use `toLocalDateString()` at line 1011 |
-| `src/utils/doseCleanup.ts` | Use `toLocalDateString()` at lines 64, 113 |
-| `src/components/onboarding/screens/AccountCreationScreen.tsx` | Use `toLocalDateString()` at lines 312, 390 |
-
----
-
-## Draft reply to Jay
-
-Here's a casual note you can send:
-
-> yeah totally agree, removed the haptic entirely. native iOS back gesture doesn't have one so it was always gonna feel a bit off. no toggle needed, just cleaner without it
->
-> also went through and fixed the timezone thing in a bunch of other spots in the app while I was at it. same root cause showing up in a few different places, all patched now
->
-> will push it all out on the next TestFlight build, keep an eye out!
+- The `getUserIdWithFallback(3000)` call on every date change may be slow. After the initial load, the userId is almost certainly cached. We can short-circuit with a module-level cache (already partially implemented via `authSessionCache.ts`) — but the biggest win is the immediate UI clear + separate boot guard, which will make it *feel* instant even if the network round trip takes 500ms.
+- No database schema changes required.
+- No new dependencies required.
