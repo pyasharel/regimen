@@ -118,6 +118,21 @@ export default function Auth() {
         // Set GA4 user ID for cross-session tracking
         setUserId(currentSession.user.id);
         
+        // Seed session cache BEFORE navigating so ProtectedRoute's fast-path hits immediately
+        try {
+          const cacheKey = `sb-ywxhjnwaogsxtjwulyci-auth-token`;
+          localStorage.setItem(cacheKey, JSON.stringify({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token,
+            expires_at: Math.floor(Date.now() / 1000) + (currentSession.expires_in ?? 3600),
+            expires_in: currentSession.expires_in ?? 3600,
+            user: currentSession.user,
+          }));
+          authTrace('SESSION_CACHE_SEEDED', 'localStorage written before navigate');
+        } catch (e) {
+          console.warn('[Auth] Failed to seed session cache:', e);
+        }
+        
         // CRITICAL FIX: Navigate IMMEDIATELY - don't block on any network calls
         authTrace('NAVIGATING_NOW', '/today');
         navigate("/today", { replace: true });

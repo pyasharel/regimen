@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, ChevronDown, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
 import { BottomNavigation } from "@/components/BottomNavigation";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDose } from "@/utils/doseUtils";
@@ -48,6 +48,10 @@ interface Compound {
 }
 
 export const MyStackScreen = () => {
+  // One-time animation guard: animate on first mount only, skip on tab switches
+  const hasAnimated = useRef(false);
+  const shouldAnimate = !hasAnimated.current;
+  useEffect(() => { hasAnimated.current = true; }, []);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [compounds, setCompounds] = useState<Compound[]>([]);
@@ -534,7 +538,7 @@ export const MyStackScreen = () => {
               return (
               <div
                 key={compound.id}
-                className="overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 hover:shadow-[var(--shadow-elevated)] transition-all cursor-pointer"
+                className={`overflow-hidden rounded-2xl bg-card shadow-[var(--shadow-card)] dark:border dark:border-border/50 hover:shadow-[var(--shadow-elevated)] transition-all cursor-pointer ${shouldAnimate ? 'animate-slide-up' : ''}`}
                 onClick={() => {
                   triggerHaptic();
                   navigate(`/stack/${compound.id}`);

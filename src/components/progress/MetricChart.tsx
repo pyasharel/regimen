@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO, subMonths } from "date-fns";
 import { formatDose } from "@/utils/doseUtils";
@@ -46,6 +46,10 @@ export const MetricChart = ({
   onDotClick,
   weightUnit = 'lbs'
 }: MetricChartProps) => {
+  // One-time animation guard: animate chart draw-in on first mount only
+  const hasAnimated = useRef(false);
+  const shouldAnimate = !hasAnimated.current;
+  useEffect(() => { hasAnimated.current = true; }, []);
   const cutoffDate = useMemo(() => {
     const now = new Date();
     switch (timeFrame) {
@@ -311,7 +315,7 @@ export const MetricChart = ({
             fill={`url(#${metricType}Gradient)`}
             dot={(props: any) => <CustomDot {...props} color={metricColor.stroke} />}
             activeDot={(props: any) => <CustomActiveDot {...props} color={metricColor.stroke} />}
-            isAnimationActive={false}
+            isAnimationActive={shouldAnimate}
           />
         </AreaChart>
         </ResponsiveContainer>
@@ -354,7 +358,7 @@ export const MetricChart = ({
           strokeWidth={3}
           dot={<CustomDot />}
           activeDot={<CustomActiveDot />}
-          isAnimationActive={false}
+          isAnimationActive={shouldAnimate}
         />
       </LineChart>
       </ResponsiveContainer>
