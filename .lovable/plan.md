@@ -1,61 +1,104 @@
 
+# Fix: 3 Bugs from Jay's Feedback
 
-## Fix: Android Session Loss After Extended Idle
+## Bug Summary
 
-### The Problem
+Jay identified 3 separate issues:
 
-Android's WebView can wipe `localStorage` when your app has been backgrounded for a long time (days). Since the Supabase auth token is stored in `localStorage`, this means users get signed out after the app sits idle. The auth token mirror (Capacitor Preferences / native storage) exists as a backup, but it's not being used early enough during boot to prevent the sign-out.
+1. **TB-500 duplicate** — appears twice on Today screen (8:00 AM untaken + 9:00 AM taken)
+2. **Testosterone on wrong day** — appears on Feb 19 (Thursday) when it should be Feb 20 (Friday). Jay is in Australia (UTC+11), so this is a timezone bug.
+3. **Swipe navigation not visual** — gesture works but the screen just swaps instantly instead of sliding with the finger
 
-### Root Cause
+---
 
-The current boot flow is:
-1. `main.tsx` calls `recreateSupabaseClient()` -- new client has no session (localStorage was wiped)
-2. `ProtectedRoute` tries fast-path from localStorage -- fails (wiped)
-3. Slow path tries `supabase.auth.getSession()` -- no session in client
-4. Cache hydration tries `getCachedSessionForHydration()` -- reads localStorage again, still empty
-5. Mirror restore tries `restoreSessionFromMirror()` -- loads from Capacitor Preferences, BUT the token may be expired (days old), so `setSession()` refresh fails
-6. User gets redirected to `/auth`
+## Bug 1: TB-500 Duplicate
 
-### The Fix (3 changes)
+**Root cause:** In `doseRegeneration.ts`, when regenerating doses for today, the system checks `existingTodayTimes` (a Set of `scheduled_time` strings) to avoid inserting duplicates. But if the compound's time was previously changed — for example from 8:00 AM to 9:00 AM — the old 8:00 AM slot may still exist in the database (taken or not) while a new regeneration adds a fresh 8:00 AM dose, creating two entries.
 
-**1. Pre-hydrate localStorage from Capacitor Preferences before Supabase client creation**
+**Fix:** Add a deduplication guard in `TodayScreen.tsx` when loading doses. For the same compound, if there are multiple untaken doses on the same date, only display one (prefer the one matching the compound's current schedule). Also tighten the regeneration logic in `doseRegeneration.ts` to check by `compound_id + date` (not just time) before inserting today's doses.
 
-In `main.tsx`, before `recreateSupabaseClient()` runs, read the auth token mirror from Capacitor Preferences and write it back into `localStorage`. This way the recreated Supabase client immediately picks up the token, and Supabase's built-in auto-refresh handles expiry.
+**File:** `src/utils/doseRegeneration.ts` + `src/components/TodayScreen.tsx`
 
-```text
-Boot flow (before):
-  recreateSupabaseClient() --> empty client (localStorage wiped)
-  
-Boot flow (after):
-  Read mirror from Preferences --> write to localStorage
-  recreateSupabaseClient() --> client has token, auto-refreshes
+---
+
+## Bug 2: Testosterone Enanthate on Wrong Day (Timezone)
+
+**Root cause:** In `doseRegeneration.ts` line 332:
+```js
+scheduled_date: date.toISOString().split('T')[0]
+```
+`toISOString()` converts to UTC. Jay is in Australia (AEST = UTC+11), so a local Thursday midnight is Wednesday 1 PM UTC — which produces the previous day's date string.
+
+This is the same pattern already fixed in `TodayScreen.tsx` which uses:
+```js
+const year = selectedDate.getFullYear();
+const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+const day = String(selectedDate.getDate()).padStart(2, '0');
 ```
 
-**2. Save the full Supabase auth token blob to the mirror (not just access/refresh)**
+**Fix:** Replace `date.toISOString().split('T')[0]` with local date formatting in `generateDoses()` in `doseRegeneration.ts`.
 
-Currently the mirror saves only `access_token`, `refresh_token`, `expires_at`, and `user_id`. But Supabase's localStorage key stores a richer object. We should mirror the entire token blob so we can restore it byte-for-byte into localStorage, making the recreated client think nothing changed.
+**File:** `src/utils/doseRegeneration.ts`
 
-**3. Add a "mirror write-back" step in `handleAppBecameActive` (resume path)**
+---
 
-When the app resumes after a cold start (>30s background), before recreating clients, check if localStorage auth token is missing but mirror exists, and restore it. This covers the resume path in addition to cold boot.
+## Bug 3: Swipe Navigation — No Visual Slide
 
-### Additional Hardening
+**Root cause:** `useSwipeBack` tracks `translateX` state and the `SwipeBackOverlay` shows a subtle glow/chevron effect, but the actual page content never moves. React Router's `navigate(-1)` fires immediately, causing an instant screen swap with no slide animation.
 
-- **Notification permission state**: Already stored in Capacitor Preferences (survives localStorage wipe) -- no changes needed.
-- **Build version**: User is on Build 39. Build 43 already has other stability fixes. These changes go into Build 44.
+Jay's expectation (correct for iOS): the view physically follows the finger as you drag, then when you release past the threshold, it slides off to the right before the new screen appears.
+
+**Fix:** Update `useSwipeBack` to expose `translateX` and `active` state, then apply a `transform: translateX()` CSS property to the page's outer wrapper div in screens that use swipe-back. On release:
+- If threshold met: animate `translateX` to `100vw` (slide off screen), then call `navigate(-1)` after the animation completes (~200ms)
+- If threshold not met: animate `translateX` back to `0` (snap back)
+
+This gives the full native-feeling physical slide behavior Jay described.
+
+**Files:** `src/hooks/useSwipeBack.ts`, and the screens that use it: `CompoundDetailScreen.tsx`, `AddCompoundScreen.tsx`, `PhotoCompareScreen.tsx`, and all settings sub-screens (`AccountSettings.tsx`, `DataSettings.tsx`, `DisplaySettings.tsx`, `HelpSettings.tsx`, `NotificationsSettings.tsx`, `PrivacySettings.tsx`, `TermsSettings.tsx`)
+
+The simplest way to do this without touching every screen: create a `<SwipeBackContainer>` wrapper component that handles the transform and transition internally, then wrap the root `<div>` in each screen with it.
+
+---
+
+## Technical Plan
 
 ### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/utils/authTokenMirror.ts` | Save full token blob; add `writeBackToLocalStorage()` export |
-| `src/main.tsx` | Call mirror write-back before `recreateSupabaseClient()` on native |
-| `src/hooks/useAppStateSync.tsx` | Call mirror write-back before client recreation on cold resume |
+| `src/utils/doseRegeneration.ts` | Fix UTC date bug; tighten today-dose dedup |
+| `src/components/TodayScreen.tsx` | Add client-side dedup for doses by compound_id |
+| `src/hooks/useSwipeBack.ts` | Add animate-then-navigate logic; expose isAnimatingOut |
+| `src/components/ui/SwipeBackContainer.tsx` | New wrapper component that applies translateX transform |
+| `src/components/CompoundDetailScreen.tsx` | Wrap with SwipeBackContainer |
+| `src/components/AddCompoundScreen.tsx` | Wrap with SwipeBackContainer |
+| `src/components/PhotoCompareScreen.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/AccountSettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/DataSettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/DisplaySettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/HelpSettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/NotificationsSettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/PrivacySettings.tsx` | Wrap with SwipeBackContainer |
+| `src/components/settings/TermsSettings.tsx` | Wrap with SwipeBackContainer |
 
-### Testing Checklist
+### SwipeBackContainer behavior
 
-- Sign in on Android, background the app for 10+ minutes, reopen -- should stay signed in
-- Clear localStorage manually via dev tools, reopen app -- mirror should restore session
-- Notifications should still fire after long idle periods
-- iOS should be unaffected (same flow, but iOS rarely wipes localStorage)
+```text
+touchstart (left edge)
+  → track startX
 
+touchmove
+  → translateX follows finger (no transition)
+  → page physically slides right
+
+touchend
+  if translateX >= 80px:
+    → CSS transition: translateX → 100vw (200ms ease-out)
+    → wait 200ms
+    → navigate(-1)
+  else:
+    → CSS transition: translateX → 0 (150ms ease-out)
+    → snap back
+```
+
+The `ImpactStyle.Medium` haptic fires at the threshold moment (when the swipe commits), which is more natural than firing on release.
