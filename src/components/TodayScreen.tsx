@@ -98,6 +98,7 @@ export const TodayScreen = () => {
   const { triggerIfEligible: triggerRatingIfEligible } = useAutoRatingPrompt();
   // Build 26: Using window.__bootNetworkReady flag instead of hook
   const [loading, setLoading] = useState(true);
+  const [isDateLoading, setIsDateLoading] = useState(false);
   const [connectionStuck, setConnectionStuck] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -282,9 +283,9 @@ export const TodayScreen = () => {
     verifyCheckout();
   }, [searchParams, setSearchParams, refreshSubscription, toast]);
 
-  // Load data when date changes - wait for boot network ready flag on native
+  // Mount-only effect: wait for boot network ready flag on native, then do initial load
+  const hasBootedRef = useRef(false);
   useEffect(() => {
-    // On native, wait for the 2s boot delay to complete
     if (Capacitor.isNativePlatform() && !window.__bootNetworkReady) {
       console.log('[TodayScreen] Waiting for boot network ready flag...');
       const checkReady = setInterval(() => {
@@ -292,6 +293,7 @@ export const TodayScreen = () => {
           clearInterval(checkReady);
           console.log('[TodayScreen] Boot ready, starting data load');
           trace('TODAY_BOOT_READY_LOADING');
+          hasBootedRef.current = true;
           loadDoses();
           checkCompounds();
           loadUserName();
@@ -301,9 +303,24 @@ export const TodayScreen = () => {
     }
     
     // Web or already ready - load immediately
+    hasBootedRef.current = true;
     loadDoses();
     checkCompounds();
     loadUserName();
+  }, []); // mount only
+
+  // Date-change effect: skip boot guard since app is already loaded
+  const isFirstDateEffect = useRef(true);
+  useEffect(() => {
+    // Skip the very first render - the mount effect above handles it
+    if (isFirstDateEffect.current) {
+      isFirstDateEffect.current = false;
+      return;
+    }
+    // Optimistic clear: immediately show empty state + loading indicator
+    setDoses([]);
+    setIsDateLoading(true);
+    loadDoses();
   }, [selectedDate]);
 
   // Load levels data on mount
@@ -716,6 +733,7 @@ export const TodayScreen = () => {
     } finally {
       trace('TODAY_SET_LOADING_FALSE');
       setLoading(false);
+      setIsDateLoading(false);
     }
   };
 
@@ -1668,7 +1686,20 @@ export const TodayScreen = () => {
           </div>
         )}
         
-        {loading && !connectionStuck ? (
+        {isDateLoading ? (
+          <div className="px-4 pt-4 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card animate-pulse">
+                <div className="h-6 w-6 rounded-md bg-muted flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-3 w-24 rounded bg-muted" />
+                </div>
+                <div className="h-5 w-5 rounded-full bg-muted" />
+              </div>
+            ))}
+          </div>
+        ) : loading && !connectionStuck ? (
           <div className="text-center py-8 text-muted-foreground">
             Loading doses...
           </div>
