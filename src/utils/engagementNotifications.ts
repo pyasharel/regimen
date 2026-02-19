@@ -1,5 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from "@/integrations/supabase/client";
+import { toLocalDateString } from "@/utils/dateUtils";
 
 export type EngagementNotificationType = 
   | 'first_dose'
@@ -375,7 +376,7 @@ export const scheduleMissedDoseNotification = async (): Promise<void> => {
     if (!user) return;
 
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = toLocalDateString(today);
 
     // If it's already past 3 PM, don't schedule (it would fire immediately or in the past)
     if (today.getHours() >= 15) {
@@ -437,7 +438,7 @@ export const scheduleWeeklyCheckin = async (): Promise<void> => {
     // Check if user has logged any doses today — if so, skip
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toLocalDateString();
       const { data: todayDoses } = await supabase
         .from('doses')
         .select('id')

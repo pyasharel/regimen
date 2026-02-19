@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 
 const EDGE_ZONE = 20; // px from left edge
@@ -22,7 +21,6 @@ export function useSwipeBack() {
   const startYRef = useRef<number | null>(null);
   const isHorizontalRef = useRef<boolean | null>(null);
   const translateXRef = useRef(0);
-  const hapticFiredRef = useRef(false);
   const [state, setState] = useState<SwipeBackState>({
     active: false,
     translateX: 0,
@@ -30,8 +28,8 @@ export function useSwipeBack() {
     transition: 'none',
   });
 
-  // Gate to native only — on web, browser handles its own back gesture
-  const isNative = Capacitor.isNativePlatform();
+  // Gate to iOS only — Android 10+ has its own system-level left-edge swipe that conflicts
+  const isIOS = Capacitor.getPlatform() === 'ios';
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     const touch = e.touches[0];
@@ -39,7 +37,6 @@ export function useSwipeBack() {
       startXRef.current = touch.clientX;
       startYRef.current = touch.clientY;
       isHorizontalRef.current = null;
-      hapticFiredRef.current = false;
     }
   }, []);
 
@@ -71,15 +68,6 @@ export function useSwipeBack() {
       e.preventDefault();
       const translateX = Math.min(dx, MAX_DRAG);
       translateXRef.current = translateX;
-
-      // Fire haptic at threshold moment
-      if (translateX >= TRIGGER_THRESHOLD && !hapticFiredRef.current) {
-        hapticFiredRef.current = true;
-        if (Capacitor.isNativePlatform()) {
-          Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
-        }
-      }
-
       setState({ active: true, translateX, isAnimatingOut: false, transition: 'none' });
     }
   }, []);
@@ -129,8 +117,8 @@ export function useSwipeBack() {
   }, [navigate]);
 
   useEffect(() => {
-    // No-op on web — browser handles its own gestures
-    if (!isNative) return;
+    // iOS only — Android has system-level left-edge swipe that conflicts
+    if (!isIOS) return;
 
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -143,7 +131,7 @@ export function useSwipeBack() {
       document.removeEventListener('touchend', handleTouchEnd);
       document.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [isNative, handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [isIOS, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   return state;
 }

@@ -30,7 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 import { format } from "date-fns";
-import { createLocalDate, safeFormatDate } from "@/utils/dateUtils";
+import { createLocalDate, safeFormatDate, toLocalDateString } from "@/utils/dateUtils";
 import { cn } from "@/lib/utils";
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
@@ -1008,7 +1008,7 @@ export const AddCompoundScreen = () => {
       if (compoundError) throw compoundError;
 
       // Delete future untaken doses to prevent orphans showing on Today screen
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toLocalDateString();
       await supabase
         .from('doses')
         .delete()

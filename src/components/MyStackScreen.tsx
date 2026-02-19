@@ -1,4 +1,5 @@
 import { MyStackScreenSkeleton } from "@/components/skeletons/MyStackScreenSkeleton";
+import { toLocalDateString } from "@/utils/dateUtils";
 import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2, CheckCircle, RotateCcw, Activity, TrendingUp, ChevronRight, ChevronDown, Share2, Calculator } from "lucide-react";
 import { PremiumDiamond } from "@/components/ui/icons/PremiumDiamond";
@@ -145,7 +146,7 @@ export const MyStackScreen = () => {
       // Get doses from the last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+      const sevenDaysAgoStr = toLocalDateString(sevenDaysAgo);
 
       const { data: doses, error } = await withQueryTimeout(
         supabase
@@ -187,7 +188,7 @@ export const MyStackScreen = () => {
       if (error) throw error;
 
       // Delete future untaken doses to prevent orphans showing on Today screen
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toLocalDateString();
       await supabase
         .from('doses')
         .delete()
