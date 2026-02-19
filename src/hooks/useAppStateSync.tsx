@@ -12,6 +12,7 @@ import { processPendingActions } from '@/utils/pendingDoseActions';
 import { getUserIdWithFallback } from '@/utils/safeAuth';
 import { withQueryTimeout, TimeoutError } from '@/utils/withTimeout';
 import { persistentStorage } from '@/utils/persistentStorage';
+import { writeBackToLocalStorage } from '@/utils/authTokenMirror';
 // Build 26: Using window.__bootNetworkReady flag instead of useAppActive hook
 import { trace } from '@/utils/bootTracer';
 
@@ -330,6 +331,16 @@ export const useAppStateSync = () => {
     
     if (isColdStart && !isNotificationResume) {
       console.log(`[AppStateSync] Cold start detected (${Math.round(elapsed / 1000)}s background) - recreating clients`);
+      
+      // Step 0: Restore auth tokens from mirror if localStorage was wiped (Android)
+      try {
+        const restored = await writeBackToLocalStorage();
+        if (restored) {
+          console.log('[AppStateSync] ✅ Auth token restored from mirror before client recreation');
+        }
+      } catch (e) {
+        console.warn('[AppStateSync] Mirror write-back failed:', e);
+      }
       
       // Step 1: Abort any stuck inflight requests
       const abortedCount = abortDataClientRequests();

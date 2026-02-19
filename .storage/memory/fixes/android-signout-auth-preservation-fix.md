@@ -2,32 +2,36 @@
 Updated: now
 
 ## Issue
-Android beta testers (Jam, Kinsuu) reported being signed out after app updates. The app would show "Restoring your session..." then redirect to sign-in. This also caused notifications to fail since the user was unexpectedly logged out.
+Android beta testers reported being signed out after the app sat idle for extended periods (days). The Android WebView can wipe `localStorage` under memory pressure, destroying the Supabase auth token. The auth token mirror in Capacitor Preferences existed but was restored too late — after the Supabase client was already created without a session.
 
-## Root Cause
-The "failed boot detection" logic in `main.tsx` was too aggressive. When `REGIMEN_BOOT_STATUS` was stuck at `STARTING` (common after app updates or force-closes), the code wiped ALL localStorage keys containing `sb-` or `supabase` - including the user's valid auth token.
+## Fix Applied (Build 44+)
+Three-part fix to pre-hydrate localStorage from the native mirror BEFORE client creation:
 
-## Fix Applied (Build 29+)
-1. **Preserve auth token**: Added explicit check to never delete `sb-ywxhjnwaogsxtjwulyci-auth-token`
-2. **Timestamp-based validation**: Added `REGIMEN_BOOT_TIME` to track when boot started. Failed boot recovery only triggers if status has been `STARTING` for >30 seconds
-3. **Recent boot skip**: If boot status is `STARTING` but less than 30 seconds old, skip cleanup entirely (likely quick restart or update)
+### 1. Pre-hydrate in `main.tsx` boot sequence
+- Before `recreateSupabaseClient()`, read the mirror blob from `Capacitor Preferences` and write it back to `localStorage`
+- Uses a 600ms timeout to avoid blocking boot
+- Skips if localStorage already has a valid token
+- The recreated client then finds the token immediately and auto-refreshes
+
+### 2. Full blob mirroring in `authTokenMirror.ts`
+- Changed from saving only `access_token/refresh_token/expires_at/user_id` to saving the ENTIRE Supabase localStorage blob
+- Added `writeBackToLocalStorage()` export that reads the mirror and writes it back to localStorage
+- `saveFullBlobToMirror()` reads directly from `localStorage[SUPABASE_AUTH_TOKEN_KEY]` on auth state changes
+
+### 3. Mirror write-back on app resume in `useAppStateSync.tsx`
+- Before client recreation on cold resume (>30s background), calls `writeBackToLocalStorage()`
+- This covers the resume path in addition to cold boot
 
 ## Code Pattern
-```typescript
-const AUTH_TOKEN_KEY = 'sb-ywxhjnwaogsxtjwulyci-auth-token';
-const bootAge = lastBootTime ? Date.now() - parseInt(lastBootTime, 10) : Infinity;
-const isReallyFailed = lastBootStatus === 'STARTING' && bootAge > 30000;
-
-// Only clear if truly stuck, and always preserve auth token
-if (isReallyFailed) {
-  keysToCheck.forEach(key => {
-    if (key === AUTH_TOKEN_KEY) return; // NEVER delete
-    if (key.includes('sb-') || key.includes('supabase')) {
-      localStorage.removeItem(key);
-    }
-  });
-}
+```
+Boot flow:
+  preHydrateAuthFromMirror() → writes mirror blob to localStorage
+  recreateSupabaseClient()   → client finds token, auto-refreshes
+  
+Resume flow:
+  writeBackToLocalStorage()  → restores if localStorage was wiped
+  recreateSupabaseClient()   → client has session
 ```
 
-## Testing
-After updating, users may need to sign in once (if their token was already cleared by old code), but subsequent app updates/restarts should preserve their session.
+## Previous Fix (Build 29+)
+The earlier fix preserved the auth token key during failed-boot recovery cleanup. That fix remains in place. This new fix handles the separate case where Android's WebView itself wipes localStorage during extended idle.
