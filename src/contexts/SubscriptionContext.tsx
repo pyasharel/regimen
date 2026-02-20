@@ -965,14 +965,17 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           // 💾 Save to persistent cache
           await saveEntitlementToCache(userId, true, !!isInTrial, subType, entitlement?.expirationDate ?? null);
 
+          setIsRevenueCatResolved(true); // RC responded — always signal resolved on success path
           return { isPro: true, isTrialing: !!isInTrial };
         }
 
         // Identified but no entitlement: don't force "none" here (could be a legacy Stripe subscriber on iOS)
+        setIsRevenueCatResolved(true); // RC responded — no entitlement, but resolved
         return { isPro: false, isTrialing: false };
       } catch (error) {
         console.error('[RevenueCat] Identify error:', error);
         revenueCatEntitlementRef.current = { isPro: false, isTrialing: false };
+        setIsRevenueCatResolved(true); // RC errored — but still signal resolved so banner can proceed
         return { isPro: false, isTrialing: false };
       }
     },
@@ -1258,6 +1261,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
               console.log('[SubscriptionContext] 🚀 Restoring subscription from persistent cache on init');
               applyCachedEntitlement(cachedEntitlement, 'persistent_cache_init');
               setIsLoading(false);
+              setIsRevenueCatResolved(true); // Cache confirms paid — no need to wait for RC
               addDiagnosticsLog(
                 'persistent_cache_init',
                 'none',
