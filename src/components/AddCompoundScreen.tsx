@@ -44,8 +44,8 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 const OIL_BASED_COMPOUNDS = [
   // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Testosterone Decanoate", "Testosterone Undecanoate", "Testosterone Isocaproate", "Testosterone Phenylpropionate",
-  "Test Cyp", "Test C", "Test E", "Test Prop", "Test P", "Test Decanoate", "Test Isocaproate", "Test PP",
+  "Testosterone Decanoate", "Testosterone Undecanoate",
+  "Test Cyp", "Test C", "Test E", "Test Prop", "Test P", "Test Decanoate",
   // Nandrolone
   "Nandrolone Decanoate", "Deca", "Deca-Durabolin", "Nandrolone Phenylpropionate", "NPP",
   // Trenbolone
@@ -94,7 +94,7 @@ const COMMON_PEPTIDES = [
   
   // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Testosterone Decanoate", "Testosterone Undecanoate", "Testosterone Isocaproate", "Testosterone Phenylpropionate",
+  "Testosterone Decanoate", "Testosterone Undecanoate",
   "Testosterone Gel", "Testosterone Cream", "Testosterone Pellets",
   // Testosterone Blends
   "Sustanon 250", "Sustanon", "Omnadren",
