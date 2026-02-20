@@ -1,80 +1,66 @@
 
-# Two-Part Fix: Text Selection & Log Today Modal Improvements
+# Fix: Eliminate Black Screen During Android Boot Failures
 
-## What Jay Found
+## Root Cause Analysis
 
-Jay spotted two things:
-1. Tapping and holding on the bottom navigation labels (and potentially other UI text) shows the native iOS "Copy / Look Up / Translate" popup — this makes the app feel non-native and unpolished
-2. He prefers emoji-based mood ratings over numbered buttons, and suggested sliders for harder-to-quantify metrics like sleep quality
+Three compounding issues create the black screen:
 
----
+1. `index.html` `<body>` has no background color — the WebView renders as native black before any CSS loads
+2. The boot timeout recovery UI in `main.tsx` uses `background: #000` (intentional black, but wrong choice)
+3. The `ProtectedRoute` loading state renders `bg-background` which is correct, but it only appears after React mounts — which can take 1-2 seconds on Android cold start
 
-## Part 1: Fixing Text Selection (Priority — Immediate Fix)
+The result: users see black during the JS loading phase, then black again if either timeout fires.
 
-**Root cause:** The app has no global `user-select: none` rule. Every text label, navigation tab name, section header, and button label is currently selectable on iOS with a long-press, producing the native text selection menu.
+## Solution: 3 Changes
 
-**The right fix** is a single CSS rule added to `src/index.css` that disables text selection app-wide by default, with explicit opt-in for any field that actually *needs* selection (textarea, input). This is the standard approach used in all native-feeling web apps.
+### Change 1 — `index.html`: Set background color before JS loads
 
-**What will be changed:**
-- `src/index.css` — add `-webkit-user-select: none` and `user-select: none` to the `body` rule, plus `-webkit-touch-callout: none` which suppresses the iOS long-press callout bubble (the Copy/Look Up/Translate popup)
-- Re-enable selection for `input`, `textarea`, and any `[contenteditable]` elements so users can still interact with form fields normally
+Add a `<style>` block in the `<head>` that applies the dark background color immediately when the HTML parses. This costs zero JS and eliminates the native-WebView black flash entirely.
 
-**Scope of the problem (confirmed via codebase search):**
-- `BottomNavigation` — tab labels "Today", "My Stack", etc. are all selectable `<span>` elements
-- `MainHeader` — "REGIMEN" logo text and page title are selectable
-- All dose card labels, section headers (MORNING, AFTERNOON, EVENING), compound names, timestamps
-- The `LogTodayDrawerContent` and `LogTodayModal` section labels
-- Onboarding screens, settings labels, progress screen labels
+```html
+<style>
+  html, body, #root {
+    background-color: #0a0a0a; /* matches --background in dark theme */
+    margin: 0;
+    min-height: 100vh;
+  }
+</style>
+```
 
----
+### Change 2 — `main.tsx`: Replace the black boot timeout recovery screen
 
-## Part 2: Log Today Modal — Deferred (Strategic Decision)
+The current inline HTML uses `background: #000` and has no branding. Replace it with the app's dark background color and add a branded spinner, so if this screen ever appears, it looks intentional rather than broken.
 
-Jay's feedback:
-- Prefers the emoji mood picker UI (Great / Okay / Bad / Terrible) with symptom chips
-- Sliders instead of numbered 1–5 buttons for sleep/energy — harder to mentally quantify with numbers
-- "I don't really enjoy manually logging this stuff" — hints that HealthKit auto-import will matter most here
+The new recovery screen will show:
+- Dark background (`#0a0a0a`) matching the app theme
+- Regimen wordmark logo (the PNG already exists at `/regimen-wordmark-transparent.png`)  
+- A spinner and "Taking longer than expected..." message
+- The same "Reset & Retry" and "Try Again" buttons
 
-**My recommendation: do not redesign the modal right now.** Here's why:
+### Change 3 — `main.tsx`: Extend boot timeout slightly on Android
 
-1. Once Apple Health is connected (Saturday), sleep quality, steps, and potentially weight will flow in automatically — reducing the friction Jay is describing. The redesign would look very different post-HealthKit.
-2. Injection site tracking will likely be added to the dose-logging flow, which will change the overall "log something" UX significantly.
-3. A symptom chip redesign (like the reference app Jay sent) is a meaningful project — probably 3–4 hours of careful work — and doing it now before knowing what data HealthKit provides would likely mean reworking it again soon.
+The 4-second `BOOT_TIMEOUT_MS` is aggressive for Android cold starts where:
+- JS bundle parsing takes longer on lower-end devices
+- `preHydrateAuthFromMirror()` is async and can overlap the timeout
 
-**What to tell Jay:** Good feedback — the HealthKit integration coming Saturday will auto-pull sleep and other metrics, which addresses the manual logging friction. The emoji mood + symptom chip UI is on the roadmap once that's in place.
+Change from 4000ms to **6000ms** for native platforms (keep 4000ms for web). This gives the normal auth flow time to complete on slower Android devices before the recovery screen appears, reducing false-positive timeout triggers.
 
----
+## Files to Modify
 
-## Technical Plan
+| File | Change |
+|------|--------|
+| `index.html` | Add inline `<style>` with dark background for `html`, `body`, `#root` |
+| `src/main.tsx` | Replace `background: #000` recovery HTML with branded dark version; increase native timeout to 6000ms |
 
-### Files to change:
+## What This Does NOT Change
 
-**`src/index.css`** — 2 targeted additions to the `@layer base` block:
+- The actual boot/auth logic remains identical
+- The 12-second ProtectedRoute watchdog is unchanged (already renders with `bg-background`)
+- The Splash screen behavior is unchanged
+- No impact on iOS
 
-1. Inside the existing `body` rule, add:
-   ```css
-   -webkit-user-select: none;
-   user-select: none;
-   -webkit-touch-callout: none;
-   ```
+## Impact on Real Users
 
-2. Add a new explicit opt-in rule for form elements:
-   ```css
-   input, textarea, [contenteditable] {
-     -webkit-user-select: text;
-     user-select: text;
-   }
-   ```
-
-That is the **entire change needed** — two CSS additions. No component-level changes required. The global rule propagates to every screen including BottomNavigation, MainHeader, TodayScreen dose cards, My Stack, Progress, Settings, Onboarding, and all modals/drawers.
-
-### Why this approach is safe:
-- `user-select: none` does not affect click/tap interactions at all — buttons and links still work normally
-- Inputs and textareas are explicitly opted back in, so the weight field, notes field, search fields, etc. all remain fully functional
-- The `-webkit-touch-callout: none` property is the specific iOS Safari/WKWebView property that disables the callout bubble — this is exactly what native iOS apps disable
-- This mirrors what Capacitor/Ionic apps do by default in their CSS resets
-
-### What this will NOT affect:
-- Any legitimate user-selectable text (there isn't any in this app — it's not a document reader)
-- Input/textarea focus, keyboard appearance, or text editing
-- The existing `select-none` classes already scattered in UI components (they become redundant but harmless)
+Fresh install from Play Store: **No change** — they go straight to onboarding
+Existing user upgrade: **Black flash eliminated**, recovery screen is now branded if timeout fires
+Developer replacing install: **Same behavior but visually less alarming**
