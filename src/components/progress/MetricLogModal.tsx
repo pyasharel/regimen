@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { trackMetricLogged, trackWeightLogged } from "@/utils/analytics";
+import { queryClient } from "@/lib/queryClient";
 
 type MetricType = "weight" | "energy" | "sleep" | "cravings" | "notes";
 
@@ -162,6 +163,8 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         trackMetricLogged("notes");
       }
       
+      // Bust the React Query cache so persistent tabs refresh immediately on Android
+      queryClient.invalidateQueries({ queryKey: ['progress-entries'] });
       onOpenChange(false);
       resetForm();
       onSuccess();
@@ -207,18 +210,21 @@ export const MetricLogModal = ({ open, onOpenChange, metricType, onSuccess }: Me
         </DrawerHeader>
         <div className="space-y-6">
           {metricType === "weight" && (
-            <div className="flex gap-2 items-center">
-              <Input
-                type="number"
-                step="0.1"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="Enter weight"
-                className="flex-1 h-14 text-lg"
-              />
-              <span className="text-lg font-medium text-muted-foreground w-12 text-center">
-                {weightUnit}
-              </span>
+            <div className="space-y-1">
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="Enter weight"
+                  className="flex-1 h-14 text-lg"
+                />
+                <span className="text-lg font-medium text-muted-foreground w-12 text-center">
+                  {weightUnit}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Unit preference set in Settings › Display</p>
             </div>
           )}
 

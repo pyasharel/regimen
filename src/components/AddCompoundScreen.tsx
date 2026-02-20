@@ -44,7 +44,8 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 const OIL_BASED_COMPOUNDS = [
   // Testosterone variants
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Test Cyp", "Test C", "Test E", "Test Prop", "Test P",
+  "Testosterone Decanoate", "Testosterone Undecanoate", "Testosterone Isocaproate", "Testosterone Phenylpropionate",
+  "Test Cyp", "Test C", "Test E", "Test Prop", "Test P", "Test Decanoate", "Test Isocaproate", "Test PP",
   // Nandrolone
   "Nandrolone Decanoate", "Deca", "Deca-Durabolin", "Nandrolone Phenylpropionate", "NPP",
   // Trenbolone
@@ -93,7 +94,10 @@ const COMMON_PEPTIDES = [
   
   // Testosterone - Men's TRT
   "Testosterone Cypionate", "Testosterone Enanthate", "Testosterone Propionate",
-  "Testosterone Gel",
+  "Testosterone Decanoate", "Testosterone Undecanoate", "Testosterone Isocaproate", "Testosterone Phenylpropionate",
+  "Testosterone Gel", "Testosterone Cream", "Testosterone Pellets",
+  // Testosterone Blends
+  "Sustanon 250", "Sustanon", "Omnadren",
   
   // Anabolic Steroids
   "Nandrolone Decanoate", "Deca", "Nandrolone Phenylpropionate", "NPP",
@@ -1224,6 +1228,17 @@ export const AddCompoundScreen = () => {
         variant: "destructive"
       });
       setSaving(false); // Reset on validation failure
+      return;
+    }
+
+    // Validate mg/mL concentration is set when using weekly total mode for oil-based compounds
+    if (doseInputMode === 'weekly' && isOilBasedCompound(name) && doseUnit === 'mg' && !concentration) {
+      toast({
+        title: "Concentration required",
+        description: "Enter mg/mL concentration to calculate your per-injection dose",
+        variant: "destructive"
+      });
+      setSaving(false);
       return;
     }
 
