@@ -1,6 +1,18 @@
 # Memory: deployment/native-version-sync-workflow
 Updated: 2026-02-20
 
+## ⚠️ FIRST DIAGNOSTIC STEP — Before anything else, confirm Android Studio title bar
+
+**If the device shows old code after Clean + Rebuild + Run:**
+- Check Android Studio title bar — it MUST end in `.../regimen-health-hub/android`
+- If it shows ANY nested path (e.g. `.../regimen-health-hub/regimen/android`), **STOP**
+- Close Android Studio, then run: `npx cap open android`
+- Then run the full chain again
+
+**This is the #1 cause of stale builds. Check this FIRST before any other debugging.**
+
+---
+
 ## ⚠️ CRITICAL RULE — ALWAYS GIVE THE FULL CHAIN
 Any time a code change needs to reach the physical device, ALWAYS give the user the full command chain below. NEVER skip `git pull`. NEVER say "just run npx cap sync". The device will keep running stale code otherwise.
 
