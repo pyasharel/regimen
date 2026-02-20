@@ -20,6 +20,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const { subscriptionEndDate, isLoading, freeCompoundId } = useSubscription();
   const [compoundCount, setCompoundCount] = useState(0);
   const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
+  const [isMountReady, setIsMountReady] = useState(false);
   const [dismissed, setDismissed] = useState<string | null>(() => {
     // Check localStorage for cooldown-based dismissal
     const stored = localStorage.getItem('bannerDismissedUntil');
@@ -35,6 +36,11 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
     return null;
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMountReady(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Fetch compound count and oldest compound name for contextual banner
   useEffect(() => {
@@ -68,7 +74,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
-  const shouldShowPreview = !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+  const shouldShowPreview = isMountReady && !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
   const shouldReserveBannerSpace = !isPaywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
