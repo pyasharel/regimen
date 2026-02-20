@@ -73,6 +73,8 @@ interface SubscriptionContextType {
   revenueCatEntitlement: RevenueCatEntitlementSnapshot | null;
   lastStatusSource: string;
   lastRefreshTrigger: string;
+  // True once RevenueCat has completed its first check (or immediately on web)
+  isRevenueCatResolved: boolean;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -124,6 +126,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       return newStatus;
     });
   }, []);
+  // True once RevenueCat has completed its first getCustomerInfo() call (or immediately on web)
+  const [isRevenueCatResolved, setIsRevenueCatResolved] = useState(!Capacitor.isNativePlatform());
   // RevenueCat state
   const [revenueCatConfigured, setRevenueCatConfigured] = useState(false);
   const [revenueCatIdentified, setRevenueCatIdentified] = useState(false); // Track if user is identified
@@ -339,9 +343,14 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (rcError) {
           console.error('[SubscriptionContext] RevenueCat check error:', rcError);
+        } finally {
+          // Signal that RevenueCat has had its first chance to respond (success or failure)
+          setIsRevenueCatResolved(true);
         }
       } else if (isNativePlatform && !revenueCatIdentifiedRef.current) {
         console.log('[SubscriptionContext] Native platform but user not identified with RevenueCat yet - skipping RC check');
+        // Still mark as resolved so we don't block the banner forever if RC identification fails
+        setIsRevenueCatResolved(true);
       }
 
       // ==================== Check Stripe (for WEB ONLY) ====================
@@ -1492,6 +1501,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         revenueCatEntitlement: revenueCatEntitlementRef.current,
         lastStatusSource,
         lastRefreshTrigger,
+        isRevenueCatResolved,
       }}
     >
       {children}

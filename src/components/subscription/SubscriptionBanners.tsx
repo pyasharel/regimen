@@ -18,7 +18,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const { isPaywallOpen } = usePaywall();
   // CRITICAL: All hooks must be called BEFORE any conditional returns
   const location = useLocation();
-  const { subscriptionEndDate, isLoading, freeCompoundId } = useSubscription();
+  const { subscriptionEndDate, isLoading, freeCompoundId, isRevenueCatResolved, isNativePlatform } = useSubscription();
   const [compoundCount, setCompoundCount] = useState(0);
   const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
   const [isMountReady, setIsMountReady] = useState(false);
@@ -126,7 +126,12 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
-  const shouldShowPreview = isMountReady && nativePaidStatusChecked && !isLoading && !hasSeenPaidStatus.current && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+
+  // On native: block preview banner until RevenueCat has resolved (prevents flash on fresh install cold start)
+  // On web: use existing 3500ms timer only (RevenueCat not used on web)
+  const isReadyToShow = isNativePlatform ? (isMountReady && isRevenueCatResolved) : isMountReady;
+
+  const shouldShowPreview = isReadyToShow && nativePaidStatusChecked && !isLoading && !hasSeenPaidStatus.current && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
   const shouldReserveBannerSpace = !isPaywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
