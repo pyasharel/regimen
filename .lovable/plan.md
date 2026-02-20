@@ -1,59 +1,71 @@
 
-# Fix: Banner Flash — The `'preview'` Status Defeats Its Own Guard
+## What went wrong with the sync troubleshooting
 
-## The Actual Root Cause (One Line)
+The documentation already had the correct answer. The failure was prioritization — the right steps (git pull + npx cap open android) were buried and I kept generating new theories. The fix is one added line to the memory file making the "wrong project directory" check the very first diagnostic step.
 
-In `SubscriptionBanners.tsx` line 50, `'preview'` is included in the `definitiveStatuses` array:
+## Why the banner still flashes
 
+This is a specific cold-start race condition that only happens after a fresh uninstall:
+
+1. Fresh uninstall clears Capacitor Preferences → `confirmedPaidStatusUntil` key is gone
+2. On boot, `hasSeenPaidStatus.current = false`
+3. The 3500ms fallback timer fires and sets `isMountReady = true`
+4. At 3500ms, RevenueCat hasn't resolved yet (takes 4-6 seconds on native cold start)
+5. `subscriptionStatus` is still `'none'` at that moment → banner renders
+6. ~1 second later, RevenueCat returns `active` → banner hides
+
+The timer is the wrong gate on native. The right gate is: **wait for RevenueCat to say something definitive before ever allowing the preview banner to show**.
+
+## Changes
+
+### 1. Update the memory file (deployment/native-version-sync-workflow.md)
+
+Add a bolded "FIRST DIAGNOSTIC STEP" section at the very top, above everything else:
+
+```
+## FIRST DIAGNOSTIC STEP — Before anything else, confirm Android Studio title bar
+
+If the device shows old code after Clean + Rebuild + Run:
+- Check Android Studio title bar — it MUST end in `.../regimen-health-hub/android`
+- If it shows any nested path, STOP, close Android Studio, and run: npx cap open android
+- Then run the full chain again
+```
+
+### 2. Fix the banner flash in SubscriptionBanners.tsx
+
+**Current logic (broken on fresh install):**
+- Timer fires at 3500ms → `isMountReady = true`
+- At 3500ms on native cold start, RevenueCat hasn't responded yet
+- `subscriptionStatus === 'none'` → banner flashes
+
+**New logic:**
+- Add a `revenueCatResolved` state that starts `false`
+- On native platforms, expose a signal from `SubscriptionContext` that RevenueCat has finished its first check (already tracked internally via `revenueCatEntitlementRef` and the `lastStatusSource` field)
+- The preview banner only shows when BOTH `isMountReady` AND `revenueCatResolved` are true on native
+
+**Concrete implementation — two small changes:**
+
+**In `SubscriptionContext.tsx`:** Export a new value `isRevenueCatResolved: boolean` that becomes `true` after the first `getCustomerInfo()` call completes (on native) or immediately (on web, where RevenueCat isn't used).
+
+**In `SubscriptionBanners.tsx`:** Replace the `isMountReady` timer gate with:
 ```typescript
-const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
-if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
-  setIsMountReady(true);  // ← fires immediately for 'preview' too!
-}
+const { isRevenueCatResolved } = useSubscription();
+// On native: wait for RevenueCat. On web: use existing 3500ms timer.
+const isReadyToShow = isNativePlatform ? (isMountReady && isRevenueCatResolved) : isMountReady;
 ```
 
-The intent was: "if we get a confirmed paid status before the 3500ms timer, resolve early so subscribed users don't wait." But `'preview'` and `'none'` are the FREE statuses — the very statuses that should trigger the banner. So when the context finishes its first (stale) refresh with `subscriptionStatus = 'preview'`, this effect fires, sees `'preview'` as "definitive", and immediately sets `isMountReady = true`. The 3500ms guard is completely bypassed.
-
-The timeline on Android looks like this:
-
-```text
-t=0ms    App boots, isMountReady = false (banner hidden ✓)
-t=~300ms Context init refresh completes → subscriptionStatus = 'preview' (stale)
-t=~300ms Second useEffect fires: 'preview' is in definitiveStatuses → isMountReady = true ✗
-t=~300ms Banner appears immediately (the flash)
-t=~2000ms SIGNED_IN refresh completes → subscriptionStatus = 'active'
-t=~2000ms Banner disappears
-```
-
-The 3500ms timer never mattered because the status effect fired first at ~300ms.
-
-## The Fix
-
-Remove `'preview'` and `'none'` from `definitiveStatuses`. Only PAID/CONFIRMED statuses should unlock the banner early. Free/unresolved statuses must always wait for the full timer.
-
-**File: `src/components/subscription/SubscriptionBanners.tsx`, line 50**
-
-Change:
+And update `shouldShowPreview` to use `isReadyToShow` instead of `isMountReady`:
 ```typescript
-const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
+const shouldShowPreview = isReadyToShow && nativePaidStatusChecked && !isLoading 
+  && !hasSeenPaidStatus.current 
+  && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') 
+  && dismissed !== 'preview';
 ```
 
-To:
-```typescript
-const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'lifetime'];
-```
+This guarantees that on native, the banner will never appear until RevenueCat has had a chance to respond with an active entitlement. Once RevenueCat says `active`, `hasSeenPaidStatus.current` is set to `true` in the same render cycle, so the banner never renders at all.
 
-## What This Changes
+### 3. Also update the memory file for the banner flash fix
 
-- `active`, `trialing`, `past_due`, `canceled`, `lifetime` → still unlock immediately (subscribed users see the right UI without waiting 3.5 seconds)
-- `preview`, `none` → now forced to wait the full 3500ms timer before the banner can appear
-- For a subscribed user: their real status (`active`) arrives around t=2000ms, which is before the 3500ms timer, so they unlock immediately at t=2000ms and never see the free banner
-- For a genuine free-tier user: they wait the full 3500ms, then the banner appears — a slight delay but acceptable
-
-## Risk Assessment
-
-Very low. This is removing two values from an array. The logic paths for past-due, canceled, and active subscriptions are completely unaffected. The only change in behavior is that `preview` and `none` statuses no longer bypass the timer — which is exactly what we always intended.
-
-## Android Studio Build Output Panel
-
-Your build is syncing correctly (versionCode 46 is visible in the screenshot). To find the Build output tab: click **View → Tool Windows → Build** in the top menu, or look for a "Build" tab at the bottom panel next to "Problems". It shows Gradle compilation logs. But this isn't needed — the code change above is the actual fix.
+Add to `.storage/memory/style/subscription-banner-flash-logic.md`:
+- Document that on fresh install, native storage is cleared, so the 3500ms timer is insufficient
+- The `isRevenueCatResolved` gate is the correct solution for native platforms
