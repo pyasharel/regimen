@@ -339,34 +339,6 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Testosterone Decanoate',
     notes: 'Alias for testosterone decanoate'
   },
-  'testosterone isocaproate': {
-    halfLifeHours: 144, // ~6 days
-    tMaxHours: 48,
-    category: 'steroid',
-    displayName: 'Testosterone Isocaproate',
-    notes: 'Medium ester, component of Sustanon'
-  },
-  'test isocaproate': {
-    halfLifeHours: 144,
-    tMaxHours: 48,
-    category: 'steroid',
-    displayName: 'Testosterone Isocaproate',
-    notes: 'Alias for testosterone isocaproate'
-  },
-  'testosterone phenylpropionate': {
-    halfLifeHours: 96, // ~4 days
-    tMaxHours: 36,
-    category: 'steroid',
-    displayName: 'Testosterone Phenylpropionate',
-    notes: 'Short-medium ester, component of Sustanon'
-  },
-  'test phenylpropionate': {
-    halfLifeHours: 96,
-    tMaxHours: 36,
-    category: 'steroid',
-    displayName: 'Testosterone Phenylpropionate',
-    notes: 'Alias for testosterone phenylpropionate'
-  },
   'test pp': {
     halfLifeHours: 96,
     tMaxHours: 36,
