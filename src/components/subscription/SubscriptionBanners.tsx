@@ -50,11 +50,11 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
       try {
         const { value } = await Preferences.get({ key: NATIVE_PAID_KEY });
         if (value && Date.now() < parseInt(value, 10)) {
-          console.log('[BannerGuard v4] ✅ Native storage: confirmed paid — suppressing banner immediately');
+          console.log('[BannerGuard v5] ✅ Native storage: confirmed paid — suppressing banner immediately');
           hasSeenPaidStatus.current = true;
         } else {
           if (value) await Preferences.remove({ key: NATIVE_PAID_KEY });
-          console.log('[BannerGuard v4] Native storage: no valid paid flag found');
+          console.log('[BannerGuard v5] Native storage: no valid paid flag found');
         }
       } catch (e) {
         console.warn('[BannerGuard v4] Native storage read failed (non-native env?):', e);
@@ -75,10 +75,10 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     const paidStatuses = ['active', 'trialing', 'lifetime'];
     const definitiveStatuses = [...paidStatuses, 'past_due', 'canceled'];
     
-    console.log(`[BannerGuard v4] status="${subscriptionStatus}" isLoading=${isLoading} isPaid=${paidStatuses.includes(subscriptionStatus)} nativeChecked=${nativePaidStatusChecked} hasSeenPaid=${hasSeenPaidStatus.current}`);
+    console.log(`[BannerGuard v5] status="${subscriptionStatus}" isLoading=${isLoading} isPaid=${paidStatuses.includes(subscriptionStatus)} nativeChecked=${nativePaidStatusChecked} hasSeenPaid=${hasSeenPaidStatus.current}`);
     
     if (!isLoading && paidStatuses.includes(subscriptionStatus)) {
-      console.log('[BannerGuard v4] Paid confirmed — writing to Capacitor Preferences (survives Android kills)');
+      console.log('[BannerGuard v5] Paid confirmed — writing to Capacitor Preferences (survives Android kills)');
       hasSeenPaidStatus.current = true;
       try { 
         const expiry = String(Date.now() + 7 * 24 * 60 * 60 * 1000);
