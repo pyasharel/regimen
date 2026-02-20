@@ -85,6 +85,14 @@ export const SettingsScreen = () => {
       // Clear onboarding state so fresh users get clean experience
       localStorage.removeItem('regimen_onboarding_state');
 
+      // Clear the paid-status native cache so a different user on this device
+      // doesn't inherit the previous user's subscription bypass
+      localStorage.removeItem('confirmedPaidStatusUntil');
+      try {
+        const { Preferences } = await import('@capacitor/preferences');
+        await Preferences.remove({ key: 'confirmedPaidStatusUntil' });
+      } catch {}
+
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) throw error;

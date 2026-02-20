@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import { useLocation } from "react-router-dom";
 import { getUserIdWithFallback } from "@/utils/safeAuth";
+import { Preferences } from "@capacitor/preferences";
 
 interface SubscriptionBannersProps {
   subscriptionStatus: string;
@@ -21,14 +22,14 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   const [compoundCount, setCompoundCount] = useState(0);
   const [freeCompoundName, setFreeCompoundName] = useState<string | undefined>();
   const [isMountReady, setIsMountReady] = useState(false);
+  // Keep banner suppressed until native storage check resolves (async)
+  const [nativePaidStatusChecked, setNativePaidStatusChecked] = useState(false);
   const [dismissed, setDismissed] = useState<string | null>(() => {
-    // Check localStorage for cooldown-based dismissal
     const stored = localStorage.getItem('bannerDismissedUntil');
     if (stored) {
       try {
         const { banner, until } = JSON.parse(stored);
         if (until && Date.now() < until) return banner;
-        // Cooldown expired — clear it
         localStorage.removeItem('bannerDismissedUntil');
       } catch {
         localStorage.removeItem('bannerDismissedUntil');
@@ -36,51 +37,59 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
     return null;
   });
-  // Persist confirmed paid status to localStorage with a 7-day TTL so it survives
-  // Android process kills (sessionStorage is wiped on every process restart).
-  // RevenueCat can take 10-46s to resolve on Android — this ensures the free banner
-  // never shows for users whose paid status we've confirmed in a recent session.
-  const PAID_STATUS_KEY = 'confirmedPaidStatusUntil';
-  const hasSeenPaidStatus = useRef<boolean>((() => {
-    try {
-      const until = localStorage.getItem(PAID_STATUS_KEY);
-      if (until && Date.now() < parseInt(until, 10)) return true;
-      if (until) localStorage.removeItem(PAID_STATUS_KEY); // expired, clean up
-      return false;
-    } catch {
-      return false;
-    }
-  })());
 
-  // Two-signal readiness: either the subscription resolves to a definitive paid status,
-  // OR the fallback timer fires (3500ms covers Android's ~2000ms refresh + buffer).
-  // This prevents the free-plan banner from flashing briefly for subscribed users on login.
+  // CRITICAL: Use Capacitor Preferences (native SharedPreferences on Android) — NOT localStorage.
+  // Android WebView wipes localStorage under memory pressure between app sessions.
+  // Capacitor Preferences survives process kills and is the only reliable persistent storage.
+  const NATIVE_PAID_KEY = 'confirmedPaidStatusUntil';
+  const hasSeenPaidStatus = useRef<boolean>(false);
+
+  // On mount: async read from native storage. Keep banner suppressed until resolved.
+  useEffect(() => {
+    const checkNativeStorage = async () => {
+      try {
+        const { value } = await Preferences.get({ key: NATIVE_PAID_KEY });
+        if (value && Date.now() < parseInt(value, 10)) {
+          console.log('[BannerGuard v4] ✅ Native storage: confirmed paid — suppressing banner immediately');
+          hasSeenPaidStatus.current = true;
+        } else {
+          if (value) await Preferences.remove({ key: NATIVE_PAID_KEY });
+          console.log('[BannerGuard v4] Native storage: no valid paid flag found');
+        }
+      } catch (e) {
+        console.warn('[BannerGuard v4] Native storage read failed (non-native env?):', e);
+      } finally {
+        setNativePaidStatusChecked(true);
+      }
+    };
+    checkNativeStorage();
+  }, []);
+
+  // Fallback timer: if subscription still hasn't resolved, show banner after 3500ms
   useEffect(() => {
     const timer = setTimeout(() => setIsMountReady(true), 3500);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    // If we get a definitive paid status before the timer, unlock immediately.
-    // NOTE: 'preview' and 'none' are intentionally EXCLUDED — they are free-tier statuses
-    // and must wait the full 3500ms so the real subscription status can resolve first.
     const paidStatuses = ['active', 'trialing', 'lifetime'];
     const definitiveStatuses = [...paidStatuses, 'past_due', 'canceled'];
     
-    console.log(`[BannerGuard v3] status="${subscriptionStatus}" isLoading=${isLoading} isPaid=${paidStatuses.includes(subscriptionStatus)}`);
+    console.log(`[BannerGuard v4] status="${subscriptionStatus}" isLoading=${isLoading} isPaid=${paidStatuses.includes(subscriptionStatus)} nativeChecked=${nativePaidStatusChecked} hasSeenPaid=${hasSeenPaidStatus.current}`);
     
     if (!isLoading && paidStatuses.includes(subscriptionStatus)) {
-      console.log('[BannerGuard v3] Paid status confirmed — locking out free banner permanently:', subscriptionStatus);
+      console.log('[BannerGuard v4] Paid confirmed — writing to Capacitor Preferences (survives Android kills)');
       hasSeenPaidStatus.current = true;
       try { 
-        // Store for 7 days — survives Android process kills unlike sessionStorage
-        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-        localStorage.setItem(PAID_STATUS_KEY, String(Date.now() + SEVEN_DAYS)); 
+        const expiry = String(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        // Write to BOTH for redundancy: native survives kills, localStorage for fast sync reads
+        Preferences.set({ key: NATIVE_PAID_KEY, value: expiry });
+        localStorage.setItem(NATIVE_PAID_KEY, expiry);
       } catch {}
     }
     
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
-      console.log('[BannerGuard v3] Early unlock triggered by definitive status:', subscriptionStatus);
+      console.log('[BannerGuard v4] Early unlock via definitive status:', subscriptionStatus);
       setIsMountReady(true);
     }
   }, [subscriptionStatus, isLoading]);
@@ -117,7 +126,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
-  const shouldShowPreview = isMountReady && !isLoading && !hasSeenPaidStatus.current && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+  const shouldShowPreview = isMountReady && nativePaidStatusChecked && !isLoading && !hasSeenPaidStatus.current && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
   const shouldReserveBannerSpace = !isPaywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
