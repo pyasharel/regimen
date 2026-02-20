@@ -296,6 +296,34 @@ npm run build && npx cap update ios && npx cap sync ios && npx cap open ios
 
 ---
 
+## Android Fresh Install / Upgrade Black Screen (Build 46+)
+
+**Symptoms:**
+- App shows pure black screen immediately after installing over an existing version
+- Happens when replacing an older install (Android Studio prompts to delete first)
+- Hard-closing and reopening the app loads it fine on the second launch
+
+**Root Cause:**
+When Android replaces an existing app install, `localStorage` and `Capacitor Preferences` can both be wiped. This means the auth token mirror has nothing to restore, causing the boot sequence to wait the full timeout before showing recovery UI. The WebView's native background is black, so the wait feels like a freeze.
+
+**Resolution (Build 46+):**
+Fixed by three changes:
+1. `index.html` sets `background-color: #0a0a0a` before any JS loads — eliminates the black void
+2. Boot timeout extended to 6s on native (was 4s) — gives Android cold starts more time
+3. Recovery screen now shows the Regimen logo + spinner instead of a blank black screen
+
+**For Affected Users (pre-Build 46):**
+1. Hard close the app (swipe away from app switcher)
+2. Reopen — it will load correctly on the second launch
+3. Update to Build 46+ from the Play Store to prevent recurrence
+
+**For Developers Testing:**
+- This scenario is most reproducible when you delete and reinstall during Android Studio deployment
+- The fix means users now see a branded spinner if boot takes longer than expected, instead of a black screen
+- Safe to test by: deleting the app, reinstalling via Android Studio, and confirming a dark background (not black) appears within 1-2 seconds
+
+---
+
 ## App Hangs on Resume / Black Screen (CRITICAL)
 
 **Symptoms:**
