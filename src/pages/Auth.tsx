@@ -133,6 +133,14 @@ export default function Auth() {
           console.warn('[Auth] Failed to seed session cache:', e);
         }
         
+        // CRITICAL: Dispatch hydration-complete BEFORE navigating.
+        // PersistentTabContainer listens for this event to resolve its loading state.
+        // The tab routes render null (no ProtectedRoute), so ProtectedRoute never
+        // fires this event for /today — Auth.tsx must do it here after seeding the cache.
+        (window as any).__authHydrationComplete = true;
+        window.dispatchEvent(new Event('regimen:hydration-complete'));
+        authTrace('HYDRATION_COMPLETE_DISPATCHED', 'from Auth.tsx after cache seed');
+        
         // CRITICAL FIX: Navigate IMMEDIATELY - don't block on any network calls
         authTrace('NAVIGATING_NOW', '/today');
         navigate("/today", { replace: true });
