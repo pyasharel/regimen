@@ -311,6 +311,69 @@ export const HALF_LIFE_DATA: Record<string, MedicationHalfLife> = {
     displayName: 'Sustanon 250',
     notes: 'Blend: propionate, phenylpropionate, isocaproate, decanoate'
   },
+  'sustanon 250': {
+    halfLifeHours: 360,
+    tMaxHours: 48,
+    category: 'steroid',
+    displayName: 'Sustanon 250',
+    notes: 'Blend: propionate 30mg, phenylpropionate 60mg, isocaproate 60mg, decanoate 100mg'
+  },
+  'omnadren': {
+    halfLifeHours: 360, // Similar 4-ester blend
+    tMaxHours: 48,
+    category: 'steroid',
+    displayName: 'Omnadren',
+    notes: '4-ester testosterone blend (Eastern European formulation)'
+  },
+  'testosterone decanoate': {
+    halfLifeHours: 168, // ~7 days
+    tMaxHours: 72, // Peak at ~3 days
+    category: 'steroid',
+    displayName: 'Testosterone Decanoate',
+    notes: 'Longest ester in Sustanon. Also sold as Neotest 250.'
+  },
+  'test decanoate': {
+    halfLifeHours: 168,
+    tMaxHours: 72,
+    category: 'steroid',
+    displayName: 'Testosterone Decanoate',
+    notes: 'Alias for testosterone decanoate'
+  },
+  'testosterone isocaproate': {
+    halfLifeHours: 144, // ~6 days
+    tMaxHours: 48,
+    category: 'steroid',
+    displayName: 'Testosterone Isocaproate',
+    notes: 'Medium ester, component of Sustanon'
+  },
+  'test isocaproate': {
+    halfLifeHours: 144,
+    tMaxHours: 48,
+    category: 'steroid',
+    displayName: 'Testosterone Isocaproate',
+    notes: 'Alias for testosterone isocaproate'
+  },
+  'testosterone phenylpropionate': {
+    halfLifeHours: 96, // ~4 days
+    tMaxHours: 36,
+    category: 'steroid',
+    displayName: 'Testosterone Phenylpropionate',
+    notes: 'Short-medium ester, component of Sustanon'
+  },
+  'test phenylpropionate': {
+    halfLifeHours: 96,
+    tMaxHours: 36,
+    category: 'steroid',
+    displayName: 'Testosterone Phenylpropionate',
+    notes: 'Alias for testosterone phenylpropionate'
+  },
+  'test pp': {
+    halfLifeHours: 96,
+    tMaxHours: 36,
+    category: 'steroid',
+    displayName: 'Testosterone Phenylpropionate',
+    notes: 'Alias for testosterone phenylpropionate'
+  },
   'deca': {
     halfLifeHours: 144, // ~6 days
     tMaxHours: 72,

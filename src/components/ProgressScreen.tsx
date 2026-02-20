@@ -35,6 +35,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { persistentStorage } from "@/utils/persistentStorage";
+import { useAppActive } from "@/hooks/useAppActive";
 import { trackPhotoUploaded, trackPaywallShown, trackCorrelationUsed, trackMetricLogged } from "@/utils/analytics";
 
 type ProgressEntry = {
@@ -156,23 +157,21 @@ export const ProgressScreen = () => {
     loadSettings();
   }, []);
 
-  // Re-load settings when returning from settings page
+  // Re-load settings when app becomes active (works on Android persistent tabs too)
+  const { isAppReadyForNetwork } = useAppActive();
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        const savedUnit = await persistentStorage.get('weightUnit');
-        const savedGoal = await persistentStorage.get('goalWeight');
-        if (savedUnit) setWeightUnit(savedUnit);
-        if (savedGoal) {
-          const goalValue = parseFloat(savedGoal);
-          const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
-          setGoalWeight(goalInLbs);
-        }
+    const reloadSettings = async () => {
+      const savedUnit = await persistentStorage.get('weightUnit');
+      const savedGoal = await persistentStorage.get('goalWeight');
+      if (savedUnit) setWeightUnit(savedUnit);
+      if (savedGoal) {
+        const goalValue = parseFloat(savedGoal);
+        const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+        setGoalWeight(goalInLbs);
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+    reloadSettings();
+  }, [isAppReadyForNetwork]);
 
   const handleSaveGoal = async (value: number) => {
     // value comes in as lbs (internal format), convert to user's unit for storage
