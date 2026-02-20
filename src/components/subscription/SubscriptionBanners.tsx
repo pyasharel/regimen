@@ -47,8 +47,12 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   useEffect(() => {
     // If we get a definitive paid status before the timer, unlock immediately
+    // NOTE: 'preview' and 'none' are intentionally EXCLUDED — they are free-tier statuses
+    // and must wait the full 3500ms so the real subscription status can resolve first.
     const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'lifetime'];
+    console.log(`[BannerGuard v2] status="${subscriptionStatus}" isLoading=${isLoading} isDefinitive=${definitiveStatuses.includes(subscriptionStatus)}`);
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
+      console.log('[BannerGuard v2] Early unlock triggered by paid status:', subscriptionStatus);
       setIsMountReady(true);
     }
   }, [subscriptionStatus, isLoading]);
