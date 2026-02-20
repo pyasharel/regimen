@@ -36,13 +36,17 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
     return null;
   });
-  // Persist confirmed paid status to sessionStorage so it survives renders and 
-  // slow RevenueCat resolution (can take 10-21s on Android). This prevents the 
-  // free banner from ever showing for users whose paid status we've confirmed
-  // in the current app session.
+  // Persist confirmed paid status to localStorage with a 7-day TTL so it survives
+  // Android process kills (sessionStorage is wiped on every process restart).
+  // RevenueCat can take 10-46s to resolve on Android — this ensures the free banner
+  // never shows for users whose paid status we've confirmed in a recent session.
+  const PAID_STATUS_KEY = 'confirmedPaidStatusUntil';
   const hasSeenPaidStatus = useRef<boolean>((() => {
     try {
-      return sessionStorage.getItem('confirmedPaidStatus') === 'true';
+      const until = localStorage.getItem(PAID_STATUS_KEY);
+      if (until && Date.now() < parseInt(until, 10)) return true;
+      if (until) localStorage.removeItem(PAID_STATUS_KEY); // expired, clean up
+      return false;
     } catch {
       return false;
     }
@@ -68,7 +72,11 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     if (!isLoading && paidStatuses.includes(subscriptionStatus)) {
       console.log('[BannerGuard v3] Paid status confirmed — locking out free banner permanently:', subscriptionStatus);
       hasSeenPaidStatus.current = true;
-      try { sessionStorage.setItem('confirmedPaidStatus', 'true'); } catch {}
+      try { 
+        // Store for 7 days — survives Android process kills unlike sessionStorage
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+        localStorage.setItem(PAID_STATUS_KEY, String(Date.now() + SEVEN_DAYS)); 
+      } catch {}
     }
     
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
