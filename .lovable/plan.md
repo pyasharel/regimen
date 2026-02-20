@@ -1,47 +1,80 @@
 
-# Fix: 5 AM (and any pre-6 AM) Doses Showing Under "Evening"
+# Two-Part Fix: Text Selection & Log Today Modal Improvements
 
-## The Bug
+## What Jay Found
 
-A user emailed reporting that peptides scheduled for 5 AM show as "Evening" instead of "Morning." This is not a timezone issue — it's a bucketing logic bug in TodayScreen.tsx.
+Jay spotted two things:
+1. Tapping and holding on the bottom navigation labels (and potentially other UI text) shows the native iOS "Copy / Look Up / Translate" popup — this makes the app feel non-native and unpolished
+2. He prefers emoji-based mood ratings over numbered buttons, and suggested sliders for harder-to-quantify metrics like sleep quality
 
-The three time buckets are defined as:
+---
 
-```
-Morning:   hours >= 6  && hours < 12
-Afternoon: hours >= 12 && hours < 18
-Evening:   hours >= 18 || hours < 6    ← BUG: 5 AM falls here
-```
+## Part 1: Fixing Text Selection (Priority — Immediate Fix)
 
-`5:00 AM` has `hours = 5`, which satisfies `hours < 6`, so the app incorrectly places it under **Evening**. The same is true for any time between midnight and 5:59 AM.
+**Root cause:** The app has no global `user-select: none` rule. Every text label, navigation tab name, section header, and button label is currently selectable on iOS with a long-press, producing the native text selection menu.
 
-The intent is clearly: early morning hours like 5 AM should be "Morning," not "Evening." Evening should only be late night (after 6 PM). There's no real use case for scheduling peptides at midnight/2 AM that wouldn't still make more sense in "Morning."
+**The right fix** is a single CSS rule added to `src/index.css` that disables text selection app-wide by default, with explicit opt-in for any field that actually *needs* selection (textarea, input). This is the standard approach used in all native-feeling web apps.
 
-## The Fix
+**What will be changed:**
+- `src/index.css` — add `-webkit-user-select: none` and `user-select: none` to the `body` rule, plus `-webkit-touch-callout: none` which suppresses the iOS long-press callout bubble (the Copy/Look Up/Translate popup)
+- Re-enable selection for `input`, `textarea`, and any `[contenteditable]` elements so users can still interact with form fields normally
 
-Redefine the buckets so that:
-- **Morning** = midnight through 11:59 AM (hours 0–11) — catches 5 AM correctly
-- **Afternoon** = 12:00 PM through 5:59 PM (hours 12–17)
-- **Evening** = 6:00 PM through 11:59 PM (hours 18–23) — no more `hours < 6` trap
+**Scope of the problem (confirmed via codebase search):**
+- `BottomNavigation` — tab labels "Today", "My Stack", etc. are all selectable `<span>` elements
+- `MainHeader` — "REGIMEN" logo text and page title are selectable
+- All dose card labels, section headers (MORNING, AFTERNOON, EVENING), compound names, timestamps
+- The `LogTodayDrawerContent` and `LogTodayModal` section labels
+- Onboarding screens, settings labels, progress screen labels
 
-Also add a "Bedtime" fallback for the `Bedtime` keyword (currently missing from the filter logic — only string-matched in `formatTime` but not in the bucket filters), so any `Bedtime`-labeled dose doesn't get lost.
+---
 
-## Files to Change
+## Part 2: Log Today Modal — Deferred (Strategic Decision)
 
-**Edit `src/components/TodayScreen.tsx`** — three bucket filter functions around lines 1740–1771:
+Jay's feedback:
+- Prefers the emoji mood picker UI (Great / Okay / Bad / Terrible) with symptom chips
+- Sliders instead of numbered 1–5 buttons for sleep/energy — harder to mentally quantify with numbers
+- "I don't really enjoy manually logging this stuff" — hints that HealthKit auto-import will matter most here
 
-```
-Morning   → if (time === 'Morning') true; else hours >= 0 && hours < 12
-Afternoon → if (time === 'Afternoon') true; else hours >= 12 && hours < 18
-Evening   → if (time === 'Evening' || time === 'Bedtime') true; else hours >= 18
-```
+**My recommendation: do not redesign the modal right now.** Here's why:
 
-This is a 3-line change. No data changes, no schema changes, no auth changes.
+1. Once Apple Health is connected (Saturday), sleep quality, steps, and potentially weight will flow in automatically — reducing the friction Jay is describing. The redesign would look very different post-HealthKit.
+2. Injection site tracking will likely be added to the dose-logging flow, which will change the overall "log something" UX significantly.
+3. A symptom chip redesign (like the reference app Jay sent) is a meaningful project — probably 3–4 hours of careful work — and doing it now before knowing what data HealthKit provides would likely mean reworking it again soon.
 
-## Why This Isn't the Timezone Issue
+**What to tell Jay:** Good feedback — the HealthKit integration coming Saturday will auto-pull sleep and other metrics, which addresses the manual logging friction. The emoji mood + symptom chip UI is on the roadmap once that's in place.
 
-The Australia/Jay issue was about dates shifting by a day due to UTC conversion. This is different — Rohit's compounds are appearing on the right day, just under the wrong time section header. The `scheduled_time` value is stored as a string like `"05:00"`, the parsing is correct, but the bucket check puts anything before 6 AM into Evening by accident.
+---
 
-## Regarding the User (rohitsuryastudios@gmail.com)
+## Technical Plan
 
-No matching account was found in the database under that email. They may not have signed up yet, or signed up with a different address. The reply to them should be: confirm it's a known bug and that it'll be fixed in the next update — doses scheduled before 6 AM were incorrectly showing under "Evening" instead of "Morning."
+### Files to change:
+
+**`src/index.css`** — 2 targeted additions to the `@layer base` block:
+
+1. Inside the existing `body` rule, add:
+   ```css
+   -webkit-user-select: none;
+   user-select: none;
+   -webkit-touch-callout: none;
+   ```
+
+2. Add a new explicit opt-in rule for form elements:
+   ```css
+   input, textarea, [contenteditable] {
+     -webkit-user-select: text;
+     user-select: text;
+   }
+   ```
+
+That is the **entire change needed** — two CSS additions. No component-level changes required. The global rule propagates to every screen including BottomNavigation, MainHeader, TodayScreen dose cards, My Stack, Progress, Settings, Onboarding, and all modals/drawers.
+
+### Why this approach is safe:
+- `user-select: none` does not affect click/tap interactions at all — buttons and links still work normally
+- Inputs and textareas are explicitly opted back in, so the weight field, notes field, search fields, etc. all remain fully functional
+- The `-webkit-touch-callout: none` property is the specific iOS Safari/WKWebView property that disables the callout bubble — this is exactly what native iOS apps disable
+- This mirrors what Capacitor/Ionic apps do by default in their CSS resets
+
+### What this will NOT affect:
+- Any legitimate user-selectable text (there isn't any in this app — it's not a document reader)
+- Input/textarea focus, keyboard appearance, or text editing
+- The existing `select-none` classes already scattered in UI components (they become redundant but harmless)
