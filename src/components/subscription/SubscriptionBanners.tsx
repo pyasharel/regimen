@@ -1,7 +1,7 @@
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { usePaywall } from "@/contexts/PaywallContext";
 import { X, AlertCircle, Info } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PreviewModeBanner } from "@/components/PreviewModeBanner";
 import { useLocation } from "react-router-dom";
@@ -36,6 +36,10 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
     return null;
   });
+  // Once we've confirmed a paid status, permanently suppress the free banner this session.
+  // This prevents a flash when check-subscription returns "none" AFTER RevenueCat already
+  // confirmed "active" (race condition on Android where two async sources disagree briefly).
+  const hasSeenPaidStatus = useRef(false);
 
   // Two-signal readiness: either the subscription resolves to a definitive paid status,
   // OR the fallback timer fires (3500ms covers Android's ~2000ms refresh + buffer).
@@ -46,13 +50,21 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
   }, []);
 
   useEffect(() => {
-    // If we get a definitive paid status before the timer, unlock immediately
+    // If we get a definitive paid status before the timer, unlock immediately.
     // NOTE: 'preview' and 'none' are intentionally EXCLUDED — they are free-tier statuses
     // and must wait the full 3500ms so the real subscription status can resolve first.
-    const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'lifetime'];
-    console.log(`[BannerGuard v2] status="${subscriptionStatus}" isLoading=${isLoading} isDefinitive=${definitiveStatuses.includes(subscriptionStatus)}`);
+    const paidStatuses = ['active', 'trialing', 'lifetime'];
+    const definitiveStatuses = [...paidStatuses, 'past_due', 'canceled'];
+    
+    console.log(`[BannerGuard v3] status="${subscriptionStatus}" isLoading=${isLoading} isPaid=${paidStatuses.includes(subscriptionStatus)}`);
+    
+    if (!isLoading && paidStatuses.includes(subscriptionStatus)) {
+      console.log('[BannerGuard v3] Paid status confirmed — locking out free banner permanently:', subscriptionStatus);
+      hasSeenPaidStatus.current = true;
+    }
+    
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
-      console.log('[BannerGuard v2] Early unlock triggered by paid status:', subscriptionStatus);
+      console.log('[BannerGuard v3] Early unlock triggered by definitive status:', subscriptionStatus);
       setIsMountReady(true);
     }
   }, [subscriptionStatus, isLoading]);
@@ -89,7 +101,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   const shouldShowPastDue = subscriptionStatus === 'past_due' && dismissed !== 'past_due';
   const shouldShowCanceled = subscriptionStatus === 'canceled' && !!subscriptionEndDate && dismissed !== 'canceled';
-  const shouldShowPreview = isMountReady && !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+  const shouldShowPreview = isMountReady && !isLoading && !hasSeenPaidStatus.current && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
 
   const shouldReserveBannerSpace = !isPaywallOpen && !isHiddenRoute && (shouldShowPastDue || shouldShowCanceled || shouldShowPreview);
 
