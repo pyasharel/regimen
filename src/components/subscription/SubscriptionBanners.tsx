@@ -57,7 +57,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
           console.log('[BannerGuard v5] Native storage: no valid paid flag found');
         }
       } catch (e) {
-        console.warn('[BannerGuard v4] Native storage read failed (non-native env?):', e);
+        console.warn('[BannerGuard v5] Native storage read failed (non-native env?):', e);
       } finally {
         setNativePaidStatusChecked(true);
       }
