@@ -243,11 +243,56 @@ The files should show recent timestamps matching your last `npm run build`.
 - Version number in Settings doesn't change after rebuilding
 - Old features/bugs persist despite code changes
 - `npx cap sync` or `npx cap update` shows "ios platform has not been added yet"
+- Logcat/console shows old JS bundle hash (e.g. same hash as before the change)
 
 **Root Cause:** Usually one of:
-1. **Running commands from wrong directory** (inside `ios/App/` instead of project root)
-2. Cached builds in Xcode not being cleared
-3. Old app still installed on device
+1. **Skipped `git pull`** — Lovable commits code to git; without pulling, the local machine never gets the changes
+2. **Wrong project open in IDE** — Android Studio or Xcode is pointed at a stale/nested directory
+3. **Running commands from wrong directory** (inside `ios/App/` instead of project root)
+4. Cached builds in Xcode not being cleared
+5. Old app still installed on device
+
+---
+
+## ⚠️ RULE #1: Always `git pull` After Any Lovable Code Change
+
+Lovable saves changes by committing to git. If you skip `git pull`, **none of the Lovable changes will be in your local build**, no matter how many times you clean and rebuild.
+
+**The full correct chain for Android:**
+```bash
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update android && ./sync-version.sh
+```
+
+**The full correct chain for iOS:**
+```bash
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update ios && cd ios/App && pod install && cd ../.. && ./sync-version.sh
+```
+
+---
+
+## ⚠️ RULE #2: Always Open the IDE via `npx cap open`
+
+**The #1 cause of "changes not appearing" is the IDE pointing at the wrong project folder.**
+
+### WRONG (leads to stale builds):
+- Double-clicking `.xcworkspace` or `build.gradle` from Finder
+- Using IDE "Recent Projects" list — it may point to a nested/old directory
+
+### CORRECT — always do:
+```bash
+cd ~/regimen-health-hub
+npx cap open android   # Android Studio
+npx cap open ios       # Xcode
+```
+
+**Verify you're in the right project:**
+- Android Studio title bar should end with `.../regimen-health-hub/android`
+- NOT `.../regimen-health-hub/regimen/android` or any nested path
+- If you see a nested path, close and reopen using the command above
+
+---
 
 **Fix - Verify Directory First:**
 
@@ -258,21 +303,7 @@ ls package.json capacitor.config.ts
 
 If you see "No such file", you're in the wrong folder. Run `cd ../..` until you're in the right place.
 
-**Fix - The Nuclear Rebuild Chain:**
-
-```bash
-npm run build
-npx cap update ios
-npx cap sync ios
-npx cap open ios
-```
-
-Then in Xcode:
-1. Hold **Option** key → **Product → Clean Build Folder**
-2. **Delete the app from your phone** (long-press → Remove App)
-3. Click **Run** (▶)
-
-**Verify the fix:** Check Settings → version number should match `appBuild` in `capacitor.config.ts`
+**Verify the fix:** Check Settings → version number should match `appBuild` in `capacitor.config.ts`. Also check the JS bundle hash in Logcat — it should be different from the previous build.
 
 **Pro tip:** Bump `appBuild` in `capacitor.config.ts` before rebuilding to force-confirm you're running the newest bundle.
 

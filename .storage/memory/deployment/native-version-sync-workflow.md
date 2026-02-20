@@ -38,10 +38,34 @@ Then in **Xcode**:
 - Clean + Uninstall — clears Android WebView cache and stale Xcode artifacts
 
 ## Verifying the fix reached the device
-- Check Logcat (Android) or Safari Web Inspector (iOS) for the latest version tag in logs (e.g. `[BannerGuard v4]`)
+- Check Logcat (Android) or Safari Web Inspector (iOS) for the latest version tag in logs (e.g. `[BannerGuard v5]`)
 - Check Settings → Help for Bundle timestamp — should match when `npm run build` was run
+- The JS bundle hash in Logcat should change after a fresh build (e.g. from `Ddsv-A9r` to a new hash)
 
 ## For App Store / Play Store releases
 - `appVersion` and `appBuild` in `capacitor.config.ts` are the source of truth
 - `./sync-version.sh` writes those values into native project files — must run AFTER cap update/sync
 - Local project path: `/Users/Zen/regimen-health-hub` (shell alias: `regimen`)
+
+---
+
+## ⚠️ CRITICAL: Always Open the IDE from the Correct Project
+**The #1 cause of "changes not appearing" is Android Studio or Xcode opening the wrong project directory.**
+
+### WRONG way (leads to stale builds):
+- Double-clicking an `.xcworkspace` or `build.gradle` file from Finder
+- Using a "recent projects" shortcut in Android Studio/Xcode that points to a nested or old directory
+
+### CORRECT way — always use npx cap open:
+```bash
+cd ~/regimen-health-hub
+npx cap open android   # Opens Android Studio on the correct project
+npx cap open ios       # Opens Xcode on the correct project
+```
+
+This guarantees the IDE is pointed at `~/regimen-health-hub/android` (or `ios`), not a stale nested copy.
+
+### How to verify you're in the right project in Android Studio:
+- The title bar should show a path ending in `.../regimen-health-hub/android`
+- NOT `.../regimen-health-hub/regimen/android` or any nested path
+- If you see a nested path, close Android Studio and reopen using `npx cap open android`
