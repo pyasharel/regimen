@@ -1,66 +1,53 @@
 
-# Fix: Eliminate Black Screen During Android Boot Failures
+# Fix: Eliminate the 1-Second "Free Plan" Banner Flash on Login
 
-## Root Cause Analysis
+## Root Cause
 
-Three compounding issues create the black screen:
+The banner flash happens due to a timing gap in the subscription loading sequence:
 
-1. `index.html` `<body>` has no background color — the WebView renders as native black before any CSS loads
-2. The boot timeout recovery UI in `main.tsx` uses `background: #000` (intentional black, but wrong choice)
-3. The `ProtectedRoute` loading state renders `bg-background` which is correct, but it only appears after React mounts — which can take 1-2 seconds on Android cold start
+1. The app boots → `SubscriptionContext` runs its initial `refreshSubscription('context_init')` with no logged-in user → completes quickly → sets `isLoading = false` and `subscriptionStatus = 'none'`
+2. User logs in → `onAuthStateChange` fires with `SIGNED_IN` → calls `refreshSubscription` via `setTimeout(0)` (deferred by design to prevent auth lock contention)
+3. During this deferred window, `isLoading` is `false` and status is still `'none'` — the preview banner briefly appears
+4. The second refresh completes with the real subscription status → banner disappears
 
-The result: users see black during the JS loading phase, then black again if either timeout fires.
+On native, this window is wider because RevenueCat identification adds extra async work before the status resolves.
 
-## Solution: 3 Changes
+**Why it worked before:** Earlier versions likely didn't have the deferred `setTimeout(0)` pattern. That was added specifically to fix auth lock contention issues, which is the right tradeoff — but it introduced this brief visual gap.
 
-### Change 1 — `index.html`: Set background color before JS loads
+## The Fix: Mount Delay in SubscriptionBanners
 
-Add a `<style>` block in the `<head>` that applies the dark background color immediately when the HTML parses. This costs zero JS and eliminates the native-WebView black flash entirely.
+The safest, least invasive fix is to suppress the preview banner for the first **1500ms after the component mounts**. This covers the window between the initial `context_init` refresh completing and the `SIGNED_IN` refresh resolving.
 
-```html
-<style>
-  html, body, #root {
-    background-color: #0a0a0a; /* matches --background in dark theme */
-    margin: 0;
-    min-height: 100vh;
-  }
-</style>
+- The existing `isLoading` guard already handles the initial load
+- The mount delay plugs the specific gap between the two sequential refresh cycles
+- Past-due and canceled banners are NOT delayed — they are payment-critical and should never be suppressed
+- No changes to `SubscriptionContext`, auth flow, or any other component
+
+## File to Modify
+
+**`src/components/subscription/SubscriptionBanners.tsx`**
+
+Add a `isMounted` state that starts `false` and flips to `true` after a 1500ms `setTimeout`. The preview banner (`shouldShowPreview`) only renders when `isMounted` is also `true`.
+
 ```
+const [isMountReady, setIsMountReady] = useState(false);
 
-### Change 2 — `main.tsx`: Replace the black boot timeout recovery screen
+useEffect(() => {
+  const timer = setTimeout(() => setIsMountReady(true), 1500);
+  return () => clearTimeout(timer);
+}, []);
 
-The current inline HTML uses `background: #000` and has no branding. Replace it with the app's dark background color and add a branded spinner, so if this screen ever appears, it looks intentional rather than broken.
-
-The new recovery screen will show:
-- Dark background (`#0a0a0a`) matching the app theme
-- Regimen wordmark logo (the PNG already exists at `/regimen-wordmark-transparent.png`)  
-- A spinner and "Taking longer than expected..." message
-- The same "Reset & Retry" and "Try Again" buttons
-
-### Change 3 — `main.tsx`: Extend boot timeout slightly on Android
-
-The 4-second `BOOT_TIMEOUT_MS` is aggressive for Android cold starts where:
-- JS bundle parsing takes longer on lower-end devices
-- `preHydrateAuthFromMirror()` is async and can overlap the timeout
-
-Change from 4000ms to **6000ms** for native platforms (keep 4000ms for web). This gives the normal auth flow time to complete on slower Android devices before the recovery screen appears, reducing false-positive timeout triggers.
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `index.html` | Add inline `<style>` with dark background for `html`, `body`, `#root` |
-| `src/main.tsx` | Replace `background: #000` recovery HTML with branded dark version; increase native timeout to 6000ms |
+// Updated condition:
+const shouldShowPreview = isMountReady && !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+```
 
 ## What This Does NOT Change
 
-- The actual boot/auth logic remains identical
-- The 12-second ProtectedRoute watchdog is unchanged (already renders with `bg-background`)
-- The Splash screen behavior is unchanged
-- No impact on iOS
+- Past-due and canceled banners are unaffected — they show immediately as before
+- The `isLoading` guard remains in place as a secondary protection
+- No auth flow, boot sequence, or `SubscriptionContext` logic is touched
+- No risk of breaking anything — it only delays showing a non-urgent banner by 1.5 seconds on initial mount
 
-## Impact on Real Users
+## Risk Assessment
 
-Fresh install from Play Store: **No change** — they go straight to onboarding
-Existing user upgrade: **Black flash eliminated**, recovery screen is now branded if timeout fires
-Developer replacing install: **Same behavior but visually less alarming**
+Very low. The 1500ms window is conservative and covers the full RevenueCat identify + refresh cycle on both iOS and Android. Subscribed users will simply never see the banner at all. Free-tier users will see it 1.5 seconds after opening the app instead of immediately, which is acceptable and avoids the confusing flash.
