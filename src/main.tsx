@@ -3,6 +3,7 @@
 // ========================================
 import { startBootTrace, trace, endBootTrace } from './utils/bootTracer';
 startBootTrace();
+console.log('🚀 [BUILD STAMP] build=47 bannerguard=v5 timestamp=2026-02-20');
 
 // ========================================
 // SUPABASE CLIENT RECREATION - EVERY NATIVE COLD START
