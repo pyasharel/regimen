@@ -149,13 +149,16 @@ export const SettingsScreen = () => {
   const handleRateApp = async () => {
     console.log('[Settings] Rate button clicked');
     
-    const result = await requestRating('settings');
+    // From settings, always use store fallback so the button reliably works.
+    // The native In-App Review API is rate-limited by iOS/Android and silently
+    // suppresses the dialog if the user has already rated — we can't detect this.
+    const result = await requestRating('settings', { forceStoreFallback: true });
     
     console.log('[Settings] Rating result:', result);
     
     // Show feedback based on result
     if (result.method === 'store_fallback') {
-      toast.success('Opening store page...', {
+      toast.success('Opening App Store...', {
         description: 'Your review helps others discover Regimen!',
         duration: 3000,
       });

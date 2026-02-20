@@ -18,6 +18,8 @@ export interface RatingResult {
 export interface RatingOptions {
   /** If true, skip the store fallback and return not_available instead */
   skipStoreFallback?: boolean;
+  /** If true, skip native dialog entirely and go straight to the store */
+  forceStoreFallback?: boolean;
 }
 
 /**
@@ -35,7 +37,7 @@ export async function requestRating(
   source: 'settings' | 'onboarding' | 'auto_prompt',
   options: RatingOptions = {}
 ): Promise<RatingResult> {
-  const { skipStoreFallback = false } = options;
+  const { skipStoreFallback = false, forceStoreFallback = false } = options;
   // Track the button tap immediately
   trackRatingButtonTapped(source);
 
@@ -49,6 +51,14 @@ export async function requestRating(
   }
 
   const platform = getPlatform();
+
+  // Force store fallback (e.g. from settings — native dialog is unreliable after
+  // the user has already rated or iOS has hit its 3x/year cap)
+  if (forceStoreFallback) {
+    console.log('[RatingHelper] forceStoreFallback=true, going straight to store');
+    return await openStoreFallback(platform, source);
+  }
+
   const isPluginAvailable = Capacitor.isPluginAvailable('InAppReview');
 
   console.log('[RatingHelper] Platform:', platform);
