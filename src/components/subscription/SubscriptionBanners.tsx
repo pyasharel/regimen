@@ -37,10 +37,21 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     return null;
   });
 
+  // Two-signal readiness: either the subscription resolves to a definitive paid status,
+  // OR the fallback timer fires (3500ms covers Android's ~2000ms refresh + buffer).
+  // This prevents the free-plan banner from flashing briefly for subscribed users on login.
   useEffect(() => {
-    const timer = setTimeout(() => setIsMountReady(true), 1500);
+    const timer = setTimeout(() => setIsMountReady(true), 3500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    // If we get a definitive paid status before the timer, unlock immediately
+    const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
+    if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
+      setIsMountReady(true);
+    }
+  }, [subscriptionStatus, isLoading]);
 
   // Fetch compound count and oldest compound name for contextual banner
   useEffect(() => {
