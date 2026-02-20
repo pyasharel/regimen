@@ -173,9 +173,9 @@ trace('PREFLIGHT_DONE', preflightReport.errors.length > 0 ? `${preflightReport.e
 // ========================================
 // BOOT TIMEOUT FALLBACK
 // ========================================
-// If the app doesn't render within 4 seconds, show recovery UI
-// Reduced from 6s to 4s for faster recovery
-const BOOT_TIMEOUT_MS = 4000;
+// If the app doesn't render within 6s (native) or 4s (web), show recovery UI
+// Native gets extra time for Android cold starts with slower JS parsing
+const BOOT_TIMEOUT_MS = Capacitor.isNativePlatform() ? 6000 : 4000;
 
 declare global {
   interface Window {
@@ -224,34 +224,45 @@ window.__bootTimeoutId = setTimeout(() => {
         align-items: center;
         justify-content: center;
         height: 100vh;
-        background: #000;
+        background: #0a0a0a;
         color: #fff;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         padding: 24px;
         text-align: center;
       ">
-        <h1 style="font-size: 20px; margin-bottom: 12px;">Unable to Load</h1>
-        <p style="font-size: 14px; opacity: 0.7; margin-bottom: 24px;">
-          The app couldn't start properly. This usually fixes itself with a reset.
+        <img src="/regimen-wordmark-transparent.png" alt="Regimen" style="height: 32px; width: auto; margin-bottom: 32px; opacity: 0.9;" />
+        <div style="
+          width: 36px; height: 36px;
+          border: 3px solid rgba(139,92,246,0.25);
+          border-top-color: #8B5CF6;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          margin-bottom: 24px;
+        "></div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        <p style="font-size: 15px; opacity: 0.55; margin-bottom: 36px; max-width: 260px; line-height: 1.5;">
+          Taking longer than expected…
         </p>
         <button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="
           background: #8B5CF6;
           color: white;
           border: none;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 16px;
+          padding: 13px 28px;
+          border-radius: 10px;
+          font-size: 15px;
           cursor: pointer;
           margin-bottom: 12px;
+          width: 220px;
         ">Reset &amp; Retry</button>
         <button onclick="window.location.reload();" style="
           background: transparent;
           color: #8B5CF6;
-          border: 1px solid #8B5CF6;
-          padding: 12px 24px;
-          border-radius: 8px;
-          font-size: 16px;
+          border: 1px solid rgba(139,92,246,0.5);
+          padding: 13px 28px;
+          border-radius: 10px;
+          font-size: 15px;
           cursor: pointer;
+          width: 220px;
         ">Try Again</button>
       </div>
     `;
