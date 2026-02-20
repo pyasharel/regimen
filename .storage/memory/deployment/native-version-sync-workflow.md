@@ -1,31 +1,47 @@
 # Memory: deployment/native-version-sync-workflow
 Updated: 2026-02-20
 
-## The Problem
-`npx cap sync` copies web assets but can overwrite native build numbers.
-`./sync-version.sh` MUST run AFTER `npx cap sync` so it doesn't get overwritten.
+## ⚠️ CRITICAL RULE — ALWAYS GIVE THE FULL CHAIN
+Any time a code change needs to reach the physical device, ALWAYS give the user the full command chain below. NEVER skip `git pull`. NEVER say "just run npx cap sync". The device will keep running stale code otherwise.
 
-## Full Deployment Command (run from project root)
-**ORDER MATTERS — sync-version.sh goes last:**
+---
 
+## Android — Full Sync Chain (ALWAYS use this for device testing)
 ```bash
-git pull && npm install && npm run build && npx cap sync && ./sync-version.sh
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update android && ./sync-version.sh
 ```
+Then in **Android Studio**:
+1. Build → Clean Project
+2. Build → Rebuild Project
+3. **Uninstall** the app from the device
+4. Click Run ▶
 
-## After Running That Command
+## iOS — Full Sync Chain (ALWAYS use this for device testing)
+```bash
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update ios && cd ios/App && pod install && cd ../.. && ./sync-version.sh
+```
+Then in **Xcode**:
+1. Hold Option → Product → Clean Build Folder
+2. Delete the app from the phone
+3. Click Run ▶
 
-### iOS (TestFlight):
-1. Open Xcode: `npx cap open ios`
-2. Confirm build number is correct in General tab (should match appBuild in capacitor.config.ts)
-3. Product → Archive → Distribute
+---
 
-### Android (Play Store):
-1. Open Android Studio: `npx cap open android`
-2. Build → Generate Signed Bundle / APK
-3. Upload AAB to Play Console
+## Why each step matters
+- `git pull` — pulls Lovable's latest committed code. WITHOUT this, the device gets stale code no matter what was changed in Lovable.
+- `npm install` — ensures any new deps are installed
+- `npm run build` — compiles the fresh web bundle
+- `npx cap update android/ios` — MORE THOROUGH than `npx cap sync`; updates native deps AND copies web assets
+- `./sync-version.sh` — MUST run LAST; prevents `cap update` from resetting native build numbers (CURRENT_PROJECT_VERSION, MARKETING_VERSION)
+- Clean + Uninstall — clears Android WebView cache and stale Xcode artifacts
 
-## Key Facts
+## Verifying the fix reached the device
+- Check Logcat (Android) or Safari Web Inspector (iOS) for the latest version tag in logs (e.g. `[BannerGuard v4]`)
+- Check Settings → Help for Bundle timestamp — should match when `npm run build` was run
+
+## For App Store / Play Store releases
 - `appVersion` and `appBuild` in `capacitor.config.ts` are the source of truth
-- `./sync-version.sh` writes those values into native project files — must run AFTER cap sync
-- If phone still shows old build: delete app from phone, then reinstall from Xcode/TestFlight
-- Local project path: `/Users/Zen/regimen-health-hub`
+- `./sync-version.sh` writes those values into native project files — must run AFTER cap update/sync
+- Local project path: `/Users/Zen/regimen-health-hub` (shell alias: `regimen`)
