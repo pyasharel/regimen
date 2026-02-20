@@ -1,53 +1,59 @@
 
-# Fix: Eliminate the 1-Second "Free Plan" Banner Flash on Login
+# Fix: Banner Flash — The `'preview'` Status Defeats Its Own Guard
 
-## Root Cause
+## The Actual Root Cause (One Line)
 
-The banner flash happens due to a timing gap in the subscription loading sequence:
+In `SubscriptionBanners.tsx` line 50, `'preview'` is included in the `definitiveStatuses` array:
 
-1. The app boots → `SubscriptionContext` runs its initial `refreshSubscription('context_init')` with no logged-in user → completes quickly → sets `isLoading = false` and `subscriptionStatus = 'none'`
-2. User logs in → `onAuthStateChange` fires with `SIGNED_IN` → calls `refreshSubscription` via `setTimeout(0)` (deferred by design to prevent auth lock contention)
-3. During this deferred window, `isLoading` is `false` and status is still `'none'` — the preview banner briefly appears
-4. The second refresh completes with the real subscription status → banner disappears
-
-On native, this window is wider because RevenueCat identification adds extra async work before the status resolves.
-
-**Why it worked before:** Earlier versions likely didn't have the deferred `setTimeout(0)` pattern. That was added specifically to fix auth lock contention issues, which is the right tradeoff — but it introduced this brief visual gap.
-
-## The Fix: Mount Delay in SubscriptionBanners
-
-The safest, least invasive fix is to suppress the preview banner for the first **1500ms after the component mounts**. This covers the window between the initial `context_init` refresh completing and the `SIGNED_IN` refresh resolving.
-
-- The existing `isLoading` guard already handles the initial load
-- The mount delay plugs the specific gap between the two sequential refresh cycles
-- Past-due and canceled banners are NOT delayed — they are payment-critical and should never be suppressed
-- No changes to `SubscriptionContext`, auth flow, or any other component
-
-## File to Modify
-
-**`src/components/subscription/SubscriptionBanners.tsx`**
-
-Add a `isMounted` state that starts `false` and flips to `true` after a 1500ms `setTimeout`. The preview banner (`shouldShowPreview`) only renders when `isMounted` is also `true`.
-
-```
-const [isMountReady, setIsMountReady] = useState(false);
-
-useEffect(() => {
-  const timer = setTimeout(() => setIsMountReady(true), 1500);
-  return () => clearTimeout(timer);
-}, []);
-
-// Updated condition:
-const shouldShowPreview = isMountReady && !isLoading && (subscriptionStatus === 'preview' || subscriptionStatus === 'none') && dismissed !== 'preview';
+```typescript
+const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
+if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
+  setIsMountReady(true);  // ← fires immediately for 'preview' too!
+}
 ```
 
-## What This Does NOT Change
+The intent was: "if we get a confirmed paid status before the 3500ms timer, resolve early so subscribed users don't wait." But `'preview'` and `'none'` are the FREE statuses — the very statuses that should trigger the banner. So when the context finishes its first (stale) refresh with `subscriptionStatus = 'preview'`, this effect fires, sees `'preview'` as "definitive", and immediately sets `isMountReady = true`. The 3500ms guard is completely bypassed.
 
-- Past-due and canceled banners are unaffected — they show immediately as before
-- The `isLoading` guard remains in place as a secondary protection
-- No auth flow, boot sequence, or `SubscriptionContext` logic is touched
-- No risk of breaking anything — it only delays showing a non-urgent banner by 1.5 seconds on initial mount
+The timeline on Android looks like this:
+
+```text
+t=0ms    App boots, isMountReady = false (banner hidden ✓)
+t=~300ms Context init refresh completes → subscriptionStatus = 'preview' (stale)
+t=~300ms Second useEffect fires: 'preview' is in definitiveStatuses → isMountReady = true ✗
+t=~300ms Banner appears immediately (the flash)
+t=~2000ms SIGNED_IN refresh completes → subscriptionStatus = 'active'
+t=~2000ms Banner disappears
+```
+
+The 3500ms timer never mattered because the status effect fired first at ~300ms.
+
+## The Fix
+
+Remove `'preview'` and `'none'` from `definitiveStatuses`. Only PAID/CONFIRMED statuses should unlock the banner early. Free/unresolved statuses must always wait for the full timer.
+
+**File: `src/components/subscription/SubscriptionBanners.tsx`, line 50**
+
+Change:
+```typescript
+const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
+```
+
+To:
+```typescript
+const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'lifetime'];
+```
+
+## What This Changes
+
+- `active`, `trialing`, `past_due`, `canceled`, `lifetime` → still unlock immediately (subscribed users see the right UI without waiting 3.5 seconds)
+- `preview`, `none` → now forced to wait the full 3500ms timer before the banner can appear
+- For a subscribed user: their real status (`active`) arrives around t=2000ms, which is before the 3500ms timer, so they unlock immediately at t=2000ms and never see the free banner
+- For a genuine free-tier user: they wait the full 3500ms, then the banner appears — a slight delay but acceptable
 
 ## Risk Assessment
 
-Very low. The 1500ms window is conservative and covers the full RevenueCat identify + refresh cycle on both iOS and Android. Subscribed users will simply never see the banner at all. Free-tier users will see it 1.5 seconds after opening the app instead of immediately, which is acceptable and avoids the confusing flash.
+Very low. This is removing two values from an array. The logic paths for past-due, canceled, and active subscriptions are completely unaffected. The only change in behavior is that `preview` and `none` statuses no longer bypass the timer — which is exactly what we always intended.
+
+## Android Studio Build Output Panel
+
+Your build is syncing correctly (versionCode 46 is visible in the screenshot). To find the Build output tab: click **View → Tool Windows → Build** in the top menu, or look for a "Build" tab at the bottom panel next to "Problems". It shows Gradle compilation logs. But this isn't needed — the code change above is the actual fix.
