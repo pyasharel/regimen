@@ -36,10 +36,17 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     }
     return null;
   });
-  // Once we've confirmed a paid status, permanently suppress the free banner this session.
-  // This prevents a flash when check-subscription returns "none" AFTER RevenueCat already
-  // confirmed "active" (race condition on Android where two async sources disagree briefly).
-  const hasSeenPaidStatus = useRef(false);
+  // Persist confirmed paid status to sessionStorage so it survives renders and 
+  // slow RevenueCat resolution (can take 10-21s on Android). This prevents the 
+  // free banner from ever showing for users whose paid status we've confirmed
+  // in the current app session.
+  const hasSeenPaidStatus = useRef<boolean>((() => {
+    try {
+      return sessionStorage.getItem('confirmedPaidStatus') === 'true';
+    } catch {
+      return false;
+    }
+  })());
 
   // Two-signal readiness: either the subscription resolves to a definitive paid status,
   // OR the fallback timer fires (3500ms covers Android's ~2000ms refresh + buffer).
@@ -61,6 +68,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
     if (!isLoading && paidStatuses.includes(subscriptionStatus)) {
       console.log('[BannerGuard v3] Paid status confirmed — locking out free banner permanently:', subscriptionStatus);
       hasSeenPaidStatus.current = true;
+      try { sessionStorage.setItem('confirmedPaidStatus', 'true'); } catch {}
     }
     
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
