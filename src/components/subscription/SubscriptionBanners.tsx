@@ -47,7 +47,7 @@ export const SubscriptionBanners = ({ subscriptionStatus, onUpgrade }: Subscript
 
   useEffect(() => {
     // If we get a definitive paid status before the timer, unlock immediately
-    const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'preview', 'lifetime'];
+    const definitiveStatuses = ['active', 'trialing', 'past_due', 'canceled', 'lifetime'];
     if (!isLoading && definitiveStatuses.includes(subscriptionStatus)) {
       setIsMountReady(true);
     }
