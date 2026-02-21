@@ -1503,17 +1503,14 @@ export const TodayScreen = () => {
       <div className="flex-1 min-h-0 scroll-container pb-40">
         {/* Header */}
         {/* Header */}
-        <MainHeader title="Today" />
+        <MainHeader title="Today" rightSlot={<StreakBadge />} />
 
         <div className="px-4 pt-4 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
+        <div className="flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
               {greeting.text}{userName ? `, ${userName}` : ''}
             </h2>
             <greeting.Icon className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 text-primary animate-[pulse_4s_ease-in-out_infinite]" />
-          </div>
-          <StreakBadge />
         </div>
       </div>
 
