@@ -25,13 +25,11 @@ export const ProgressStats = ({
     return dateA.getTime() - dateB.getTime();
   });
 
-  // Normalize weight to lbs: HealthKit entries store kg with unit:"kilogram"
+  // Normalize weight to lbs. Apple Health / Health Connect always store weight in kg.
   const normalizeToLbs = (metrics: any): number => {
     const raw = metrics.weight;
     const isHealthPlatform = metrics.source === 'healthkit' || metrics.source === 'health_connect';
-    if (isHealthPlatform && (metrics.unit === 'kilogram' || metrics.unit === 'kg')) {
-      return raw * 2.20462;
-    }
+    if (isHealthPlatform) return raw * 2.20462;
     return raw;
   };
 

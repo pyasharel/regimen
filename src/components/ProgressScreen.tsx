@@ -96,11 +96,14 @@ export const ProgressScreen = () => {
   useEffect(() => {
     const loadSettings = async () => {
       const savedUnit = await persistentStorage.get('weightUnit');
+      const savedUnitSystem = await persistentStorage.get('unitSystem');
       const savedGoal = await persistentStorage.get('goalWeight');
       const savedVisualProgress = await persistentStorage.get('visualProgressExpanded');
       if (savedVisualProgress !== null) {
         setVisualProgressExpanded(savedVisualProgress !== 'false');
       }
+      // Resolve display unit: weightUnit takes precedence, else unitSystem (Imperial -> lbs, Metric -> kg)
+      const resolvedUnit = savedUnit || (savedUnitSystem === 'metric' ? 'kg' : 'lbs');
       
       // If local storage has both values, use them
       if (savedUnit && savedGoal) {
@@ -146,11 +149,11 @@ export const ProgressScreen = () => {
         console.error('[ProgressScreen] Error syncing settings from database:', err);
       }
       
-      // Apply any local values that existed
-      if (savedUnit) setWeightUnit(savedUnit);
+      // Apply any local values that existed; honor unitSystem when weightUnit is missing
+      setWeightUnit(resolvedUnit);
       if (savedGoal) {
         const goalValue = parseFloat(savedGoal);
-        const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+        const goalInLbs = resolvedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
         setGoalWeight(goalInLbs);
       }
     };
@@ -162,11 +165,13 @@ export const ProgressScreen = () => {
   useEffect(() => {
     const reloadSettings = async () => {
       const savedUnit = await persistentStorage.get('weightUnit');
+      const savedUnitSystem = await persistentStorage.get('unitSystem');
       const savedGoal = await persistentStorage.get('goalWeight');
-      if (savedUnit) setWeightUnit(savedUnit);
+      const resolvedUnit = savedUnit || (savedUnitSystem === 'metric' ? 'kg' : 'lbs');
+      setWeightUnit(resolvedUnit);
       if (savedGoal) {
         const goalValue = parseFloat(savedGoal);
-        const goalInLbs = savedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
+        const goalInLbs = resolvedUnit === 'kg' ? goalValue * 2.20462 : goalValue;
         setGoalWeight(goalInLbs);
       }
     };
@@ -352,10 +357,10 @@ export const ProgressScreen = () => {
     const firstEntry = entriesDuringDosage[0];
     const lastEntry = entriesDuringDosage[entriesDuringDosage.length - 1];
     const daysBetween = Math.max(1, Math.floor((parseISO(lastEntry.entry_date).getTime() - parseISO(firstEntry.entry_date).getTime()) / (1000 * 60 * 60 * 24)));
-    // Normalize to lbs: only convert if source is a verified health platform
+    // Normalize to lbs: Apple Health / Health Connect always store weight in kg
     const normalizeWeight = (m: any) => {
       const isHealthPlatform = m.source === 'healthkit' || m.source === 'health_connect';
-      return (isHealthPlatform && (m.unit === 'kilogram' || m.unit === 'kg')) ? m.weight * 2.20462 : m.weight;
+      return isHealthPlatform ? m.weight * 2.20462 : m.weight;
     };
     const weightChange = normalizeWeight(lastEntry.metrics) - normalizeWeight(firstEntry.metrics);
     const weeklyRate = (weightChange / daysBetween) * 7;
