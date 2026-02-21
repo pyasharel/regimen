@@ -1,18 +1,43 @@
 
 
-## Revert Settings Rate Button to Native-First with Store Fallback
+## Move Streak Badge to Header Bar
 
-Since we confirmed the native rating dialog works fine for users who haven't rated yet, the Settings button should try native first and only fall back to the App Store if it fails.
+### What Changes
+Move the streak badge (flame icon + number) from the greeting row up into the top header bar, positioned to the right of the "REGIMEN" wordmark. This frees the greeting line to use the full screen width for the name.
 
-### Change
+### Layout Before
+```text
+[Today]        REGIMEN         [        ]
+[Good afternoon, Nicho...]  [sun]  [fire 3]
+```
 
-**`src/components/SettingsScreen.tsx`** - Remove `forceStoreFallback: true` so it calls `requestRating('settings')` without forcing the store. The existing fallback logic in `ratingHelper.ts` already handles the case where native fails -- it will automatically open the App Store page.
+### Layout After
+```text
+[Today]        REGIMEN        [fire 3]
+[Good afternoon, Nicholas]  [sun]
+```
 
-This gives users the best of both worlds:
-- First-time raters get the smooth native dialog
-- If the native dialog is silently suppressed (already rated, iOS cap hit), the existing fallback in `ratingHelper.ts` catches the failure and opens the App Store page instead
+### Why This Works
+- The MainHeader component already has a `rightSlot` prop designed for exactly this
+- The greeting row gets the full width, so names never truncate
+- The streak badge gets a permanent, prominent spot in the header
+- No font-size tricks or two-line layouts needed
 
-### No changes needed to `ratingHelper.ts`
+### Grammar Fix
+Add comma after the greeting: "Good afternoon, Nicholas" (already correct in code, no change needed).
 
-The `forceStoreFallback` option stays available for future use, but Settings won't use it by default.
+---
+
+### Technical Details
+
+**File: `src/components/TodayScreen.tsx`**
+
+1. Pass the StreakBadge as the `rightSlot` to MainHeader:
+   - Change `<MainHeader title="Today" />` to `<MainHeader title="Today" rightSlot={<StreakBadge />} />`
+
+2. Remove `<StreakBadge />` from the greeting row (line 1516)
+
+3. Remove the `truncate` class from the greeting h2 since overflow is no longer a concern
+
+4. The greeting row simplifies to just the text + sun icon without needing `justify-between` or `gap` for the badge
 
