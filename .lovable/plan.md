@@ -1,43 +1,66 @@
 
 
-## Move Streak Badge to Header Bar
+## Release Build 48 to App Store and Google Play
 
-### What Changes
-Move the streak badge (flame icon + number) from the greeting row up into the top header bar, positioned to the right of the "REGIMEN" wordmark. This frees the greeting line to use the full screen width for the name.
+### Step 1: Bump Build Number
 
-### Layout Before
-```text
-[Today]        REGIMEN         [        ]
-[Good afternoon, Nicho...]  [sun]  [fire 3]
+Update `capacitor.config.ts`:
+- `appVersion` stays at `'1.1.0'`
+- `appBuild` changes from `'47'` to `'48'`
+
+This is a one-line change in `capacitor.config.ts`.
+
+### Step 2: Full Sync Commands
+
+After the build bump is committed by Lovable, run these on your Mac:
+
+**iOS:**
+```bash
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update ios && cd ios/App && pod install && cd ../.. && ./sync-version.sh
 ```
 
-### Layout After
-```text
-[Today]        REGIMEN        [fire 3]
-[Good afternoon, Nicholas]  [sun]
+Then in Xcode:
+1. Open via `npx cap open ios` (verify title bar ends in `.../regimen-health-hub/ios`)
+2. Hold Option, then Product -> Clean Build Folder
+3. Delete the app from your phone
+4. Click Run to verify on device
+5. When ready: Product -> Archive -> Upload to App Store Connect
+
+**Android:**
+```bash
+cd ~/regimen-health-hub
+git pull && npm install && npm run build && npx cap update android && ./sync-version.sh
 ```
 
-### Why This Works
-- The MainHeader component already has a `rightSlot` prop designed for exactly this
-- The greeting row gets the full width, so names never truncate
-- The streak badge gets a permanent, prominent spot in the header
-- No font-size tricks or two-line layouts needed
+Then in Android Studio:
+1. Open via `npx cap open android` (verify title bar ends in `.../regimen-health-hub/android`)
+2. Build -> Clean Project
+3. Build -> Rebuild Project
+4. Uninstall the app from the device
+5. Click Run to verify on device
+6. When ready: Build -> Generate Signed Bundle / APK -> Upload to Google Play Console
 
-### Grammar Fix
-Add comma after the greeting: "Good afternoon, Nicholas" (already correct in code, no change needed).
+### Step 3: Verify on Device
 
----
+Before archiving for release, confirm:
+- Settings shows version 1.1.0 (Build 48)
+- Streak badge appears in the header bar (not in the greeting row)
+- Long names display fully in the greeting
+- Rating button in Settings triggers the native dialog
+
+### What's in This Release (v1.1.0 Build 48)
+- Streak badge moved to header bar for better layout
+- Rating button reverted to native-first approach
+- All prior stability fixes from builds 41-47
+
+### Not Blocking Release
+- Onboarding testimonial quote updates (cosmetic, can ship in a future build)
 
 ### Technical Details
 
-**File: `src/components/TodayScreen.tsx`**
+**File changed:** `capacitor.config.ts`
+- Line 7: `export const appBuild = '47';` changes to `export const appBuild = '48';`
 
-1. Pass the StreakBadge as the `rightSlot` to MainHeader:
-   - Change `<MainHeader title="Today" />` to `<MainHeader title="Today" rightSlot={<StreakBadge />} />`
-
-2. Remove `<StreakBadge />` from the greeting row (line 1516)
-
-3. Remove the `truncate` class from the greeting h2 since overflow is no longer a concern
-
-4. The greeting row simplifies to just the text + sun icon without needing `justify-between` or `gap` for the badge
+No other code changes needed for this release.
 
