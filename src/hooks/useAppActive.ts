@@ -13,6 +13,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { trace } from '@/utils/bootTracer';
+import { useHealthKit } from '@/hooks/useHealthKit';
 
 interface AppActiveState {
   /** True when both Capacitor and document visibility confirm app is active */
@@ -179,4 +180,67 @@ export const waitForAppReady = (timeoutMs: number = 5000): Promise<boolean> => {
       resolve(globalIsActive && globalIsVisible);
     }, timeoutMs);
   });
+};
+
+// --- HealthKit foreground sync (iOS only, gated by user preference and 15‑min throttle) ---
+
+const HEALTHKIT_ENABLED_KEY = 'healthkit_enabled';
+const HEALTHKIT_LAST_SYNC_KEY = 'healthkit_lastSyncTimestamp';
+const HEALTHKIT_SYNC_THROTTLE_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Syncs HealthKit data to progress_entries when the app comes to the foreground,
+ * only if: iOS native, healthkit_enabled is true, and we haven't synced in the last 15 minutes.
+ * Call this hook from a component that is always mounted (e.g. App / AnalyticsWrapper).
+ */
+export const useHealthKitForegroundSync = () => {
+  const { syncToProgress } = useHealthKit();
+  const wasActiveRef = useRef<boolean | null>(null);
+  const listenerHandleRef = useRef<{ remove: () => Promise<void> } | null>(null);
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== 'ios' || !Capacitor.isNativePlatform()) return;
+
+    const handleAppStateChange = async ({ isActive }: { isActive: boolean }) => {
+      const wasActive = wasActiveRef.current;
+      wasActiveRef.current = isActive;
+
+      // Run only when transitioning to foreground (not on initial mount)
+      if (!isActive || wasActive === true) return;
+      if (wasActive === null) {
+        // First run: don't sync, just record state
+        return;
+      }
+
+      if (localStorage.getItem(HEALTHKIT_ENABLED_KEY) !== 'true') return;
+
+      const lastSyncRaw = localStorage.getItem(HEALTHKIT_LAST_SYNC_KEY);
+      if (lastSyncRaw) {
+        const elapsed = Date.now() - parseInt(lastSyncRaw, 10);
+        if (elapsed < HEALTHKIT_SYNC_THROTTLE_MS) return;
+      }
+
+      try {
+        await syncToProgress();
+        localStorage.setItem(HEALTHKIT_LAST_SYNC_KEY, Date.now().toString());
+      } catch (e) {
+        console.warn('[AppActive] HealthKit foreground sync failed:', e);
+      }
+    };
+
+    CapacitorApp.getState()
+      .then((state) => {
+        wasActiveRef.current = state.isActive;
+        return CapacitorApp.addListener('appStateChange', handleAppStateChange);
+      })
+      .then((h) => {
+        listenerHandleRef.current = h;
+      })
+      .catch(() => {});
+
+    return () => {
+      listenerHandleRef.current?.remove?.();
+      listenerHandleRef.current = null;
+    };
+  }, [syncToProgress]);
 };

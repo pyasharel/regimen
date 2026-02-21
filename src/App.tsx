@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useWeeklyDigest } from "@/hooks/useWeeklyDigest";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAppStateSync } from "@/hooks/useAppStateSync";
+import { useHealthKitForegroundSync } from "@/hooks/useAppActive";
 import { useSessionWarming } from "@/hooks/useSessionWarming";
 import { WeeklyDigestModal } from "@/components/WeeklyDigestModalCalendar";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
@@ -239,6 +240,7 @@ const App = () => {
 const AnalyticsWrapper = () => {
   useAnalytics();
   useAppStateSync(); // Auto-sync notifications when app resumes
+  useHealthKitForegroundSync(); // Auto-sync HealthKit to progress when app resumes (iOS, if enabled)
   useSessionWarming(); // Proactively warm auth session on mount and resume
   const navigate = useNavigate();
   const { refreshSubscription } = useSubscription();

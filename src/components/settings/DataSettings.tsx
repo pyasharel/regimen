@@ -25,6 +25,7 @@ import { Share } from "@capacitor/share";
 import { useHealthKit } from "@/hooks/useHealthKit";
 
 const HEALTHKIT_ENABLED_KEY = "healthkit_enabled";
+const HEALTHKIT_LAST_SYNC_KEY = "healthkit_lastSyncTimestamp";
 
 export const DataSettings = () => {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export const DataSettings = () => {
         await requestPermission();
         await syncToProgress();
         localStorage.setItem(HEALTHKIT_ENABLED_KEY, "true");
+        localStorage.setItem(HEALTHKIT_LAST_SYNC_KEY, Date.now().toString());
         setHealthKitEnabled(true);
         toast.success("Health data sync enabled");
       } catch (e) {
