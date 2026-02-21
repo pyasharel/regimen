@@ -17,6 +17,32 @@
 9. [Testing](#9-testing)
 10. [Database Schema](#10-database-schema)
 11. [Exact Prompts for Cursor / Claude Code](#11-exact-prompts-for-cursor--claude-code)
+12. [Native Splash Screen Setup](#12-native-splash-screen-setup)
+
+---
+
+## Health Metrics Overview
+
+| Metric | Category Key | HealthKit ID | Health Connect Type | Why |
+|--------|-------------|--------------|-------------------|-----|
+| Weight | `weight` | `bodyMass` | `WeightRecord` | Core metric, already supported |
+| Body Fat % | `body_fat` | `bodyFatPercentage` | `BodyFatRecord` | Body recomp tracking |
+| Lean Body Mass | `lean_mass` | `leanBodyMass` | `LeanBodyMassRecord` | Muscle growth tracking for bodybuilders |
+| Sleep | `sleep` | `sleepAnalysis` | `SleepSessionRecord` | Replace manual sleep logging with auto-sync |
+| Resting Heart Rate | `resting_hr` | `restingHeartRate` | `RestingHeartRateRecord` | Peptide/cardio effect monitoring |
+| Heart Rate Variability | `hrv` | `heartRateVariabilitySDNN` | `HeartRateVariabilityRmssdRecord` | Recovery and stress indicator |
+
+### NOT Including
+- **BMI**: Calculated locally from weight + height (already in `profiles` table)
+- **Steps**: Not relevant to the app's core use case (medication/supplement tracking)
+- **Active Energy**: Same reasoning as steps
+
+### Technical Notes
+- All new HealthKit identifiers are **read-only** (no write permissions needed for HR/HRV/Sleep)
+- Sleep data from HealthKit comes as time intervals (in-bed, asleep, awake stages) — the hook calculates total sleep hours from sleep analysis samples
+- HRV uses **SDNN** on iOS and **RMSSD** on Android — the hook normalizes this difference
+- The `progress_entries` table needs **no schema changes**; the `metrics` JSONB field handles all new data types
+- The unique index `(user_id, entry_date, category)` covers all new categories
 
 ---
 
@@ -217,7 +243,7 @@ The `Info.plist` file is at `ios/App/App/Info.plist`. Add these two entries insi
 
 ```xml
 <key>NSHealthShareUsageDescription</key>
-<string>Regimen uses your health data to automatically track your weight, body composition, and activity alongside your medication schedule.</string>
+<string>Regimen reads your weight, body composition, sleep, heart rate, and heart rate variability to track your health alongside your medication schedule.</string>
 <key>NSHealthUpdateUsageDescription</key>
 <string>Regimen can save your logged metrics to Apple Health to keep all your health data in one place.</string>
 ```
@@ -272,8 +298,10 @@ Add these permissions to `android/app/src/main/AndroidManifest.xml`, inside the 
 <!-- Health Connect Permissions -->
 <uses-permission android:name="android.permission.health.READ_WEIGHT" />
 <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
-<uses-permission android:name="android.permission.health.READ_STEPS" />
-<uses-permission android:name="android.permission.health.READ_EXERCISE" />
+<uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" />
+<uses-permission android:name="android.permission.health.READ_SLEEP" />
+<uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+<uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
 <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />
 <uses-permission android:name="android.permission.health.WRITE_BODY_FAT" />
 ```
@@ -327,8 +355,9 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * HealthKit/Health Connect integration hook.
  * 
- * Reads weight, body fat, and step data from the device's health store
- * and syncs it into the progress_entries table.
+ * Reads weight, body fat, lean body mass, sleep, resting heart rate,
+ * and HRV data from the device's health store and syncs it into
+ * the progress_entries table.
  */
 export function useHealthKit() {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -367,9 +396,12 @@ export function useHealthKit() {
       // await HealthKit.requestAuthorization({
       //   all: [],  // write types
       //   read: [
-      //     'HKQuantityTypeIdentifierBodyMass',        // weight
-      //     'HKQuantityTypeIdentifierBodyFatPercentage', // body fat %
-      //     'HKQuantityTypeIdentifierStepCount',         // steps
+      //     'HKQuantityTypeIdentifierBodyMass',              // weight
+      //     'HKQuantityTypeIdentifierBodyFatPercentage',      // body fat %
+      //     'HKQuantityTypeIdentifierLeanBodyMass',           // lean body mass
+      //     'HKCategoryTypeIdentifierSleepAnalysis',          // sleep
+      //     'HKQuantityTypeIdentifierRestingHeartRate',        // resting HR
+      //     'HKQuantityTypeIdentifierHeartRateVariabilitySDNN', // HRV
       //   ],
       //   write: []
       // });
@@ -417,7 +449,7 @@ export function useHealthKit() {
   const readBodyFat = useCallback(async (): Promise<Array<{date: string, value: number}>> => {
     try {
       // TODO: Query HealthKit for body fat samples
-      // Similar to readWeight but with 'HKQuantityTypeIdentifierBodyFatPercentage'
+      // sampleName: 'HKQuantityTypeIdentifierBodyFatPercentage'
       return [];
     } catch (error) {
       console.error('Failed to read body fat from HealthKit:', error);
@@ -426,15 +458,77 @@ export function useHealthKit() {
   }, []);
 
   /**
-   * Read step count from HealthKit (last 30 days)
+   * Read lean body mass from HealthKit (last 30 days)
+   * Useful for bodybuilders tracking muscle growth
    */
-  const readSteps = useCallback(async (): Promise<Array<{date: string, value: number}>> => {
+  const readLeanBodyMass = useCallback(async (): Promise<Array<{date: string, value: number, unit: string}>> => {
     try {
-      // TODO: Query HealthKit for step count
-      // Similar pattern but with 'HKQuantityTypeIdentifierStepCount'
+      // TODO: Query HealthKit for lean body mass samples
+      // sampleName: 'HKQuantityTypeIdentifierLeanBodyMass'
+      // unit: 'lb' or 'kg' based on user preference
       return [];
     } catch (error) {
-      console.error('Failed to read steps from HealthKit:', error);
+      console.error('Failed to read lean body mass from HealthKit:', error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Read sleep data from HealthKit (last 30 days)
+   * 
+   * Sleep comes as category samples with stages: inBed, asleepCore, asleepDeep, asleepREM, awake
+   * We calculate total sleep hours by summing asleep stages.
+   */
+  const readSleep = useCallback(async (): Promise<Array<{date: string, hours: number, quality?: string}>> => {
+    try {
+      // TODO: Query HealthKit for sleep analysis
+      // sampleName: 'HKCategoryTypeIdentifierSleepAnalysis'
+      // 
+      // Sleep samples come as time intervals with values:
+      //   0 = inBed, 1 = asleepUnspecified, 2 = awake, 
+      //   3 = asleepCore, 4 = asleepDeep, 5 = asleepREM
+      //
+      // Calculate total sleep = sum of (asleepCore + asleepDeep + asleepREM) durations
+      // Group by night (use the date the sleep session STARTED)
+      return [];
+    } catch (error) {
+      console.error('Failed to read sleep from HealthKit:', error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Read resting heart rate from HealthKit (last 30 days)
+   * Useful for monitoring peptide effects on cardiovascular health
+   */
+  const readRestingHeartRate = useCallback(async (): Promise<Array<{date: string, value: number}>> => {
+    try {
+      // TODO: Query HealthKit for resting heart rate
+      // sampleName: 'HKQuantityTypeIdentifierRestingHeartRate'
+      // unit: 'count/min' (bpm)
+      return [];
+    } catch (error) {
+      console.error('Failed to read resting heart rate from HealthKit:', error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Read heart rate variability from HealthKit (last 30 days)
+   * 
+   * NOTE: iOS uses SDNN measurement, Android uses RMSSD.
+   * Both are in milliseconds. The hook normalizes this by storing
+   * the raw value with a measurement_type marker.
+   */
+  const readHRV = useCallback(async (): Promise<Array<{date: string, value: number, measurement: 'sdnn' | 'rmssd'}>> => {
+    try {
+      // TODO: Query HealthKit for HRV
+      // sampleName: 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN'
+      // unit: 'ms'
+      // On Android (Health Connect): HeartRateVariabilityRmssdRecord
+      return [];
+    } catch (error) {
+      console.error('Failed to read HRV from HealthKit:', error);
       return [];
     }
   }, []);
@@ -453,11 +547,14 @@ export function useHealthKit() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Read all data types
-      const [weightData, bodyFatData, stepsData] = await Promise.all([
+      // Read all data types in parallel
+      const [weightData, bodyFatData, leanMassData, sleepData, restingHRData, hrvData] = await Promise.all([
         readWeight(),
         readBodyFat(),
-        readSteps(),
+        readLeanBodyMass(),
+        readSleep(),
+        readRestingHeartRate(),
+        readHRV(),
       ]);
 
       // Upsert weight entries
@@ -473,8 +570,6 @@ export function useHealthKit() {
           },
         }, {
           onConflict: 'user_id,entry_date,category',
-          // Note: you may need a unique index on (user_id, entry_date, category)
-          // to make upsert work. See Section 10.
         });
       }
 
@@ -493,14 +588,64 @@ export function useHealthKit() {
         });
       }
 
-      // Upsert step entries
-      for (const entry of stepsData) {
+      // Upsert lean body mass entries
+      for (const entry of leanMassData) {
         await supabase.from('progress_entries').upsert({
           user_id: user.id,
           entry_date: entry.date,
-          category: 'steps',
+          category: 'lean_mass',
           metrics: {
-            step_count: entry.value,
+            lean_body_mass: entry.value,
+            unit: entry.unit,
+            source: 'healthkit',
+          },
+        }, {
+          onConflict: 'user_id,entry_date,category',
+        });
+      }
+
+      // Upsert sleep entries
+      for (const entry of sleepData) {
+        await supabase.from('progress_entries').upsert({
+          user_id: user.id,
+          entry_date: entry.date,
+          category: 'sleep',
+          metrics: {
+            sleep_hours: entry.hours,
+            sleep_quality: entry.quality,
+            source: 'healthkit',
+          },
+        }, {
+          onConflict: 'user_id,entry_date,category',
+        });
+      }
+
+      // Upsert resting heart rate entries
+      for (const entry of restingHRData) {
+        await supabase.from('progress_entries').upsert({
+          user_id: user.id,
+          entry_date: entry.date,
+          category: 'resting_hr',
+          metrics: {
+            resting_heart_rate: entry.value,
+            unit: 'bpm',
+            source: 'healthkit',
+          },
+        }, {
+          onConflict: 'user_id,entry_date,category',
+        });
+      }
+
+      // Upsert HRV entries
+      for (const entry of hrvData) {
+        await supabase.from('progress_entries').upsert({
+          user_id: user.id,
+          entry_date: entry.date,
+          category: 'hrv',
+          metrics: {
+            hrv_value: entry.value,
+            measurement_type: entry.measurement, // 'sdnn' (iOS) or 'rmssd' (Android)
+            unit: 'ms',
             source: 'healthkit',
           },
         }, {
@@ -509,14 +654,14 @@ export function useHealthKit() {
       }
 
       setLastSyncDate(new Date().toISOString());
-      console.log(`HealthKit sync complete: ${weightData.length} weight, ${bodyFatData.length} body fat, ${stepsData.length} steps entries`);
+      console.log(`HealthKit sync complete: ${weightData.length} weight, ${bodyFatData.length} body fat, ${leanMassData.length} lean mass, ${sleepData.length} sleep, ${restingHRData.length} resting HR, ${hrvData.length} HRV entries`);
     } catch (error) {
       console.error('HealthKit sync failed:', error);
       throw error;
     } finally {
       setIsSyncing(false);
     }
-  }, [readWeight, readBodyFat, readSteps]);
+  }, [readWeight, readBodyFat, readLeanBodyMass, readSleep, readRestingHeartRate, readHRV]);
 
   return {
     isAvailable,
@@ -527,7 +672,10 @@ export function useHealthKit() {
     requestPermission,
     readWeight,
     readBodyFat,
-    readSteps,
+    readLeanBodyMass,
+    readSleep,
+    readRestingHeartRate,
+    readHRV,
     syncToProgress,
   };
 }
@@ -608,7 +756,7 @@ Now when your app calls `readWeight()`, it should find these entries.
 
 1. Build and run on your iPhone via Xcode
 2. Go to Settings → toggle HealthKit ON
-3. iOS will show a permission sheet — grant access to weight, body fat, steps
+3. iOS will show a permission sheet — grant access to weight, body fat, lean body mass, sleep, heart rate, and HRV
 4. The app should sync data from Apple Health into your progress chart
 5. Check the database to verify entries have `source: "healthkit"` in metrics
 
@@ -638,8 +786,19 @@ The existing `progress_entries` table already supports everything we need:
 |--------|------|-------------------|
 | `user_id` | uuid | The user |
 | `entry_date` | date | The date of the health reading |
-| `category` | varchar | `"weight"`, `"body_fat"`, `"steps"` |
+| `category` | varchar | `"weight"`, `"body_fat"`, `"lean_mass"`, `"sleep"`, `"resting_hr"`, `"hrv"` |
 | `metrics` | jsonb | `{ weight: 185.5, unit: "lb", source: "healthkit" }` |
+
+### Example Metrics by Category
+
+| Category | Example `metrics` JSONB |
+|----------|------------------------|
+| `weight` | `{ "weight": 185.5, "unit": "lb", "source": "healthkit" }` |
+| `body_fat` | `{ "body_fat_percentage": 18.5, "source": "healthkit" }` |
+| `lean_mass` | `{ "lean_body_mass": 152.3, "unit": "lb", "source": "healthkit" }` |
+| `sleep` | `{ "sleep_hours": 7.5, "sleep_quality": "good", "source": "healthkit" }` |
+| `resting_hr` | `{ "resting_heart_rate": 62, "unit": "bpm", "source": "healthkit" }` |
+| `hrv` | `{ "hrv_value": 45, "measurement_type": "sdnn", "unit": "ms", "source": "healthkit" }` |
 
 ### Optional: Add a Unique Index for Upsert
 
@@ -678,7 +837,7 @@ Install the @perfood/capacitor-healthkit npm package. After installing, run `npx
 ```
 I need to configure HealthKit for my Capacitor iOS app. Please:
 
-1. Update ios/App/App/Info.plist to add NSHealthShareUsageDescription and NSHealthUpdateUsageDescription keys. The share description should say "Regimen uses your health data to automatically track your weight, body composition, and activity alongside your medication schedule." The update description should say "Regimen can save your logged metrics to Apple Health to keep all your health data in one place."
+1. Update ios/App/App/Info.plist to add NSHealthShareUsageDescription and NSHealthUpdateUsageDescription keys. The share description should say "Regimen reads your weight, body composition, sleep, heart rate, and heart rate variability to track your health alongside your medication schedule." The update description should say "Regimen can save your logged metrics to Apple Health to keep all your health data in one place."
 
 2. Update ios/App/App/App.entitlements to add the com.apple.developer.healthkit entitlement (set to true) and com.apple.developer.healthkit.access (empty array).
 
@@ -694,13 +853,18 @@ Look at the existing hook pattern in src/hooks/useStreaks.tsx for style referenc
 
 The hook should export:
 - checkAvailability() - checks if HealthKit is available (only on native iOS)
-- requestPermission() - requests read access for weight, body fat %, and step count
+- requestPermission() - requests read access for: weight, body fat %, lean body mass, sleep analysis, resting heart rate, and heart rate variability (SDNN)
 - readWeight() - reads weight samples from the last 30 days
 - readBodyFat() - reads body fat % from the last 30 days  
-- readSteps() - reads daily step counts from the last 30 days
+- readLeanBodyMass() - reads lean body mass from the last 30 days (for muscle growth tracking)
+- readSleep() - reads sleep analysis from the last 30 days, calculating total sleep hours from sleep stages (asleepCore + asleepDeep + asleepREM)
+- readRestingHeartRate() - reads resting heart rate from the last 30 days (in bpm)
+- readHRV() - reads heart rate variability SDNN from the last 30 days (in ms). Note: Android uses RMSSD measurement instead — include a measurement_type marker.
 - syncToProgress() - syncs all health data into the progress_entries Supabase table
 
 For syncToProgress, upsert entries using (user_id, entry_date, category) as the unique key. Each entry should have a metrics JSONB field with source: "healthkit" to distinguish from manual entries.
+
+Category keys: "weight", "body_fat", "lean_mass", "sleep", "resting_hr", "hrv"
 
 Import supabase from @/integrations/supabase/client.
 Use Capacitor.isNativePlatform() to guard native-only calls.
@@ -720,8 +884,9 @@ When toggled OFF:
 1. Remove the localStorage key
 2. Don't delete any existing synced data
 
-Show "Sync weight & body composition from Apple Health" as the description.
+Show "Sync weight, body composition, sleep, and heart rate from Apple Health" as the description.
 Only show this toggle on iOS native (use Capacitor.getPlatform() === 'ios').
+On Android, show "Sync from Health Connect" instead.
 ```
 
 ### Prompt 5: Add Auto-Sync on App Open
@@ -815,3 +980,78 @@ npx cap run android
 
 ### App crashes on launch after adding HealthKit
 → Check that both Info.plist usage descriptions are present. iOS will crash the app if you try to access HealthKit without them.
+
+---
+
+## 12. Native Splash Screen Setup
+
+> **Context**: Since you're already working in Cursor/Xcode for HealthKit, this is a good time to also upgrade the native splash screen. The current splash is a static `Splash` image (1366x1366) shown via `LaunchScreen.storyboard`.
+
+### Current State
+
+| Component | Current Status |
+|-----------|---------------|
+| `LaunchScreen.storyboard` | Static `Splash` image, `systemBackgroundColor` (white) |
+| `capacitor.config.ts` | `launchShowDuration: 400`, `launchAutoHide: false`, `backgroundColor: "#000000"` |
+| `Splash.tsx` (JS) | Routing logic only — pulsing logo + spinner, no visual animation |
+| Splash image assets | `ios/App/App/Assets.xcassets/Splash.imageset/` — generic placeholder |
+
+### Option A: Branded Static Splash (Recommended First)
+
+Replace the splash screen images with properly branded versions. No code changes needed.
+
+**What to do:**
+1. Create a splash image: black (#000000) background, Regimen logo centered, wordmark below
+2. Generate three sizes for the iOS image set:
+   - `splash-screen.png` — 1024×1024 (1x)
+   - `splash-screen@2x.png` — 2048×2048 (2x) 
+   - `splash-screen@3x.png` — 3072×3072 (3x)
+3. Replace files in `ios/App/App/Assets.xcassets/Splash.imageset/`
+4. Update `LaunchScreen.storyboard` background color to black
+
+**Also update the storyboard background** — change `systemBackgroundColor` to solid black so it matches the splash image:
+
+```xml
+<color key="backgroundColor" red="0" green="0" blue="0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+```
+
+**Cursor Prompt:**
+```
+I need to update my iOS splash screen. 
+
+1. Replace the images in ios/App/App/Assets.xcassets/Splash.imageset/ with properly branded versions. The splash should have a solid black (#000000) background with the Regimen logo centered. The source logo is at src/assets/regimen-wordmark-transparent.png. Generate 1x (1024x1024), 2x (2048x2048), and 3x (3072x3072) versions.
+
+2. Update ios/App/App/Base.lproj/LaunchScreen.storyboard to use a solid black background color instead of systemBackgroundColor.
+
+3. For Android, place equivalent splash images in:
+   - android/app/src/main/res/drawable/splash.png
+   - android/app/src/main/res/drawable-hdpi/splash.png  
+   - android/app/src/main/res/drawable-xhdpi/splash.png
+   - android/app/src/main/res/drawable-xxhdpi/splash.png
+```
+
+### Option B: Lottie Animated Splash (Premium — Future Enhancement)
+
+For a more premium feel, add a Lottie animation that plays during the splash:
+
+1. Install `lottie-ios` via CocoaPods:
+   ```ruby
+   # In ios/App/Podfile, inside the target 'App' block:
+   pod 'lottie-ios', '~> 4.4'
+   ```
+
+2. Create a Lottie JSON animation (logo scales in, wordmark fades up) using LottieFiles or After Effects
+
+3. Create a custom `SplashViewController.swift` that plays the Lottie animation instead of showing a static image
+
+4. Replace `LaunchScreen.storyboard` with the programmatic splash
+
+**This is more complex and should be done AFTER Option A is working.**
+
+### Android Splash Screen
+
+For Android, the splash is controlled by `capacitor.config.ts` (already configured with `backgroundColor: "#000000"`) plus drawable resources:
+
+1. Place your splash image in `android/app/src/main/res/drawable/splash.png`
+2. The `androidScaleType: "CENTER_INSIDE"` setting in `capacitor.config.ts` handles sizing
+3. Run `npx cap sync android` after adding images
