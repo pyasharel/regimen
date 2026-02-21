@@ -42,6 +42,7 @@ import { trackDoseLogged, trackDoseSkipped, trackPaywallShown, trackActivationCo
 import { useTheme } from "@/components/ThemeProvider";
 import { useNotificationPermissionPrompt } from "@/hooks/useNotificationPermissionPrompt";
 import { useAutoRatingPrompt } from "@/hooks/useAutoRatingPrompt";
+import { useAndroidAlarmPermission } from "@/hooks/useAndroidAlarmPermission";
 import {
   Drawer,
   DrawerContent,
@@ -141,6 +142,9 @@ export const TodayScreen = () => {
   // Auto-trigger notification permission prompt for existing users after reinstall
   // (no banner - just triggers iOS system dialog automatically when conditions met)
   useNotificationPermissionPrompt(hasCompounds, isSubscribed);
+
+  // Android 12+: Check exact alarm permission and show prompt if needed
+  const { shouldShowPrompt: showAlarmPrompt, dismissPrompt: dismissAlarmPrompt, openSettings: openAlarmSettings } = useAndroidAlarmPermission(hasCompounds);
 
   // Medication levels card state
   interface CompoundForLevels {
@@ -2218,6 +2222,22 @@ export const TodayScreen = () => {
 
       {/* TestFlight Migration Modal */}
       <TestFlightMigrationModal isTestFlight={isTestFlight} />
+
+      {/* Android Exact Alarm Permission Dialog */}
+      <AlertDialog open={showAlarmPrompt} onOpenChange={(open) => !open && dismissAlarmPrompt()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Dose Reminders</AlertDialogTitle>
+            <AlertDialogDescription>
+              Android requires the "Alarms & Reminders" permission for scheduled notifications to work reliably. Without it, your dose reminders won't fire.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={dismissAlarmPrompt}>Not Now</AlertDialogCancel>
+            <AlertDialogAction onClick={openAlarmSettings}>Go to Settings</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Dose Confirmation */}
       <AlertDialog open={!!deletingDoseId} onOpenChange={(open) => !open && setDeletingDoseId(null)}>
