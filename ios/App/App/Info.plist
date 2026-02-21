@@ -18,10 +18,39 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>regimen</string>
+				<string>com.regimen.app</string>
+				<string>com.googleusercontent.apps.495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GIDClientID</key>
+	<string>495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to let you take progress photos for your medication journey</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Regimen reads your weight, body composition, sleep, heart rate, and heart rate variability to track your health alongside your medication schedule.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Regimen can save your logged metrics to Apple Health to keep all your health data in one place.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need permission to save photos to your library</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to let you select progress photos</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We need permission to send you medication reminders</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -43,34 +72,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>We need camera access to let you take progress photos for your medication journey</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need photo library access to let you select progress photos</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>We need permission to save photos to your library</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>We need permission to send you medication reminders</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Regimen reads your weight, body composition, sleep, heart rate, and heart rate variability to track your health alongside your medication schedule.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Regimen can save your logged metrics to Apple Health to keep all your health data in one place.</string>
-	<key>GIDClientID</key>
-	<string>495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>regimen</string>
-				<string>com.regimen.app</string>
-				<string>com.googleusercontent.apps.495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>
