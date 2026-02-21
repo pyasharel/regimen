@@ -58,7 +58,21 @@ export const MetricChart = ({
     }
   }, [timeFrame]);
 
-  // Convert weight for display based on unit preference
+  /**
+   * Normalize weight to lbs (internal unit).
+   * HealthKit stores in kg (unit: "kilogram"), manual entries are already in lbs.
+   */
+  const normalizeToLbs = (metrics: any): number => {
+    const raw = metrics.weight;
+    // Only convert from kg if it's a verified health platform entry
+    const isHealthPlatform = metrics.source === 'healthkit' || metrics.source === 'health_connect';
+    if (isHealthPlatform && (metrics.unit === 'kilogram' || metrics.unit === 'kg')) {
+      return raw * 2.20462;
+    }
+    return raw;
+  };
+
+  // Convert weight from internal lbs to display unit
   const convertWeight = (weightLbs: number) => {
     if (weightUnit === 'kg') {
       return Math.round((weightLbs / 2.20462) * 10) / 10;
@@ -103,7 +117,7 @@ export const MetricChart = ({
       }
 
       const getValue = () => {
-        if (metricType === "weight") return convertWeight(entry.metrics.weight);
+        if (metricType === "weight") return convertWeight(normalizeToLbs(entry.metrics));
         if (metricType === "energy") return entry.metrics.energy;
         if (metricType === "sleep") return entry.metrics.sleep;
         if (metricType === "cravings") return entry.metrics.cravings;
