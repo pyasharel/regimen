@@ -30,26 +30,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useHealthKit } from "@/hooks/useHealthKit";
 
 // Version info - pulled from central config
 import { appVersion, appBuild } from '../../capacitor.config';
+
+const HEALTHKIT_ENABLED_KEY = "healthkit_enabled";
 
 export const SettingsScreen = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [healthKitEnabled, setHealthKitEnabled] = useState(false);
+  const [healthSyncLoading, setHealthSyncLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [userId, setUserId] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { requestPermission, syncToProgress } = useHealthKit();
+  const isIOS = Capacitor.getPlatform() === "ios";
+  const isAndroid = Capacitor.getPlatform() === "android";
+  const isNative = isIOS || isAndroid;
 
   useEffect(() => {
     const loadSettings = async () => {
       const savedSound = await persistentStorage.getBoolean('soundEnabled', true);
       setSoundEnabled(savedSound);
+      const healthKitOn = typeof localStorage !== 'undefined' && localStorage.getItem(HEALTHKIT_ENABLED_KEY) === 'true';
+      setHealthKitEnabled(healthKitOn);
     };
     loadSettings();
     loadUserProfile();
@@ -110,6 +121,30 @@ export const SettingsScreen = () => {
     setSoundEnabled(checked);
     await persistentStorage.setBoolean('soundEnabled', checked);
     trackSoundToggled(checked);
+  };
+
+  const handleHealthSyncToggle = async (checked: boolean) => {
+    if (!isIOS) return;
+    if (checked) {
+      setHealthSyncLoading(true);
+      try {
+        await requestPermission();
+        await syncToProgress();
+        localStorage.setItem(HEALTHKIT_ENABLED_KEY, "true");
+        localStorage.setItem("healthkit_lastSyncTimestamp", Date.now().toString());
+        setHealthKitEnabled(true);
+        toast.success("Health data sync enabled");
+      } catch (e) {
+        console.warn("[Settings] HealthKit sync failed:", e);
+        toast.error("Could not sync health data");
+        setHealthKitEnabled(false);
+      } finally {
+        setHealthSyncLoading(false);
+      }
+    } else {
+      localStorage.removeItem(HEALTHKIT_ENABLED_KEY);
+      setHealthKitEnabled(false);
+    }
   };
 
   const handleShareApp = async () => {
@@ -308,6 +343,37 @@ export const SettingsScreen = () => {
             </div>
           ))}
         </div>
+
+        {/* Health Data Sync - iOS: Apple Health; Android: Health Connect placeholder */}
+        {isNative && (
+          <div className="rounded-xl dark:border dark:border-border/50 bg-card p-4 shadow-[var(--shadow-card)] mt-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Heart className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-semibold">
+                    {isIOS ? "Health Data Sync" : "Sync from Health Connect"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {isIOS
+                      ? "Sync weight, body composition, sleep, and heart rate from Apple Health"
+                      : "Sync weight, body composition, sleep, and heart rate from Health Connect"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isIOS ? healthKitEnabled : false}
+                onCheckedChange={handleHealthSyncToggle}
+                disabled={!isIOS || healthSyncLoading}
+              />
+            </div>
+            {healthSyncLoading && (
+              <p className="text-xs text-muted-foreground mt-2">Syncing…</p>
+            )}
+          </div>
+        )}
 
         {/* Support */}
         <button
