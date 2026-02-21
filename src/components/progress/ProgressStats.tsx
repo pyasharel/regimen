@@ -28,7 +28,8 @@ export const ProgressStats = ({
   // Normalize weight to lbs: HealthKit entries store kg with unit:"kilogram"
   const normalizeToLbs = (metrics: any): number => {
     const raw = metrics.weight;
-    if (metrics.unit === 'kilogram' || metrics.unit === 'kg') {
+    const isHealthPlatform = metrics.source === 'healthkit' || metrics.source === 'health_connect';
+    if (isHealthPlatform && (metrics.unit === 'kilogram' || metrics.unit === 'kg')) {
       return raw * 2.20462;
     }
     return raw;

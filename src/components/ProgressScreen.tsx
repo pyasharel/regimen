@@ -352,8 +352,11 @@ export const ProgressScreen = () => {
     const firstEntry = entriesDuringDosage[0];
     const lastEntry = entriesDuringDosage[entriesDuringDosage.length - 1];
     const daysBetween = Math.max(1, Math.floor((parseISO(lastEntry.entry_date).getTime() - parseISO(firstEntry.entry_date).getTime()) / (1000 * 60 * 60 * 24)));
-    // Normalize to lbs: HealthKit entries store kg with unit:"kilogram"
-    const normalizeWeight = (m: any) => (m.unit === 'kilogram' || m.unit === 'kg') ? m.weight * 2.20462 : m.weight;
+    // Normalize to lbs: only convert if source is a verified health platform
+    const normalizeWeight = (m: any) => {
+      const isHealthPlatform = m.source === 'healthkit' || m.source === 'health_connect';
+      return (isHealthPlatform && (m.unit === 'kilogram' || m.unit === 'kg')) ? m.weight * 2.20462 : m.weight;
+    };
     const weightChange = normalizeWeight(lastEntry.metrics) - normalizeWeight(firstEntry.metrics);
     const weeklyRate = (weightChange / daysBetween) * 7;
 

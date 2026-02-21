@@ -64,7 +64,9 @@ export const MetricChart = ({
    */
   const normalizeToLbs = (metrics: any): number => {
     const raw = metrics.weight;
-    if (metrics.unit === 'kilogram' || metrics.unit === 'kg') {
+    // Only convert from kg if it's a verified health platform entry
+    const isHealthPlatform = metrics.source === 'healthkit' || metrics.source === 'health_connect';
+    if (isHealthPlatform && (metrics.unit === 'kilogram' || metrics.unit === 'kg')) {
       return raw * 2.20462;
     }
     return raw;
