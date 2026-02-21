@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -22,5 +23,32 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: [
+        'src/utils/dateUtils.ts',
+        'src/utils/doseUtils.ts',
+        'src/utils/validation.ts',
+        'src/utils/cycleUtils.ts',
+        'src/utils/withTimeout.ts',
+        'src/utils/nextDoseCalculator.ts',
+        'src/lib/utils.ts',
+        'src/components/progress/ProgressStats.tsx',
+      ],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}', 'src/test/**'],
+      thresholds: {
+        statements: 90,
+        branches: 75,
+        functions: 90,
+        lines: 90,
+      },
+    },
   },
 }));
