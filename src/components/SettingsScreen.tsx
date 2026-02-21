@@ -152,7 +152,7 @@ export const SettingsScreen = () => {
     // From settings, always use store fallback so the button reliably works.
     // The native In-App Review API is rate-limited by iOS/Android and silently
     // suppresses the dialog if the user has already rated — we can't detect this.
-    const result = await requestRating('settings', { forceStoreFallback: true });
+    const result = await requestRating('settings');
     
     console.log('[Settings] Rating result:', result);
     
