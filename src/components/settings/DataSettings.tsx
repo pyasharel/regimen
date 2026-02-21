@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +22,47 @@ import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { useHealthKit } from "@/hooks/useHealthKit";
+
+const HEALTHKIT_ENABLED_KEY = "healthkit_enabled";
 
 export const DataSettings = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [healthKitEnabled, setHealthKitEnabled] = useState(false);
+  const [healthSyncLoading, setHealthSyncLoading] = useState(false);
+  const { requestPermission, syncToProgress } = useHealthKit();
+  const isIOS = Capacitor.getPlatform() === "ios";
+  const isAndroid = Capacitor.getPlatform() === "android";
+  const isNative = isIOS || isAndroid;
+
+  useEffect(() => {
+    const enabled = localStorage.getItem(HEALTHKIT_ENABLED_KEY) === "true";
+    setHealthKitEnabled(enabled);
+  }, []);
+
+  const handleHealthSyncToggle = async (checked: boolean) => {
+    if (!isIOS) return;
+    if (checked) {
+      setHealthSyncLoading(true);
+      try {
+        await requestPermission();
+        await syncToProgress();
+        localStorage.setItem(HEALTHKIT_ENABLED_KEY, "true");
+        setHealthKitEnabled(true);
+        toast.success("Health data sync enabled");
+      } catch (e) {
+        console.warn("[DataSettings] HealthKit sync failed:", e);
+        toast.error("Could not sync health data");
+        setHealthKitEnabled(false);
+      } finally {
+        setHealthSyncLoading(false);
+      }
+    } else {
+      localStorage.removeItem(HEALTHKIT_ENABLED_KEY);
+      setHealthKitEnabled(false);
+    }
+  };
 
   const handleExportData = async () => {
     setLoading(true);
@@ -126,6 +164,37 @@ export const DataSettings = () => {
       </header>
 
       <div className="p-6 space-y-6 max-w-2xl mx-auto">
+        {/* Health Data Sync - iOS: Apple Health toggle; Android: Health Connect placeholder */}
+        {isNative && (
+          <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Heart className="h-6 w-6 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">
+                    {isIOS ? "Health Data Sync" : "Sync from Health Connect"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {isIOS
+                      ? "Sync weight, body composition, sleep, and heart rate from Apple Health"
+                      : "Sync weight, body composition, sleep, and heart rate from Health Connect"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isIOS ? healthKitEnabled : false}
+                onCheckedChange={handleHealthSyncToggle}
+                disabled={!isIOS || healthSyncLoading}
+              />
+            </div>
+            {healthSyncLoading && (
+              <p className="text-xs text-muted-foreground">Syncing…</p>
+            )}
+          </div>
+        )}
+
         {/* Export Data Section */}
         <div className="space-y-4 p-6 rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 mb-4">
