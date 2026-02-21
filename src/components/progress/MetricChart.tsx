@@ -60,15 +60,12 @@ export const MetricChart = ({
 
   /**
    * Normalize weight to lbs (internal unit).
-   * HealthKit stores in kg (unit: "kilogram"), manual entries are already in lbs.
+   * Apple Health / Health Connect always store weight in kg; manual entries are in lbs.
    */
   const normalizeToLbs = (metrics: any): number => {
     const raw = metrics.weight;
-    // Only convert from kg if it's a verified health platform entry
     const isHealthPlatform = metrics.source === 'healthkit' || metrics.source === 'health_connect';
-    if (isHealthPlatform && (metrics.unit === 'kilogram' || metrics.unit === 'kg')) {
-      return raw * 2.20462;
-    }
+    if (isHealthPlatform) return raw * 2.20462;
     return raw;
   };
 
