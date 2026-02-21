@@ -25,7 +25,16 @@ export const ProgressStats = ({
     return dateA.getTime() - dateB.getTime();
   });
 
-  // Convert weight based on unit preference (stored in lbs)
+  // Normalize weight to lbs: HealthKit entries store kg with unit:"kilogram"
+  const normalizeToLbs = (metrics: any): number => {
+    const raw = metrics.weight;
+    if (metrics.unit === 'kilogram' || metrics.unit === 'kg') {
+      return raw * 2.20462;
+    }
+    return raw;
+  };
+
+  // Convert weight from internal lbs to display unit
   const convertWeight = (weightLbs: number) => {
     if (weightUnit === 'kg') {
       return Math.round((weightLbs / 2.20462) * 10) / 10;
@@ -33,8 +42,8 @@ export const ProgressStats = ({
     return Math.round(weightLbs * 10) / 10;
   };
 
-  const currentWeightLbs = sortedEntries[0]?.metrics?.weight;
-  const startingWeightLbs = sortedEntries[sortedEntries.length - 1]?.metrics?.weight;
+  const currentWeightLbs = sortedEntries[0]?.metrics?.weight ? normalizeToLbs(sortedEntries[0].metrics) : undefined;
+  const startingWeightLbs = sortedEntries[sortedEntries.length - 1]?.metrics?.weight ? normalizeToLbs(sortedEntries[sortedEntries.length - 1].metrics) : undefined;
   const startDate = sortedEntries[sortedEntries.length - 1]?.entry_date;
 
   const currentWeight = currentWeightLbs ? convertWeight(currentWeightLbs) : null;
@@ -54,7 +63,7 @@ export const ProgressStats = ({
     const daysBetween = firstDate && lastDate 
       ? Math.max(1, differenceInDays(firstDate, lastDate))
       : 1;
-    const weightChange = convertWeight(recentEntries[0].metrics.weight) - convertWeight(recentEntries[recentEntries.length - 1].metrics.weight);
+    const weightChange = convertWeight(normalizeToLbs(recentEntries[0].metrics)) - convertWeight(normalizeToLbs(recentEntries[recentEntries.length - 1].metrics));
     return Math.round((weightChange / daysBetween) * 7 * 10) / 10;
   })();
 
