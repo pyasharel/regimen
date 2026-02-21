@@ -1,98 +1,71 @@
 
 
-# Update HealthKit Spec + Native Splash Screen Guidance
+# Fix Android Scheduled Notification Failures
 
-## Part 1: Expand Health Metrics in HEALTHKIT_INTEGRATION_SPEC.md
+## Problem
 
-Update the spec document to replace Steps with a broader set of health metrics relevant to the app's user base (GLP-1 users, bodybuilders, peptide users).
+Dose reminder notifications work on iOS but silently fail on Android 12+ (API 31+). The "Send Test Notification" button works because it fires immediately, but scheduled notifications require the `SCHEDULE_EXACT_ALARM` permission, which must be explicitly granted by the user in Android system settings. The app never checks for or requests this permission.
 
-### Metrics to Include
+## Root Cause
 
-| Metric | Category Key | HealthKit ID | Health Connect Type | Why |
-|--------|-------------|--------------|-------------------|-----|
-| Weight | `weight` | `bodyMass` | `WeightRecord` | Core metric, already supported |
-| Body Fat % | `body_fat` | `bodyFatPercentage` | `BodyFatRecord` | Body recomp tracking |
-| Lean Body Mass | `lean_mass` | `leanBodyMass` | `LeanBodyMassRecord` | Muscle growth tracking for bodybuilders |
-| Sleep | `sleep` | `sleepAnalysis` | `SleepSessionRecord` | Replace manual sleep logging with auto-sync |
-| Resting Heart Rate | `resting_hr` | `restingHeartRate` | `RestingHeartRateRecord` | Peptide/cardio effect monitoring |
-| Heart Rate Variability | `hrv` | `heartRateVariabilitySDNN` | `HeartRateVariabilityRmssdRecord` | Recovery and stress indicator |
+In `notificationScheduler.ts`, `LocalNotifications.schedule()` uses `{ at: notificationDate }` which triggers Android's exact alarm API. On Android 12+, this silently fails if `SCHEDULE_EXACT_ALARM` hasn't been granted. Unlike iOS, this isn't a dialog prompt — it requires navigating to system settings.
 
-### What Changes in the Spec
+## Solution
 
-1. **Section 5 (iOS Config)**: Update `Info.plist` usage description to mention heart rate and sleep data
-2. **Section 6 (Android Config)**: Add `READ_HEART_RATE`, `READ_SLEEP`, `READ_LEAN_BODY_MASS` permissions
-3. **Section 7 (React Hook)**: Replace `readSteps()` with `readLeanBodyMass()`, `readSleep()`, `readRestingHeartRate()`, `readHRV()`
-4. **Section 10 (Database)**: Update category examples to include the new metric types
-5. **Section 11 (Prompts)**: Update copy-paste prompts 2-5 to reference the expanded metric set
-6. **Prompt 3 specifically**: The hook should now export readers for all 6 metrics instead of 3
+### 1. Add an exact alarm permission check utility
 
-### NOT Including
-- **BMI**: Calculated locally from weight + height (already in `profiles` table)
-- **Steps**: Not relevant to the app's core use case (medication/supplement tracking)
-- **Active Energy**: Same reasoning as steps
+Create `src/utils/androidAlarmPermission.ts` that:
+- Detects if platform is Android
+- Checks if exact alarms are available using the Capacitor `LocalNotifications` API or Android intent
+- Provides a function to open the exact alarm settings page via `@capacitor/app` (using `App.openUrl` with `android.settings.REQUEST_SCHEDULE_EXACT_ALARM`)
+- Returns permission status: `'granted' | 'denied' | 'not_applicable'`
 
----
+### 2. Add permission check before scheduling
 
-## Part 2: Add Native Splash Screen Section to Spec
+In `notificationScheduler.ts` > `scheduleAllUpcomingDoses()`:
+- After the existing `checkPermissions()` call (line 238), add a check for exact alarm permission on Android
+- If exact alarms are NOT permitted, log a warning and skip scheduling (same as when notification permission isn't granted)
+- This prevents silent failures and makes the issue diagnosable from logs
 
-Add a new **Section 12** to `HEALTHKIT_INTEGRATION_SPEC.md` (or a separate doc) covering the native animated splash screen, since the user will already be working in Cursor.
+### 3. Show a one-time prompt to Android users
 
-### Current State
-- `LaunchScreen.storyboard` shows a static `Splash` image (1366x1366)
-- Capacitor `SplashScreen` plugin configured with `launchShowDuration: 400` and `launchAutoHide: false`
-- The JS-side `Splash.tsx` page handles routing logic but has no visual animation — just a pulsing logo and spinner
+Create a lightweight hook `useAndroidAlarmPermission.ts` that:
+- On Android only, checks if exact alarms are permitted
+- If not, and the user has active compounds with dose reminders enabled, shows a dialog explaining they need to enable "Alarms and Reminders" in settings
+- Includes a button that deep-links directly to the permission page
+- Throttled to show once per 48 hours (stored in localStorage)
+- Only shown after initial onboarding is complete
 
-### What the Spec Will Recommend
+### 4. Add the prompt to TodayScreen
 
-**Option A (Simpler — Recommended First):**
-- Replace the static splash image with a properly branded one (black background, Regimen logo centered, wordmark below)
-- This requires only updating the image assets in `ios/App/App/Assets.xcassets/Splash.imageset/` and `android/app/src/main/res/`
-- No code changes needed
+Wire the hook into `TodayScreen.tsx` so Android users see the prompt when they open the app and exact alarms aren't permitted. This is non-blocking — just an informational dialog with a "Go to Settings" button and a "Not Now" dismiss.
 
-**Option B (Premium — Lottie Animation):**
-- Install `lottie-ios` via CocoaPods and `lottie-react-native` or a Capacitor Lottie plugin
-- Create a custom launch view controller that plays a Lottie animation (logo scales in, wordmark fades up)
-- Replace `LaunchScreen.storyboard` approach with a programmatic splash
-- This is more complex but gives the "premium app" feel
+### 5. Add diagnostic info to Settings
 
-### Cursor Prompts to Include
+In `NotificationsSettings.tsx`, add a line for Android users showing whether "Alarms & Reminders" permission is granted, with a link to fix it if not.
 
-Prompt for Option A:
-```
-I need to update my iOS splash screen. Replace the images in 
-ios/App/App/Assets.xcassets/Splash.imageset/ with a properly 
-branded version. The splash should have a solid black (#000000) 
-background with the Regimen logo centered. The source logo is 
-at src/assets/regimen-wordmark-transparent.png. Generate 1x 
-(1024x1024), 2x (2048x2048), and 3x (3072x3072) versions.
-```
+## Files to Create/Modify
 
----
-
-## Part 3: Micro-Animations (Lovable-Side Enhancements)
-
-These are things that can be done in Lovable after the HealthKit work, to make the app feel more polished:
-
-- Tab transition animations (cross-fade between Today/Stack/Progress)
-- Card entrance animations on scroll (staggered fade-in)
-- Metric log success animation (checkmark draw + haptic)
-- Pull-to-refresh spring physics refinement
-
-These do NOT need to go in the spec — they're Lovable tasks for a future session.
-
----
-
-## Summary of File Changes
-
-| File | Change |
+| File | Action |
 |------|--------|
-| `HEALTHKIT_INTEGRATION_SPEC.md` | Expand metrics (replace Steps with Sleep, Lean Mass, Resting HR, HRV). Update Sections 5, 6, 7, 10, 11. Add Section 12 for native splash screen. |
+| `src/utils/androidAlarmPermission.ts` | **Create** - Exact alarm permission check + settings opener |
+| `src/hooks/useAndroidAlarmPermission.ts` | **Create** - Hook to check and prompt for exact alarm permission |
+| `src/utils/notificationScheduler.ts` | **Modify** - Add exact alarm check in `scheduleAllUpcomingDoses()` |
+| `src/components/TodayScreen.tsx` | **Modify** - Wire up the Android alarm permission prompt |
+| `src/components/settings/NotificationsSettings.tsx` | **Modify** - Show exact alarm status for Android users |
 
 ## Technical Notes
 
-- All new HealthKit identifiers are read-only (no write permissions needed for HR/HRV/Sleep)
-- Sleep data from HealthKit comes as time intervals (in-bed, asleep, awake stages) — the hook will need to calculate total sleep hours from the sleep analysis samples
-- HRV uses the SDNN measurement on iOS and RMSSD on Android — the spec will note this difference
-- The `progress_entries` table needs no schema changes; the `metrics` JSONB field handles all new data types
-- The unique index `(user_id, entry_date, category)` covers all new categories
+- The `SCHEDULE_EXACT_ALARM` permission is already declared in `AndroidManifest.xml` (line 61) — this is correct
+- The manifest declaration alone isn't enough on Android 12+; the user must also toggle it ON in system settings
+- The Capacitor `LocalNotifications` plugin doesn't expose an `canScheduleExactAlarms()` API directly, so we'll use the Android settings intent approach via `App.openUrl('package:com.regimen.app', { androidSettings: 'REQUEST_SCHEDULE_EXACT_ALARM' })` or the Browser plugin
+- This fix is purely in the web layer (TypeScript) — no native code changes needed, no Cursor required
+- iOS is unaffected by this change (the check is Android-only)
+
+## Impact
+
+- **All Android 12+ users** will now be guided to enable exact alarms
+- Scheduled dose notifications will start working reliably on Android
+- The Settings screen will show clear diagnostic info for debugging
+- No breaking changes to existing iOS behavior
 
