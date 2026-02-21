@@ -1,6 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { enqueuePendingAction } from './pendingDoseActions';
+import { checkExactAlarmPermission } from './androidAlarmPermission';
 
 // Track if action types are registered
 let actionTypesRegistered = false;
@@ -245,6 +246,16 @@ export const scheduleAllUpcomingDoses = async (doses: any[], isPremium: boolean 
     return;
   }
   console.log('✅ Notification permissions already granted');
+
+  // Android 12+: Check exact alarm permission
+  if (Capacitor.getPlatform() === 'android') {
+    const exactAlarmStatus = await checkExactAlarmPermission();
+    if (exactAlarmStatus === 'denied') {
+      console.warn('⚠️ SCHEDULE_EXACT_ALARM not granted - scheduled notifications will fail silently on Android 12+');
+      console.warn('⚠️ User needs to enable "Alarms & Reminders" in Android Settings > Apps > Regimen');
+      return;
+    }
+  }
 
   const now = new Date();
   now.setSeconds(0, 0); // Normalize to start of minute

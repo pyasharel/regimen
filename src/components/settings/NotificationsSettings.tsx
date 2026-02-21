@@ -16,6 +16,7 @@ import { rescheduleAllCycleReminders } from "@/utils/cycleReminderScheduler";
 import { scheduleAllUpcomingDoses, ensureDoseActionTypesRegistered } from "@/utils/notificationScheduler";
 import { persistentStorage } from "@/utils/persistentStorage";
 import { trackNotificationToggled } from "@/utils/analytics";
+import { useAndroidAlarmPermission } from "@/hooks/useAndroidAlarmPermission";
 import { SwipeBackContainer } from "@/components/ui/SwipeBackContainer";
 
 type PermissionStatus = 'granted' | 'prompt' | 'denied' | 'unknown';
@@ -40,6 +41,9 @@ export const NotificationsSettings = () => {
   const [osPermissionStatus, setOsPermissionStatus] = useState<PermissionStatus>('unknown');
   const [testingNotification, setTestingNotification] = useState(false);
   const [requestingPermission, setRequestingPermission] = useState(false);
+
+  // Android exact alarm permission check
+  const { status: exactAlarmStatus, openSettings: openAlarmSettings } = useAndroidAlarmPermission(true);
 
   const checkPermissionStatus = async (): Promise<PermissionStatus> => {
     if (!Capacitor.isNativePlatform()) {
@@ -447,6 +451,31 @@ export const NotificationsSettings = () => {
         )}
 
         {/* Dose Reminders */}
+        {/* Android Exact Alarm Warning */}
+        {Capacitor.getPlatform() === 'android' && exactAlarmStatus === 'denied' && (
+          <div className="rounded-xl border border-destructive/50 bg-destructive/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
+                <Bell className="h-5 w-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-foreground">Alarms & Reminders Off</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Android requires this permission for scheduled dose reminders. Without it, notifications won't fire.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={openAlarmSettings}
+                  className="mt-3 gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Enable in Settings
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
