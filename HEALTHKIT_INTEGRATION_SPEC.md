@@ -17,7 +17,7 @@
 9. [Testing](#9-testing)
 10. [Database Schema](#10-database-schema)
 11. [Exact Prompts for Cursor / Claude Code](#11-exact-prompts-for-cursor--claude-code)
-12. [Native Splash Screen Setup](#12-native-splash-screen-setup)
+
 
 ---
 
@@ -983,75 +983,3 @@ npx cap run android
 
 ---
 
-## 12. Native Splash Screen Setup
-
-> **Context**: Since you're already working in Cursor/Xcode for HealthKit, this is a good time to also upgrade the native splash screen. The current splash is a static `Splash` image (1366x1366) shown via `LaunchScreen.storyboard`.
-
-### Current State
-
-| Component | Current Status |
-|-----------|---------------|
-| `LaunchScreen.storyboard` | Static `Splash` image, `systemBackgroundColor` (white) |
-| `capacitor.config.ts` | `launchShowDuration: 400`, `launchAutoHide: false`, `backgroundColor: "#000000"` |
-| `Splash.tsx` (JS) | Routing logic only — pulsing logo + spinner, no visual animation |
-| Splash image assets | `ios/App/App/Assets.xcassets/Splash.imageset/` — generic placeholder |
-
-### Option A: Branded Static Splash (Recommended First)
-
-Replace the splash screen images with properly branded versions. No code changes needed.
-
-**What to do:**
-1. Create a splash image: black (#000000) background, Regimen logo centered, wordmark below
-2. Generate three sizes for the iOS image set:
-   - `splash-screen.png` — 1024×1024 (1x)
-   - `splash-screen@2x.png` — 2048×2048 (2x) 
-   - `splash-screen@3x.png` — 3072×3072 (3x)
-3. Replace files in `ios/App/App/Assets.xcassets/Splash.imageset/`
-4. Update `LaunchScreen.storyboard` background color to black
-
-**Also update the storyboard background** — change `systemBackgroundColor` to solid black so it matches the splash image:
-
-```xml
-<color key="backgroundColor" red="0" green="0" blue="0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-```
-
-**Cursor Prompt:**
-```
-I need to update my iOS splash screen. 
-
-1. Replace the images in ios/App/App/Assets.xcassets/Splash.imageset/ with properly branded versions. The splash should have a solid black (#000000) background with the Regimen logo centered. The source logo is at src/assets/regimen-wordmark-transparent.png. Generate 1x (1024x1024), 2x (2048x2048), and 3x (3072x3072) versions.
-
-2. Update ios/App/App/Base.lproj/LaunchScreen.storyboard to use a solid black background color instead of systemBackgroundColor.
-
-3. For Android, place equivalent splash images in:
-   - android/app/src/main/res/drawable/splash.png
-   - android/app/src/main/res/drawable-hdpi/splash.png  
-   - android/app/src/main/res/drawable-xhdpi/splash.png
-   - android/app/src/main/res/drawable-xxhdpi/splash.png
-```
-
-### Option B: Lottie Animated Splash (Premium — Future Enhancement)
-
-For a more premium feel, add a Lottie animation that plays during the splash:
-
-1. Install `lottie-ios` via CocoaPods:
-   ```ruby
-   # In ios/App/Podfile, inside the target 'App' block:
-   pod 'lottie-ios', '~> 4.4'
-   ```
-
-2. Create a Lottie JSON animation (logo scales in, wordmark fades up) using LottieFiles or After Effects
-
-3. Create a custom `SplashViewController.swift` that plays the Lottie animation instead of showing a static image
-
-4. Replace `LaunchScreen.storyboard` with the programmatic splash
-
-**This is more complex and should be done AFTER Option A is working.**
-
-### Android Splash Screen
-
-For Android, the splash is controlled by `capacitor.config.ts` (already configured with `backgroundColor: "#000000"`) plus drawable resources:
-
-1. Place your splash image in `android/app/src/main/res/drawable/splash.png`
-2. The `androidScaleType: "CENTER_INSIDE"` setting in `capacitor.config.ts` handles sizing
-3. Run `npx cap sync android` after adding images
