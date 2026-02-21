@@ -55,6 +55,10 @@
 	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>We need permission to send you medication reminders</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Regimen reads your weight, body composition, sleep, heart rate, and heart rate variability to track your health alongside your medication schedule.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Regimen can save your logged metrics to Apple Health to keep all your health data in one place.</string>
 	<key>GIDClientID</key>
 	<string>495863490632-lp0fckcnkiv0ktqeq2v4gout41bl8698.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>

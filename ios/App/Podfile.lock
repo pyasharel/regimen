@@ -67,6 +67,8 @@ PODS:
     - GTMSessionFetcher/Core (< 4.0, >= 3.3)
   - GTMSessionFetcher/Core (3.5.0)
   - IONFilesystemLib (1.0.1)
+  - PerfoodCapacitorHealthkit (1.3.2):
+    - Capacitor
   - PromisesObjC (2.4.0)
   - PurchasesHybridCommon (17.25.0):
     - RevenueCat (= 5.51.1)
@@ -89,6 +91,7 @@ DEPENDENCIES:
   - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
   - "CapacitorSplashScreen (from `../../node_modules/@capacitor/splash-screen`)"
   - "CapgoCapacitorSocialLogin (from `../../node_modules/@capgo/capacitor-social-login`)"
+  - "PerfoodCapacitorHealthkit (from `../../node_modules/@perfood/capacitor-healthkit`)"
   - "RevenuecatPurchasesCapacitor (from `../../node_modules/@revenuecat/purchases-capacitor`)"
 
 SPEC REPOS:
@@ -136,6 +139,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/splash-screen"
   CapgoCapacitorSocialLogin:
     :path: "../../node_modules/@capgo/capacitor-social-login"
+  PerfoodCapacitorHealthkit:
+    :path: "../../node_modules/@perfood/capacitor-healthkit"
   RevenuecatPurchasesCapacitor:
     :path: "../../node_modules/@revenuecat/purchases-capacitor"
 
@@ -165,11 +170,12 @@ SPEC CHECKSUMS:
   GTMAppAuth: 217a876b249c3c585a54fd6f73e6b58c4f5c4238
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   IONFilesystemLib: 89258b8e3e85465da93127d25d7ce37f977e8a6f
+  PerfoodCapacitorHealthkit: 0708728954308c0217daa6912deeb73df7cba050
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   PurchasesHybridCommon: 6a79a873ab52f777bfa36e9516f3fcd84d3b3428
   RevenueCat: eab035bbab271faccfef5c36eaff2a1ffef14dc0
   RevenuecatPurchasesCapacitor: fa376932f9967c7ab4b5eac477e824d90393b91a
 
-PODFILE CHECKSUM: 61e18a1b4a4b4343d5ab5e405148aaaeca0dbaad
+PODFILE CHECKSUM: 4a29ea37f0997fee54e18e67fffc72ade4cdf270
 
 COCOAPODS: 1.16.2
